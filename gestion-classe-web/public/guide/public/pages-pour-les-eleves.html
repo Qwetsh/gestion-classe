@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pages pour les élèves — Guide Gestion Classe</title>
+<meta name="description" content="La page web pour les élèves exportée d'un tableau, l'envoi des copies par QR code (un élève ou toute la classe), et la page de dépannage quand l'application ne se met pas à jour.">
+<meta name="guide-partie" content="public">
+<meta name="guide-ordre" content="30">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+  /* ---------- tableau blanc (chrome sombre) */
+  .tb { height: 100%; display: flex; flex-direction: column; background: #0D1015; position: relative; }
+  .tb-onglets { flex: none; height: 34px; display: flex; align-items: flex-end; gap: 2px; padding: 0 12px; background: #171C24; }
+  .tb-onglet { padding: 7px 14px; font-size: 12.5px; color: #9CA3AF; border-radius: 6px 6px 0 0; transition: all .25s; }
+  .tb-onglet.is-on { background: #232A35; color: #E7ECF3; }
+  .tb-ruban { flex: none; height: 74px; display: flex; gap: 6px; padding: 8px 12px; background: #232A35; color: #E7ECF3; border-bottom: 1px solid #0D1015; }
+  .tb-b { width: 92px; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 5px 4px; border-radius: 7px; font-size: 10.5px; text-align: center; line-height: 1.2; transition: all .25s; }
+  .tb-b i { width: 22px; height: 20px; border: 1.8px solid #9CA3AF; border-radius: 5px; display: block; }
+  .tb-b.is-on { background: #4F46E5; }
+  .tb-b.is-on i { border-color: #fff; }
+  .tb-bureau { flex: 1; min-height: 0; display: grid; place-items: center; }
+  .tb-page { width: 620px; height: 370px; background: #fff; border-radius: 4px; padding: 26px 30px; background-image: linear-gradient(#DFE6EF 1px, transparent 1px), linear-gradient(90deg, #DFE6EF 1px, transparent 1px); background-size: 24px 24px; }
+  .ecr-t { font-size: 20px; font-weight: 700; color: #1F4E79; margin: 0 0 12px; }
+  .ecr-q { font-size: 13px; color: #1d2433; margin: 0 0 8px; }
+  .ecr-r { font-size: 13px; color: #15803D; font-weight: 600; margin: 0 0 12px; }
+  .wbx { position: absolute; inset: 0; z-index: 620; background: rgba(17,24,39,.6); display: grid; place-items: center; }
+  .wbx__boite { width: 760px; background: #111827; color: #F3F4F6; border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,.5); padding: 16px 20px 14px; }
+  .wbx__tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .wbx__tete b { font-size: 19px; font-weight: 600; }
+  .wbx__x { width: 32px; height: 32px; border-radius: 50%; background: #1F2937; display: grid; place-items: center; font-size: 13px; }
+  .wbx__opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+  .wbx__o { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-radius: 12px; background: #1F2937; border: 2px solid transparent; transition: all .25s; }
+  .wbx__o.is-on { border-color: #6366F1; }
+  .wbx__o span { display: flex; flex-direction: column; font-size: 13px; }
+  .wbx__o small { color: #9CA3AF; font-size: 11px; }
+  .wbx__rond { width: 15px; height: 15px; border-radius: 50%; border: 2px solid #6B7280; flex: none; }
+  .wbx__o.is-on .wbx__rond { border: 5px solid #6366F1; }
+  .wbx__case { width: 15px; height: 15px; border-radius: 4px; border: 2px solid #6B7280; flex: none; }
+  .wbx__ph { display: flex; gap: 14px; color: #9CA3AF; font-size: 12px; margin: 4px 0 6px; }
+  .wbx__ph b { color: #A5B4FC; font-weight: 500; }
+  .wbx__pages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+  .wbx__pg { position: relative; border: 2px solid #6366F1; border-radius: 10px; overflow: hidden; background: #fff; aspect-ratio: 16 / 10; padding: 8px; }
+  .wbx__pg i { position: absolute; left: 6px; top: 6px; width: 14px; height: 14px; border-radius: 3px; background: #6366F1; }
+  .wbx__pg span { position: absolute; right: 6px; bottom: 5px; padding: 1px 6px; border-radius: 5px; background: rgba(17,24,39,.85); color: #fff; font-size: 10px; font-weight: 600; }
+  .wbx__pg em { display: block; height: 6px; border-radius: 3px; background: #CBD5E1; margin: 16px 6px 6px; }
+  .wbx__pg em + em { margin-top: 0; width: 70%; }
+  .wbx__pied { display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid #1F2937; padding-top: 12px; }
+  .wbx__btn { height: 38px; padding: 0 16px; border-radius: 11px; background: #1F2937; font-size: 13.5px; font-weight: 600; display: grid; place-items: center; transition: all .25s; }
+  .wbx__btn--p { background: #4F46E5; }
+  .wbx__btn.is-on { transform: scale(.96); box-shadow: 0 0 0 3px rgba(99,102,241,.4); }
+  .telech { position: absolute; z-index: 650; right: 18px; bottom: 16px; display: flex; align-items: center; gap: 10px; background: #fff; color: #18181B; border-radius: 10px; padding: 10px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.35); font-size: 12.5px; }
+  .telech i { width: 22px; height: 26px; border: 2px solid #1F4E79; border-radius: 3px; }
+  /* ---------- page web pour les élèves (fichier) */
+  .ho { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: #EEF1F5; color: #1d2433; display: flex; flex-direction: column; }
+  .ho-bar { flex: none; display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #fff; border-bottom: 1px solid #D9DEE7; }
+  .ho-bar b { flex: 1; min-width: 0; font-size: 16px; color: #1F4E79; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ho-imp { height: 34px; padding: 0 12px; border-radius: 9px; background: #1F4E79; color: #fff; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all .25s; }
+  .ho-imp.is-on { transform: scale(.95); }
+  .ico-imp { width: 13px; height: 10px; border: 1.6px solid currentColor; border-radius: 2px; position: relative; display: inline-block; }
+  .ico-imp::before { content: ''; position: absolute; left: 2px; right: 2px; top: -5px; height: 4px; border: 1.6px solid currentColor; border-bottom: 0; }
+  .ho-corps { flex: 1; min-height: 0; overflow: hidden; }
+  .ho-fil { padding: 12px 12px; display: flex; flex-direction: column; gap: 12px; transition: transform 1.1s ease; }
+  .ho-fil.is-on { transform: translateY(-212px); }
+  .ho-carte { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .ho-ecran { aspect-ratio: 16 / 10; padding: 12px 14px; position: relative; }
+  .ho-ecran .ecr-t { font-size: 14px; margin-bottom: 6px; }
+  .ho-ecran .ecr-q, .ho-ecran .ecr-r { font-size: 10.5px; margin-bottom: 5px; }
+  .ho-nav { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px; padding: 8px; background: #E8EEF6; border-top: 1px solid #D9DEE7; }
+  .ho-nav__t { flex-basis: 100%; text-align: center; font-weight: 600; color: #1F4E79; font-size: 12px; }
+  .ho-nav span.b2 { height: 30px; padding: 0 9px; border: 1px solid #9fb3cc; border-radius: 9px; background: #fff; font-size: 11.5px; line-height: 28px; transition: all .25s; }
+  .ho-nav span.b2--suiv { background: #1F4E79; border-color: #1F4E79; color: #fff; }
+  .ho-nav span.b2.is-on { transform: scale(.94); }
+  .ho-nav__n { min-width: 3.5em; text-align: center; color: #64748B; font-size: 11.5px; }
+  .anim-magma { position: absolute; left: 50%; top: 40px; width: 150px; height: 104px; margin-left: -75px; }
+  .anim-magma svg { width: 100%; height: 100%; }
+  .goutte { transition: transform 1s ease; }
+  .feuilles2 { position: absolute; inset: 0; z-index: 8; background: rgba(32,33,36,.6); display: grid; place-items: center; }
+  .feuilles2__a4 { width: 220px; height: 310px; background: #fff; box-shadow: 0 8px 30px rgba(0,0,0,.4); padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .feuilles2__a4 div { flex: 1; border: 1px solid #D9DEE7; border-radius: 4px; padding: 8px; }
+  /* ---------- dépôt de copie (page /depot) */
+  .dp { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: #f6f6f4; color: #1d1d1b; padding: 16px 14px; display: flex; flex-direction: column; gap: 11px; overflow: hidden; }
+  .dp-sur { font-size: 12px; color: #666; font-weight: 600; }
+  .dp-carte { padding: 12px; border-radius: 10px; background: #fff; border: 1px solid #ddd; }
+  .dp-carte b { display: block; font-size: 17px; }
+  .dp-carte span { font-size: 12.5px; color: #666; }
+  .dp-gros { width: 100%; padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 700; text-align: center; color: #fff; transition: all .25s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+  .dp-gros.is-on { transform: scale(.97); }
+  .dp-photo { background: #4F46E5; }
+  .dp-envoi { background: #15803d; }
+  .dp-suiv { background: #1d1d1b; }
+  .dp-pasnom { background: #fff; color: #1d1d1b; border: 1px dashed #bbb; font-size: 14px; }
+  .ico-photo { width: 18px; height: 13px; border: 2px solid currentColor; border-radius: 3px; position: relative; display: inline-block; }
+  .ico-photo::after { content: ''; position: absolute; left: 4px; top: 1.5px; width: 6px; height: 6px; border: 1.8px solid currentColor; border-radius: 50%; }
+  .dp-vign { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .dp-vign__p { text-align: center; font-size: 10.5px; color: #666; }
+  .dp-vign__img { aspect-ratio: 3 / 4; border-radius: 8px; border: 1px solid #ddd; background: #F2F1EC; padding: 7px 6px; display: flex; flex-direction: column; gap: 4px; }
+  .dp-vign__img em { height: 3px; border-radius: 2px; background: #9CA3AF; }
+  .dp-vign__img em:nth-child(3n) { width: 70%; }
+  .dp-vign__b { display: flex; justify-content: center; gap: 5px; margin: 3px 0 1px; }
+  .dp-vign__b span { padding: 1px 7px; border-radius: 7px; border: 1px solid #ddd; background: #fff; font-size: 11px; color: #1d1d1b; }
+  .dp-ok { padding: 10px; border-radius: 10px; background: #e7f6ec; color: #15803d; font-size: 13px; }
+  .dp-pied { font-size: 11px; color: #666; }
+  .dp-liste { border-radius: 10px; border: 1px solid #ddd; background: #fff; overflow: hidden; }
+  .dp-liste div { display: flex; align-items: center; padding: 11px 13px; border-bottom: 1px solid #eee; font-size: 15px; font-weight: 600; transition: background .25s; }
+  .dp-liste div.is-on { background: #EEF0FF; }
+  .dp-liste div span { margin-left: auto; font-size: 12.5px; color: #15803d; font-weight: 700; }
+  .dp-col { display: flex; flex-direction: column; gap: 11px; }
+  .dp-petit { align-self: flex-start; padding: 3px 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff; font-size: 13px; }
+  /* ---------- ordinateur + téléphone côte à côte */
+  .duo { position: relative; width: 1000px; height: 620px; }
+  .duo .fenetre { position: absolute; left: 0; top: 30px; width: 640px; height: 540px; }
+  .duo .tel { position: absolute; left: 680px; top: 0; width: 300px; height: 616px; }
+  .acp { padding: 16px 18px; font-size: 12.5px; position: relative; height: 100%; background: rgba(24,24,27,.35); }
+  .acp__boite { background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 14px 16px; }
+  .acp__t { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+  .acp__qr { width: 170px; height: 170px; border: 1px solid var(--border); border-radius: 10px; display: grid; place-items: center; flex: none; }
+  .acp__qr svg { width: 150px; height: 150px; }
+  .acp__ol { margin: 0 0 8px; padding-left: 18px; line-height: 1.6; }
+  .acp__etat { font-weight: 700; color: var(--text-muted); }
+  .acp__etat--ok { color: var(--pos); }
+  /* ---------- vidage du cache */
+  .swr { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: #1a1410; color: #e8dcc8; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 24px; text-align: center; }
+  .swr h4 { font-size: 20px; color: #e8c066; margin: 0 0 12px; font-weight: 700; }
+  .swr p { font-size: 14px; line-height: 1.6; color: #a09080; margin: 0; }
+  .swr__b { margin-top: 20px; padding: 14px 22px; border-radius: 12px; background: #d4a843; color: #241a0c; font-weight: 700; font-size: 15px; transition: all .25s; }
+  .swr__b.is-on { transform: scale(.96); }
+  .nav-url { position: absolute; left: 0; right: 0; top: 30px; height: 46px; z-index: 4; background: #F1F1F4; border-bottom: 1px solid #E4E4E7; display: flex; align-items: center; padding: 0 10px; }
+  .nav-url span { flex: 1; height: 30px; border-radius: 15px; background: #fff; border: 1px solid #E4E4E7; font-size: 11.5px; color: #3F3F46; display: flex; align-items: center; padding: 0 12px; overflow: hidden; white-space: nowrap; transition: all .25s; }
+  .nav-url span.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+  .swr--decale { top: 76px; }
+  .eleve-ouvert { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: #F6F6F7; padding: 0 16px; }
+  .eleve-ouvert h4 { font-weight: 700; letter-spacing: -.01em; }
+  .eleve-ouvert .muet { font-size: 13px; }
+  .el-login { margin-top: 90px; background: #fff; border: 1px solid #E6E6E9; border-radius: 8px; padding: 20px 16px; }
+  .el-login h4 { margin: 10px 0 6px; font-size: 26px; }
+  .el-ico { display: block; width: 48px; height: 48px; border-radius: 8px; background: #EEF0FF; }
+  .el-voir { height: 48px; border-radius: 6px; background: #4F46E5; color: #fff; font-weight: 600; display: grid; place-items: center; opacity: .5; }
+  .code6 { display: flex; gap: 6px; justify-content: center; margin: 8px 0 16px; }
+  .code6 span { width: 40px; height: 56px; border: 1.5px solid #D4D4D8; border-radius: 8px; background: #fff; }
+  .autres { margin-top: 10px; }
+  /* un libellé remplacé par un autre ne garde pas sa place */
+  .ecran span.is-hidden { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <path id="faux-qr" d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM19 16h6v1h-6zM11 17h1v1h-1zM14 17h1v1h-1zM17 17h1v1h-1zM19 17h2v1h-2zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h3v1h-3zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h2v1h-2zM21 19h2v1h-2zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h2v1h-2zM20 20h2v1h-2zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z"/>
+  </defs>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Pages sans compte</a> › Pages pour les élèves</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#pe-exporter">Exporter une page web</a></li>
+      <li><a href="#pe-lire">La page web côté élève</a></li>
+      <li><a href="#pe-depot">Envoyer une copie par QR code</a></li>
+      <li><a href="#pe-depot-classe">Les copies de toute la classe</a></li>
+      <li><a href="#pe-cache">Si l'application ne se met pas à jour</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../public/cahier-de-texte-en-lecture-seule.html">◀ Cahier de texte en lecture seule</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Pages sans compte · Élèves</div>
+      <h1>Pages pour les élèves</h1>
+      <p>Ce que l'élève ouvre sans compte en dehors de son espace : la page web d'une correction projetée en classe, la page qui envoie les photos d'une copie depuis un téléphone, et la page de dépannage quand l'application reste bloquée sur une ancienne version.</p>
+      <div class="chap__resume"><span>Tableau blanc › Fichier › Exporter</span><span>Évaluation › Voir les copies</span><span>Ordinateur</span><span>Téléphone</span><span>Sans compte</span></div>
+    </header>
+
+    <!-- ============================================================ fiche : exporter -->
+    <section class="fiche" id="pe-exporter">
+      <div class="fiche__texte">
+        <h2>Exporter une page web pour les élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Tableau blanc › Fichier › Exporter (PDF ou page web)</span></p>
+        <p class="fiche__but">Les écrans d'une séance, souvent une correction, deviennent un seul fichier que l'élève ouvre chez lui : écrans dans leur état final, animations à rejouer, bouton pour imprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#px-fichier" data-action="click">Dans le tableau blanc, ouvrir l'onglet <b>Fichier</b>.</li>
+          <li data-cursor="#px-exporter" data-action="click">Cliquer <span class="btn-nom">Exporter (PDF ou page web)</span>. La fenêtre « Exporter » s'ouvre.</li>
+          <li data-cursor="#px-web" data-action="click" data-duration="3200">Choisir <b>Page web pour les élèves</b> (« corrigé, animations jouables, bouton Imprimer »). <b>Sans l'encre</b> retire ce qui a été écrit au stylet.</li>
+          <li data-cursor="#px-p3" data-action="click">Cocher les écrans à garder : <span class="btn-nom">Toutes</span>, <span class="btn-nom">Aucune</span> ou <span class="btn-nom">Celle-ci</span>.</li>
+          <li data-cursor="#px-go" data-action="click" data-duration="3600">Cliquer <span class="btn-nom">Exporter 3 pages</span> : un fichier « … - élèves.html » arrive dans les téléchargements, à déposer sur l'ENT, dans Pronote ou sur une clé USB.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La page montre la version corrigée : les boutons « pour le prof » sont appuyés dans l'ordre (ce qu'ils montrent est là, ce qu'ils cachent a disparu), et ne sont pas dessinés ; caches et trous sont ouverts.</li>
+            <li>Ce qui reste masqué sans bouton (brouillon, variante) reste masqué.</li>
+            <li><b>Un fichier donné ne se reprend pas</b> : il n'y a pas de lien à couper. Vérifier les écrans avant de le déposer, et ne jamais y laisser un nom d'élève écrit au tableau (cocher « Sans l'encre » au besoin).</li>
+            <li>Le fichier contient tout : il s'ouvre sans connexion et sans compte.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classe</div></div>
+              <div class="tb">
+                <div class="tb-onglets">
+                  <span class="tb-onglet" id="px-fichier" data-on="1-5">Fichier</span>
+                  <span class="tb-onglet">Accueil</span>
+                  <span class="tb-onglet">Insertion</span>
+                  <span class="tb-onglet">Page</span>
+                  <span class="tb-onglet">Outils</span>
+                  <span class="tb-onglet">Affichage</span>
+                </div>
+                <div class="tb-ruban">
+                  <span class="tb-b"><i></i>Ouvrir (.gcboard, PDF, image)</span>
+                  <span class="tb-b"><i></i>Ouvrir un tableau préparé…</span>
+                  <span class="tb-b"><i></i>Enregistrer dans Mes cours…</span>
+                  <span class="tb-b"><i></i>Enregistrer un fichier .gcboard</span>
+                  <span class="tb-b" id="px-exporter" data-on="2"><i></i>Exporter (PDF ou page web)</span>
+                </div>
+                <div class="tb-bureau">
+                  <div class="tb-page">
+                    <p class="ecr-t">Correction — Activité 4</p>
+                    <p class="ecr-q">1. Nomme les trois parties du volcan visibles sur le document 1.</p>
+                    <p class="ecr-r">Chambre magmatique, cheminée, cratère.</p>
+                    <p class="ecr-q">2. Explique pourquoi le magma remonte vers la surface.</p>
+                    <p class="ecr-r">Il est moins dense que les roches qui l'entourent.</p>
+                  </div>
+                </div>
+                <div class="wbx" data-from="2">
+                  <div class="wbx__boite">
+                    <div class="wbx__tete"><b>Exporter</b><span class="wbx__x">×</span></div>
+                    <div class="wbx__opts" style="grid-template-columns:1fr 1fr">
+                      <div class="wbx__o" data-on="2"><i class="wbx__rond"></i><span><b>PDF</b><small>à imprimer ou à projeter</small></span></div>
+                      <div class="wbx__o" id="px-web" data-on="3-5"><i class="wbx__rond"></i><span><b>Page web pour les élèves</b><small>corrigé, animations jouables, bouton Imprimer</small></span></div>
+                    </div>
+                    <div class="wbx__opts" style="grid-template-columns:1fr 1fr">
+                      <div class="wbx__o"><i class="wbx__case"></i><span><b>Sans l'encre</b><small>garder textes, formes et fonds</small></span></div>
+                    </div>
+                    <div class="wbx__ph"><span><span data-to="3">4 / 4 pages</span><span data-from="4">3 / 4 pages</span></span><b>Toutes</b><b>Aucune</b><b>Celle-ci</b></div>
+                    <div class="wbx__pages">
+                      <div class="wbx__pg"><i></i><em></em><em></em><span>1</span></div>
+                      <div class="wbx__pg"><i></i><em></em><em></em><span>2</span></div>
+                      <div class="wbx__pg" id="px-p3" data-on="4-5" style="transition:opacity .3s"><i data-to="3"></i><em></em><em></em><span>3</span></div>
+                      <div class="wbx__pg"><i></i><em></em><em></em><span>4</span></div>
+                    </div>
+                    <div class="wbx__pied"><span class="wbx__btn">Annuler</span><span class="wbx__btn wbx__btn--p" id="px-go" data-on="5"><span data-to="3">Exporter 4 pages</span><span data-from="4">Exporter 3 pages</span></span></div>
+                  </div>
+                </div>
+                <div class="telech glisse-haut" data-at="5"><i></i><span><b>Correction Activité 4 - élèves.html</b><br><span class="muet">Téléchargement terminé</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : lire la page web -->
+    <section class="fiche fiche--etroite" id="pe-lire">
+      <div class="fiche__texte">
+        <h2>La page web côté élève</h2>
+        <p class="fiche__ou"><span class="qui qui--public">Sans compte</span><span class="qui qui--eleve">Élève</span><span class="chemin">ENT, Pronote ou clé USB › fichier .html</span></p>
+        <p class="fiche__but">L'élève ouvre le fichier dans n'importe quel navigateur, sur ordinateur, tablette ou téléphone, et retrouve la correction vue en classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#pl-titre">Ouvrir le fichier : la barre du haut porte le titre du tableau et le bouton <span class="btn-nom">Imprimer</span>. Aucune connexion n'est nécessaire.</li>
+          <li data-cursor="#pl-a" data-action="drag" data-drag-to="#pl-b" data-duration="3200">Faire défiler les écrans. Un bouton de sommaire posé sur un écran mène à l'écran visé.</li>
+          <li data-cursor="#pl-suiv" data-action="tap" data-duration="3200">Sous une animation : <span class="btn-nom">Étape suivante ▶</span>, <span class="btn-nom">◀ Étape précédente</span>, le compteur « 2 / 4 » et <span class="btn-nom">↺ Rejouer</span>.</li>
+          <li data-cursor="#pl-imp" data-action="tap" data-duration="3600"><span class="btn-nom">Imprimer</span> : deux écrans par feuille A4, sans aucun bouton ; les animations sont imprimées en image fixe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le fichier ne contient que les écrans exportés : aucun nom d'élève, aucune note, aucun lien vers l'application.</li>
+            <li>Il ne se met pas à jour : une correction modifiée ensuite demande un nouvel export.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>17:40</span><span>Wi-Fi</span></div>
+              <div class="ho">
+                <div class="ho-bar"><b id="pl-titre">Correction Activité 4</b><span class="ho-imp" id="pl-imp" data-on="4"><i class="ico-imp"></i>Imprimer</span></div>
+                <div class="ho-corps">
+                  <div class="ho-fil" data-on="2-4">
+                    <div class="ho-carte"><div class="ho-ecran" id="pl-a">
+                      <p class="ecr-t">Correction — Activité 4</p>
+                      <p class="ecr-q">1. Nomme les trois parties du volcan.</p>
+                      <p class="ecr-r">Chambre magmatique, cheminée, cratère.</p>
+                      <p class="ecr-q">2. Explique pourquoi le magma remonte.</p>
+                      <p class="ecr-r">Il est moins dense que les roches qui l'entourent.</p>
+                    </div></div>
+                    <div class="ho-carte">
+                      <div class="ho-ecran" id="pl-b">
+                        <p class="ecr-t">Le trajet du magma</p>
+                        <div class="anim-magma"><svg viewBox="0 0 150 104">
+                          <rect width="150" height="104" fill="#DBEAFE"/>
+                          <rect y="78" width="150" height="26" fill="#A8A29E"/>
+                          <polygon points="18,82 68,22 82,22 132,82" fill="#92400E"/>
+                          <rect x="72" y="22" width="6" height="70" fill="#7F1D1D"/>
+                          <ellipse cx="75" cy="95" rx="26" ry="8" fill="#DC2626"/>
+                          <circle class="goutte" cx="75" cy="92" r="6" fill="#F97316" data-at="1-2"/>
+                          <circle cx="75" cy="58" r="6" fill="#F97316" data-at="3"/>
+                          <circle cx="75" cy="24" r="6" fill="#F97316" data-at="4"/>
+                        </svg></div>
+                      </div>
+                      <div class="ho-nav">
+                        <span class="ho-nav__t">Le trajet du magma</span>
+                        <span class="b2">◀ Étape précédente</span>
+                        <span class="ho-nav__n"><span data-to="2">1 / 4</span><span data-at="3">2 / 4</span><span data-from="4">3 / 4</span></span>
+                        <span class="b2 b2--suiv" id="pl-suiv" data-on="3">Étape suivante ▶</span>
+                        <span class="b2">↺ Rejouer</span>
+                      </div>
+                    </div>
+                    <div class="ho-carte"><div class="ho-ecran"><p class="ecr-t">Bilan</p><p class="ecr-q" style="color:#C00000">Le magma remonte car il est moins dense que les roches qui l'entourent.</p></div></div>
+                  </div>
+                </div>
+                <div class="feuilles2 zoom" data-at="4">
+                  <div class="feuilles2__a4">
+                    <div><p class="ecr-t" style="font-size:9px">Correction — Activité 4</p><p class="ecr-r" style="font-size:7px">Chambre magmatique, cheminée, cratère.</p></div>
+                    <div><p class="ecr-t" style="font-size:9px">Le trajet du magma</p><p class="ecr-q" style="font-size:7px">Animation en image fixe</p></div>
+                  </div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : dépôt d'une copie -->
+    <section class="fiche fiche--large" id="pe-depot">
+      <div class="fiche__texte">
+        <h2>Envoyer une copie par QR code</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--public">Sans compte</span><span class="chemin">Évaluation › Voir les copies › Ajouter une copie › QR code (téléphone)</span></p>
+        <p class="fiche__but">Une copie papier se photographie avec n'importe quel téléphone, celui de l'élève ou celui de l'enseignant : les pages arrivent directement dans l'évaluation, prêtes pour la correction.</p>
+        <ol class="etapes">
+          <li data-cursor="#pd-onglet" data-action="click" data-duration="3200">Sur l'ordinateur, dans « Ajouter une copie · Lina BO », choisir l'onglet <span class="btn-nom">QR code (téléphone)</span>. Le QR code s'affiche.</li>
+          <li data-cursor="#pd-carte" data-duration="3200">Scanner le QR code avec le téléphone : la page « Gestion Classe · envoi d'une copie » montre le pseudonyme de l'élève, la classe et l'évaluation.</li>
+          <li data-cursor="#pd-photo" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Photographier une page</span>, une fois par page. Chaque photo devient une vignette « Page 1 », « Page 2 », avec ⟳ (tourner) et × (retirer).</li>
+          <li data-cursor="#pd-envoi" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Envoyer 2 page(s)</span> : « Envoi… 1/2 », puis « 2 page(s) envoyée(s). Tu peux en ajouter d'autres, ou fermer cette page. »</li>
+          <li data-cursor="#pd-recu" data-duration="3600">Sur l'ordinateur : « 2 page(s) reçue(s) ». Fermer la fenêtre quand c'est fini : le QR code ne marche plus.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Ce que voit qui scanne</b> : le pseudonyme de cet élève (prénom et deux lettres), la classe et le nom de l'évaluation. Ni note, ni correction, ni autre copie, ni liste de la classe.</li>
+            <li>Pour une évaluation à plusieurs versions du sujet, indiquer d'abord la version : le QR code s'affiche ensuite.</li>
+            <li>Le QR code ne vaut que pour cet élève : 15 minutes, 8 pages au plus. Fermer la fenêtre sur l'ordinateur le désactive aussitôt.</li>
+            <li>Les photos sont réduites sur le téléphone avant l'envoi (5 Mo au plus par page). Messages possibles : « Ce QR code a expiré ou a été fermé sur l'ordinateur. Génère-en un nouveau. », « Image illisible : reprends la photo. ».</li>
+            <li>Les copies photographiées sont effacées 30 jours après.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="duo">
+              <div class="fenetre">
+                <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations</div></div>
+                <div class="acp">
+                  <div class="acp__boite">
+                    <div class="acp__t">Ajouter une copie · Lina BO</div>
+                    <div class="onglets" style="margin-bottom:14px"><span class="onglet">Importer</span><span class="onglet">Webcam</span><span class="onglet" id="pd-onglet" data-on="1-5">QR code (téléphone)</span></div>
+                    <div class="ligne" style="align-items:flex-start;gap:18px">
+                      <div class="acp__qr"><svg viewBox="-1 -1 27 27"><use href="#faux-qr" fill="#000"/></svg></div>
+                      <div>
+                        <ol class="acp__ol">
+                          <li>Scanne ce QR code avec l'appareil photo du téléphone.</li>
+                          <li>Photographie chaque page, puis touche « Envoyer ».</li>
+                          <li>Les pages arrivent ici ; ferme la fenêtre quand c'est fini.</li>
+                        </ol>
+                        <div class="acp__etat" data-to="4">En attente des pages…</div>
+                        <div class="acp__etat acp__etat--ok" id="pd-recu" data-from="5">2 page(s) reçue(s)</div>
+                        <div class="muet" style="margin-top:4px">Valable encore 14 min, 8 pages au plus, pour cet élève seulement. Fermer la fenêtre désactive le QR code.</div>
+                      </div>
+                    </div>
+                    <div class="ligne" style="justify-content:flex-end;margin-top:14px"><span class="b b--fantome b--petit">Fermer</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="tel"><div class="tel__ecran">
+                <div class="tel__statut"><span>14:02</span><span>4G</span></div>
+                <div class="dp" data-from="2">
+                  <div class="dp-sur">Gestion Classe · envoi d'une copie</div>
+                  <div class="dp-carte" id="pd-carte"><b>Copie de Lina BO</b><span>3A · Évaluation 2 — La digestion</span></div>
+                  <div class="dp-gros dp-photo" id="pd-photo" data-on="3"><i class="ico-photo"></i>Photographier une page</div>
+                  <div class="dp-vign repli" data-at="3-4">
+                    <div class="dp-vign__p"><div class="dp-vign__img"><em></em><em></em><em></em><em></em><em></em><em></em></div><div class="dp-vign__b"><span>⟳</span><span>×</span></div>Page 1</div>
+                    <div class="dp-vign__p"><div class="dp-vign__img"><em></em><em></em><em></em><em></em><em></em></div><div class="dp-vign__b"><span>⟳</span><span>×</span></div>Page 2</div>
+                  </div>
+                  <div class="dp-gros dp-envoi repli" id="pd-envoi" data-at="3-4" data-on="4"><span data-to="3">Envoyer 2 page(s)</span><span data-from="4">Envoi… 1/2</span></div>
+                  <div class="dp-ok repli" data-from="5">2 page(s) envoyée(s). Tu peux en ajouter d'autres, ou fermer cette page.</div>
+                  <div class="dp-pied"><span data-to="4">Encore 8 page(s) possible(s).</span><span data-from="5">Encore 6 page(s) possible(s).</span> Le lien expire 15 minutes après l'ouverture du QR code.</div>
+                </div>
+              </div></div>
+              <div class="bulle bulle--droite" data-at="1" style="left:420px;top:330px;width:220px">Le téléphone vise ce QR code : aucun compte à ouvrir</div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : copies de la classe -->
+    <section class="fiche fiche--etroite" id="pe-depot-classe">
+      <div class="fiche__texte">
+        <h2>Numériser les copies de toute la classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--public">Sans compte</span><span class="chemin">Évaluation › Ajouter les copies de la classe › QR code (téléphone)</span></p>
+        <p class="fiche__but">Un seul QR code pour tout le paquet : le téléphone enchaîne les élèves, copie après copie. Pratique pour l'enseignant, ou pour un élève chargé du ramassage.</p>
+        <ol class="etapes">
+          <li data-cursor="#pc-titre" data-duration="3200">Scanner le QR code de « Ajouter les copies de la classe » : « Gestion Classe · copies de la classe », carte <b>Choisis la copie</b>.</li>
+          <li data-cursor="#pc-noe" data-action="tap" data-duration="3400">Toucher le nom de l'élève. Les élèves sans copie viennent d'abord ; ceux déjà photographiés portent « <span class="ic ic-ok" aria-hidden="true"></span> 2 p. » en vert. Une copie sans nom lisible part par <span class="btn-nom">Pas de nom (copie à identifier plus tard)</span>.</li>
+          <li data-cursor="#pc-envoi" data-action="tap" data-duration="3200">« Copie de Noé MA » : photographier les pages, puis <span class="btn-nom">Envoyer 2 page(s)</span>.</li>
+          <li data-cursor="#pc-suiv" data-action="tap" data-duration="3200"><span class="btn-nom">Élève suivant →</span> passe au prochain élève sans copie. <span class="btn-nom">← Liste des élèves</span> revient à la liste.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Ce que voit qui scanne</b> : la liste des élèves attendus pour cette évaluation, sous leur pseudonyme, et le nombre de pages déjà envoyées. Jamais les photos déjà envoyées, ni les notes. Ce QR code ne se confie donc qu'à un élève de la classe.</li>
+            <li>Il vaut 1 heure et 200 pages ; fermer la fenêtre sur l'ordinateur le désactive.</li>
+            <li>Les copies « sans nom » se rattachent ensuite à un élève, sur l'ordinateur.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>12:31</span><span>4G</span></div>
+              <div class="dp">
+                <div class="dp-sur" id="pc-titre">Gestion Classe · copies de la classe</div>
+                <div class="dp-carte"><b><span data-to="2">Choisis la copie</span><span data-from="3" data-to="3">Copie de Noé MA</span><span data-from="4">Copie de Iris TA</span></b><span>4B · Évaluation 1 — La respiration</span></div>
+                <div class="dp-col repli" data-to="2">
+                  <div class="dp-gros dp-pasnom">Pas de nom (copie à identifier plus tard)</div>
+                  <div class="dp-liste">
+                    <div id="pc-noe" data-on="2">Noé MA</div>
+                    <div>Iris TA</div>
+                    <div>Malo RI</div>
+                    <div>Zoé FA</div>
+                    <div>Adam KE<span><span class="ic ic-ok" aria-hidden="true"></span> 2 p.</span></div>
+                    <div>Lina BO<span><span class="ic ic-ok" aria-hidden="true"></span> 3 p.</span></div>
+                  </div>
+                  <div class="dp-pied">1 copie(s) sans nom déjà rangée(s).</div>
+                </div>
+                <div class="dp-col repli" data-from="3">
+                  <span class="dp-petit">← Liste des élèves</span>
+                  <div class="dp-gros dp-photo"><i class="ico-photo"></i>Photographier une page</div>
+                  <div class="dp-vign repli" data-at="3">
+                    <div class="dp-vign__p"><div class="dp-vign__img"><em></em><em></em><em></em><em></em><em></em></div><div class="dp-vign__b"><span>⟳</span><span>×</span></div>Page 1</div>
+                    <div class="dp-vign__p"><div class="dp-vign__img"><em></em><em></em><em></em><em></em></div><div class="dp-vign__b"><span>⟳</span><span>×</span></div>Page 2</div>
+                  </div>
+                  <div class="dp-gros dp-envoi repli" id="pc-envoi" data-at="3" data-on="3">Envoyer 2 page(s)</div>
+                  <div class="dp-gros dp-suiv repli" id="pc-suiv" data-from="4" data-on="4">Élève suivant →</div>
+                </div>
+                <div class="dp-pied">Encore 188 page(s) possible(s). Le lien expire 1 heure après l'ouverture du QR code.</div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : vidage du cache -->
+    <section class="fiche fiche--etroite" id="pe-cache">
+      <div class="fiche__texte">
+        <h2>Si l'application ne se met pas à jour</h2>
+        <p class="fiche__ou"><span class="qui qui--public">Sans compte</span><span class="qui qui--eleve">Élève</span><span class="chemin">qwetsh.github.io/gestion-classe/sw-reset.html</span></p>
+        <p class="fiche__but">Le site se garde en mémoire sur le téléphone pour s'ouvrir vite. Il arrive qu'un téléphone reste bloqué sur une ancienne version : une page de dépannage efface cette mémoire.</p>
+        <ol class="etapes">
+          <li data-cursor="#pk-url" data-duration="3200">Donner à l'élève l'adresse <b>qwetsh.github.io/gestion-classe/sw-reset.html</b> (aucun lien dans l'application ne la propose).</li>
+          <li data-cursor="#pk-msg" data-duration="3800">La page « Réinitialisation du cache » efface tout de suite la mémoire du site sur cet appareil et dit ce qu'elle a fait (le message garde des termes techniques : « service worker(s) désinscrit(s) », « cache(s) vidé(s) »).</li>
+          <li data-cursor="#pk-msg" data-duration="3200">Comme indiqué, fermer complètement l'onglet du navigateur.</li>
+          <li data-cursor="#pk-go" data-action="tap" data-duration="3200">Rouvrir l'application, ou toucher <span class="btn-nom">Ouvrir l'espace élève</span> : la dernière version se charge.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seule la mémoire du site sur cet appareil est vidée : le thème choisi par l'élève reste, et ses notes ne sont pas sur le téléphone mais sur le serveur.</li>
+            <li>L'élève devra peut-être retaper son code à 6 chiffres (ou scanner sa carte QR).</li>
+            <li>À essayer après un simple rechargement de la page, quand celui-ci ne suffit pas.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>08:15</span><span>4G</span></div>
+              <div class="nav-url" data-to="3"><span id="pk-url" data-on="1">qwetsh.github.io/gestion-classe/sw-reset.html</span></div>
+              <div class="swr swr--decale" data-to="3">
+                <h4>Réinitialisation du cache</h4>
+                <p id="pk-msg"><span data-at="1">Suppression en cours…</span><span data-from="2">1 service worker(s) désinscrit(s) · 2 cache(s) vidé(s).<br>Ferme complètement l'onglet, puis rouvre l'application.</span></p>
+                <span class="swr__b" id="pk-go" data-from="2" data-on="4">Ouvrir l'espace élève</span>
+              </div>
+              <div class="eleve-ouvert glisse-gauche" data-from="4">
+                <div class="el-login">
+                  <span class="el-ico"></span>
+                  <h4>Mon espace</h4>
+                  <div class="muet" style="font-size:14px">Entre ton code personnel à 6 chiffres pour voir tes résultats.</div>
+                  <div style="font-size:13px;font-weight:600;margin-top:16px">Code personnel</div>
+                  <div class="code6"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                  <div class="el-voir">Voir mes résultats</div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <aside class="regles autres">
+      <h3>Ce qui n'est pas dans ce chapitre</h3>
+      <ul>
+        <li><b>L'Hôpital virtuel</b> est un site à part, hors de Gestion Classe : son contenu n'est pas décrit ici. L'enseignant suit les groupes depuis <b>Évaluations › Activité en direct</b>, une page qui demande sa connexion.</li>
+        <li>Les autres fichiers publiés avec le site (redirection technique des adresses, ressources de la réalité augmentée, banc d'essai) servent l'application elle-même et ne demandent rien à l'enseignant.</li>
+      </ul>
+    </aside>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

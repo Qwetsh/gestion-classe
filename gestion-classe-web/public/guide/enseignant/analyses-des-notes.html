@@ -1,0 +1,440 @@
+
+
+
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyses des notes — Guide Gestion Classe</title>
+<meta name="description" content="Le bloc Notes de la page Analyses : moyennes, distribution, filles-garçons, évolution, comparaison des classes, élèves à surveiller et lien entre notes et comportement.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="67">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* bloc « Notes » de la page Analyses (components/GradeAnalyticsSection.tsx, lib/gradeAnalytics.ts) */
+.ecran div.is-hidden:not(.bulle):not(.infob),.ecran span.is-hidden,.ecran tr.is-hidden,.ecran b.is-hidden{display:none}
+.an{background:#F6F6F7;padding:14px 18px}
+.nt-h{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 10px}
+.ac{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(20,25,40,.08),0 1px 2px rgba(20,25,40,.04);padding:12px 14px;margin-bottom:10px;position:relative;transition:box-shadow .25s}
+.ac.is-on{box-shadow:0 0 0 2px rgba(79,70,229,.45)}
+.ac h4{margin:0;font-size:14px;font-weight:650}
+.sub{font-size:11.5px;color:var(--text-dim);margin:2px 0 8px}
+.pu{padding:3px 10px;border-radius:7px;font-size:11.5px;font-weight:600;background:var(--surface-3);color:var(--text-muted);transition:all .25s}
+.pu.on,.pu.is-on{background:var(--indigo);color:#fff}
+.kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.kpi>div{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(20,25,40,.08);padding:12px 10px}
+.kpi b{display:block;font-size:21px;font-variant-numeric:tabular-nums}
+.kpi small{font-size:11px;color:var(--text-dim)}
+.g-v{color:#15803D}.g-o{color:#B45309}.g-r{color:#B91C1C}.g-i{color:var(--indigo)}
+svg.ch{display:block;width:100%;height:auto;font-family:var(--font)}
+svg.ch text{font-size:10px;fill:#71717A}
+.ecran .tr{stroke-dasharray:1200;stroke-dashoffset:0;transition:stroke-dashoffset 1.6s ease,opacity .3s}
+.ecran .tr.is-hidden{stroke-dashoffset:1200}
+.ecran .bar{transform-box:fill-box;transform-origin:50% 100%;transition:transform .9s cubic-bezier(.2,.8,.3,1),opacity .3s}
+.ecran .bar.is-hidden{transform:scaleY(0)}
+.ecran .pt{transform-box:fill-box;transform-origin:center;transition:transform .5s cubic-bezier(.3,1.5,.5,1),opacity .3s}
+.ecran .pt.is-hidden{transform:scale(0)}
+.infob{position:absolute;z-index:700;background:#fff;border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:6px 9px;border-radius:6px;white-space:nowrap;box-shadow:var(--shadow-lg)}
+.leg{display:flex;gap:12px;justify-content:center;font-size:11px;color:var(--text-muted);margin-top:4px}
+.leg span::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--c);margin-right:5px;vertical-align:-1px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface-2);padding:6px 8px}
+.tbl td{padding:7px 8px;border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
+.tbl tr.is-on td{background:var(--indigo-soft)}
+.pn{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:0}
+.mp{padding:1px 7px;border-radius:999px;font-size:11px;font-weight:700}
+.mp-v{background:#DCFCE7;color:#15803D}.mp-o{background:#FEF3C7;color:#B45309}.mp-r{background:#FEE2E2;color:#B91C1C}
+.best{background:#F0FDF4;color:#15803D;font-weight:700}.worst{background:#FEF2F2;color:#B91C1C;font-weight:700}
+.tup{color:#15803D;font-weight:650}.tdn{color:#B91C1C;font-weight:650}.teq{color:var(--text-dim)}
+.vide{text-align:center;color:var(--text-dim);padding:30px 10px;font-size:13px}
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Analyses des notes</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#notes">Notes du carnet : période et chiffres clés</a></li>
+    <li><a href="#distribution">Distribution des notes</a></li>
+    <li><a href="#filles-garcons-notes">Filles / Garçons</a></li>
+    <li><a href="#evolution-moyennes">Évolution des moyennes</a></li>
+    <li><a href="#par-classe">Moyennes par classe</a></li>
+    <li><a href="#meme-devoir">Même devoir, classes différentes</a></li>
+    <li><a href="#surveiller">Élèves à surveiller</a></li>
+    <li><a href="#comportement">Notes et comportement</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/analyses.html">◀ Analyses</a><a href="../enseignant/carnet-et-evaluations.html">Carnet de notes et évaluations ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Analyses des notes</h1>
+      <p>Sous les graphiques du comportement, la page Analyses consacre un bloc aux notes du carnet : de quoi préparer un conseil de classe, comparer des classes sur un même devoir et repérer les élèves qui décrochent.</p>
+      <div class="chap__resume"><span>Classes › Analyses › Notes</span><span>Ordinateur</span><span>Notes saisies au carnet</span></div>
+    </header>
+
+
+    <!-- ============================================================ en-tête et chiffres -->
+    <section class="fiche" id="notes">
+      <div class="fiche__texte">
+        <h2>Notes du carnet : période et chiffres clés</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Analyses › Notes</span></p>
+        <p class="fiche__but">Les grands chiffres des notes saisies au carnet, sur l'année ou sur un trimestre, pour les classes cochées en haut de la page.</p>
+        <ol class="etapes">
+          <li data-cursor="#no-sub" data-duration="3200">Sous le grand titre <b>Notes</b> : l'année, le nombre d'évaluations, de notes, et de copies encore à corriger.</li>
+          <li data-cursor="#no-kpi" data-duration="3600">Cinq cartes : <b>Moyenne générale</b>, <b>Médiane</b>, <b>Écart-type</b>, <b>Notes ≥ 10</b>, <b>Amplitude</b>. Sur 20 : vert dès 12, orange dès 10, rouge en dessous.</li>
+          <li data-cursor="#no-t2" data-action="click">Choisir <b>T1</b>, <b>T2</b> ou <b>T3</b> : ici, rien encore au deuxième trimestre.</li>
+          <li data-cursor="#no-an" data-action="click"><b>Année</b> revient à toute l'année.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La moyenne générale se calcule comme au bulletin : moyenne des moyennes d'élèves, avec les coefficients. Médiane, écart-type, taux et amplitude portent sur toutes les notes.</li>
+            <li>Absents, dispensés, non rendus et copies pas encore corrigées sortent du calcul ; les évaluations à la corbeille aussi.</li>
+            <li>La période 7, 30 ou 90 jours du haut de page ne s'applique pas ici, sauf au nuage « Notes et comportement ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="analyses.html">Analyses du comportement</a> · <a href="carnet-et-evaluations.html">Carnet et évaluations</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0"><span id="no-sub">Année 2026-2027 · 14 évaluations · <span data-at="1-2,4">386 notes · 12 à corriger</span><span data-at="3">0 note</span></span></div></div><span class="esp"></span><span class="pu" id="no-an" data-on="1-2,4">Année</span><span class="pu">T1</span><span class="pu" id="no-t2" data-on="3">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="kpi" id="no-kpi" data-at="1-2,4">
+            <div><b class="g-v">12,4/20</b><small>Moyenne générale</small></div>
+            <div><b class="g-v">12,5/20</b><small>Médiane</small></div>
+            <div><b class="g-i">3,6</b><small>Écart-type</small></div>
+            <div><b class="g-v">74 %</b><small>Notes ≥ 10</small></div>
+            <div><b class="g-i">3,5 – 19</b><small>Amplitude</small></div>
+          </div>
+          <div class="ac vide" data-at="3">Aucune note saisie pour cette sélection. Les notes se saisissent dans Évaluations › Carnet.</div>
+          <div class="ac" data-at="1-2,4" style="opacity:.6"><h4>Distribution des notes</h4><div class="sub">Q1 9,5 · médiane 12 · Q3 14,5</div><div style="height:120px"></div></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ distribution -->
+    <section class="fiche" id="distribution">
+      <div class="fiche__texte">
+        <h2>Distribution des notes</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Distribution des notes</span></p>
+        <p class="fiche__but">Voir comment les notes se répartissent de 0 à 20 : un groupe homogène, ou deux paquets bien séparés.</p>
+        <ol class="etapes">
+          <li data-cursor="#di-q" data-duration="3200">Sous le titre : le premier quartile, la médiane et le troisième quartile.</li>
+          <li data-cursor="#di-b6" data-duration="3200">Dix barres, une par tranche de deux points, de « 0–2 » à « 18–20 ».</li>
+          <li data-cursor="#di-b7" data-duration="3000">Survoler une barre donne son effectif.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La dernière tranche comprend le 20.</li>
+            <li>La bulle dit « élève(s) », mais elle compte des notes : un élève noté trois fois compte trois fois.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0">Année 2026-2027 · 14 évaluations · 386 notes · 12 à corriger</div></div><span class="esp"></span><span class="pu on">Année</span><span class="pu">T1</span><span class="pu">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Distribution des notes</h4><div class="sub" id="di-q">Q1 9,5 · médiane 12 · Q3 14,5</div>
+            <svg class="ch" viewBox="0 0 580 250"><path d="M40 20h530M40 70h530M40 120h530M40 170h530" stroke="#E6E6E9" stroke-dasharray="3 3"/><path d="M40 220h530" stroke="#D4D4D8"/>
+              <text x="14" y="24">100</text><text x="18" y="74">75</text><text x="18" y="124">50</text><text x="18" y="174">25</text>
+              <g fill="#6366f1">
+              <rect class="bar" data-from="1" x="48" y="216" width="44" height="4" rx="3"/><rect class="bar" data-from="1" x="101" y="210" width="44" height="10" rx="3"/><rect class="bar" data-from="1" x="154" y="196" width="44" height="24" rx="3"/><rect class="bar" data-from="1" x="207" y="172" width="44" height="48" rx="3"/><rect class="bar" data-from="1" x="260" y="104" width="44" height="116" rx="3"/>
+              <rect class="bar" data-from="1" id="di-b6" x="313" y="56" width="44" height="164" rx="3"/><rect class="bar" data-from="1" id="di-b7" x="366" y="28" width="44" height="192" rx="3"/><rect class="bar" data-from="1" x="419" y="92" width="44" height="128" rx="3"/><rect class="bar" data-from="1" x="472" y="154" width="44" height="66" rx="3"/><rect class="bar" data-from="1" x="525" y="200" width="44" height="20" rx="3"/></g>
+              <g style="font-size:10px"><text x="56" y="236">0–2</text><text x="109" y="236">2–4</text><text x="162" y="236">4–6</text><text x="215" y="236">6–8</text><text x="264" y="236">8–10</text><text x="314" y="236">10–12</text><text x="367" y="236">12–14</text><text x="420" y="236">14–16</text><text x="473" y="236">16–18</text><text x="526" y="236">18–20</text></g>
+            </svg>
+            <div class="infob" data-at="3" style="left:470px;top:60px"><b>12–14</b><br>96 élève(s)</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ filles garçons -->
+    <section class="fiche" id="filles-garcons-notes">
+      <div class="fiche__texte">
+        <h2>Filles / Garçons</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Filles / Garçons</span></p>
+        <p class="fiche__but">Comparer la moyenne des filles et celle des garçons sur la sélection en cours.</p>
+        <ol class="etapes">
+          <li data-cursor="#fn-sub">La carte compte comme au bulletin : la moyenne des moyennes d'élèves.</li>
+          <li data-cursor="#fn-b1" data-duration="3000">Deux barres sur une échelle de 0 à 20, avec l'effectif entre parenthèses.</li>
+          <li data-cursor="#fn-b2" data-duration="3000">Survoler une barre donne la moyenne exacte.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les élèves dont le genre n'est pas renseigné sont écartés de cette carte.</li>
+            <li>Un groupe sans aucune moyenne s'affiche à 0.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="analyses.html#filles-garcons">Filles / garçons dans le comportement</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0">Année 2026-2027 · 14 évaluations · 386 notes · 12 à corriger</div></div><span class="esp"></span><span class="pu on">Année</span><span class="pu">T1</span><span class="pu">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Filles / Garçons</h4><div class="sub" id="fn-sub">Moyenne des moyennes d'élèves, sur la sélection en cours.</div>
+            <svg class="ch" viewBox="0 0 580 230"><path d="M50 20h510M50 65h510M50 110h510M50 155h510" stroke="#E6E6E9" stroke-dasharray="3 3"/><path d="M50 200h510" stroke="#D4D4D8"/>
+              <text x="28" y="24">20</text><text x="28" y="69">15</text><text x="28" y="114">10</text><text x="32" y="159">5</text><text x="32" y="204">0</text>
+              <rect class="bar" data-from="1" id="fn-b1" x="140" y="85" width="110" height="115" rx="4" fill="#8b5cf6"/><rect class="bar" data-from="1" id="fn-b2" x="370" y="92" width="110" height="108" rx="4" fill="#8b5cf6"/>
+              <text x="162" y="220" style="font-size:11px;fill:#52525B">Filles (54)</text><text x="390" y="220" style="font-size:11px;fill:#52525B">Garçons (58)</text>
+            </svg>
+            <div class="infob" data-at="3" style="left:490px;top:90px"><b>Garçons (58)</b><br>Moyenne : 12,0/20</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ évolution des moyennes -->
+    <section class="fiche" id="evolution-moyennes">
+      <div class="fiche__texte">
+        <h2>Évolution des moyennes</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Évolution des moyennes</span></p>
+        <p class="fiche__but">Suivre la moyenne de chaque classe évaluation après évaluation.</p>
+        <ol class="etapes">
+          <li data-cursor="#em-3a" data-duration="3200">Une courbe par classe, à la couleur de son niveau ; un point par évaluation, dans l'ordre des dates.</li>
+          <li data-cursor="#em-tout" data-duration="3200">La courbe grise en tirets, « Toutes classes », fait la moyenne de l'ensemble.</li>
+          <li data-cursor="#em-pt" data-duration="3400">Survoler un point : l'évaluation et les moyennes des classes qui l'ont passée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un devoir commun à plusieurs classes (même série) ne fait qu'un point, titré du nom de la série.</li>
+            <li>L'ordre suit la date de l'évaluation, ou à défaut sa date de création.</li>
+            <li>La courbe grise n'apparaît que s'il y a plusieurs classes.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0">Année 2026-2027 · 14 évaluations · 386 notes · 12 à corriger</div></div><span class="esp"></span><span class="pu on">Année</span><span class="pu">T1</span><span class="pu">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Évolution des moyennes</h4><div class="sub">Une évaluation par point, dans l'ordre chronologique. Les classes qui passent le même devoir partagent le point.</div>
+            <svg class="ch" viewBox="0 0 580 230"><path d="M50 20h510M50 65h510M50 110h510M50 155h510" stroke="#E6E6E9" stroke-dasharray="3 3"/><path d="M50 200h510" stroke="#D4D4D8"/>
+              <text x="28" y="24">20</text><text x="28" y="69">15</text><text x="28" y="114">10</text><text x="32" y="159">5</text>
+              <g fill="none" stroke-width="2.4">
+                <path class="tr" data-from="1" id="em-3a" stroke="#4F46E5" d="M80 101 L170 92 L260 108 L350 85 L440 96 L530 88"/>
+                <path class="tr" data-from="1" stroke="#059669" d="M80 83 L170 90 L260 79 L350 74 L440 85 L530 70"/>
+                <path class="tr" data-from="1" stroke="#D97706" d="M80 112 L170 119 L260 103 L350 115 L440 99 L530 106"/>
+                <path class="tr" data-from="1" stroke="#DB2777" d="M80 72 L170 79 L260 67 L350 76 L440 65 L530 70"/>
+                <path class="tr" data-from="1" id="em-tout" stroke="#A1A1AA" stroke-dasharray="6 5" d="M80 92 L170 95 L260 89 L350 88 L440 86 L530 84"/>
+              </g>
+              <g data-from="1"><circle cx="350" cy="85" r="3" fill="#4F46E5"/><circle cx="350" cy="74" r="3" fill="#059669"/><circle id="em-pt" cx="350" cy="115" r="3.5" fill="#D97706"/><circle cx="350" cy="76" r="3" fill="#DB2777"/></g>
+              <g style="font-size:10px"><text x="60" y="220">Éval 1</text><text x="150" y="220">TP noté</text><text x="240" y="220">Éval 2</text><text x="330" y="220">Éval 3</text><text x="420" y="220">TP noté</text><text x="510" y="220">Éval 4</text></g>
+            </svg>
+            <div class="leg"><span style="--c:#4F46E5">3A</span><span style="--c:#059669">4B</span><span style="--c:#D97706">5B</span><span style="--c:#DB2777">6A</span><span style="--c:#A1A1AA">Toutes classes</span></div>
+            <div class="infob" data-at="3" style="left:390px;top:120px"><b>Éval 3</b><br><span style="color:#059669">4B : 13,8</span> · <span style="color:#DB2777">6A : 13,6</span><br><span style="color:#4F46E5">3A : 12,9</span> · <span style="color:#D97706">5B : 9,7</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ moyennes par classe -->
+    <section class="fiche" id="par-classe">
+      <div class="fiche__texte">
+        <h2>Moyennes par classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Moyennes par classe</span></p>
+        <p class="fiche__but">Le tableau de bord des classes pour le conseil de classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#pc-c1" data-duration="3200">Les classes sont rangées par moyenne, de la plus haute à la plus basse.</li>
+          <li data-cursor="#pc-m1" data-duration="3200">La moyenne de classe, comme au bulletin, dans une pastille verte, orange ou rouge.</li>
+          <li data-cursor="#pc-st" data-duration="3600">Puis médiane, écart-type, note la plus basse et la plus haute, part des notes ≥ 10, nombre d'évaluations et d'élèves notés.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>« Élèves » compte ceux qui ont au moins une note prise en compte.</li>
+            <li>Une évaluation marquée « seulement si elle monte la moyenne » n'entre dans la moyenne d'un élève que si elle la fait monter.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="suivi-des-eleves.html">Suivi des élèves et appréciations</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0">Année 2026-2027 · 14 évaluations · 386 notes · 12 à corriger</div></div><span class="esp"></span><span class="pu on">Année</span><span class="pu">T1</span><span class="pu">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Moyennes par classe</h4><div class="sub">La moyenne de classe est la moyenne des moyennes d'élèves, pondérées par les coefficients — comme au bulletin.</div>
+            <table class="tbl"><tr><th>Classe</th><th>Moyenne</th><th>Médiane</th><th>Écart-type</th><th>Min – Max</th><th>≥ 10</th><th>Évals</th><th>Élèves</th></tr>
+              <tr data-on="1"><td id="pc-c1"><span class="pn" style="background:#DB2777"></span><b>6A</b></td><td id="pc-m1"><span class="mp mp-v">13,6</span></td><td id="pc-st">14</td><td>3,1</td><td>6 – 19</td><td>84 %</td><td>4</td><td>26</td></tr>
+              <tr><td><span class="pn" style="background:#059669"></span><b>4C</b></td><td><span class="mp mp-v">13,1</span></td><td>13</td><td>3,3</td><td>5,5 – 18,5</td><td>79 %</td><td>3</td><td>27</td></tr>
+              <tr><td><span class="pn" style="background:#059669"></span><b>4B</b></td><td><span class="mp mp-v">12,9</span></td><td>13</td><td>3,4</td><td>5 – 18</td><td>77 %</td><td>3</td><td>26</td></tr>
+              <tr><td><span class="pn" style="background:#4F46E5"></span><b>3D</b></td><td><span class="mp mp-v">12,3</span></td><td>12,5</td><td>3,7</td><td>4 – 19</td><td>72 %</td><td>4</td><td>25</td></tr>
+              <tr><td><span class="pn" style="background:#4F46E5"></span><b>3A</b></td><td><span class="mp mp-v">12,1</span></td><td>12</td><td>3,8</td><td>3,5 – 18</td><td>70 %</td><td>4</td><td>24</td></tr>
+              <tr><td><span class="pn" style="background:#D97706"></span><b>5B</b></td><td><span class="mp mp-o">11,2</span></td><td>11</td><td>3,9</td><td>3,5 – 17,5</td><td>63 %</td><td>3</td><td>27</td></tr>
+            </table>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ même devoir -->
+    <section class="fiche" id="meme-devoir">
+      <div class="fiche__texte">
+        <h2>Même devoir, classes différentes</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Même devoir, classes différentes</span></p>
+        <p class="fiche__but">Comparer les classes qui ont passé la même évaluation.</p>
+        <ol class="etapes">
+          <li data-cursor="#md-r1" data-duration="3000">Une ligne par devoir passé par plusieurs classes, une colonne par classe.</li>
+          <li data-cursor="#md-best" data-duration="3200">La meilleure moyenne est en vert, la moins bonne en rouge.</li>
+          <li data-cursor="#md-ec" data-duration="3200">« Écart » : la différence entre les deux, en points.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le tableau n'apparaît que si au moins une évaluation a été passée par deux classes ou plus (même série, créée pour plusieurs classes ou dupliquée).</li>
+            <li>« — » : la classe n'a pas passé ce devoir.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="carnet-et-evaluations.html">Créer une évaluation pour plusieurs classes</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0">Année 2026-2027 · 14 évaluations · 386 notes · 12 à corriger</div></div><span class="esp"></span><span class="pu on">Année</span><span class="pu">T1</span><span class="pu">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Même devoir, classes différentes</h4><div class="sub">Les évaluations passées par plusieurs classes. L'écart est la différence entre la meilleure et la moins bonne moyenne.</div>
+            <table class="tbl"><tr><th>Évaluation</th><th>3A</th><th>3D</th><th>4B</th><th>4C</th><th>Écart</th></tr>
+              <tr id="md-r1" data-on="1"><td>Évaluation 1 — Bactéries et antibiotiques</td><td class="worst">11,4</td><td class="best" id="md-best">12,6</td><td>—</td><td>—</td><td id="md-ec"><b>1,2 pts</b></td></tr>
+              <tr><td>Évaluation 1 — La Terre en mouvement</td><td>—</td><td>—</td><td class="best">13,4</td><td class="worst">12,1</td><td><b>1,3 pts</b></td></tr>
+              <tr><td>TP noté — Observation au microscope</td><td class="best">14,2</td><td class="worst">13,9</td><td>—</td><td>—</td><td><b>0,3 pts</b></td></tr>
+            </table>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ élèves à surveiller -->
+    <section class="fiche" id="surveiller">
+      <div class="fiche__texte">
+        <h2>Élèves à surveiller</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Élèves à surveiller</span></p>
+        <p class="fiche__but">Repérer les élèves dont la moyenne passe sous un seuil, et voir s'ils remontent ou décrochent.</p>
+        <ol class="etapes">
+          <li data-cursor="#es-t" data-duration="3400">Le tableau liste les élèves sous 10, du plus bas au plus haut : classe, moyenne, écart à la moyenne de la classe, nombre de notes.</li>
+          <li data-cursor="#es-tend" data-duration="3600"><b>Tendance</b> compare les trois dernières notes aux précédentes : ▲ en vert, ▼ en rouge, → si l'écart reste sous un demi-point.</li>
+          <li data-cursor="#es-12" data-action="click">Choisir le seuil : <b>&lt; 8</b>, <b>&lt; 10</b> ou <b>&lt; 12</b>. À 12, d'autres élèves apparaissent.</li>
+          <li data-cursor="#es-8" data-action="click">À 8, il ne reste que les cas les plus fragiles.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La tendance n'est calculée qu'à partir de quatre notes ; avant, elle affiche « — ». Une baisse marquée sur une bonne moyenne se voit ainsi.</li>
+            <li>Les élèves apparaissent sous leur pseudonyme, prénom et deux lettres.</li>
+            <li>Sans élève sous le seuil : « Aucun élève sous 10/20 sur cette sélection. ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="fiche-eleve.html">Fiche d'un élève</a> · <a href="suivi-des-eleves.html">Suivi des élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          
+<div class="ac" >
+  <div class="ligne"><div><h4>Notes du carnet</h4><div class="sub" style="margin:2px 0 0">Année 2026-2027 · 14 évaluations · 386 notes · 12 à corriger</div></div><span class="esp"></span><span class="pu on">Année</span><span class="pu">T1</span><span class="pu">T2</span><span class="pu">T3</span></div>
+</div>
+
+          <div class="ac">
+            <div class="ligne"><h4>Élèves à surveiller</h4><span class="esp"></span><span class="pu" id="es-8" data-on="4">&lt; 8</span><span class="pu" data-on="1-2">&lt; 10</span><span class="pu" id="es-12" data-on="3">&lt; 12</span></div>
+            <div class="sub">Moyenne sous le seuil. « Tendance » compare les trois dernières notes aux précédentes : une baisse marquée sur une bonne moyenne se voit ici.</div>
+            <table class="tbl" id="es-t"><tr><th>Élève</th><th>Classe</th><th>Moyenne</th><th>Écart classe</th><th>Tendance</th><th>Notes</th></tr>
+              <tr><td><b>Noé MA</b></td><td>5B</td><td><span class="mp mp-r">7,8</span></td><td>−3,4</td><td id="es-tend"><span class="tdn">▼ −2</span></td><td>6</td></tr>
+              <tr data-at="1-3"><td><b>Zoé FA</b></td><td>3A</td><td><span class="mp mp-r">8,6</span></td><td>−3,5</td><td><span class="tup">▲ +1,5</span></td><td>5</td></tr>
+              <tr data-at="1-3"><td><b>Ilyes HA</b></td><td>4B</td><td><span class="mp mp-r">9,1</span></td><td>−3,8</td><td><span class="teq">→ +0,2</span></td><td>5</td></tr>
+              <tr data-at="1-3"><td><b>Sami DA</b></td><td>6A</td><td><span class="mp mp-r">9,6</span></td><td>−4</td><td><span class="teq">—</span></td><td>3</td></tr>
+              <tr data-at="3"><td><b>Léa GA</b></td><td>5B</td><td><span class="mp mp-o">10,9</span></td><td>−0,3</td><td><span class="tdn">▼ −3</span></td><td>6</td></tr>
+              <tr data-at="3"><td><b>Hugo PE</b></td><td>3D</td><td><span class="mp mp-o">11,6</span></td><td>−0,7</td><td><span class="tup">▲ +1</span></td><td>5</td></tr>
+            </table>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ notes et comportement -->
+    <section class="fiche" id="comportement">
+      <div class="fiche__texte">
+        <h2>Notes et comportement</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes › Notes et comportement</span></p>
+        <p class="fiche__but">Voir s'il y a un lien entre la moyenne d'un élève et son nombre d'implications, ou de malus, en séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#nc-nuage" data-duration="3400">Un point par élève : en abscisse ses implications, en ordonnée sa moyenne sur 20 ; une couleur par niveau.</li>
+          <li data-cursor="#nc-phrase" data-duration="3800">La phrase au-dessus donne la force du lien (négligeable, faible, modéré, fort, très fort) et son sens, avec le coefficient r.</li>
+          <li data-cursor="#nc-malus" data-action="click">Cliquer <b>Malus</b> : les points se placent selon les malus, et le lien change de sens.</li>
+          <li data-cursor="#nc-pt" data-duration="3000">Survoler un point : le pseudonyme de l'élève, son nombre d'événements et sa moyenne.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les événements suivent la période choisie en haut de la page (7, 30, 90 jours ou tout) ; les notes, la période du bloc Notes.</li>
+            <li>Une corrélation n'est pas une cause : un lien ne dit pas que l'un entraîne l'autre.</li>
+            <li>Il faut au moins trois élèves ayant à la fois des notes et des événements, sinon la carte le dit.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="nt-h">Notes</div>
+          <div class="ac">
+            <div class="ligne"><h4>Notes et comportement</h4><span class="esp"></span><span class="pu" data-on="1-2">Participations</span><span class="pu" id="nc-malus" data-on="3-4">Malus</span></div>
+            <div class="sub" id="nc-phrase">Un point par élève, sur la période d'événements choisie plus haut. <span data-at="1-2">Lien modéré, positif (r = 0.45)</span><span data-at="3-4">Lien faible, négatif (r = -0.31)</span> — une corrélation n'est pas une cause.</div>
+            <svg class="ch" viewBox="0 0 580 300" id="nc-nuage"><path d="M50 20h510M50 85h510M50 150h510M50 215h510" stroke="#E6E6E9" stroke-dasharray="3 3"/><path d="M50 280h510M50 20v260" stroke="#D4D4D8"/>
+              <text x="28" y="24">20</text><text x="28" y="89">15</text><text x="28" y="154">10</text><text x="32" y="219">5</text>
+              <g data-at="1-2"><circle class="pt" data-at="1-2" cx="90" cy="180" r="5" fill="#D97706"/><circle class="pt" data-at="1-2" cx="120" cy="150" r="5" fill="#4F46E5"/><circle class="pt" data-at="1-2" cx="150" cy="190" r="5" fill="#059669"/><circle class="pt" data-at="1-2" cx="190" cy="130" r="5" fill="#DB2777"/><circle class="pt" data-at="1-2" cx="220" cy="110" r="5" fill="#4F46E5"/><circle class="pt" data-at="1-2" cx="250" cy="140" r="5" fill="#D97706"/><circle class="pt" data-at="1-2" cx="290" cy="100" r="5" fill="#059669"/><circle class="pt" data-at="1-2" cx="320" cy="120" r="5" fill="#DB2777"/><circle class="pt" data-at="1-2" cx="350" cy="80" r="5" fill="#4F46E5"/><circle class="pt" data-at="1-2" cx="390" cy="95" r="5" fill="#059669"/><circle class="pt" data-at="1-2" cx="430" cy="60" r="5" fill="#DB2777"/><circle class="pt" data-at="1-2" cx="470" cy="85" r="5" fill="#D97706"/><circle class="pt" data-at="1-2" cx="510" cy="50" r="5" fill="#4F46E5"/><circle class="pt" data-at="1-2" cx="170" cy="210" r="5" fill="#059669"/><circle class="pt" data-at="1-2" cx="270" cy="170" r="5" fill="#DB2777"/></g>
+              <g data-at="3-4"><circle class="pt" data-at="3-4" cx="70" cy="70" r="5" fill="#4F46E5"/><circle class="pt" data-at="3-4" cx="90" cy="95" r="5" fill="#DB2777"/><circle class="pt" data-at="3-4" cx="110" cy="120" r="5" fill="#059669"/><circle class="pt" data-at="3-4" cx="130" cy="85" r="5" fill="#D97706"/><circle class="pt" data-at="3-4" cx="170" cy="110" r="5" fill="#4F46E5"/><circle class="pt" data-at="3-4" cx="190" cy="150" r="5" fill="#DB2777"/><circle class="pt" data-at="3-4" cx="230" cy="130" r="5" fill="#059669"/><circle class="pt" data-at="3-4" cx="260" cy="170" r="5" fill="#D97706"/><circle class="pt" data-at="3-4" cx="300" cy="140" r="5" fill="#4F46E5"/><circle class="pt" data-at="3-4" cx="340" cy="190" r="5" fill="#059669"/><circle class="pt" data-at="3-4" id="nc-pt" cx="420" cy="207" r="6" fill="#D97706"/><circle class="pt" data-at="3-4" cx="150" cy="60" r="5" fill="#059669"/><circle class="pt" data-at="3-4" cx="210" cy="95" r="5" fill="#DB2777"/></g>
+              <text x="250" y="297">Nombre d'événements</text>
+            </svg>
+            <div class="leg"><span style="--c:#4F46E5">3A</span><span style="--c:#059669">4B</span><span style="--c:#D97706">5B</span><span style="--c:#DB2777">6A</span></div>
+            <div class="infob" data-at="4" style="left:420px;top:200px"><b>Noé MA</b><br>Malus : 9<br>Moyenne /20 : 7,8</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+

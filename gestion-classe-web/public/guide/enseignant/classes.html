@@ -1,0 +1,1338 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classes — Guide Gestion Classe</title>
+<meta name="description" content="Créer, renommer et supprimer ses classes, y ajouter, importer, transférer ou supprimer des élèves, régler ce que voient les élèves et préparer le passage d'année.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="40">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques propres aux chapitres Classes, Plans de classe et Groupes de classe */
+.b--carre { padding: 0 8px; font-size: 15px; letter-spacing: .05em; }
+.b--rouge { background: var(--neg); border-color: var(--neg); color: #fff; }
+.b.cen { justify-content: center; }
+.b.is-off { opacity: .45; }
+.lc-tete { display: flex; align-items: center; }
+.lc-plus { margin-left: auto; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 6px; font-size: 15px; color: var(--text-muted); text-transform: none; transition: all .25s; }
+.lc-plus.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.liste-classes__it { position: relative; }
+.lc-act { position: absolute; right: 4px; top: 50%; translate: 0 -50%; display: flex; gap: 2px; background: var(--surface-3); border-radius: 6px; padding: 1px; }
+.lc-ic { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 5px; color: var(--text-muted); transition: all .25s; }
+.lc-ic.is-on { background: #fff; color: var(--indigo); }
+.lc-ic--rouge.is-on { background: var(--neg-soft); color: var(--neg); }
+.og-salles { display: inline-flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 9px; }
+.og-salles span { padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.og-salles span.is-actif, .og-salles span.is-on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,25,40,.14); }
+.og-salles .og-plus { color: var(--indigo); }
+.og-salles .og-plus.is-on { background: var(--indigo-soft); color: var(--indigo); box-shadow: none; }
+.ic-b { width: 24px; height: 24px; display: inline-grid; place-items: center; border-radius: 6px; color: var(--text-muted); transition: all .25s; flex: none; }
+.ic-b.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.ic-b--rouge.is-on { background: var(--neg-soft); color: var(--neg); }
+.bandeau { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.porte { position: absolute; right: 4px; bottom: 0; font-size: 9.5px; color: var(--text-dim); }
+.np-pied { display: flex; flex-direction: column; gap: 6px; }
+.vis-t { display: flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); padding: 3px 4px; border-radius: 6px; transition: background .25s; }
+.vis-t.is-on { background: var(--surface-3); color: var(--text-muted); }
+.vis-fl { display: inline-block; transition: transform .25s; }
+.vis-t.is-on .vis-fl, .vis-t.vis-ouverte .vis-fl { transform: rotate(90deg); }
+.vis-l { display: flex; align-items: center; gap: 7px; padding: 4px 5px; border-radius: 6px; font-size: 12px; transition: background .25s; }
+.vis-l .vis-ic { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.vis-l .interrupteur { margin-left: auto; }
+.vis-l.is-on { background: var(--surface-3); }
+.interrupteur.int-orange.is-on, .interrupteur.int-orange.interrupteur--on { background: var(--warn); }
+.interrupteur.int-vert.is-on, .interrupteur.int-vert.interrupteur--on { background: var(--pos); }
+.vis-tous { font-size: 10.5px; color: var(--text-muted); padding: 2px 5px; border-radius: 5px; transition: background .25s; }
+.vis-tous.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.modale__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.modale__texte { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.45; }
+.m-champ { height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 13.5px; display: flex; align-items: center; background: #fff; margin-bottom: 10px; transition: all .25s; }
+.m-champ.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.m-champ .ph { color: var(--text-dim); }
+.m-aide { font-size: 12px; color: var(--text-dim); }
+.m-erreur { font-size: 12px; color: var(--neg); }
+.m-case { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 8px; background: var(--surface-2); font-size: 13px; transition: box-shadow .25s; }
+.m-case.is-on { box-shadow: 0 0 0 2px var(--accent); }
+.zone-on { border-radius: 6px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); background: rgba(249,115,22,.06); }
+.vide-centre { flex: 1; display: grid; place-items: center; text-align: center; color: var(--text-dim); font-size: 12.5px; }
+.vide-centre b { display: block; color: var(--text); font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.picto { width: 42px; height: 34px; margin: 0 auto 10px; border-radius: 6px; border: 2px solid var(--border-strong); position: relative; }
+.picto::after { content: ''; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 2px; background: var(--border-strong); translate: -50% 0; }
+.menu__it.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.malus { position: absolute; top: 2px; right: 3px; font-size: 8.5px; font-weight: 700; font-style: normal; padding: 0 4px; border-radius: 6px; background: var(--neg-soft); color: var(--neg); line-height: 13px; }
+.malus--zero { background: var(--surface-3); color: var(--text-dim); }
+.occupant { transition: background .35s, border-color .35s, box-shadow .35s; }
+.occupant.tv.is-on { background: #C3E2CC; }
+.occupant.ti.is-on { background: #D3D1F9; }
+.occupant.to.is-on { background: #EED6BF; }
+.occupant.tr.is-on { background: #EDC6C6; }
+.legende { display: flex; gap: 10px; align-items: center; font-size: 10.5px; color: var(--text-muted); justify-content: center; }
+.legende i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 3px; vertical-align: -1px; }
+.legende .lt { text-transform: uppercase; letter-spacing: .04em; font-weight: 600; color: var(--text-dim); margin-left: 6px; }
+.sel { height: 30px; border: 1px solid var(--border); border-radius: 7px; padding: 0 8px; font-size: 12px; display: flex; align-items: center; gap: 6px; background: #fff; white-space: nowrap; transition: all .25s; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.sel .ph { color: var(--text-dim); }
+.sec-t { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 5px; }
+.pil { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; transition: all .3s; }
+.pil .x { color: var(--text-dim); font-size: 13px; line-height: 1; }
+.pil--rouge { background: var(--neg-soft); color: var(--neg); }
+.pil.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pil .att { width: 13px; height: 13px; border-radius: 50%; background: var(--neg); color: #fff; font-size: 9px; font-weight: 700; display: inline-grid; place-items: center; }
+.regle { display: flex; gap: 8px; align-items: flex-start; padding: 2px 6px; border-radius: 6px; font-size: 12px; transition: background .25s; }
+.regle .case { margin-top: 2px; }
+.regle b { display: block; font-weight: 600; }
+.regle span.aide { display: block; font-size: 10.5px; line-height: 1.3; color: var(--text-muted); }
+.regle.is-on { background: var(--indigo-soft); }
+.grande-modale { background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); width: 720px; padding: 12px 18px; display: flex; flex-direction: column; gap: 8px; }
+.grande-modale__t { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 650; }
+.grande-modale__t svg { color: var(--indigo); }
+
+.mod2 { background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); width: 520px; display: flex; flex-direction: column; overflow: hidden; }
+.mod2__t { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 650; font-size: 15px; }
+.mod2__t .esp { flex: 1; }
+.mod2__c { padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.mod2__p { padding: 10px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+.el-l { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--surface-2); border-radius: 8px; transition: box-shadow .25s; }
+.el-l.is-on { box-shadow: 0 0 0 2px var(--accent); }
+.el-rond { width: 30px; height: 30px; border-radius: 50%; background: var(--indigo); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; flex: none; }
+.el-n { font-weight: 600; font-size: 13px; }
+.el-s { font-size: 11px; color: var(--text-dim); }
+.el-ic { color: var(--indigo); width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; transition: background .25s; }
+.el-ic--rouge { color: var(--neg); }
+.el-ic.is-on { background: var(--indigo-soft); }
+.el-ic--rouge.is-on { background: var(--neg-soft); }
+.rc-l { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 8px; transition: box-shadow .25s; }
+.rc-l.is-on { box-shadow: 0 0 0 2px var(--accent); }
+.rc-l .case { width: 16px; height: 16px; }
+.dlg { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: 420px; background: #fff; border-radius: 8px; box-shadow: var(--shadow-lg); border: 1px solid var(--border); overflow: hidden; z-index: 650; }
+.dlg__t { background: #F1F1F4; padding: 8px 12px; font-size: 12.5px; font-weight: 600; border-bottom: 1px solid var(--border); }
+.dlg__l { padding: 6px 12px; font-size: 12.5px; display: flex; gap: 8px; align-items: center; }
+.dlg__l::before { content: ''; width: 12px; height: 14px; border: 1.5px solid var(--text-dim); border-radius: 2px; }
+.dlg__l.is-on { background: var(--indigo-soft); }
+.dlg__p { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.menu-sel { position: absolute; left: 0; right: 0; top: 34px; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 4px; z-index: 5; font-size: 12.5px; }
+.menu-sel div { padding: 4px 8px; border-radius: 5px; }
+.menu-sel .is-on, .menu-sel .actif { background: var(--indigo-soft); color: var(--indigo); }
+.mini-tel { position: absolute; width: 150px; height: 250px; border-radius: 22px; background: #0E0E12; padding: 6px; box-shadow: var(--shadow-lg); z-index: 620; }
+.mini-tel > div { width: 100%; height: 100%; border-radius: 17px; background: #F7F7FA; padding: 22px 10px 10px; display: flex; flex-direction: column; gap: 6px; font-size: 10.5px; }
+.mini-tel .mt-ong { display: flex; gap: 4px; flex-wrap: wrap; }
+.mini-tel .mt-ong span { padding: 2px 7px; border-radius: 999px; background: #fff; border: 1px solid var(--border); font-weight: 600; transition: all .3s; }
+.mini-tel .mt-ong span.is-on, .mini-tel .mt-ong span.actif { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Classes</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#page-classes">La page Classes et plans</a></li>
+      <li><a href="#creer-classe">Créer une classe</a></li>
+      <li><a href="#renommer-classe">Renommer une classe</a></li>
+      <li><a href="#supprimer-classe">Supprimer une classe</a></li>
+      <li><a href="#liste-eleves">La liste des élèves</a></li>
+      <li><a href="#ajouter-eleve">Ajouter un élève</a></li>
+      <li><a href="#importer">Importer une liste</a></li>
+      <li><a href="#reconnaissance">Passage d'année</a></li>
+      <li><a href="#corriger-pseudo">Corriger un pseudonyme</a></li>
+      <li><a href="#transfert">Changer un élève de classe</a></li>
+      <li><a href="#supprimer-eleve">Supprimer un élève</a></li>
+      <li><a href="#visibilite">Ce que voient les élèves</a></li>
+      <li><a href="#academie">Activer l'Académie</a></li>
+      <li><a href="#ailleurs">Ce qui se règle ailleurs</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/classeur-virtuel-et-tp.html">◀ Classeur virtuel, Mes TP, annales, clouds</a><a href="../enseignant/plans-de-classe.html">Plans de classe ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Classes</h1>
+      <p>Une classe est une liste d'élèves sous pseudonyme, avec ses plans de salle, ses groupes et ses réglages. Tout se prépare sur la page Classes et plans.</p>
+      <div class="chap__resume"><span>Menu Classes › Classes et plans</span><span>Ordinateur</span><span>14 fiches</span></div>
+    </header>
+
+    <section class="fiche" id="page-classes">
+      <div class="fiche__texte">
+        <h2>La page Classes et plans</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Classes et plans</span></p>
+        <p class="fiche__but">C'est l'atelier où l'on prépare ses classes avant la séance : qui est dans la classe, où chacun s'assoit dans chaque salle, quels groupes existent et ce que voient les élèves dans leur espace.</p>
+        <ol class="etapes">
+          <li data-cursor="#cp-menu" data-action="click">Dans le menu, ouvrir <b>Classes</b> puis <span class="btn-nom">Classes et plans</span>. Tant qu'aucune classe n'est choisie, le centre invite à en sélectionner une.</li>
+          <li data-cursor="#cp-c-4B" data-action="click">Choisir une classe dans la colonne <b>Classes</b> : à droite de chaque ligne, l'effectif de la classe.</li>
+          <li data-cursor="#cp-s-salle310" data-action="click">La première salle est choisie d'office ; un clic sur un autre onglet change de salle. Au-dessus du plan : la classe, le nombre d'élèves placés et la salle.</li>
+          <li data-cursor="#cp-np" data-duration="3400">À droite, <b>Non placés</b> liste les élèves sans place. En dessous : <b>Visibilité élèves</b>, <span class="btn-nom">Groupes</span>, <span class="btn-nom">Importer</span> et <span class="btn-nom">+ Ajouter un élève</span>.</li>
+          <li data-cursor="#cp-vue">En haut, <span class="btn-nom">Vue tableau</span> ouvre la liste des élèves de la classe ; <b>⋯</b>, <span class="btn-nom">Générer</span> et <span class="btn-nom">Sauvegarder</span> servent au plan.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La couleur de la pastille dit le niveau : 6e rose, 5e ambre, 4e vert, 3e indigo, gris si le nom ne contient pas de chiffre de 3 à 6. Elle n'est pas modifiable : elle vient du premier chiffre trouvé dans le nom.</li>
+            <li>Les classes sont triées par nom ; l'effectif ne compte pas les élèves détachés (sans classe).</li>
+            <li>Le bouton <b>Plan de classe</b> d'un cours sur l'accueil et la recherche ouvrent directement la bonne classe.</li>
+            <li>Sur téléphone ou dans une fenêtre étroite, la page passe sur une seule colonne et la liste des classes devient une liste déroulante.</li>
+            <li>Attention : changer de classe ou de salle abandonne sans prévenir un plan modifié et non sauvegardé.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="plans-de-classe.html">Plans de classe</a> · <a href="groupes-de-classe.html">Groupes de classe</a> · <a href="suivi-des-eleves.html">Suivi des élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous" id="cp-menu" data-on="1-5">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="cp-vue" data-on="5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="cp-plus">⋯</span><span class="b b--fantome b--petit" id="cp-gen" data-from="2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="cp-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="cp-plus-classe">+</span></div>
+<div class="liste-classes__it" id="cp-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="cp-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cp-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it" data-on="2-5" id="cp-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="cp-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="cp-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cp-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="vide-centre repli" data-at="1"><div><div class="picto"></div><b>Sélectionnez une classe</b>Choisissez une classe pour voir son plan de placement</div></div><div class="col repli" data-from="2" style="gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" data-on="2" id="cp-s-salle210">Salle 210</span><span class="" data-on="3-5" id="cp-s-salle310">Salle 310</span><span class="og-plus" id="cp-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet repli" data-at="2"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 210</span><span class="muet repli" data-from="3"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="cp-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="cp-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="cp-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="cp-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="cp-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cp-p-0-5"></div>
+<div class="place" id="cp-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="cp-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-1-2"></div>
+<div class="place" id="cp-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="cp-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="cp-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cp-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-2-2"></div>
+<div class="place" id="cp-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="cp-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="cp-p-3-0"></div>
+<div class="place" id="cp-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="cp-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cp-p-3-4"></div>
+<div class="place" id="cp-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div></div><div data-from="2"><div class="panneau">
+<div class="panneau__bloc" id="cp-np" data-on="4"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="cp-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="cp-groupes" data-on="4">Groupes</span><span class="b b--fantome b--petit cen" id="cp-importer" data-on="4">Importer</span></div><span class="b b--fantome b--petit cen" id="cp-ajouter" data-on="4">+ Ajouter un élève</span></div>
+</div></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="creer-classe">
+      <div class="fiche__texte">
+        <h2>Créer une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › colonne Classes › +</span></p>
+        <p class="fiche__but">Ajouter une classe à son compte, avant d'y importer ou d'y ajouter ses élèves.</p>
+        <ol class="etapes">
+          <li data-cursor="#cc-plus-classe" data-action="click">Cliquer le <b>+</b> en tête de la colonne <b>Classes</b> (info-bulle « Nouvelle classe »). Une liste vide propose aussi <span class="btn-nom">Créer une classe</span>.</li>
+          <li data-cursor="#cc-champ" data-duration="3200">Taper le nom : « 4C », « 4e C » ou « 4ème C ». Le curseur est déjà dans le champ.</li>
+          <li data-cursor="#cc-creer" data-action="click">Cliquer <span class="btn-nom">Créer</span>. <span class="btn-nom">Annuler</span> ferme sans rien faire.</li>
+          <li data-cursor="#cc-new" data-duration="3200">La classe rejoint la liste, à sa place dans l'ordre des noms, avec la couleur de son niveau et un effectif de 0.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le nom compte de 2 à 50 caractères.</li>
+            <li>Aucune couleur à choisir : le premier chiffre de 3 à 6 du nom donne la teinte du niveau ; sans ce chiffre, la pastille est grise.</li>
+            <li>Une classe neuve est vide : <a href="#importer">importer une liste</a> ou <a href="#ajouter-eleve">ajouter les élèves</a> un par un.</li>
+            <li>Il n'existe pas d'archivage de classe : seule la suppression existe.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="cc-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="cc-plus">⋯</span><span class="b b--fantome b--petit" id="cc-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="cc-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="cc-plus-classe" data-on="1">+</span></div>
+<div class="liste-classes__it" id="cc-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="cc-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cc-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="cc-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it glisse-droite" id="cc-new" data-from="4" data-on="4"><span class="puce puce--4">4C</span>4C<span class="n">0</span></div>
+<div class="liste-classes__it" id="cc-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="cc-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cc-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="cc-s-salle210">Salle 210</span><span class="is-actif" id="cc-s-salle310">Salle 310</span><span class="og-plus" id="cc-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="cc-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="cc-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="cc-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="cc-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="cc-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cc-p-0-5"></div>
+<div class="place" id="cc-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="cc-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-1-2"></div>
+<div class="place" id="cc-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="cc-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="cc-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cc-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-2-2"></div>
+<div class="place" id="cc-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="cc-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="cc-p-3-0"></div>
+<div class="place" id="cc-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="cc-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cc-p-3-4"></div>
+<div class="place" id="cc-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="cc-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="cc-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="cc-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="cc-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="cc-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1-3"><div class="modale" style="width:420px"><div class="modale__t">Nouvelle classe</div><div class="m-champ" id="cc-champ" data-on="2"><span class="ph repli" data-at="1">Nom de la classe (ex: 3eme B)</span><span data-type="4C" data-type-at="2"></span></div><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b" id="cc-creer" data-on="3">Créer</span></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="renommer-classe">
+      <div class="fiche__texte">
+        <h2>Renommer une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › colonne Classes › crayon</span></p>
+        <p class="fiche__but">Corriger le nom d'une classe sans rien perdre : ses élèves, ses plans et ses séances restent attachés.</p>
+        <ol class="etapes">
+          <li data-cursor="#cr-c-4B">Survoler la ligne de la classe : un crayon et une corbeille apparaissent à droite.</li>
+          <li data-cursor="#cr-ren-4B" data-action="click">Cliquer le crayon <b>Renommer la classe</b> : la fenêtre « Modifier la classe » s'ouvre avec le nom actuel.</li>
+          <li data-cursor="#cr-champ">Corriger le nom.</li>
+          <li data-cursor="#cr-modifier" data-action="click">Cliquer <span class="btn-nom">Modifier</span>.</li>
+          <li data-cursor="#cr-c-4B">Le message « Classe renommée » confirme ; la classe reste choisie.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Si le chiffre du niveau change dans le nom, la couleur suit.</li>
+            <li>Un plan de groupe ouvert le reste : renommer la classe ne ramène pas l'éditeur sur « Classe entière ».</li>
+            <li>Sur téléphone (fenêtre étroite), le crayon est à côté de la liste déroulante des classes.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="cr-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="cr-plus">⋯</span><span class="b b--fantome b--petit" id="cr-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="cr-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="cr-plus-classe">+</span></div>
+<div class="liste-classes__it" id="cr-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="cr-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cr-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="cr-c-4B"><span class="puce puce--4"><span data-to="4" class="repli">4B</span><span data-from="5" class="repli">4e</span></span><span data-to="4" class="repli">4B</span><span data-from="5" class="repli">4e B</span><span class="lc-act" data-at="1-2"><span class="lc-ic" id="cr-ren-4B" data-on="2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="lc-ic lc-ic--rouge" id="cr-sup-4B"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></span><span class="n">19</span></div>
+<div class="liste-classes__it" id="cr-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="cr-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cr-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="cr-s-salle210">Salle 210</span><span class="is-actif" id="cr-s-salle310">Salle 310</span><span class="og-plus" id="cr-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet repli" data-to="4"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="muet repli" data-from="5"><span class="puce puce--4" style="margin-right:5px">4e</span>4e B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="cr-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="cr-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="cr-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="cr-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="cr-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cr-p-0-5"></div>
+<div class="place" id="cr-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="cr-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-1-2"></div>
+<div class="place" id="cr-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="cr-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="cr-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cr-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-2-2"></div>
+<div class="place" id="cr-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="cr-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="cr-p-3-0"></div>
+<div class="place" id="cr-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="cr-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cr-p-3-4"></div>
+<div class="place" id="cr-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="cr-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="cr-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="cr-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="cr-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="cr-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="2-4"><div class="modale" style="width:420px"><div class="modale__t">Modifier la classe</div><div class="m-champ" id="cr-champ" data-on="3"><span data-at="2">4B</span><span data-type="4e B" data-type-at="3"></span></div><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b" id="cr-modifier" data-on="4">Modifier</span></div></div></div><div class="toast" data-at="5">Classe renommée</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="supprimer-classe">
+      <div class="fiche__texte">
+        <h2>Supprimer une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › colonne Classes › corbeille</span></p>
+        <p class="fiche__but">Retirer une classe, en fin d'année le plus souvent, en gardant ou non ses élèves et leur historique.</p>
+        <ol class="etapes">
+          <li data-cursor="#cs-sup-4B" data-action="click">Survoler la ligne de la classe et cliquer la corbeille <b>Supprimer la classe</b>.</li>
+          <li data-cursor="#cs-texte">Lire l'avertissement : le plan de salle, les séances et les réglages de la classe seront perdus.</li>
+          <li data-cursor="#cs-case" data-duration="3400">La case <b>Supprimer aussi les 19 élève(s)</b> est décochée d'office : les élèves restent dans la base, hors classe, avec leur historique.</li>
+          <li data-cursor="#cs-case" data-duration="3800">Ne la cocher que pour tout effacer : la ligne d'aide passe à l'avertissement rouge.</li>
+          <li data-cursor="#cs-suppr" data-action="click" data-duration="3400">Cliquer <span class="btn-nom">Supprimer</span>. Message « Classe supprimée · élèves conservés hors classe », ou « Classe et élèves supprimés » si la case était cochée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les plans de classe, les séances, les groupes de classe et les réglages partent avec la classe. Ce n'est pas réversible.</li>
+            <li>Case décochée, chaque élève garde ses notes de trimestre (avec le nom de l'ancienne classe), ses tampons et son code ; il sera retrouvé au prochain import : c'est la base du <a href="#reconnaissance">passage d'année</a>.</li>
+            <li>Case cochée, les notes, participations et tampons des élèves sont définitivement effacés.</li>
+            <li>Le bouton de fin d'année se trouve sur la page Suivi élèves ; il s'appuie sur cette suppression avec élèves conservés.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="suivi-des-eleves.html">Suivi des élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="cs-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="cs-plus">⋯</span><span class="b b--fantome b--petit" id="cs-gen" data-to="4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="cs-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="cs-plus-classe">+</span></div>
+<div class="liste-classes__it" id="cs-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="cs-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cs-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif repli" data-to="4" id="cs-c-4B"><span class="puce puce--4">4B</span>4B<span class="lc-act" data-at="1"><span class="lc-ic" id="cs-ren-4B"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="lc-ic lc-ic--rouge" id="cs-sup-4B" data-on="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></span><span class="n">19</span></div>
+<div class="liste-classes__it" id="cs-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="cs-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cs-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="col repli" data-to="4" style="gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="cs-s-salle210">Salle 210</span><span class="is-actif" id="cs-s-salle310">Salle 310</span><span class="og-plus" id="cs-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="cs-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="cs-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="cs-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="cs-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="cs-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cs-p-0-5"></div>
+<div class="place" id="cs-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="cs-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-1-2"></div>
+<div class="place" id="cs-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="cs-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="cs-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cs-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-2-2"></div>
+<div class="place" id="cs-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="cs-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="cs-p-3-0"></div>
+<div class="place" id="cs-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="cs-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cs-p-3-4"></div>
+<div class="place" id="cs-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="vide-centre repli" data-at="5"><div><div class="picto"></div><b>Sélectionnez une classe</b>Choisissez une classe pour voir son plan de placement</div></div></div><div data-to="4"><div class="panneau">
+<div class="panneau__bloc" id="cs-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="cs-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="cs-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="cs-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="cs-ajouter">+ Ajouter un élève</span></div>
+</div></div></div></div><div class="modale-fond" data-at="1-4"><div class="modale" style="width:440px"><div class="modale__t">Confirmer la suppression</div><p class="modale__texte zone-on" id="cs-texte" data-on="2">Supprimer la classe <b style="color:var(--text)">4B</b> ? Son plan de salle, ses séances et ses réglages seront perdus.</p><div class="m-case" id="cs-case" data-on="3-4"><span class="case"></span><div>Supprimer aussi les 19 élève(s)<div class="m-aide">Décoché : les élèves sont conservés hors classe avec leur historique et seront reconnus au prochain import.</div></div></div><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b b--rouge" id="cs-suppr">Supprimer</span></div></div><div class="bulle bulle--gauche" data-at="4" style="left:732px;top:300px;max-width:230px">Cochée, la ligne devient : « Notes, participations et tampons seront définitivement effacés. » À réserver aux élèves partis.</div></div><div class="toast" data-at="5">Classe supprimée · élèves conservés hors classe</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="liste-eleves">
+      <div class="fiche__texte">
+        <h2>La liste des élèves (Vue tableau)</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Vue tableau</span></p>
+        <p class="fiche__but">Voir tous les élèves de la classe d'un coup, savoir qui est placé, et modifier ou supprimer un élève.</p>
+        <ol class="etapes">
+          <li data-cursor="#cv-vue" data-action="click">Cliquer <span class="btn-nom">Vue tableau</span> en haut de la page. Malgré son nom, le bouton ouvre la liste des élèves, pas une autre vue du plan.</li>
+          <li data-cursor="#cv-l1">Chaque élève : son initiale dans un rond, son pseudonyme, et « Placé » ou « Non placé » dans le plan affiché.</li>
+          <li data-cursor="#cv-crayon1">Le crayon modifie l'élève (pseudonyme ou classe), la corbeille le supprime.</li>
+          <li data-cursor="#cv-pied">En bas : <span class="btn-nom">Import</span> d'un fichier et <span class="btn-nom">+ Ajouter un élève</span>.</li>
+          <li data-cursor="#cv-x" data-action="click">Fermer par la croix, ou en recliquant <span class="btn-nom">Vue tableau</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Toute la classe est listée, même si un groupe est choisi dans la barre « Plan de ».</li>
+            <li>« Placé » se rapporte à la salle et au plan affichés derrière la fenêtre.</li>
+            <li>Le genre et les aménagements PAP / PPRE / PAI ne se règlent pas ici mais sur la fiche de l'élève (page Suivi élèves).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="fiche-eleve.html">Fiche élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="cv-vue" data-on="1,5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="cv-plus">⋯</span><span class="b b--fantome b--petit" id="cv-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="cv-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="cv-plus-classe">+</span></div>
+<div class="liste-classes__it" id="cv-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="cv-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cv-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="cv-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="cv-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="cv-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cv-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="cv-s-salle210">Salle 210</span><span class="is-actif" id="cv-s-salle310">Salle 310</span><span class="og-plus" id="cv-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="cv-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="cv-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="cv-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="cv-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="cv-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cv-p-0-5"></div>
+<div class="place" id="cv-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="cv-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-1-2"></div>
+<div class="place" id="cv-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="cv-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="cv-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cv-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-2-2"></div>
+<div class="place" id="cv-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="cv-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="cv-p-3-0"></div>
+<div class="place" id="cv-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="cv-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cv-p-3-4"></div>
+<div class="place" id="cv-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="cv-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="cv-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="cv-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="cv-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="cv-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1-4"><div class="mod2"><div class="mod2__t">Élèves - 4B<span class="esp"></span><span class="ic-b" id="cv-x" data-on="5"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg></span></div><div class="mod2__c"><div class="el-l" id="cv-l1" data-on="2"><span class="el-rond">A</span><div style="flex:1"><div class="el-n">Adam KE</div><div class="el-s">Placé</div></div><span class="el-ic" id="cv-crayon1" data-on="3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cv-corb1" data-on="3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cv-l2"><span class="el-rond">É</span><div style="flex:1"><div class="el-n">Éva RO</div><div class="el-s">Non placé</div></div><span class="el-ic" id="cv-crayon2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cv-corb2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cv-l3"><span class="el-rond">H</span><div style="flex:1"><div class="el-n">Hugo PE</div><div class="el-s">Placé</div></div><span class="el-ic" id="cv-crayon3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cv-corb3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cv-l4"><span class="el-rond">I</span><div style="flex:1"><div class="el-n">Ilyes HA</div><div class="el-s">Placé</div></div><span class="el-ic" id="cv-crayon4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cv-corb4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cv-l5"><span class="el-rond">I</span><div style="flex:1"><div class="el-n">Inès DU</div><div class="el-s">Placé</div></div><span class="el-ic" id="cv-crayon5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cv-corb5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cv-l6"><span class="el-rond">I</span><div style="flex:1"><div class="el-n">Iris TA</div><div class="el-s">Placé</div></div><span class="el-ic" id="cv-crayon6"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cv-corb6"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div class="mod2__p" id="cv-pied"><span class="b b--fantome">Import</span><span class="b">+ Ajouter un élève</span></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="ajouter-eleve">
+      <div class="fiche__texte">
+        <h2>Ajouter un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Non placés › + Ajouter un élève</span></p>
+        <p class="fiche__but">Ajouter un élève arrivé en cours d'année. Seul son pseudonyme, prénom et deux lettres, est enregistré.</p>
+        <ol class="etapes">
+          <li data-cursor="#ca-ajouter" data-action="click">Cliquer <span class="btn-nom">+ Ajouter un élève</span> au pied de <b>Non placés</b> (ou dans la liste de <span class="btn-nom">Vue tableau</span>).</li>
+          <li data-cursor="#ca-prenom">Saisir le <b>Prénom</b>.</li>
+          <li data-cursor="#ca-nom">Saisir le <b>Nom</b>.</li>
+          <li data-cursor="#ca-pseudo" data-duration="3400">L'aperçu montre le pseudonyme qui sera enregistré : le prénom et les deux premières lettres du nom, en majuscules.</li>
+          <li data-cursor="#ca-btn" data-action="click">Cliquer <span class="btn-nom">Ajouter</span> : l'élève arrive dans <b>Non placés</b>, prêt à être placé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le nom complet n'est jamais enregistré : les vrais noms restent sur l'appareil de l'enseignant.</li>
+            <li>Le prénom compte au moins 2 caractères ; prénom et nom 50 caractères au plus.</li>
+            <li>Si un élève détaché (sans classe, après la suppression de son ancienne classe) porte exactement le même pseudonyme, il est rattaché à la classe avec son historique au lieu d'être créé, sans que ce soit signalé.</li>
+            <li>Le code de connexion de l'élève à son espace se trouve sur la page Suivi élèves.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="suivi-des-eleves.html">Suivi des élèves (codes et cartes QR)</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="ca-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="ca-plus">⋯</span><span class="b b--fantome b--petit" id="ca-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="ca-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="ca-plus-classe">+</span></div>
+<div class="liste-classes__it" id="ca-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="ca-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ca-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="ca-c-4B"><span class="puce puce--4">4B</span>4B<span class="n"><span data-to="4">19</span><span data-from="5" class="repli">20</span></span></div>
+<div class="liste-classes__it" id="ca-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="ca-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ca-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="ca-s-salle210">Salle 210</span><span class="is-actif" id="ca-s-salle310">Salle 310</span><span class="og-plus" id="ca-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet repli" data-to="4"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="muet repli" data-from="5"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/20</b> placés · Salle 310</span><span class="ic-b" id="ca-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="ca-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="ca-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="ca-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="ca-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ca-p-0-5"></div>
+<div class="place" id="ca-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="ca-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-1-2"></div>
+<div class="place" id="ca-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="ca-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="ca-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ca-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-2-2"></div>
+<div class="place" id="ca-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="ca-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="ca-p-3-0"></div>
+<div class="place" id="ca-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="ca-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ca-p-3-4"></div>
+<div class="place" id="ca-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="ca-np"><div class="panneau__t">Non placés</div><div class="panneau__s"><span data-to="4">1 sur 19</span><span data-from="5" class="repli">2 sur 20</span></div><div class="pastilles"><span class="pastille-eleve">Éva RO</span><span class="pastille-eleve zoom is-on" data-from="5">Nina JO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="ca-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="ca-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="ca-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="ca-ajouter" data-on="1">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1-4"><div class="modale" style="width:420px"><div class="modale__t">Nouvel élève</div><div class="m-champ" id="ca-prenom" data-on="2"><span class="ph repli" data-at="1">Prénom</span><span data-type="Nina" data-type-at="2"></span></div><div class="m-champ" id="ca-nom" data-on="3"><span class="ph repli" data-to="2">Nom</span><span data-type="Joubert" data-type-at="3"></span></div><div class="m-aide zone-on" id="ca-pseudo" data-from="3" data-on="4" style="font-size:13px;padding:2px 4px">Pseudo : <b style="color:var(--text)">Nina JO</b></div><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b" id="ca-btn">Ajouter</span></div></div><div class="bulle bulle--droite" data-at="4" style="left:40px;top:318px;max-width:230px">Seul ce pseudonyme est enregistré : le nom complet ne quitte pas l'écran.</div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="importer">
+      <div class="fiche__texte">
+        <h2>Importer une liste d'élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Non placés › Importer</span></p>
+        <p class="fiche__but">Créer d'un coup tous les élèves d'une classe à partir d'une liste exportée de Pronote ou d'un tableur.</p>
+        <ol class="etapes">
+          <li data-cursor="#ci-importer" data-action="click">Cliquer <span class="btn-nom">Importer</span> au pied de <b>Non placés</b> (ou <span class="btn-nom">Import</span> dans la liste des élèves).</li>
+          <li data-cursor="#ci-f1" data-action="click">Choisir le fichier : export Pronote en .csv, ou tableur .xlsx ou .xls.</li>
+          <li data-cursor="#ci-np" data-duration="3200">Si aucun élève du fichier n'est déjà connu, l'import se fait aussitôt : « 23 élève(s) importé(s). »</li>
+          <li data-cursor="#ci-np">Les élèves arrivent dans <b>Non placés</b>, sous leur pseudonyme, prêts à être placés ou répartis par le générateur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Fichier .csv de Pronote : séparateur point-virgule, seule la première colonne est lue, sous la forme « NOM Prénom » (les mots tout en majuscules forment le nom).</li>
+            <li>Tableur : première feuille, colonnes « Prénom » et « Nom » ; les lignes incomplètes sont ignorées.</li>
+            <li>Chaque ligne devient un pseudonyme : les vrais noms ne sont pas enregistrés.</li>
+            <li>Si des élèves du fichier sont reconnus (anciens élèves, élèves d'une autre classe), la fenêtre <a href="#reconnaissance">Reconnaissance des élèves</a> s'ouvre d'abord.</li>
+            <li>Limite actuelle : un fichier illisible, ou dont aucune ligne n'est reconnue, ne produit aucun message. On ne peut pas coller une liste : l'import passe par un fichier.</li>
+            <li>À ne pas confondre avec l'import des notes Pronote du carnet ni avec la synchronisation Pronote.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="carnet-et-evaluations.html">Carnet et évaluations</a> · <a href="pronote.html">Pronote</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="ci-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="ci-plus">⋯</span><span class="b b--fantome b--petit" id="ci-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="ci-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="ci-plus-classe">+</span></div>
+<div class="liste-classes__it" id="ci-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="ci-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ci-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it" id="ci-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it is-actif"><span class="puce puce--4">4C</span>4C<span class="n"><span data-to="2">0</span><span data-from="3" class="repli">23</span></span></div>
+<div class="liste-classes__it" id="ci-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="ci-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ci-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="ci-s-salle210">Salle 210</span><span class="is-actif" id="ci-s-salle310">Salle 310</span><span class="og-plus" id="ci-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet repli" data-to="2"><span class="puce puce--4" style="margin-right:5px">4C</span>4C · <b>0/0</b> placés · Salle 310</span><span class="muet repli" data-from="3"><span class="puce puce--4" style="margin-right:5px">4C</span>4C · <b>0/23</b> placés · Salle 310</span><span class="ic-b" id="ci-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="ci-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="ci-p-0-0"></div>
+<div class="place" id="ci-p-0-1"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-0-2"></div>
+<div class="place" id="ci-p-0-3"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-0-4"></div>
+<div class="place" id="ci-p-0-5"></div>
+<div class="place" id="ci-p-1-0"></div>
+<div class="place" id="ci-p-1-1"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-1-2"></div>
+<div class="place" id="ci-p-1-3"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-1-4"></div>
+<div class="place" id="ci-p-1-5"></div>
+<div class="place" id="ci-p-2-0"></div>
+<div class="place" id="ci-p-2-1"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-2-2"></div>
+<div class="place" id="ci-p-2-3"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-2-4"></div>
+<div class="place" id="ci-p-2-5"></div>
+<div class="place" id="ci-p-3-0"></div>
+<div class="place" id="ci-p-3-1"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-3-2"></div>
+<div class="place" id="ci-p-3-3"></div>
+<div class="allee"></div>
+<div class="place" id="ci-p-3-4"></div>
+<div class="place" id="ci-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="ci-np" data-on="4"><div class="panneau__t">Non placés</div><div class="panneau__s"><span data-to="2">0 sur 0</span><span data-from="3" class="repli">23 sur 23</span></div><div class="pastilles repli" data-from="3"><span class="pastille-eleve">Alice FO</span><span class="pastille-eleve">Chloé NI</span><span class="pastille-eleve">Emma LE</span><span class="pastille-eleve">Hugo PE</span><span class="pastille-eleve">Inès DU</span><span class="pastille-eleve">Jade LU</span><span class="pastille-eleve">Léa GA</span><span class="pastille-eleve">Lou BE</span><span class="pastille-eleve">Malo RI</span><span class="pastille-eleve">Manon PI</span><span class="pastille-eleve">Mia CO</span><span class="pastille-eleve">Noah TI</span><span class="pastille-eleve">Rayan DE</span><span class="pastille-eleve">Théo GU</span><span class="pastille-eleve">Yanis BA</span><span class="pastille-eleve">Zoé FA</span><span class="muet" style="align-self:center">…</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="ci-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="ci-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="ci-importer" data-on="1">Importer</span></div><span class="b b--fantome b--petit cen" id="ci-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="dlg" data-at="2"><div class="dlg__t">Ouvrir</div><div style="padding:6px 0"><div class="dlg__l" id="ci-f1" data-on="2">4C liste Pronote.csv</div><div class="dlg__l">4C liste.xlsx</div><div class="dlg__l">Notes 1er trimestre.csv</div></div><div class="dlg__p"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit">Ouvrir</span></div></div><div class="toast" data-at="3-4">23 élève(s) importé(s).</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="reconnaissance">
+      <div class="fiche__texte">
+        <h2>Passage d'année : retrouver les élèves de l'an passé</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Importer › Reconnaissance des élèves</span></p>
+        <p class="fiche__but">À la rentrée, l'import retrouve les élèves déjà connus au lieu de créer des doublons : ils gardent leur historique, leurs tampons et leur code de connexion.</p>
+        <ol class="etapes">
+          <li data-cursor="#rc-resume" data-duration="3600">Après le choix du fichier, la fenêtre <b>Reconnaissance des élèves</b> résume : anciens élèves reconnus, élèves déjà dans une autre classe, nouveaux.</li>
+          <li data-cursor="#rc-l1" data-duration="3400">« ↪ retrouvé · était en 4B · moy 13.4 » : un ancien élève, détaché quand sa classe a été supprimée, avec sa classe et sa moyenne de l'an passé.</li>
+          <li data-cursor="#rc-l3" data-duration="3400">« ⇄ sera transféré(e) depuis 3C » : un élève encore inscrit dans une autre classe ; il changera de classe en gardant son historique.</li>
+          <li data-cursor="#rc-case4" data-action="click" data-duration="3400">Décocher un rapprochement erroné (un homonyme) : l'élève sera créé comme nouveau.</li>
+          <li data-cursor="#rc-ok" data-action="click" data-duration="3600">Cliquer <span class="btn-nom">Confirmer l'import</span>. Le message fait le bilan : retrouvés, transférés, nouveaux.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le passage d'année se fait en deux temps : en fin d'année, supprimer les classes en gardant les élèves (case décochée) ; à la rentrée, créer les nouvelles classes et importer leurs listes.</li>
+            <li>Le rapprochement se fait sur le pseudonyme exact ; un élève détaché passe avant un élève d'une autre classe.</li>
+            <li>La moyenne affichée est celle des notes de trimestre de la dernière année connue.</li>
+            <li>Un élève transféré quitte les plans et les groupes de son ancienne classe (voir <a href="#transfert">Changer un élève de classe</a>).</li>
+            <li><span class="btn-nom">Annuler</span> abandonne tout l'import.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#supprimer-classe">Supprimer une classe</a> · <a href="suivi-des-eleves.html">Suivi des élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="rc-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="rc-plus">⋯</span><span class="b b--fantome b--petit" id="rc-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="rc-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes"><div class="liste-classes__t lc-tete">Classes<span class="lc-plus">+</span></div><div class="liste-classes__it is-actif"><span class="puce puce--3">3A</span>3A<span class="n"><span data-to="4">0</span><span data-from="5" class="repli">27</span></span></div><div class="liste-classes__it"><span class="puce puce--3">3B</span>3B<span class="n">0</span></div><div class="liste-classes__it"><span class="puce puce--4">4A</span>4A<span class="n">0</span></div><div class="liste-classes__it"><span class="puce puce--4">4B</span>4B<span class="n">0</span></div><div class="liste-classes__it"><span class="puce puce--5">5A</span>5A<span class="n">0</span></div><div class="liste-classes__it"><span class="puce puce--6">6A</span>6A<span class="n">0</span></div></div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="rc-s-salle210">Salle 210</span><span class="is-actif" id="rc-s-salle310">Salle 310</span><span class="og-plus" id="rc-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--3" style="margin-right:5px">3A</span>3A · <b>0/<span data-to="4">0</span><span data-from="5" class="repli">27</span></b> placés · Salle 310</span><span class="ic-b" id="rc-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="rc-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="rc-p-0-0"></div>
+<div class="place" id="rc-p-0-1"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-0-2"></div>
+<div class="place" id="rc-p-0-3"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-0-4"></div>
+<div class="place" id="rc-p-0-5"></div>
+<div class="place" id="rc-p-1-0"></div>
+<div class="place" id="rc-p-1-1"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-1-2"></div>
+<div class="place" id="rc-p-1-3"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-1-4"></div>
+<div class="place" id="rc-p-1-5"></div>
+<div class="place" id="rc-p-2-0"></div>
+<div class="place" id="rc-p-2-1"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-2-2"></div>
+<div class="place" id="rc-p-2-3"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-2-4"></div>
+<div class="place" id="rc-p-2-5"></div>
+<div class="place" id="rc-p-3-0"></div>
+<div class="place" id="rc-p-3-1"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-3-2"></div>
+<div class="place" id="rc-p-3-3"></div>
+<div class="allee"></div>
+<div class="place" id="rc-p-3-4"></div>
+<div class="place" id="rc-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="rc-np"><div class="panneau__t">Non placés</div><div class="panneau__s"><span data-to="4">0 sur 0</span><span data-from="5" class="repli">27 sur 27</span></div><div class="pastilles repli" data-from="5"><span class="pastille-eleve">Alice FO</span><span class="pastille-eleve">Chloé NI</span><span class="pastille-eleve">Emma LE</span><span class="pastille-eleve">Hugo PE</span><span class="pastille-eleve">Inès DU</span><span class="pastille-eleve">Iris TA</span><span class="pastille-eleve">Jade LU</span><span class="pastille-eleve">Léa GA</span><span class="pastille-eleve">Lina BO</span><span class="pastille-eleve">Lou BE</span><span class="pastille-eleve">Malo RI</span><span class="pastille-eleve">Manon PI</span><span class="muet">…</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="rc-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="rc-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="rc-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="rc-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1-4"><div class="mod2" style="width:500px"><div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:650;font-size:15px">Reconnaissance des élèves</div><div class="m-aide zone-on" id="rc-resume" data-on="1" style="margin-top:4px;font-size:12.5px">3 ancien(s) élève(s) reconnu(s), 1 déjà dans une autre classe, 23 nouveau(x). Décoche un rapprochement si ce n'est pas le même élève (il sera alors créé comme nouveau).</div></div><div class="mod2__c" style="gap:2px"><div class="rc-l" id="rc-l1" data-on="2"><span class="case" data-on="1-5"></span><div><div class="el-n">Lina BO</div><div class="el-s">↪ retrouvé · était en <b>4B</b> · moy 13.4</div></div></div><div class="rc-l"><span class="case" data-on="1-5"></span><div><div class="el-n">Noé MA</div><div class="el-s">↪ retrouvé · était en <b>4A</b> · moy 15.1</div></div></div><div class="rc-l" id="rc-l3" data-on="3"><span class="case" data-on="1-5"></span><div><div class="el-n">Iris TA</div><div class="el-s">⇄ sera transféré(e) depuis <b>3C</b> (historique conservé)</div></div></div><div class="rc-l" id="rc-l4"><span class="case" id="rc-case4" data-on="1-3"></span><div><div class="el-n">Tom SA</div><div class="el-s"><span data-to="3" class="repli">↪ retrouvé</span><span data-from="4" class="repli">＋ sera créé comme nouveau</span> · était en <b>4B</b> · moy 11.8</div></div></div><div class="el-s" style="border-top:1px solid var(--border);margin-top:6px;padding-top:8px"><b>23 nouveau(x) élève(s)</b> : Alice FO, Chloé NI, Emma LE, Hugo PE, Inès DU, Jade LU, Léa GA, Lou BE, Malo RI, Manon PI…</div></div><div class="mod2__p" style="justify-content:flex-end"><span class="b b--fantome">Annuler</span><span class="b" id="rc-ok">Confirmer l'import</span></div></div></div><div class="toast" data-at="5">Import terminé : 2 retrouvé(s), 1 transféré(s) d'une autre classe, 24 nouveau(x).</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="corriger-pseudo">
+      <div class="fiche__texte">
+        <h2>Corriger le pseudonyme d'un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Vue tableau › crayon</span></p>
+        <p class="fiche__but">Rectifier une faute de frappe dans le prénom ou le nom d'un élève, sans toucher à son historique.</p>
+        <ol class="etapes">
+          <li data-cursor="#cm-crayon2" data-action="click">Dans la liste ouverte par <span class="btn-nom">Vue tableau</span>, cliquer le crayon de l'élève.</li>
+          <li data-cursor="#cm-actuel">La fenêtre « Modifier l'élève » rappelle le pseudonyme actuel. Les champs sont vides.</li>
+          <li data-cursor="#cm-prenom" data-duration="3200">Saisir le <b>Prénom</b> et le <b>Nom</b> corrects : l'aperçu montre le nouveau pseudonyme.</li>
+          <li data-cursor="#cm-ok" data-action="click">Cliquer <span class="btn-nom">Modifier</span>.</li>
+          <li data-cursor="#cm-l2">La liste montre le nouveau pseudonyme ; notes, tampons et code de l'élève sont inchangés.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Comme à l'ajout, seul le pseudonyme est enregistré, jamais le nom complet.</li>
+            <li>Champs laissés vides et classe inchangée : le message « Renseigne un nouveau nom ou choisis une autre classe » s'affiche.</li>
+            <li>La liste <b>Classe</b> sert à changer l'élève de classe (fiche suivante).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="cm-vue" data-on="1-5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="cm-plus">⋯</span><span class="b b--fantome b--petit" id="cm-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="cm-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="cm-plus-classe">+</span></div>
+<div class="liste-classes__it" id="cm-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="cm-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cm-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="cm-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="cm-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="cm-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="cm-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="cm-s-salle210">Salle 210</span><span class="is-actif" id="cm-s-salle310">Salle 310</span><span class="og-plus" id="cm-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="cm-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="cm-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="cm-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="cm-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="cm-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cm-p-0-5"></div>
+<div class="place" id="cm-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="cm-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-1-2"></div>
+<div class="place" id="cm-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="cm-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="cm-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="cm-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-2-2"></div>
+<div class="place" id="cm-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="cm-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="cm-p-3-0"></div>
+<div class="place" id="cm-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="cm-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="cm-p-3-4"></div>
+<div class="place" id="cm-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="cm-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="cm-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="cm-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="cm-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="cm-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1,5"><div class="mod2"><div class="mod2__t">Élèves - 4B<span class="esp"></span><span class="ic-b" id="cm-x"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg></span></div><div class="mod2__c"><div class="el-l" id="cm-l1"><span class="el-rond">N</span><div style="flex:1"><div class="el-n">Noé MA</div><div class="el-s">Placé</div></div><span class="el-ic" id="cm-crayon1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cm-corb1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cm-l2" data-on="5"><span class="el-rond">R</span><div style="flex:1"><div class="el-n"><span data-to="4">Rose VI</span><span data-from="5" class="repli">Rosa VI</span></div><div class="el-s">Placé</div></div><span class="el-ic" id="cm-crayon2" data-on="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cm-corb2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cm-l3"><span class="el-rond">S</span><div style="flex:1"><div class="el-n">Sacha MO</div><div class="el-s">Placé</div></div><span class="el-ic" id="cm-crayon3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cm-corb3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cm-l4"><span class="el-rond">T</span><div style="flex:1"><div class="el-n">Tom SA</div><div class="el-s">Placé</div></div><span class="el-ic" id="cm-crayon4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cm-corb4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="cm-l5"><span class="el-rond">Z</span><div style="flex:1"><div class="el-n">Zoé FA</div><div class="el-s">Placé</div></div><span class="el-ic" id="cm-crayon5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="cm-corb5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div class="mod2__p" id="cm-pied"><span class="b b--fantome">Import</span><span class="b">+ Ajouter un élève</span></div></div></div><div class="modale-fond" data-at="2-4"><div class="modale" style="width:430px"><div class="modale__t">Modifier l'élève</div><p class="modale__texte zone-on" id="cm-actuel" data-on="2" style="font-size:12.5px">Pseudo actuel : <b style="color:var(--text)">Rose VI</b> · laisse le nom vide pour ne changer que la classe</p><div class="m-champ" id="cm-prenom" data-on="3"><span class="ph repli" data-to="2">Prénom</span><span data-type="Rosa" data-type-at="3"></span></div><div class="m-champ"><span class="ph repli" data-to="2">Nom</span><span data-from="3">Vidal</span></div><div class="m-aide" data-from="3" style="font-size:13px">Pseudo : <b style="color:var(--text)">Rosa VI</b></div><div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px"><div class="m-aide">Classe</div><div class="sel" style="margin-top:4px">4B</div></div><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b" id="cm-ok" data-on="4">Modifier</span></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="transfert">
+      <div class="fiche__texte">
+        <h2>Changer un élève de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Vue tableau › crayon › Classe</span></p>
+        <p class="fiche__but">Faire passer un élève dans une autre de ses classes en cours d'année, sans perdre ses notes, ses tampons ni son code.</p>
+        <ol class="etapes">
+          <li data-cursor="#ct-crayon3" data-action="click">Dans la liste ouverte par <span class="btn-nom">Vue tableau</span>, cliquer le crayon de l'élève.</li>
+          <li data-cursor="#ct-sel" data-action="click">Dans la liste <b>Classe</b>, choisir la nouvelle classe (la liste n'apparaît que si l'on a plusieurs classes). Laisser le nom vide.</li>
+          <li data-cursor="#ct-explic" data-duration="3600">Une explication rappelle ce que garde l'élève et ce qui change.</li>
+          <li data-cursor="#ct-ok" data-action="click">Le bouton devient <span class="btn-nom">Transférer</span> : cliquer.</li>
+          <li data-cursor="#ct-p-0-0" data-duration="3800">Le message dit ce qui a été fait. La place de l'élève est libérée dans le plan de l'ancienne classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Gardés : historique des séances, carte à tampons, code de connexion, évaluations et notes.</li>
+            <li>Nettoyés dans l'ancienne classe : sa place dans les plans, ses groupes de TP encore actifs, son groupe de classe (sa place dans les plans de groupe disparaît d'elle-même).</li>
+            <li>Académie : si le module est actif dans la nouvelle classe, sa maison y est recopiée, puis retirée de l'ancienne.</li>
+            <li>Le message ne cite que ce qui a réellement eu lieu (« maison conservée », « retiré de ses groupes »…).</li>
+            <li>Le téléphone n'a pas d'écran de transfert. L'import d'une liste peut aussi transférer un élève reconnu.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="groupes-de-classe.html">Groupes de classe</a> · <a href="academie.html">Académie</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="ct-vue" data-on="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="ct-plus">⋯</span><span class="b b--fantome b--petit" id="ct-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="ct-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="ct-plus-classe">+</span></div>
+<div class="liste-classes__it" id="ct-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="ct-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ct-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="ct-c-4B"><span class="puce puce--4">4B</span>4B<span class="n"><span data-to="4">19</span><span data-from="5" class="repli">18</span></span></div>
+<div class="liste-classes__it" id="ct-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="ct-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ct-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="ct-s-salle210">Salle 210</span><span class="is-actif" id="ct-s-salle310">Salle 310</span><span class="og-plus" id="ct-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet repli" data-to="4"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="muet repli" data-from="5"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>17/18</b> placés · Salle 310</span><span class="ic-b" id="ct-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="ct-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="ct-p-0-0"><span class="occupant" data-to="4">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="ct-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="ct-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ct-p-0-5"></div>
+<div class="place" id="ct-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="ct-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-1-2"></div>
+<div class="place" id="ct-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="ct-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="ct-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ct-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-2-2"></div>
+<div class="place" id="ct-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="ct-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="ct-p-3-0"></div>
+<div class="place" id="ct-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="ct-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ct-p-3-4"></div>
+<div class="place" id="ct-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="ct-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="ct-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="ct-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="ct-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="ct-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1"><div class="mod2"><div class="mod2__t">Élèves - 4B<span class="esp"></span><span class="ic-b" id="ct-x"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg></span></div><div class="mod2__c"><div class="el-l" id="ct-l1"><span class="el-rond">J</span><div style="flex:1"><div class="el-n">Jade LU</div><div class="el-s">Placé</div></div><span class="el-ic" id="ct-crayon1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ct-corb1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ct-l2"><span class="el-rond">L</span><div style="flex:1"><div class="el-n">Léa GA</div><div class="el-s">Placé</div></div><span class="el-ic" id="ct-crayon2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ct-corb2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ct-l3"><span class="el-rond">L</span><div style="flex:1"><div class="el-n">Lina BO</div><div class="el-s">Placé</div></div><span class="el-ic" id="ct-crayon3" data-on="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ct-corb3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ct-l4"><span class="el-rond">L</span><div style="flex:1"><div class="el-n">Lou BE</div><div class="el-s">Placé</div></div><span class="el-ic" id="ct-crayon4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ct-corb4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ct-l5"><span class="el-rond">M</span><div style="flex:1"><div class="el-n">Malo RI</div><div class="el-s">Placé</div></div><span class="el-ic" id="ct-crayon5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ct-corb5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div class="mod2__p" id="ct-pied"><span class="b b--fantome">Import</span><span class="b">+ Ajouter un élève</span></div></div></div><div class="modale-fond" data-at="2-4"><div class="modale" style="width:440px"><div class="modale__t">Modifier l'élève</div><p class="modale__texte" style="font-size:12.5px">Pseudo actuel : <b style="color:var(--text)">Lina BO</b> · laisse le nom vide pour ne changer que la classe</p><div class="m-champ"><span class="ph">Prénom</span></div><div class="m-champ"><span class="ph">Nom</span></div><div style="border-top:1px solid var(--border);margin-top:4px;padding-top:10px;position:relative"><div class="m-aide">Classe</div><div class="sel" id="ct-sel" data-on="2" style="margin-top:4px"><span data-to="2" class="repli">4B</span><span data-from="3" class="repli">4A</span></div><div class="menu-sel" data-at="2"><div>3A</div><div>3B</div><div class="is-on" data-on="2">4A</div><div class="actif">4B</div><div>5A</div><div>5B</div><div>6A</div></div><p class="m-aide zone-on" id="ct-explic" data-from="3" data-on="3" style="margin:8px 0 0;line-height:1.45;padding:4px 6px">L'élève garde son historique, sa carte à tampons et son code. Sa place dans le plan de classe est libérée et sa maison est reprise si le module est actif dans la nouvelle classe.</p></div><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b" id="ct-ok" data-on="4"><span data-to="2" class="repli">Modifier</span><span data-from="3" class="repli">Transférer</span></span></div></div></div><div class="toast" data-at="5">Lina BO transféré(e) en 4A (place libérée dans l'ancien plan, retiré de son groupe de classe).</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="supprimer-eleve">
+      <div class="fiche__texte">
+        <h2>Supprimer un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Vue tableau › corbeille</span></p>
+        <p class="fiche__but">Retirer définitivement un élève qui a quitté l'établissement.</p>
+        <ol class="etapes">
+          <li data-cursor="#ce-corb2" data-action="click">Dans la liste ouverte par <span class="btn-nom">Vue tableau</span>, cliquer la corbeille rouge de l'élève.</li>
+          <li data-cursor="#ce-texte">Lire la question « Supprimer l'élève … ? ».</li>
+          <li data-cursor="#ce-ok" data-action="click">Cliquer <span class="btn-nom">Supprimer</span>.</li>
+          <li data-cursor="#ce-p-2-4" data-duration="3200">S'il était placé dans le plan affiché, sa place se vide et <span class="btn-nom">Sauvegarder</span> s'active.</li>
+          <li data-cursor="#ce-save" data-action="click">Cliquer <span class="btn-nom">Sauvegarder</span> pour enregistrer le plan nettoyé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La suppression est définitive : les notes et l'historique de l'élève partent avec lui.</li>
+            <li>Pour un élève qui change de classe, utiliser plutôt le <a href="#transfert">transfert</a> ; en fin d'année, <a href="#supprimer-classe">supprimer la classe en gardant les élèves</a>.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="ce-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="ce-plus">⋯</span><span class="b b--fantome b--petit" id="ce-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit is-off repli" data-to="3">Sauvegarder</span><span class="b b--petit repli" id="ce-save" data-from="4" data-on="5">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="ce-plus-classe">+</span></div>
+<div class="liste-classes__it" id="ce-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="ce-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ce-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="ce-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="ce-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="ce-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ce-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="ce-s-salle210">Salle 210</span><span class="is-actif" id="ce-s-salle310">Salle 310</span><span class="og-plus" id="ce-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet repli" data-to="3"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="muet repli" data-from="4"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>17/18</b> placés · Salle 310</span><span class="ic-b" id="ce-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="ce-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="ce-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="ce-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="ce-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ce-p-0-5"></div>
+<div class="place" id="ce-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="ce-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-1-2"></div>
+<div class="place" id="ce-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="ce-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="ce-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ce-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-2-2"></div>
+<div class="place" id="ce-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-2-4" data-on="4"><span class="occupant" data-to="3">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="ce-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="ce-p-3-0"></div>
+<div class="place" id="ce-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="ce-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ce-p-3-4"></div>
+<div class="place" id="ce-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="ce-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="ce-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="ce-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="ce-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="ce-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="modale-fond" data-at="1"><div class="mod2"><div class="mod2__t">Élèves - 4B<span class="esp"></span><span class="ic-b" id="ce-x"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 18L18 6M6 6l12 12"/></svg></span></div><div class="mod2__c"><div class="el-l" id="ce-l1"><span class="el-rond">H</span><div style="flex:1"><div class="el-n">Hugo PE</div><div class="el-s">Placé</div></div><span class="el-ic" id="ce-crayon1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ce-corb1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ce-l2"><span class="el-rond">I</span><div style="flex:1"><div class="el-n">Ilyes HA</div><div class="el-s">Placé</div></div><span class="el-ic" id="ce-crayon2"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ce-corb2" data-on="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ce-l3"><span class="el-rond">I</span><div style="flex:1"><div class="el-n">Inès DU</div><div class="el-s">Placé</div></div><span class="el-ic" id="ce-crayon3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ce-corb3"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ce-l4"><span class="el-rond">I</span><div style="flex:1"><div class="el-n">Iris TA</div><div class="el-s">Placé</div></div><span class="el-ic" id="ce-crayon4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ce-corb4"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div>
+<div class="el-l" id="ce-l5"><span class="el-rond">J</span><div style="flex:1"><div class="el-n">Jade LU</div><div class="el-s">Placé</div></div><span class="el-ic" id="ce-crayon5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="el-ic el-ic--rouge" id="ce-corb5"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div class="mod2__p" id="ce-pied"><span class="b b--fantome">Import</span><span class="b">+ Ajouter un élève</span></div></div></div><div class="modale-fond" data-at="2-3"><div class="modale" style="width:420px"><div class="modale__t">Confirmer la suppression</div><p class="modale__texte zone-on" id="ce-texte" data-on="2">Supprimer l'élève "Ilyes HA" ?</p><div class="modale__pied"><span class="b b--fantome">Annuler</span><span class="b b--rouge" id="ce-ok" data-on="3">Supprimer</span></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="visibilite">
+      <div class="fiche__texte">
+        <h2>Ce que voient les élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Élève</span><span class="chemin">Classes et plans › Non placés › Visibilité élèves</span></p>
+        <p class="fiche__but">Choisir, classe par classe, les onglets que les élèves trouvent dans leur espace : carte à tampons, annales du brevet, notes.</p>
+        <ol class="etapes">
+          <li data-cursor="#vi-vis" data-action="click">Au pied de <b>Non placés</b>, ouvrir la rubrique <b>Visibilité élèves</b> (repliée d'office).</li>
+          <li data-cursor="#vi-i-tampons" data-action="click">Basculer <b>Tampons</b> : l'onglet de la carte à tampons apparaît dans l'espace des élèves de cette classe.</li>
+          <li data-cursor="#vi-i-annales" data-action="click">Basculer <b>Annales</b> : les sujets de brevet deviennent visibles.</li>
+          <li data-cursor="#vi-i-notes" data-action="click" data-duration="3400">Basculer <b>Notes</b> : l'onglet <b>Mes notes</b> apparaît ; chaque évaluation doit en plus être publiée aux élèves.</li>
+          <li data-cursor="#vi-tous" data-action="click" data-duration="3400"><span class="btn-nom">↳ Appliquer à toutes les classes</span> recopie Tampons, Annales et Notes sur toutes ses classes.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tampons, Annales et Notes sont éteints d'office ; l'onglet Implication est toujours visible.</li>
+            <li>Chaque bascule est enregistrée aussitôt ; en cas d'échec, « Erreur lors de la mise à jour » et l'interrupteur revient en arrière.</li>
+            <li><b>Maison</b> n'est pas un simple onglet : il active l'Académie de la classe (fiche suivante). Il n'est pas recopié par « Appliquer à toutes les classes ».</li>
+            <li>Le lien « Appliquer à toutes les classes » n'apparaît que si l'on a plus d'une classe.</li>
+            <li>L'élève témoin voit tous les onglets, quel que soit ce réglage.</li>
+            <li>Un réglage plus fin, élément par élément avec aperçu, est prévu mais pas encore disponible.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/connexion-et-accueil.html">Espace élève</a> · <a href="recompenses.html">Récompenses</a> · <a href="carnet-et-evaluations.html">Publier une évaluation</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="vi-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="vi-plus">⋯</span><span class="b b--fantome b--petit" id="vi-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="vi-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="vi-plus-classe">+</span></div>
+<div class="liste-classes__it" id="vi-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="vi-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="vi-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="vi-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="vi-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="vi-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="vi-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="vi-s-salle210">Salle 210</span><span class="is-actif" id="vi-s-salle310">Salle 310</span><span class="og-plus" id="vi-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="vi-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="vi-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="vi-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="vi-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="vi-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="vi-p-0-5"></div>
+<div class="place" id="vi-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="vi-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-1-2"></div>
+<div class="place" id="vi-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="vi-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="vi-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="vi-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-2-2"></div>
+<div class="place" id="vi-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="vi-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="vi-p-3-0"></div>
+<div class="place" id="vi-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="vi-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="vi-p-3-4"></div>
+<div class="place" id="vi-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau" style="width:190px">
+<div class="panneau__bloc" id="vi-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" data-on="1-5" id="vi-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="col repli" data-from="1" style="gap:1px"><div class="vis-l" id="vi-l-tampons" data-on="2"><span class="vis-ic" style="background:#F59E0B"></span>Tampons<span class="interrupteur int-orange" id="vi-i-tampons" data-on="2-5"></span></div><div class="vis-l" id="vi-l-maison"><span class="vis-ic" style="background:#4F46E5"></span>Maison<span class="interrupteur " id="vi-i-maison"></span></div><div class="vis-l" id="vi-l-annales" data-on="3"><span class="vis-ic" style="background:#15803D"></span>Annales<span class="interrupteur int-vert" id="vi-i-annales" data-on="3-5"></span></div><div class="vis-l" id="vi-l-notes" data-on="4"><span class="vis-ic" style="background:#4F46E5"></span>Notes<span class="interrupteur " id="vi-i-notes" data-on="4-5"></span></div><div class="vis-tous" id="vi-tous" data-on="5">↳ Appliquer à toutes les classes</div></div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="vi-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="vi-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="vi-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="mini-tel glisse-gauche" data-from="2" style="left:206px;top:345px"><div><b style="font-size:12px">Mon espace</b><span class="muet" style="font-size:9.5px">Lina BO · 4B</span><div class="mt-ong"><span class="actif">Implication</span><span data-from="2" class="repli">Tampons</span><span data-from="3" class="repli">Annales</span><span data-from="4" class="repli">Mes notes</span></div><div style="flex:1;border-radius:10px;background:#fff;border:1px solid var(--border)"></div></div></div><div class="toast" data-at="5">Tampons/Annales/Notes appliqués à 7 classes</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="academie">
+      <div class="fiche__texte">
+        <h2>Activer l'Académie de la classe (Maison)</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Élève</span><span class="chemin">Classes et plans › Visibilité élèves › Maison</span></p>
+        <p class="fiche__but">Ouvrir pour une classe le module Académie : les quatre Maisons et leurs points, visibles ensuite dans l'espace des élèves.</p>
+        <ol class="etapes">
+          <li data-cursor="#ac-i-maison">Dans la rubrique <b>Visibilité élèves</b>, repérer la ligne <b>Maison</b>.</li>
+          <li data-cursor="#ac-i-maison" data-action="click" data-duration="3200">Basculer l'interrupteur : message « Académie des Quatre Lumières activée ».</li>
+          <li data-cursor="#ac-l-maison" data-duration="3200">Les élèves de cette classe trouvent l'onglet <b>Maison</b> dans leur espace.</li>
+          <li data-cursor="#ac-i-maison" data-action="click">Rebasculer pour couper le module : « Module Académie désactivé ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Réglage propre à chaque classe : il n'est jamais recopié aux autres classes.</li>
+            <li>La répartition des élèves dans les Maisons et les points se gèrent dans <b>Plus › Académie</b>.</li>
+            <li>Un élève transféré garde sa Maison si le module est actif dans sa nouvelle classe.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="academie.html">Académie</a> · <a href="../eleve/maison.html">La Maison côté élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="ac-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="ac-plus">⋯</span><span class="b b--fantome b--petit" id="ac-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="ac-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="ac-plus-classe">+</span></div>
+<div class="liste-classes__it" id="ac-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="ac-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ac-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="ac-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="ac-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="ac-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="ac-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="ac-s-salle210">Salle 210</span><span class="is-actif" id="ac-s-salle310">Salle 310</span><span class="og-plus" id="ac-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="ac-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="ac-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="ac-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="ac-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="ac-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ac-p-0-5"></div>
+<div class="place" id="ac-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="ac-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-1-2"></div>
+<div class="place" id="ac-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="ac-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="ac-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="ac-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-2-2"></div>
+<div class="place" id="ac-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="ac-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="ac-p-3-0"></div>
+<div class="place" id="ac-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="ac-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="ac-p-3-4"></div>
+<div class="place" id="ac-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau" style="width:190px">
+<div class="panneau__bloc" id="ac-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t vis-ouverte" id="ac-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="col" style="gap:1px"><div class="vis-l" id="ac-l-tampons"><span class="vis-ic" style="background:#F59E0B"></span>Tampons<span class="interrupteur int-orange" id="ac-i-tampons"></span></div><div class="vis-l" id="ac-l-maison" data-on="1-2"><span class="vis-ic" style="background:#4F46E5"></span>Maison<span class="interrupteur " id="ac-i-maison" data-on="1-2,4"></span></div><div class="vis-l" id="ac-l-annales"><span class="vis-ic" style="background:#15803D"></span>Annales<span class="interrupteur int-vert" id="ac-i-annales"></span></div><div class="vis-l" id="ac-l-notes"><span class="vis-ic" style="background:#4F46E5"></span>Notes<span class="interrupteur " id="ac-i-notes"></span></div><div class="vis-tous" id="ac-tous">↳ Appliquer à toutes les classes</div></div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="ac-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="ac-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="ac-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div class="mini-tel glisse-gauche" data-at="2-4" style="left:206px;top:345px"><div><b style="font-size:12px">Mon espace</b><span class="muet" style="font-size:9.5px">Lina BO · 4B</span><div class="mt-ong"><span class="actif">Implication</span><span data-on="2" class="repli" data-at="2-3">Maison</span></div><div style="flex:1;border-radius:10px;background:#fff;border:1px solid var(--border);display:grid;place-items:center"><span class="repli" data-at="2-3" style="display:flex;gap:5px"><i style="width:20px;height:24px;border-radius:5px 5px 10px 10px;background:#4F46E5;color:#fff;font-style:normal;font-size:10px;font-weight:700;display:grid;place-items:center">A</i><i style="width:20px;height:24px;border-radius:5px 5px 10px 10px;background:#059669;color:#fff;font-style:normal;font-size:10px;font-weight:700;display:grid;place-items:center">B</i><i style="width:20px;height:24px;border-radius:5px 5px 10px 10px;background:#D97706;color:#fff;font-style:normal;font-size:10px;font-weight:700;display:grid;place-items:center">C</i><i style="width:20px;height:24px;border-radius:5px 5px 10px 10px;background:#DC2626;color:#fff;font-style:normal;font-size:10px;font-weight:700;display:grid;place-items:center">D</i></span></div></div></div><div class="toast" data-at="2">Académie des Quatre Lumières activée</div><div class="toast" data-at="4">Module Académie désactivé</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche" id="ailleurs">
+      <div class="fiche__texte">
+        <h2>Ce qui touche aux classes mais se règle ailleurs</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Suivi élèves, Séances, Évaluations</span></p>
+        <p class="fiche__but">Plusieurs réglages liés aux élèves d'une classe ne sont pas sur la page Classes et plans. Voici où les trouver.</p>
+        <ol class="etapes">
+          <li data-cursor="#al-suivi">Codes de connexion et cartes QR des élèves : <b>Suivi élèves</b>.</li>
+          <li data-cursor="#al-suivi">Genre, aménagements PAP / PPRE / PAI, élève témoin : la fiche de l'élève, depuis <b>Suivi élèves</b>.</li>
+          <li data-cursor="#al-suivi">Passage d'année (bouton de fin d'année) : <b>Suivi élèves</b>.</li>
+          <li data-cursor="#al-seances">Choix du demi-groupe au début d'une séance : <b>Séances</b> et le téléphone.</li>
+          <li data-cursor="#al-evals" data-duration="3400">Import des notes depuis Pronote : <b>Évaluations</b>. Lien entre les cours de l'emploi du temps et les classes ou groupes : <b>Plus › Pronote</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le jeton d'import des réglages, qui permet à Claude de déposer des cours, n'est pas un code élève.</li>
+            <li>Les aménagements ne s'affichent jamais sur l'écran projeté en classe.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="suivi-des-eleves.html">Suivi des élèves</a> · <a href="fiche-eleve.html">Fiche élève</a> · <a href="seances.html">Séances</a> · <a href="pronote.html">Pronote</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif is-actif">Classes et plans</div>
+<div class="side__it side__sous" id="al-suivi" data-on="1-3">Suivi élèves</div>
+<div class="side__it side__sous" id="al-seances" data-on="4">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it" id="al-evals" data-on="5"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main"><div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit" id="al-vue"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg> Vue tableau</span><span class="b b--fantome b--petit b--carre" id="al-plus">⋯</span><span class="b b--fantome b--petit" id="al-gen"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg> Générer</span><span class="b b--petit" id="al-save" style="opacity:.45">Sauvegarder</span></div><div class="app__corps" style="display:flex;gap:14px"><div class="liste-classes">
+<div class="liste-classes__t lc-tete">Classes<span class="lc-plus" id="al-plus-classe">+</span></div>
+<div class="liste-classes__it" id="al-c-3A"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+<div class="liste-classes__it" id="al-c-3B"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+<div class="liste-classes__it" id="al-c-4A"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+<div class="liste-classes__it is-actif" id="al-c-4B"><span class="puce puce--4">4B</span>4B<span class="n">19</span></div>
+<div class="liste-classes__it" id="al-c-5A"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+<div class="liste-classes__it" id="al-c-5B"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+<div class="liste-classes__it" id="al-c-6A"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px"><div class="bandeau"><div class="ligne"><div class="og-salles"><span class="" id="al-s-salle210">Salle 210</span><span class="is-actif" id="al-s-salle310">Salle 310</span><span class="og-plus" id="al-plus-salle">+ Salle</span></div><span class="esp"></span><span class="muet"><span class="puce puce--4" style="margin-right:5px">4B</span>4B · <b>18/19</b> placés · Salle 310</span><span class="ic-b" id="al-mod-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg></span><span class="ic-b ic-b--rouge" id="al-sup-salle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg></span></div></div><div style="position:relative"><div class="salle salle--plan salle--compact">
+<div class="place" id="al-p-0-0"><span class="occupant">Lina BO<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="al-p-0-1"><span class="occupant">Tom SA<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-0-2"><span class="occupant">Noé MA<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="al-p-0-3"><span class="occupant">Zoé FA<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-0-4"><span class="occupant">Iris TA<i class="mini note--bien">14</i></span></div>
+<div class="place" id="al-p-0-5"></div>
+<div class="place" id="al-p-1-0"><span class="occupant">Naël CH<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="al-p-1-1"><span class="occupant">Adam KE<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-1-2"></div>
+<div class="place" id="al-p-1-3"><span class="occupant">Rose VI<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-1-4"><span class="occupant">Jade LU<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="al-p-1-5"><span class="occupant">Sacha MO<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="al-p-2-0"><span class="occupant">Malo RI<i class="mini note--bien">14</i></span></div>
+<div class="place" id="al-p-2-1"><span class="occupant">Lou BE<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-2-2"></div>
+<div class="place" id="al-p-2-3"><span class="occupant">Inès DU<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-2-4"><span class="occupant">Ilyes HA<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="al-p-2-5"><span class="occupant">Sami RE<i class="tend">↘</i><i class="mini note--mal">7</i></span></div>
+<div class="place" id="al-p-3-0"></div>
+<div class="place" id="al-p-3-1"><span class="occupant">Hugo PE<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-3-2"><span class="occupant">Mia CO<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="al-p-3-3"><span class="occupant">Léa GA<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="al-p-3-4"></div>
+<div class="place" id="al-p-3-5"></div>
+</div><div class="bureau-prof">PROF</div><div class="tableau-classe">Tableau</div><div class="porte">Porte</div></div></div><div class="panneau">
+<div class="panneau__bloc" id="al-np"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 19</div><div class="pastilles"><span class="pastille-eleve">Éva RO</span></div></div>
+<div class="panneau__bloc np-pied"><div class="vis-t" id="al-vis"><span class="vis-fl">▸</span>Visibilité élèves</div><div class="grille2" style="gap:5px"><span class="b b--fantome b--petit cen" id="al-groupes">Groupes</span><span class="b b--fantome b--petit cen" id="al-importer">Importer</span></div><span class="b b--fantome b--petit cen" id="al-ajouter">+ Ajouter un élève</span></div>
+</div></div></div><div style="position:absolute;inset:0 0 0 190px;background:rgba(255,255,255,.55)"></div><div class="bulle bulle--gauche" data-at="1" style="left:214px;top:128px;max-width:290px">Codes de connexion des élèves et cartes QR à imprimer (30 par page) : page Suivi élèves.</div><div class="bulle bulle--gauche" data-at="2" style="left:214px;top:128px;max-width:290px">Genre, aménagements PAP / PPRE / PAI et élève témoin : fiche de l'élève, ouverte depuis Suivi élèves.</div><div class="bulle bulle--gauche" data-at="3" style="left:214px;top:128px;max-width:290px">Fin d'année : le bouton de passage d'année est sur Suivi élèves.</div><div class="bulle bulle--gauche" data-at="4" style="left:214px;top:156px;max-width:290px">Choix du demi-groupe au lancement d'une séance : Séances, et le téléphone.</div><div class="bulle bulle--gauche" data-at="5" style="left:214px;top:238px;max-width:290px">Import des notes Pronote : Évaluations › carnet. Lien entre cours Pronote et classes ou groupes : Plus › Pronote et emploi du temps.</div></div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

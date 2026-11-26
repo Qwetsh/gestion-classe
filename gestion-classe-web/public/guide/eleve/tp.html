@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TP en groupe — Guide Gestion Classe</title>
+<meta name="description" content="Les TP en groupe dans l'espace élève : la liste des TP, la fiche, le protocole et les documents d'un TP, et le dépôt des photos du groupe pendant l'heure.">
+<meta name="guide-partie" content="eleve">
+<meta name="guide-ordre" content="50">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* commun-eleve:debut */
+/* Maquettes de l'espace élève : reprise de src/styles/eleve.css (direction A « Carnet ») et de ses thèmes. */
+.tel__ecran.el {
+  --el-bg: #F6F6F7; --el-surface: #FFFFFF; --el-line: #E6E6E9; --el-line-soft: #F0F0F2; --el-line-strong: #D4D4D8;
+  --el-text: #18181B; --el-muted: #52525B; --el-dim: #6B6B74;
+  --el-indigo: #4F46E5; --el-indigo-ink: #4338CA; --el-indigo-soft: #EEF0FF;
+  --el-pos: #15803D; --el-pos-ink: #166534; --el-pos-soft: #EAF6EE;
+  --el-warn: #B45309; --el-warn-ink: #9A4A07; --el-warn-soft: #FDF1E3;
+  --el-neg: #B91C1C; --el-neg-soft: #FBEAEA;
+  --el-track: #E9E9EC; --el-on-accent: #FFFFFF; --el-radio: #A1A1AA;
+  --el-radius: 8px; --el-radius-sm: 6px; --el-font-display: inherit; --el-card-shadow: none;
+  background-color: var(--el-bg); color: var(--el-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.4;
+}
+.tel__ecran.el .tel__statut { color: var(--el-text); position: relative; z-index: 3; }
+.el-ic, .el .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.el .ic--p { width: 18px; height: 18px; }
+.el .ic--pp { width: 15px; height: 15px; }
+.el .ic--g { width: 26px; height: 26px; }
+
+.el-corps { position: relative; flex: 1; min-height: 0; }
+.el-main { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 10px 14px 12px; overflow: hidden; }
+.el-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.el-head__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.el-kicker { font-size: 12.5px; font-weight: 500; color: var(--el-dim); }
+.el-h1 { font-family: var(--el-font-display); margin: 0; font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.el-h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--el-dim); }
+.el-section { display: flex; flex-direction: column; gap: 7px; }
+.el-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.el-note { margin: 0; font-size: 12.5px; line-height: 18px; color: var(--el-muted); }
+.el-error { margin: 0; font-size: 13px; line-height: 18px; color: var(--el-neg); }
+
+.el-card { background: var(--el-surface); border: 1px solid var(--el-line); border-radius: var(--el-radius); box-shadow: var(--el-card-shadow); transition: box-shadow .25s, border-color .25s; }
+.el-card--pad { padding: 14px; }
+.el-card--stack { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.el-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 14px; border-bottom: 1px solid var(--el-line-soft); transition: background .25s; }
+.el-row:last-child { border-bottom: 0; }
+.el-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.el-row__title { font-size: 14px; line-height: 19px; font-weight: 600; }
+.el-row__title--plain { font-weight: 500; }
+.el-row__meta { font-size: 12px; line-height: 16px; color: var(--el-dim); }
+.el-row__end { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.el-row__chev { color: var(--el-dim); transition: transform .25s; }
+.el-tile { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 9px 14px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-icon-box { flex-shrink: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--el-radius); background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-icon-box--round { width: 30px; height: 30px; border-radius: 15px; }
+
+.el-big { font-family: var(--el-font-display); font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.el-mid { font-family: var(--el-font-display); font-size: 22px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.el-grade { flex-shrink: 0; font-size: 19px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.el-unit { font-size: 12px; font-weight: 500; color: var(--el-dim); letter-spacing: 0; }
+.el-label { font-size: 12.5px; color: var(--el-muted); }
+.el-stat { display: flex; flex-direction: column; gap: 1px; padding: 11px 13px; }
+.el-bar { height: 8px; border-radius: 4px; background: var(--el-track); overflow: hidden; }
+.el-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--el-indigo); transition: width 1s ease; }
+
+.el-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); font-size: 11.5px; line-height: 17px; font-weight: 600; white-space: nowrap; }
+.el-chip--pos { background: var(--el-pos-soft); color: var(--el-pos-ink); }
+.el-chip--warn { background: var(--el-warn-soft); color: var(--el-warn-ink); }
+.el-chip--plain { background: var(--el-line-soft); color: var(--el-muted); }
+
+.el-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); color: var(--el-text); font-size: 14px; font-weight: 600; white-space: nowrap; transition: transform .15s, box-shadow .25s; }
+.el-btn--primary { border-color: var(--el-indigo); background: var(--el-indigo); color: var(--el-on-accent); }
+.el-btn--soft { border-color: transparent; background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-btn--block { width: 100%; }
+.el-btn--tall { min-height: 46px; font-size: 15px; }
+.el-btn--off { border-color: var(--el-line); background: var(--el-track); color: var(--el-dim); }
+.el-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; min-height: 34px; color: var(--el-indigo); font-size: 14px; font-weight: 600; }
+
+.el-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; background: var(--el-track); border-radius: var(--el-radius); }
+.el-seg span { min-height: 34px; display: grid; place-items: center; border-radius: var(--el-radius-sm); color: var(--el-muted); font-size: 13.5px; font-weight: 500; transition: background .25s, color .25s; }
+.el-seg span.is-on, .el-seg span.choisi { background: var(--el-surface); color: var(--el-text); font-weight: 600; }
+
+.el-rank { display: flex; flex-direction: column; padding: 0 14px 10px; }
+.el-rank__line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 8px; border-radius: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.el-rank__line span:first-child { color: var(--el-muted); }
+.el-rank__line--me { background: var(--el-indigo-soft); font-weight: 600; }
+.el-rank__line--me span:first-child { color: var(--el-indigo-ink); }
+.el-rank__gap { padding: 0 8px; color: var(--el-dim); font-size: 12px; }
+
+.el-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 6px; justify-items: center; }
+.el-stamp { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 25px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); transition: transform .35s cubic-bezier(.3,1.5,.5,1), opacity .3s; }
+.el-stamp--empty { border: 1.5px dashed var(--el-line-strong); background: none; color: var(--el-dim); font-size: 14px; font-weight: 600; }
+.el-choice { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 7px 13px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); font-size: 14px; font-weight: 500; transition: all .2s; }
+.el-choice::before { content: ''; flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--el-radio); background: var(--el-surface); box-sizing: border-box; transition: border .2s; }
+.el-choice.is-on { border: 2px solid var(--el-indigo); background: var(--el-indigo-soft); padding: 6px 12px; }
+.el-choice.is-on::before { border: 6px solid var(--el-indigo); }
+.el-banner { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--el-radius); background: var(--el-pos-soft); color: var(--el-pos-ink); font-size: 13px; line-height: 18px; font-weight: 600; }
+.el-cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 0 14px 12px; }
+.el-cats > div { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: var(--el-radius-sm); background: var(--el-bg); font-size: 12.5px; }
+
+.el-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.el-tilebox { display: flex; flex-direction: column; gap: 7px; min-height: 80px; padding: 11px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-indigo); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-tilebox__title { font-size: 14px; font-weight: 600; color: var(--el-text); display: block; }
+.el-tilebox__note { font-size: 12px; color: var(--el-dim); display: block; }
+.el-tilebox__note--on { font-weight: 600; color: var(--el-indigo-ink); }
+.el-subhead { padding: 10px 14px 7px; border-bottom: 1px solid var(--el-line-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--el-dim); }
+.el-rowhead { padding: 10px 14px 2px; font-size: 12px; line-height: 17px; font-weight: 600; color: var(--el-muted); }
+
+.el-veil { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(24, 24, 27, 0.5); }
+.el-dialog { width: 100%; max-width: 260px; padding: 20px; text-align: center; }
+.el-search { display: flex; align-items: center; gap: 9px; height: 42px; padding: 0 12px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-dim); font-size: 13.5px; }
+.el-select { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 10px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); font-size: 13px; font-weight: 500; }
+
+/* barre du bas */
+.el-nav { flex: none; position: relative; z-index: 40; display: flex; padding: 4px 4px 12px; background: var(--el-surface); border-top: 1px solid var(--el-line); }
+.el-nav > span { flex: 1; min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: var(--el-radius); color: var(--el-muted); font-size: 11px; font-weight: 500; transition: color .25s, background .25s; }
+.el-nav > span.actif, .el-nav > span.is-on { color: var(--el-indigo); font-weight: 600; }
+.el-nav--academy { background: oklch(0.08 0.01 50 / 0.92); border-top-color: transparent; }
+.el-nav--academy > span { color: oklch(0.72 0.03 60); }
+.el-nav--academy > span.actif, .el-nav--academy > span.is-on { background: oklch(0.25 0.03 50 / 0.9); color: oklch(0.90 0.06 60); }
+
+/* état « touché » */
+.el .el-tile.is-on, .el .el-card.is-on, .el .el-tilebox.is-on, .el .el-theme.is-on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-btn.is-on { transform: scale(0.97); box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-row.is-on { background: color-mix(in srgb, var(--el-indigo) 9%, transparent); }
+
+/* écran plein qui glisse par-dessus l'espace (classeur, TP, copie) */
+.el-plein { position: absolute; left: 0; right: 0; bottom: 0; top: 0; z-index: 60; background-color: var(--el-bg); display: flex; flex-direction: column; padding-top: 30px; }
+.is-hidden.el-plein { transform: translateY(26px); }
+
+/* choix du thème */
+.el-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-theme { display: flex; flex-direction: column; gap: 6px; padding: 7px 7px 9px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-theme.choisi { border: 2px solid var(--el-indigo); padding: 6px 6px 8px; }
+.el-theme__view { display: flex; flex-direction: column; gap: 5px; height: 54px; padding: 7px; border-radius: 6px; overflow: hidden; }
+.el-theme__line { display: block; height: 6px; border-radius: 3px; }
+.el-theme__card { display: flex; align-items: center; gap: 6px; flex: 1; padding: 0 7px; border-radius: 4px; }
+.el-theme__dot { display: block; width: 12px; height: 12px; border-radius: 6px; flex: none; }
+.el-theme__name { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 3px; font-size: 14px; font-weight: 600; }
+.el-theme__name .ic { color: var(--el-indigo); }
+.el-theme__note { padding: 0 3px; font-size: 12px; line-height: 15px; color: var(--el-dim); }
+
+/* ---- Cosmos ---- */
+.tel__ecran.el[data-theme='cosmos'] {
+  --el-bg: #0B1026; --el-surface: #151B3B; --el-line: #2A3160; --el-line-soft: #212854; --el-line-strong: #3A4380;
+  --el-text: #EEF1FF; --el-muted: #B9C0E6; --el-dim: #9AA3D4;
+  --el-indigo: #8EA2FF; --el-indigo-ink: #C9D2FF; --el-indigo-soft: #232B66;
+  --el-pos: #5EE0A0; --el-pos-ink: #8BF0BE; --el-pos-soft: #123B2E;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8A8A; --el-neg-soft: #45191E;
+  --el-track: #262E5C; --el-on-accent: #0B1026; --el-radio: #6E79B8;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  background-image:
+    radial-gradient(2px 2px at 150px 30px, rgba(255, 255, 255, 0.9) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 60px 150px, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 190px 110px, rgba(190, 205, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(2px 2px at 20px 84px, rgba(255, 236, 200, 0.8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 110px 178px, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='170' viewBox='0 0 240 170'%3E%3Cdefs%3E%3CradialGradient id='p' cx='0.35' cy='0.3' r='0.8'%3E%3Cstop offset='0' stop-color='%23A99BFF'/%3E%3Cstop offset='1' stop-color='%233A2EA6'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx='172' cy='58' rx='108' ry='20' fill='none' stroke='%23C9C0FF' stroke-opacity='.5' stroke-width='5' transform='rotate(-16 172 58)'/%3E%3Ccircle cx='172' cy='58' r='56' fill='url(%23p)'/%3E%3Cpath d='M120 50c34 10 72 6 104-16' fill='none' stroke='%23C9C0FF' stroke-opacity='.3' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 110% 420px at 85% -60px, rgba(124, 92, 255, 0.38), transparent 70%),
+    radial-gradient(ellipse 90% 360px at 0% 0, rgba(56, 189, 248, 0.16), transparent 70%);
+  background-size: 210px 190px, 210px 190px, 210px 190px, 210px 190px, 210px 190px, 200px 142px, 100% 520px, 100% 420px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, right -50px top -10px, 0 0, 0 0;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat, no-repeat;
+}
+.el[data-theme='cosmos'] .el-card, .el[data-theme='cosmos'] .el-tile, .el[data-theme='cosmos'] .el-tilebox { background: rgba(21, 27, 59, 0.92); }
+/* ---- Arcade ---- */
+.tel__ecran.el[data-theme='arcade'] {
+  --el-bg: #170F2E; --el-surface: #241846; --el-line: #4A3486; --el-line-soft: #30205A; --el-line-strong: #6A4FB8;
+  --el-text: #F6F0FF; --el-muted: #C9BCE8; --el-dim: #A99AD0;
+  --el-indigo: #FFD23F; --el-indigo-ink: #FFE27A; --el-indigo-soft: #3B3010;
+  --el-pos: #5CF2B0; --el-pos-ink: #8FF7C9; --el-pos-soft: #0F3B2C;
+  --el-warn: #FFB454; --el-warn-ink: #FFCF8F; --el-warn-soft: #43290B;
+  --el-neg: #FF7A9C; --el-neg-soft: #4A1528;
+  --el-track: #35245F; --el-on-accent: #1A1033; --el-radio: #8A72C8;
+  --el-radius: 2px; --el-radius-sm: 2px;
+  --el-font-display: 'Pixelify Sans', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --el-card-shadow: 4px 4px 0 #0B0618;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.el[data-theme='arcade'] .el-card, .el[data-theme='arcade'] .el-tile, .el[data-theme='arcade'] .el-tilebox, .el[data-theme='arcade'] .el-theme { border-width: 2px; }
+.el[data-theme='arcade'] .el-h2 { color: #FF8AE0; }
+.el[data-theme='arcade'] .el-btn--primary { box-shadow: 0 4px 0 #A8830A; }
+.el[data-theme='arcade'] .el-stamp, .el[data-theme='arcade'] .el-icon-box, .el[data-theme='arcade'] .el-chip { border-radius: 2px; }
+.el[data-theme='arcade'] .el-nav { border-top-width: 2px; }
+.el[data-theme='arcade'] .el-mid, .el[data-theme='arcade'] .el-big { font-family: inherit; }
+/* ---- Jungle ---- */
+.tel__ecran.el[data-theme='jungle'] {
+  --el-bg: #EEF5E8; --el-surface: #FFFFFF; --el-line: #D6E3CC; --el-line-soft: #E6EFE0; --el-line-strong: #B9CDAE;
+  --el-text: #16291B; --el-muted: #3F5545; --el-dim: #55695A;
+  --el-indigo: #1F7A3A; --el-indigo-ink: #17602D; --el-indigo-soft: #DDF0DF;
+  --el-pos-soft: #E3F4E6; --el-track: #DCE8D3; --el-radio: #8FA596;
+  --el-radius: 18px; --el-radius-sm: 22px;
+  --el-font-display: 'Fredoka', 'Inter', system-ui, sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='240' viewBox='0 0 300 240'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M300 0C250 6 196 36 176 96c44 6 100-22 124-60z' fill='%23BFDDB3'/%3E%3Cpath d='M300 24c-40 14-84 44-108 64' stroke='%23A3CB95' stroke-width='3'/%3E%3Cpath d='M300 60c-34 20-54 62-48 116 30-14 48-50 48-84z' fill='%23A6CF98'/%3E%3Cpath d='M298 78c-16 26-28 56-40 88' stroke='%238FBF80' stroke-width='3'/%3E%3Cpath d='M232 0c-30 8-62 6-92-14 20 44 62 52 92 34z' fill='%23CFE6C5'/%3E%3C/g%3E%3C/svg%3E");
+  background-position: top right; background-repeat: no-repeat; background-size: 240px 192px;
+}
+.el[data-theme='jungle'] .el-h1 { font-weight: 600; }
+.el[data-theme='jungle'] .el-seg { border-radius: 24px; }
+.el[data-theme='jungle'] .el-seg span { border-radius: 20px; }
+/* connexion */
+.el-login__text { margin: 4px 0 0; font-size: 14.5px; line-height: 21px; color: var(--el-muted); }
+.el-field-label { font-size: 13.5px; font-weight: 600; }
+.el-code { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.el-code > span { height: 50px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); display: grid; place-items: center; font-size: 22px; font-weight: 600; transition: border-color .2s; }
+.el-code > span.is-on, .el-code > span.actif { border: 2px solid var(--el-indigo); }
+.el-code i { font-style: normal; }
+.el-url { flex: none; position: relative; z-index: 3; margin: 0 12px 4px; height: 26px; border-radius: 13px; background: var(--el-track); color: var(--el-muted); font-size: 11px; display: flex; align-items: center; gap: 6px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
+.el-url b { font-weight: 600; color: var(--el-text); }
+/* contenu qui défile vers le haut */
+.el-defile { display: flex; flex-direction: column; gap: 12px; transition: transform .8s cubic-bezier(.45,.05,.25,1); }
+/* une maquette de téléphone posée dans une scène large */
+.tel-pose { position: relative; flex: none; }
+/* deux états empilés au même endroit */
+.pile { display: inline-grid; }
+.pile > * { grid-area: 1 / 1; }
+/* commun-eleve:fin */
+.tp-pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 650; white-space: nowrap; }
+.g3 { background: #FFF1E8; color: #9A3A0E; } .g1 { background: #EEF0FF; color: #3730A3; } .g2 { background: #E6F7F2; color: #0B5F4C; }
+.parts { margin: 12px 14px 0; padding: 4px; display: flex; gap: 4px; background: var(--el-surface); border: 1px solid var(--el-line); border-radius: 8px; }
+.parts span { flex: 1; min-height: 38px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 11.5px; font-weight: 600; color: var(--el-muted); text-align: center; line-height: 13px; transition: background .25s, color .25s; }
+.parts span.is-on, .parts span.choisi { background: var(--el-indigo); color: #fff; }
+.parts b { min-width: 18px; height: 18px; padding: 0 4px; border-radius: 5px; background: var(--el-warn-soft); color: var(--el-warn-ink); font-size: 11px; display: inline-grid; place-items: center; }
+.a4 { background: #fff; border: 1px solid var(--el-line); box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 12px; font-size: 9px; color: #18181B; display: flex; flex-direction: column; gap: 4px; transition: transform .6s ease; transform-origin: top left; }
+.a4 i { display: block; height: 5px; border-radius: 3px; background: #E4E4E7; }
+.a4.is-on { transform: scale(1.7); }
+.photo { position: relative; height: 128px; border-radius: 6px; background: #3B4152; overflow: hidden; }
+.photo .auteur { position: absolute; left: 6px; bottom: 6px; height: 20px; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; background: rgba(255,255,255,.92); color: #18181B; }
+.photo .auteur.prof { background: #4F46E5; color: #fff; }
+.photo .heure { position: absolute; right: 6px; bottom: 6px; font-size: 11px; font-weight: 600; color: #fff; background: rgba(24,24,27,.6); padding: 1px 5px; border-radius: 5px; }
+.photo .retirer { position: absolute; right: 4px; top: 4px; width: 30px; height: 30px; border-radius: 6px; background: rgba(24,24,27,.82); color: #fff; display: grid; place-items: center; font-size: 16px; }
+.dessin-microscope { position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, #D9E8C8 0 30%, #2B2F3A 31%); }
+.dessin-microscope::after { content: ''; position: absolute; left: 40%; top: 38%; width: 16px; height: 12px; border-radius: 50%; background: #9DBF7A; box-shadow: 18px 10px 0 #9DBF7A, -10px 16px 0 #A9C98A, 8px -12px 0 #9DBF7A; }
+.dessin-feuille { position: absolute; inset: 14px 22px; background: #F4F1EA; transform: rotate(4deg); }
+.envoi { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.envoi .vign { width: 40px; height: 40px; border-radius: 8px; background: #3B4152; flex: none; position: relative; overflow: hidden; }
+#tl-defile.is-on { transform: translateY(-40px); }
+#ph-defile.is-on { transform: translateY(-150px); }
+</style>
+</head>
+<body>
+<!-- icones:debut -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-maison" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-notes" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-3"/></symbol>
+<symbol id="i-livre" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-tampon" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M19.3 13.7a2.5 2.5 0 0 0-1.8-.7h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.7-.3-1.3-.7-1.8z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/></symbol>
+<symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+<symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+<symbol id="i-cube" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+<symbol id="i-sortie" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-chev-g" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-chev-b" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chev-h" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-galerie" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+<symbol id="i-doc-coche" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></symbol>
+<symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-lien" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-croix" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-recentrer" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+<symbol id="i-etoile" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-main" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+<symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5A4.6 4.6 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+<symbol id="i-entraide" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+<symbol id="i-imprimer" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 19v2M19 14h2"/></symbol>
+<symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-hautparleur" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+<symbol id="i-plein" viewBox="0 0 24 24"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></symbol>
+<symbol id="i-pages" viewBox="0 0 24 24"><path d="M2 5h8a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H2zM22 5h-8a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h8z"/></symbol>
+<symbol id="i-stylo" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-cercle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+<symbol id="i-liste" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+</defs></svg>
+<!-- icones:fin -->
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Espace élève</a> › TP en groupe</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#tp-liste">Mes TP</a></li>
+      <li><a href="#tp-detail">Un TP : fiche, protocole, documents</a></li>
+      <li><a href="#tp-photos">Déposer des photos</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../eleve/cours-et-classeur.html">◀ Cours et classeur</a><a href="../eleve/maison.html">Maison ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Espace élève</div>
+      <h1>TP en groupe</h1>
+      <p>Quand l'enseignant lance un TP en groupes, chaque élève retrouve dans son espace la fiche, le protocole et les documents du TP, et peut envoyer les photos de son groupe pendant l'heure. Un élève absent voit tout ce que son groupe a fait.</p>
+      <div class="chap__resume"><span>Cours › Mes TP</span><span>Accueil › À faire</span><span>Téléphone de l'élève</span><span>Visible dès le premier groupe de TP</span></div>
+    </header>
+
+    <!-- ============================================================ liste -->
+    <section class="fiche fiche--etroite" id="tp-liste">
+      <div class="fiche__texte">
+        <h2>Mes TP</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Cours › Mes TP</span></p>
+        <p class="fiche__but">Les TP faits en groupe : celui en cours en tête, puis ceux déjà faits.</p>
+        <ol class="etapes">
+          <li data-cursor="#tl-tuile" data-action="tap">Dans <b>Cours</b>, toucher la tuile <span class="btn-nom">Mes TP</span> : l'écran s'ouvre par-dessus l'espace.</li>
+          <li data-cursor="#tl-carte" data-duration="3800">La carte du TP en cours : <b>TP · Activité 3</b>, le nom du TP, l'heure de début ; à droite <b>Dépôt ouvert</b> ou <b>En cours</b> ; dessous la couleur du groupe et les camarades.</li>
+          <li data-cursor="#tl-btns" data-duration="3400">Les boutons <span class="btn-nom">Déposer</span> (quand le dépôt est ouvert) et <span class="btn-nom">Ouvrir le TP</span>, puis le nombre de photos du groupe et l'heure de fermeture.</li>
+          <li data-cursor="#tl-faits" data-duration="3400"><b>Déjà faits</b> : une ligne par TP terminé, avec <b>Corrigé · Notes</b> ou « correction à venir ».</li>
+          <li data-cursor="#tl-retour" data-action="tap"><span class="btn-nom">‹ Retour</span> (ou le retour du téléphone) ramène à l'espace.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La tuile n'a pas de réglage : elle apparaît dès que l'élève a fait partie d'un groupe de TP. Sur l'accueil, la carte <b>TP en cours</b> ouvre directement le TP.</li>
+            <li>Chaque groupe garde la couleur qu'il a sur les îlots côté enseignant (8 teintes).</li>
+            <li>La correction et la note ne sont jamais ici : elles arrivent dans <b>Notes</b> quand l'enseignant les publie.</li>
+            <li>Côté enseignant : les groupes et le dépôt se règlent dans la séance en groupes de TP, sur son site.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="connexion-et-accueil.html#a-faire">À faire</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>10:20</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <div class="el-head__titles"><span class="el-kicker">5E</span><h1 class="el-h1">Cours</h1></div>
+                  <div class="el-tiles"><div class="el-tilebox" id="tl-tuile" data-on="1"><svg class="ic"><use href="#i-fiole"/></svg><span><span class="el-tilebox__title">Mes TP</span><span class="el-tilebox__note el-tilebox__note--on">1 en cours</span></span></div><div class="el-tilebox"><svg class="ic"><use href="#i-cube"/></svg><span><span class="el-tilebox__title">En 3D</span><span class="el-tilebox__note">Avec la caméra</span></span></div></div>
+                </div>
+              </div>
+              <nav class="el-nav"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span class="actif"><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              <div class="el-plein glisse-haut" data-to="4">
+                <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:2px">
+                  <span class="el-back" id="tl-retour"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Retour</span>
+                  <span class="el-kicker">5E</span><h1 class="el-h1">Mes TP</h1>
+                </div>
+                <div style="margin:14px 16px 0;display:flex;flex-direction:column;gap:12px">
+                  <div class="el-card el-card--stack" id="tl-carte" data-on="2">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div><span class="tp-pill" style="background:var(--el-warn-soft);color:var(--el-warn-ink)">TP · Activité 3</span><div style="font-size:18px;font-weight:700;margin-top:7px;line-height:23px">Observer des levures au microscope</div><div class="el-row__meta">Aujourd'hui · 10h05</div></div><span class="tp-pill" style="background:var(--el-pos-soft);color:var(--el-pos-ink)"><i style="width:7px;height:7px;border-radius:4px;background:var(--el-pos-ink)"></i>Dépôt ouvert</span></div>
+                    <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--el-muted)"><span class="tp-pill g3">G3</span>avec Noé MA, Iris TA</div>
+                    <div id="tl-btns" style="display:flex;flex-direction:column;gap:8px">
+                      <div style="display:flex;gap:8px"><span class="el-btn el-btn--primary" style="flex:1;min-height:44px"><svg class="ic ic--p"><use href="#i-photo"/></svg>Déposer</span><span class="el-btn" style="flex:1;min-height:44px">Ouvrir le TP</span></div>
+                      <span style="font-size:11.5px;color:var(--el-dim)">3 photos du groupe · se ferme à 10h55</span>
+                    </div>
+                  </div>
+                  <div class="el-card" id="tl-faits">
+                    <div style="padding:10px 14px 6px;font-size:11.5px;font-weight:600;color:var(--el-dim)">Déjà faits</div>
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--el-line)"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">Mesurer la température de l'eau</div><div style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11.5px;color:var(--el-dim)"><span class="tp-pill g1">G1</span>12 nov.</div></div><span class="tp-pill" style="background:var(--el-indigo-soft);color:var(--el-indigo-ink)">Corrigé · Notes</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                    <div style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-top:1px solid var(--el-line)"><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">Fabriquer un pluviomètre</div><div style="display:flex;gap:6px;align-items:center;margin-top:3px;font-size:11.5px;color:var(--el-dim)"><span class="tp-pill g2">G2</span>5 nov.</div></div><span style="font-size:11.5px;color:var(--el-dim)">correction à venir</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                  </div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ détail -->
+    <section class="fiche fiche--etroite" id="tp-detail">
+      <div class="fiche__texte">
+        <h2>Un TP : fiche, protocole, documents</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Mes TP › Ouvrir le TP</span></p>
+        <p class="fiche__but">Relire la fiche d'activité, le protocole, les documents et les photos du groupe, pendant le TP ou après, y compris quand on était absent.</p>
+        <ol class="etapes">
+          <li data-cursor="#td-titre" data-duration="3200">En haut : <span class="btn-nom">‹ Mes TP</span>, le nom du TP, la couleur du groupe, la date et l'activité.</li>
+          <li data-cursor="#td-parts" data-duration="3600">La barre des parties : <b>Fiche d’activité</b>, <b>Protocole</b>, <b>Documents</b> (si l'enseignant en a ouvert) et <b>Photos</b>, avec le nombre de photos. L'écran s'ouvre sur la première partie qui a du contenu.</li>
+          <li data-cursor="#td-agrandir" data-action="tap" data-duration="3400">La fiche s'affiche en feuille A4 réduite à la largeur de l'écran. <span class="btn-nom">Agrandir la fiche</span> la double ; on s'y déplace au doigt. <span class="btn-nom">Réduire la fiche</span> revient.</li>
+          <li data-cursor="#td-proto" data-action="tap" data-duration="3600">Un protocole sans feuille s'affiche en carte : la problématique, <b>Matériel</b>, <b>Étapes</b> et l'encadré <b>Sécurité</b>.</li>
+          <li data-cursor="#td-mot" data-duration="3600">En bas : <b>Le mot du professeur à ton groupe</b> s'il existe, et où trouver la correction.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un élève absent ce jour-là voit un encadré : « Tu n’étais pas là ce jour-là. Tu vois tout ce que ton groupe a fait… Tu auras la même note que ton groupe. »</li>
+            <li>Seuls les cours que l'enseignant a ouverts pour ce TP sont servis ; un cours renommé « (correction) » se referme.</li>
+            <li>Messages possibles : « Ton professeur n’a pas encore mis la fiche de ce TP. », « Pas de protocole pour ce TP. », « Cette page ne s’ouvre pas. » avec <b>Réessayer</b>, « Ce TP n’est plus disponible. »</li>
+            <li>En pied : « La correction et ta note sont dans Notes. » ou « La correction n’est pas ici. Elle arrivera dans Notes quand ton professeur la publiera. »</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>18:40</span><span>Wi-Fi</span></div>
+              <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:5px" id="td-titre">
+                <span class="el-back"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Mes TP</span>
+                <h1 class="el-h1" style="font-size:20px;line-height:26px">Observer des levures au microscope</h1>
+                <span style="display:flex;gap:7px;align-items:center;font-size:12.5px;color:var(--el-muted)"><span class="tp-pill g3">G3</span>26 nov. · 10h05 · TP · Activité 3</span>
+              </div>
+              <div class="parts" id="td-parts"><span data-on="1-3">Fiche d’activité</span><span id="td-proto" data-on="4">Protocole</span><span>Documents</span><span>Photos <b>3</b></span></div>
+              <div class="el-corps" style="margin-top:10px">
+                <div class="el-main" style="padding-top:0;gap:10px" data-to="3">
+                  <span class="el-btn" id="td-agrandir" style="align-self:flex-start;min-height:34px;font-size:12.5px"><svg class="ic ic--pp"><use href="#i-plein"/></svg><span class="pile"><span data-to="2">Agrandir la fiche</span><span data-at="3">Réduire la fiche</span></span></span>
+                  <div style="position:relative;flex:1;overflow:hidden;border-radius:4px">
+                    <div class="a4" data-on="3" style="position:absolute;left:0;top:0;width:100%">
+                      <b style="font-size:11px">Activité 3 — Observer des levures au microscope</b>
+                      <span style="font-size:8.5px;color:#52525B">Problème : les levures sont-elles des êtres vivants ?</span>
+                      <i style="width:90%"></i><i></i><i style="width:75%"></i>
+                      <div style="display:flex;gap:6px;margin:4px 0"><div style="flex:1;height:70px;border:1px solid #E4E4E7;background:radial-gradient(circle,#E3EDD6 0 40%,#fff 41%)"></div><div style="flex:1;height:70px;border:1px solid #E4E4E7"></div></div>
+                      <i></i><i style="width:60%"></i><i></i><i style="width:85%"></i><i style="width:40%"></i>
+                      <span style="font-size:8.5px;margin-top:4px">1. Réaliser la préparation microscopique.</span><i style="width:70%"></i>
+                      <span style="font-size:8.5px">2. Dessiner une levure observée.</span><div style="height:60px;border:1px solid #E4E4E7"></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="el-main glisse-haut" style="padding-top:0;gap:10px" data-from="4">
+                  <div class="el-card el-card--stack repli" data-at="4" style="gap:8px">
+                    <div style="font-size:14px;font-weight:600">Les levures sont-elles des êtres vivants ?</div>
+                    <div class="el-h2">Matériel</div><ul style="margin:0;padding-left:18px;font-size:13px;line-height:19px"><li>microscope, lame et lamelle</li><li>levures dans de l'eau sucrée</li><li>colorant (bleu de méthylène)</li></ul>
+                    <div class="el-h2">Étapes</div><ol style="margin:0;padding-left:18px;font-size:13px;line-height:19px"><li>Déposer une goutte sur la lame.</li><li>Ajouter le colorant, couvrir.</li><li>Observer au plus faible grossissement.</li></ol>
+                    <div style="padding:8px 10px;border-radius:6px;background:var(--el-warn-soft);color:var(--el-warn-ink);font-size:12.5px"><b>Sécurité</b> · Le colorant tache : blouse obligatoire.</div>
+                  </div>
+                  <div class="el-card repli" data-at="5" id="td-mot" style="padding:12px"><div style="font-size:11.5px;font-weight:600;color:var(--el-dim);margin-bottom:3px">Le mot du professeur à ton groupe</div><div style="font-size:13.5px;line-height:19px">Très belles observations, le dessin est soigné. Pensez à indiquer le grossissement.</div></div>
+                  <div class="repli" data-at="5" style="font-size:11.5px;line-height:16px;color:var(--el-dim);padding:0 4px">La correction et ta note sont dans Notes.</div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ photos -->
+    <section class="fiche fiche--etroite" id="tp-photos">
+      <div class="fiche__texte">
+        <h2>Déposer des photos</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">TP › Photos</span></p>
+        <p class="fiche__but">Photographier le montage, le résultat ou la feuille du groupe, l'envoyer à l'enseignant pendant l'heure, et voir les photos de tout le groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#ph-bandeau" data-duration="3000">Dans la partie <b>Photos</b>, un bandeau vert dit que le dépôt est ouvert et jusqu'à quelle heure.</li>
+          <li data-cursor="#ph-prendre" data-action="tap" data-duration="3200"><span class="btn-nom">Prendre une photo</span> ouvre l'appareil photo ; <span class="btn-nom">Galerie</span> choisit des photos du téléphone, plusieurs à la fois.</li>
+          <li data-cursor="#ph-envoi" data-duration="3800">Chaque photo passe dans la liste d'envoi : <b>Réduction de la photo…</b>, <b>Envoi en cours…</b>, avec la taille gagnée (« Réduite : 4,2 Mo → 0,8 Mo ») ; une fois envoyée, elle rejoint la grille. Sans réseau : <b>En attente du réseau</b>.</li>
+          <li data-cursor="#ph-grille" data-duration="3600">La grille montre les photos du groupe, avec leur auteur (<b>Toi</b>, un camarade, <b>Prof</b>, ou <b>Classe</b> pour une photo donnée à toute la classe) et l'heure. Toucher une photo l'agrandit.</li>
+          <li data-cursor="#ph-retirer" data-action="tap" data-duration="3400">Sur ses propres photos, tant que le dépôt est ouvert, la croix retire la photo ; le navigateur demande d'abord : « Retirer cette photo ? Ton groupe ne la verra plus. »</li>
+          <li data-cursor="#ph-ferme" data-duration="3400">Quand l'enseignant ferme le dépôt, ou à la fin de l'heure : « Plus d’envoi possible. Les photos restent visibles. »</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Chaque photo est réduite sur le téléphone à moins de 1 Mo avant l'envoi (40 Mo au plus au départ), puis envoyée l'une après l'autre.</li>
+            <li>Sans réseau, la photo attend et repart toute seule dès que le réseau revient, à condition de garder la page ouverte.</li>
+            <li>Refus possibles : « Dépôt fermé : la photo n’est pas partie. », « Tu as déjà déposé beaucoup de photos pour ce TP. », « Ce fichier n’est pas une photo. »</li>
+            <li>Côté enseignant : l'ouverture et la fermeture du dépôt se font depuis la séance en groupes de TP.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>10:32</span><span>4G</span></div>
+              <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:5px">
+                <span class="el-back"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Mes TP</span>
+                <h1 class="el-h1" style="font-size:20px;line-height:26px">Observer des levures au microscope</h1>
+              </div>
+              <div class="parts"><span>Fiche d’activité</span><span>Protocole</span><span class="choisi">Photos <b><span class="pile"><span data-to="3">3</span><span data-from="4">4</span></span></b></span></div>
+              <div class="el-corps" style="margin-top:10px">
+                <div class="el-main" style="padding-top:0">
+                  <div class="el-defile" id="ph-defile" data-on="4-5" style="gap:10px">
+                    <div class="repli" data-to="5" style="display:flex;flex-direction:column;gap:10px">
+                      <div id="ph-bandeau" style="display:flex;align-items:center;gap:8px;min-height:38px;padding:6px 12px;border-radius:6px;background:var(--el-pos-soft);color:var(--el-pos-ink);font-size:12.5px;font-weight:600"><i style="width:8px;height:8px;border-radius:4px;background:var(--el-pos-ink);flex:none"></i>Dépôt ouvert · se ferme à 10h55, fin de l’heure</div>
+                      <div style="display:flex;gap:8px"><span class="el-btn el-btn--primary" id="ph-prendre" data-on="2" style="flex:1;min-height:48px;font-weight:700"><svg class="ic ic--p"><use href="#i-photo"/></svg>Prendre une photo</span><span class="el-btn" style="flex:1;min-height:48px"><svg class="ic ic--p"><use href="#i-galerie"/></svg>Galerie</span></div>
+                      <div style="font-size:11.5px;color:var(--el-dim)">Une photo lourde est réduite toute seule avant l’envoi. Tu peux retirer tes photos tant que le dépôt est ouvert.</div>
+                    </div>
+                    <div class="el-card repli glisse-haut" id="ph-ferme" data-at="6"><div style="display:flex;align-items:center;gap:12px;padding:12px"><span style="width:38px;height:38px;border-radius:19px;background:var(--el-track);display:grid;place-items:center;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-cercle"/></svg></span><div><div style="font-size:13.5px;font-weight:700">Dépôt fermé par ton professeur</div><div style="font-size:11.5px;color:var(--el-dim);margin-top:2px">Plus d’envoi possible. Les photos restent visibles.</div></div></div></div>
+                    <div class="el-card repli glisse-haut" id="ph-envoi" data-at="3">
+                      <div class="envoi"><span class="vign"><span class="dessin-microscope"></span></span><div style="flex:1"><div style="font-size:12.5px;font-weight:600">Envoi en cours…</div><div style="font-size:11.5px;color:var(--el-dim)">Réduite : 4,2 Mo → 0,8 Mo</div></div></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--el-dim)"><span style="font-weight:600">Photos du groupe G3</span><span>toi, Noé MA, Iris TA</span></div>
+                    <div id="ph-grille" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                      <div class="photo repli zoom" data-from="4"><span class="dessin-microscope"></span><span class="auteur">Toi</span><span class="heure">10:31</span><span class="retirer" id="ph-retirer" data-on="5" data-to="5">×</span></div>
+                      <div class="photo"><span class="dessin-feuille"></span><span class="auteur">Noé MA</span><span class="heure">10:24</span></div>
+                      <div class="photo"><span class="dessin-microscope" style="filter:hue-rotate(40deg)"></span><span class="auteur">Iris TA</span><span class="heure">10:18</span></div>
+                      <div class="photo"><span class="dessin-feuille" style="transform:rotate(-3deg)"></span><span class="auteur prof">Prof</span><span class="heure">10:06</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="el-veil zoom" data-at="5"><div class="el-dialog" style="background:#fff;color:#18181B;border-radius:12px;text-align:left"><p style="margin:0 0 14px;font-size:14.5px;font-weight:600">Retirer cette photo ? Ton groupe ne la verra plus.</p><div style="display:flex;gap:8px"><span style="flex:1"></span><span style="font-size:13px;font-weight:600;color:#4F46E5;padding:6px 10px">Annuler</span><span style="font-size:13px;font-weight:600;color:#4F46E5;padding:6px 10px">OK</span></div></div></div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

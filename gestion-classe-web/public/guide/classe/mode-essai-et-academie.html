@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mode essai et Académie — Guide Gestion Classe</title>
+<meta name="description" content="Essayer un cours sans séance, comprendre la différence avec l'écran de classe, et projeter l'Académie des Quatre Maisons.">
+<meta name="guide-partie" content="classe">
+<meta name="guide-ordre" content="30">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---------- maquette de l'écran projeté (/classe) ---------- */
+.tbi-pos { position:absolute; left:0; top:0; width:1000px; height:580px; }
+.avec-tel .tbi-pos { top:34px; transform:scale(.9); transform-origin:0 0; }
+.cl { position:absolute; inset:0; background:#0F1117; color:#E5E7EB; display:flex; flex-direction:column; font-family:var(--font); overflow:hidden; }
+.cl-tete { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; padding:16px 24px 0; }
+.cl-classe { font-size:42px; font-weight:700; letter-spacing:-.02em; line-height:1; }
+.cl-sujet { font-size:16px; color:#9CA3AF; margin-top:6px; }
+.cl-meta { display:flex; align-items:center; gap:18px; font-size:15px; color:#9CA3AF; padding-bottom:4px; position:relative; }
+.cl-meta b { color:#34D399; font-weight:700; }
+.cl-vbtn { background:#1C2130; color:#E5E7EB; border:1px solid #2A3044; border-radius:10px; padding:5px 13px; font-weight:600; position:relative; }
+.cl-rt { width:10px; height:10px; border-radius:50%; background:#10B981; display:inline-block; }
+.cl-grille { flex:1; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(4,1fr); gap:9px; padding:14px 24px; min-height:0; }
+.st { position:relative; border-radius:12px; border:2px solid #2A3044; background:#1C2130; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:4px 6px; transition:background .3s, opacity .3s, border-color .3s; min-width:0; }
+.st--vide { background:#161A24; border-color:#1F2433; }
+.st--void { background:transparent; border-color:transparent; }
+.st__n { font-size:19px; font-weight:600; line-height:1.1; white-space:nowrap; }
+.st__n span { font-size:.62em; font-weight:500; color:#9CA3AF; margin-left:4px; }
+.st__d { display:flex; gap:3px; flex-wrap:wrap; justify-content:center; min-height:7px; }
+.st__d i { width:7px; height:7px; border-radius:50%; background:#34D399; display:inline-block; }
+.st__d i.m { background:#FBBF24; }
+.st__badge { position:absolute; top:4px; right:4px; font-size:10px; font-weight:700; padding:2px 6px; border-radius:999px; letter-spacing:.04em; }
+.st__badge--abs { background:#EF4444; color:#fff; }
+.st__badge--out { background:#6D28D9; color:#EDE9FE; }
+.st.abs { background:#1A1417; border-color:#3A1D22; opacity:.55; }
+.st.abs .st__n { text-decoration:line-through; color:#9CA3AF; }
+.st.out { border-style:dashed; border-color:#6D28D9; opacity:.85; }
+.st.abs-pas.is-on { background:#1A1417; border-color:#3A1D22; opacity:.55; }
+.st.abs-pas.is-on .st__n { text-decoration:line-through; color:#9CA3AF; }
+.st.out-pas.is-on { border-style:dashed; border-color:#6D28D9; opacity:.85; }
+.st__halo { position:absolute; inset:-3px; border-radius:13px; border:2px solid var(--f); box-shadow:0 0 0 3px var(--f), 0 0 34px 6px color-mix(in srgb, var(--f) 55%, transparent); transform:scale(1.06); z-index:2; pointer-events:none; }
+.st__ec { position:absolute; left:50%; top:-12px; transform:translateX(-50%); font-size:17px; font-weight:700; white-space:nowrap; text-shadow:0 2px 8px rgba(0,0,0,.7); z-index:3; }
+.st__ec:not(.is-hidden) { animation:cl-monte 2.8s ease-out both; }
+@keyframes cl-monte { 0% { opacity:0; transform:translate(-50%,10px) scale(.8); } 14% { opacity:1; transform:translate(-50%,-4px) scale(1.15); } 80% { opacity:1; transform:translate(-50%,-10px) scale(1); } 100% { opacity:.15; transform:translate(-50%,-18px) scale(1); } }
+.cl-pied { text-align:center; color:#6B7280; font-size:12px; letter-spacing:.2em; text-transform:uppercase; padding:2px 0 10px; }
+.cl-fs { position:absolute; right:12px; bottom:9px; width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); opacity:.45; z-index:5;
+  background-image:linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF),linear-gradient(#9CA3AF,#9CA3AF);
+  background-size:6px 2px,2px 6px,6px 2px,2px 6px,6px 2px,2px 6px,6px 2px,2px 6px; background-repeat:no-repeat;
+  background-position:9px 9px,9px 9px,19px 9px,23px 9px,9px 23px,9px 19px,19px 23px,23px 19px; }
+.cl-fs.is-on { opacity:1; }
+/* attente */
+.cl-att { position:absolute; inset:0; z-index:6; background:#0F1117; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; padding:24px; }
+.cl-pulse { width:22px; height:22px; border-radius:50%; background:#6366F1; animation:cl-pulse 2s ease-out infinite; }
+@keyframes cl-pulse { 0% { box-shadow:0 0 0 0 rgba(99,102,241,.6); } 100% { box-shadow:0 0 0 28px rgba(99,102,241,0); } }
+.cl-att h3 { font-size:42px; font-weight:600; margin:0; color:#E5E7EB; letter-spacing:-.01em; }
+.cl-att p { font-size:19px; color:#9CA3AF; margin:0; }
+.cl-pret { font-size:19px; color:#C7D2FE; background:#1C2130; border:1px solid #2A3044; border-radius:12px; padding:9px 18px; }
+.cl-pret b { color:#fff; font-weight:600; }
+.cl-direct { font-size:13px; color:#10B981; margin-top:8px; }
+/* superpositions pilotées par le téléphone */
+.cl-timer { position:absolute; top:14px; left:50%; translate:-50% 0; z-index:20; display:flex; align-items:baseline; gap:12px; background:#1C2130; border:2px solid #2A3044; border-radius:16px; padding:5px 26px; font-size:58px; font-weight:700; font-variant-numeric:tabular-nums; color:#F9FAFB; box-shadow:0 10px 40px rgba(0,0,0,.5); line-height:1.1; }
+.cl-timer--urgent { border-color:#EF4444; color:#FCA5A5; animation:cl-urgent 1s ease-in-out infinite; }
+@keyframes cl-urgent { 0%,100% { box-shadow:0 0 0 0 rgba(239,68,68,0); } 50% { box-shadow:0 0 0 10px rgba(239,68,68,.25); } }
+.cl-voile { position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; background:rgba(15,17,23,.82); backdrop-filter:blur(6px); }
+.cl-fini { font-size:96px; font-weight:700; color:#FCA5A5; animation:cl-clign 1s ease-in-out infinite; }
+@keyframes cl-clign { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+.cl-tir-l { font-size:22px; color:#A5B4FC; text-transform:uppercase; letter-spacing:.25em; }
+.cl-tir-n { font-size:124px; font-weight:700; letter-spacing:-.02em; line-height:1; color:#fff; text-shadow:0 0 60px rgba(99,102,241,.55); }
+.cl-tir-n span { font-size:.45em; font-weight:600; color:#9CA3AF; margin-left:.25em; }
+.cl-voile:not(.is-hidden) .cl-tir-n { animation:cl-pop .45s cubic-bezier(.2,1.4,.4,1); }
+@keyframes cl-pop { from { transform:scale(.6); opacity:0; } to { transform:scale(1); opacity:1; } }
+.cl-rideau { position:absolute; inset:0; z-index:40; background:#000; display:flex; align-items:center; justify-content:center; color:#374151; font-size:24px; letter-spacing:.1em; }
+.cl-pilule { position:absolute; top:12px; right:14px; z-index:40; background:#111827; color:#F9FAFB; font-size:17px; font-weight:600; padding:9px 16px; border-radius:999px; box-shadow:0 8px 30px rgba(0,0,0,.3); }
+.toc__nav a::before { content:none !important; }
+.cl .bulle, .wbm .bulle, .cp .bulle { font-size:13px; max-width:250px; }
+
+/* ---------- tableau blanc de la séance (habillage « ruban ») ---------- */
+.wbm { position:absolute; inset:0; z-index:8; background:#0D1015; display:flex; flex-direction:column; font-family:var(--font); color:#E7ECF3; }
+.wbm-ongs { height:30px; flex:none; display:flex; align-items:stretch; gap:2px; padding:4px 6px 0; background:#0D1015; border-bottom:1px solid #2E3846; font-size:12px; }
+.wbm-ong { display:flex; align-items:center; gap:6px; padding:0 8px 0 10px; border-radius:8px 8px 0 0; background:#171C24; color:#93A0B4; position:relative; }
+.wbm-ong.is-actif { background:#fff; color:#111827; }
+.wbm-ong .pt { width:8px; height:8px; border-radius:50%; background:#10B981; }
+.wbm-ong .x { opacity:.55; font-size:10px; }
+.wbm-ico { width:12px; height:10px; border:1.6px solid currentColor; border-radius:2px; opacity:.8; }
+.wbm-add { align-self:center; height:22px; padding:0 9px; border:1px solid #2E3846; border-radius:7px; color:#93A0B4; display:flex; align-items:center; font-size:11px; margin-left:4px; }
+.wbm-titre { height:32px; flex:none; display:flex; align-items:center; gap:10px; padding:0 10px; background:#171C24; font-size:12.5px; }
+.wbm-logo { width:20px; height:20px; border-radius:5px; background:#4F46E5; color:#fff; font-size:9.5px; font-weight:700; display:grid; place-items:center; }
+.wbm-sauve { color:#93A0B4; font-size:11.5px; }
+.wbm-fermer { margin-left:auto; height:24px; padding:0 11px; border-radius:7px; background:#4F46E5; color:#fff; font-weight:600; display:flex; align-items:center; position:relative; }
+.wbm-rongs { height:26px; flex:none; display:flex; align-items:flex-end; gap:2px; padding:0 8px; background:#171C24; border-bottom:1px solid #2E3846; font-size:12px; }
+.wbm-rong { padding:4px 10px 5px; color:#93A0B4; border-bottom:2px solid transparent; position:relative; }
+.wbm-rong.is-actif, .wbm-rong.is-on { color:#fff; border-bottom-color:#F97316; }
+.wbm-ruban { height:74px; flex:none; display:flex; gap:4px; padding:5px 8px 3px; background:#1B212B; border-bottom:1px solid #2E3846; overflow:hidden; }
+.wbm-ruban.is-hidden { display:none; }
+.rg { display:flex; flex-direction:column; padding:0 8px; border-right:1px solid #2E3846; }
+.rg__b { flex:1; display:flex; gap:3px; align-items:flex-start; }
+.rg__l { font-size:9.5px; color:#7D8AA0; text-align:center; padding-top:1px; white-space:nowrap; }
+.rb { width:52px; display:flex; flex-direction:column; align-items:center; gap:3px; font-size:9.5px; text-align:center; line-height:1.1; color:#E7ECF3; padding:3px 2px; border-radius:6px; position:relative; }
+.rb i { width:20px; height:20px; border-radius:5px; border:1.8px solid #AEB9CA; }
+.rb.is-on { background:rgba(79,70,229,.45); }
+.rs-col { display:flex; flex-direction:column; gap:1px; }
+.rs { display:flex; align-items:center; gap:4px; font-size:9.5px; color:#E7ECF3; padding:1px 5px; border-radius:4px; white-space:nowrap; position:relative; }
+.rs i { width:10px; height:10px; border-radius:3px; border:1.5px solid #AEB9CA; flex:none; }
+.rs.is-on { background:rgba(79,70,229,.45); }
+.sw { width:14px; height:14px; border-radius:50%; display:inline-block; border:1.5px solid rgba(255,255,255,.5); }
+.wbm-bureau { flex:1; min-height:0; position:relative; display:flex; align-items:center; justify-content:center; background:#0D1015; }
+.wbm-page { position:relative; width:600px; height:338px; background:#fff; border-radius:3px; box-shadow:0 6px 30px rgba(0,0,0,.45); color:#111827; overflow:hidden;
+  background-image:linear-gradient(#DFE6EF 1px, transparent 1px), linear-gradient(90deg, #DFE6EF 1px, transparent 1px); background-size:24px 24px; }
+.wbm-etat { height:26px; flex:none; display:flex; align-items:center; gap:12px; padding:0 10px; background:#171C24; border-top:1px solid #2E3846; font-size:11.5px; color:#C9D2DF; }
+.wbm-etat .z { display:flex; align-items:center; gap:8px; }
+.wbm-etat .np { border:1px solid #2E3846; border-radius:6px; padding:1px 8px; position:relative; }
+.wbm .esp { flex:1; }
+.encre path { fill:none; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:700; stroke-dashoffset:0; }
+.encre:not(.is-hidden) path { animation:cl-trace 1.3s ease-out both; }
+@keyframes cl-trace { from { stroke-dashoffset:700; } to { stroke-dashoffset:0; } }
+.pg-titre { position:absolute; left:26px; top:18px; font-size:22px; font-weight:700; color:#1F3A93; }
+.pg-txt { position:absolute; left:26px; font-size:14px; color:#1F2937; line-height:1.35; }
+
+/* ---------- téléphone de l'enseignant (réduit, à côté de l'écran) ---------- */
+.mt { position:absolute; width:300px; height:614px; }
+.mt .tel { border-radius:34px; padding:9px; }
+.mt .tel__ecran { border-radius:27px; }
+.mt-tete { display:flex; align-items:center; gap:6px; padding:6px 12px 8px; background:#fff; border-bottom:1px solid #E5E7EB; flex:none; }
+.mt-annul { font-size:12px; color:#EF4444; font-weight:500; min-width:46px; }
+.mt-centre { flex:1; text-align:center; line-height:1.2; }
+.mt-centre b { display:block; font-size:13.5px; }
+.mt-centre span { font-size:11px; color:#6B7280; }
+.mt-centre span i { display:inline-block; width:6px; height:6px; border-radius:50%; background:#10B981; margin-right:4px; vertical-align:1px; }
+.mt-fin { font-size:12px; font-weight:600; color:#fff; background:#059669; border-radius:8px; padding:6px 10px; position:relative; }
+.mt-ligne { display:flex; align-items:center; gap:6px; padding:8px 12px 6px; flex:none; }
+.mt-seg { flex:1; display:flex; background:#EDEEF2; border-radius:9px; padding:3px; font-size:11.5px; color:#6B7280; }
+.mt-seg span { flex:1; text-align:center; padding:5px 0; border-radius:7px; }
+.mt-seg .is-actif { background:#fff; color:#1F2433; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+.mt-ico { width:34px; height:34px; border-radius:9px; background:#fff; border:1px solid #E5E7EB; display:grid; place-items:center; position:relative; flex:none; }
+.mt-ico .ecr { width:15px; height:10px; border:1.8px solid #6B7280; border-radius:2px; position:relative; }
+.mt-ico .ecr::after { content:''; position:absolute; left:3px; right:3px; bottom:-5px; height:2px; background:#6B7280; border-radius:1px; }
+.mt-ico .reg { width:14px; height:14px; border:1.8px solid #6B7280; border-radius:50%; border-style:dotted; }
+.mt-outils { display:flex; gap:4px; padding:0 12px; flex:none; }
+.mt-outil { flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:9px; padding:5px 0 4px; font-size:8.5px; font-weight:600; text-align:center; position:relative; display:flex; flex-direction:column; align-items:center; gap:3px; }
+.mt-outil::before { content:''; width:12px; height:12px; border:1.5px solid #9CA3AF; border-radius:3px; }
+.mt-grille { display:grid; grid-template-columns:repeat(6,1fr); gap:4px; padding:10px 12px 4px; }
+.mt-grille .t-place { height:46px; font-size:9.5px; border-radius:9px; }
+.mt-grille .t-place small { display:block; font-size:8px; color:#9CA3AF; font-weight:500; }
+.mt-aide { font-size:10.5px; color:#9CA3AF; text-align:center; }
+.mt .feuille { padding:8px 14px 14px; }
+.f-titre { display:flex; align-items:center; gap:7px; font-size:15px; font-weight:700; }
+.f-titre .ecr { width:15px; height:10px; border:1.8px solid #4F46E5; border-radius:2px; position:relative; }
+.f-sous { font-size:10.5px; color:#6B7280; margin:2px 0 6px; }
+.f-lab { font-size:9px; font-weight:600; color:#9CA3AF; letter-spacing:.06em; margin:6px 0 4px; }
+.f-rang { display:flex; gap:4px; }
+.f-pre { flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:8px; padding:7px 0; font-size:10px; font-weight:600; text-align:center; position:relative; }
+.f-pre.is-actif { background:#EEF0FF; border-color:#4F46E5; color:#4F46E5; }
+.f-nav { flex:1; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:9px 0; font-size:10.5px; font-weight:600; text-align:center; position:relative; }
+.f-nav--main { flex:1.6; background:#4F46E5; border-color:#4F46E5; color:#fff; }
+.f-large { margin-top:5px; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:8px 0; font-size:11.5px; font-weight:600; text-align:center; position:relative; }
+.f-large.is-off { opacity:.55; color:#9CA3AF; }
+.f-large.is-off.is-on { opacity:1; color:inherit; }
+.f-pre.is-on { background:#EEF0FF; border-color:#4F46E5; color:#4F46E5; }
+.ms-puce.g1.is-on { background:#6366F1; border-color:#6366F1; color:#fff; }
+.ms-puce.g1.is-on .pt { background:#fff !important; }
+.ms-puce.g1.is-on .n { color:#E0E7FF; }
+.f-large.is-actif { background:#EEF0FF; border-color:#4F46E5; color:#4F46E5; }
+.f-prim { margin-top:7px; background:#4F46E5; color:#fff; border-radius:10px; padding:9px 0; font-size:12px; font-weight:600; text-align:center; position:relative; }
+.f-carte { background:#F7F7F9; border:1px solid #E5E7EB; border-radius:12px; padding:10px; text-align:center; margin:6px 0; }
+.f-carte .l { font-size:9px; font-weight:600; color:#9CA3AF; letter-spacing:.06em; }
+.f-carte .n { font-size:22px; font-weight:700; margin:3px 0; }
+.f-carte .c { font-size:10px; color:#6B7280; }
+.f-ecranbtn { margin-top:4px; border:1px solid #4F46E5; color:#4F46E5; background:#EEF0FF; border-radius:10px; padding:8px 0; font-size:11.5px; font-weight:600; text-align:center; position:relative; }
+.mt-banniere { position:absolute; left:10px; right:10px; bottom:14px; z-index:620; background:#059669; color:#fff; border-radius:12px; padding:9px 10px; font-size:11px; font-weight:600; display:flex; align-items:center; gap:8px; }
+.mt-banniere .ok { width:10px; height:6px; border-left:2px solid #fff; border-bottom:2px solid #fff; transform:rotate(-45deg); margin-top:-3px; }
+.mt-banniere .ann { margin-left:auto; text-decoration:underline; position:relative; }
+.mt .radial__centre { width:40px; height:40px; margin:-20px 0 0 -20px; font-size:8px; background:#fff; color:#1F2433; border:2px solid #E5E7EB; }
+.mt .radial__br { width:50px; height:50px; margin:-25px 0 0 -25px; font-size:8.5px; }
+.mt .radial { z-index:700; }
+.mt-couche { position:absolute; left:0; right:0; top:30px; bottom:0; display:flex; flex-direction:column; }
+/* départ de séance (téléphone) */
+.ms-lab { font-size:9.5px; font-weight:600; color:#9CA3AF; letter-spacing:.06em; margin:10px 0 6px; }
+.ms-tuiles { display:flex; flex-wrap:wrap; gap:6px; }
+.ms-tuile { padding:8px 13px; border-radius:10px; background:#fff; border:1px solid #E5E7EB; font-size:12px; font-weight:600; position:relative; }
+.ms-tuile.is-on, .ms-tuile--choisie { background:#4F46E5; border-color:#4F46E5; color:#fff; }
+.ms-puce { padding:6px 10px; border-radius:999px; background:#fff; border:1px solid #E5E7EB; font-size:11px; font-weight:600; display:inline-flex; align-items:center; gap:5px; position:relative; }
+.ms-puce .pt { width:7px; height:7px; border-radius:50%; }
+.ms-puce .n { color:#9CA3AF; font-weight:500; }
+.ms-puce.is-on { color:#fff; }
+.ms-salle { display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid #E5E7EB; border-radius:10px; padding:8px 10px; font-size:12px; font-weight:600; margin-bottom:4px; }
+.ms-salle small { display:block; font-size:10px; color:#9CA3AF; font-weight:500; }
+.ms-salle .ok { width:16px; height:16px; border-radius:50%; background:#4F46E5; }
+.ms-pied { position:absolute; left:0; right:0; bottom:0; padding:10px 14px 16px; background:#fff; border-top:1px solid #E5E7EB; text-align:center; }
+.ms-pied small { display:block; font-size:10.5px; color:#6B7280; margin-bottom:6px; }
+.ms-go { background:#4F46E5; color:#fff; border-radius:12px; padding:11px 0; font-size:13px; font-weight:600; position:relative; }
+/* doigt de l'enseignant (posé dans l'élément visé) */
+.doigt { position:absolute; left:50%; top:50%; width:40px; height:40px; margin:-20px 0 0 -20px; border-radius:50%; background:rgba(24,24,27,.28); border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.3); z-index:800; pointer-events:none; }
+.doigt::after { content:''; position:absolute; inset:-8px; border-radius:50%; border:2.5px solid #4F46E5; opacity:0; }
+.doigt:not(.is-hidden)::after { animation:cl-tape 1.3s ease-out .5s infinite; }
+@keyframes cl-tape { 0% { opacity:.9; transform:scale(.4); } 70% { opacity:0; transform:scale(1.25); } 100% { opacity:0; } }
+.doigt.is-hidden { transform:scale(.6); }
+
+/* accueil (ordinateur) */
+.edt { display:grid; grid-template-columns:44px repeat(5,1fr); gap:6px; font-size:11.5px; }
+.edt .h { color:var(--text-dim); font-size:11px; text-align:center; }
+.edt .hr { color:var(--text-dim); font-size:10.5px; text-align:right; padding-top:4px; }
+.edt .cr { height:46px; border-radius:7px; padding:5px 8px; font-weight:600; position:relative; }
+.edt .cr small { display:block; font-weight:500; opacity:.8; font-size:10.5px; }
+.edt .vide { height:46px; }
+.c3 { background:var(--n3-soft); color:var(--n3-ink); } .c4 { background:var(--n4-soft); color:var(--n4-ink); }
+.c5 { background:var(--n5-soft); color:var(--n5-ink); } .c6 { background:var(--n6-soft); color:var(--n6-ink); }
+.edt .cr.is-on { box-shadow:0 0 0 2px var(--indigo); }
+.pop { position:absolute; z-index:60; width:330px; background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:var(--shadow-lg); padding:14px; font-size:12.5px; }
+.pop__t { font-size:16px; font-weight:650; }
+.pop__s { color:var(--text-dim); font-size:12px; margin-bottom:10px; }
+.pop__lab { font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-dim); font-weight:600; margin:10px 0 6px; }
+.pop__board { border:1px solid var(--border); border-radius:8px; padding:8px 10px; }
+.pop__board b { display:block; font-size:13px; }
+.pop__board span { color:var(--text-dim); font-size:11.5px; }
+.pop__liens { display:flex; gap:12px; margin-top:8px; font-size:12px; }
+.pop__liens span { color:var(--indigo); font-weight:600; position:relative; }
+.pop__liens .m { color:var(--text-dim); }
+.pop__actions { display:flex; gap:6px; margin-top:14px; border-top:1px solid var(--border); padding-top:12px; }
+.pop__b { padding:6px 10px; border:1px solid var(--border-strong); border-radius:7px; font-size:12px; font-weight:560; position:relative; }
+.pop__b--p { background:var(--indigo); color:#fff; border-color:var(--indigo); }
+.pop__b.is-on, .pop__liens span.is-on { box-shadow:0 0 0 3px rgba(79,70,229,.3); }
+/* présentateur en essai, dans la fenêtre */
+.pres { position:absolute; left:0; right:0; top:34px; bottom:0; z-index:70; background:#fff; overflow:hidden; }
+.pres h4 { font-size:30px; color:#1F3A93; margin:26px 60px 10px; }
+.pres p { font-size:21px; line-height:1.45; margin:0 60px 12px; color:#111827; }
+.pbar { position:absolute; left:50%; bottom:14px; translate:-50% 0; display:flex; align-items:center; gap:4px; padding:5px 8px; background:rgba(17,24,39,.9); color:#fff; border-radius:12px; font-size:12.5px; white-space:nowrap; }
+.pbar .b1 { min-width:26px; height:26px; border-radius:7px; display:grid; place-items:center; }
+.pbar .b1 i { width:12px; height:12px; border:2px solid #fff; border-radius:3px; }
+.pbar .c { width:15px; height:15px; border-radius:50%; border:2px solid rgba(255,255,255,.6); }
+.pbar .sep { width:1px; height:18px; background:rgba(255,255,255,.25); margin:0 3px; }
+.pbar .test { margin-left:5px; padding:2px 8px; border-radius:999px; background:#F59E0B; color:#111827; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.04em; position:relative; }
+.pbar .seance { margin-left:5px; padding:2px 8px; border-radius:999px; background:#10B981; color:#fff; font-weight:700; font-size:10px; text-transform:uppercase; letter-spacing:.04em; position:relative; }
+.pbar .quit { margin-left:5px; height:26px; padding:0 10px; border-radius:7px; background:#fff; color:#111827; font-weight:600; display:flex; align-items:center; position:relative; }
+/* comparaison essai / séance */
+.cmp { position:absolute; inset:0; background:#fff; border-radius:12px; padding:22px 26px; box-shadow:var(--shadow-lg); font-size:14px; color:var(--text); }
+.cmp__tete { display:grid; grid-template-columns:200px 1fr 1fr; gap:14px; align-items:end; margin-bottom:12px; }
+.cmp__ecran { height:120px; border-radius:8px; background:#fff; border:8px solid #26272D; position:relative; overflow:hidden; }
+.cmp__ecran .l { height:8px; border-radius:3px; background:#D1D5DB; margin:8px 12px; }
+.cmp__ecran .t { height:12px; width:50%; border-radius:3px; background:#1F3A93; margin:12px 12px 6px; }
+.cmp__ecran .pbar { bottom:6px; padding:3px 6px; font-size:10px; }
+.cmp__titre { font-size:15px; font-weight:650; margin-bottom:6px; }
+.cmp__ligne { display:grid; grid-template-columns:200px 1fr 1fr; gap:14px; padding:9px 0; border-top:1px solid var(--border); font-size:13.5px; }
+.cmp__ligne b { font-weight:600; }
+.cmp__non { color:#B45309; } .cmp__oui { color:#15803D; }
+/* Académie projetée */
+.ac-sabliers.is-hidden, .ac-classe.is-hidden { display:none; }
+.ac { position:absolute; inset:0; background:radial-gradient(ellipse at 50% 30%, #2a2018, #0a0908 75%); color:#e8dcc8; font-family:Georgia, 'Times New Roman', serif; display:flex; flex-direction:column; overflow:hidden; }
+.ac-barre { display:flex; align-items:center; padding:9px 14px; border-bottom:1px solid #3a2e22; gap:8px; font-size:13px; }
+.ac-barre .g { flex:1; display:flex; gap:8px; align-items:center; }
+.ac-barre .d { flex:1; display:flex; gap:8px; justify-content:flex-end; }
+.ac-btn { padding:5px 12px; background:#1a1410; color:#d4a843; font-weight:700; border:1px solid #d4a843; border-radius:8px; position:relative; display:inline-flex; align-items:center; gap:6px; }
+.ac-btn--or { background:linear-gradient(135deg,#d4a843,#b8860b); color:#1a1410; border:0; }
+.ac-btn .pt { width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.8; }
+.ac-ret { color:#8a7a66; }
+.ac-bascule { display:flex; gap:4px; background:#1a1410; border-radius:8px; padding:3px; }
+.ac-bascule span { padding:4px 13px; border-radius:6px; font-weight:700; color:#8a7a66; position:relative; }
+.ac-bascule span.is-on { background:#d4a843; color:#1a1410; }
+.ac-sabliers { flex:1; display:flex; justify-content:center; align-items:center; gap:30px; padding:10px; }
+.ac-maison { display:flex; flex-direction:column; align-items:center; width:180px; position:relative; }
+.ecu { width:46px; height:54px; clip-path:polygon(0 0,100% 0,100% 55%,50% 100%,0 55%); margin-bottom:6px; }
+.ac-nom { font-size:18px; font-weight:700; margin-bottom:8px; }
+.sab { position:relative; width:70px; height:150px; }
+.sab .haut, .sab .bas { position:absolute; left:0; right:0; height:72px; background:rgba(232,220,200,.12); overflow:hidden; }
+.sab .haut { top:0; clip-path:polygon(0 0,100% 0,52% 100%,48% 100%); }
+.sab .bas { bottom:0; clip-path:polygon(48% 0,52% 0,100% 100%,0 100%); }
+.sab .sable { position:absolute; left:0; right:0; bottom:0; }
+.sab .cadre-h, .sab .cadre-b { position:absolute; left:-6px; right:-6px; height:6px; border-radius:3px; background:#6b4f2a; }
+.sab .cadre-h { top:-6px; } .sab .cadre-b { bottom:-6px; }
+.sab .filet { position:absolute; left:34px; width:2px; top:70px; height:60px; opacity:.9; }
+.ac-pts { font-size:34px; font-weight:700; color:#e8dcc8; margin-top:12px; line-height:1; }
+.ac-pts small { display:block; font-size:12px; color:#6a5c4e; font-weight:400; text-align:center; }
+.ac-rang { font-size:13px; font-weight:700; color:#6a5c4e; margin-top:4px; }
+.ac-classe { flex:1; display:flex; min-height:0; }
+.ac-gauche { width:200px; border-right:1px solid #3a2e22; padding:14px 12px; display:flex; flex-direction:column; justify-content:center; gap:12px; }
+.ac-gauche .r { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
+.ac-gauche .r .v { margin-left:auto; color:#e8dcc8; font-size:17px; }
+.ac-droite { flex:1; padding:14px 16px; display:grid; grid-template-columns:1fr 1fr; align-content:center; gap:14px 18px; }
+.ac-mt { font-size:14px; font-weight:700; padding-bottom:4px; margin-bottom:6px; }
+.ac-el { display:inline-block; padding:5px 11px; border-radius:8px; font-size:12.5px; font-weight:600; margin:0 5px 5px 0; position:relative; }
+.ac-el.is-on { box-shadow:0 0 0 2px #d4a843; }
+.ac-modal { position:absolute; inset:0; z-index:30; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
+.ac-carte { width:360px; background:#1a1410; border:1px solid #3a2e22; border-radius:16px; padding:20px; text-align:center; }
+.ac-carte .p { font-size:20px; font-weight:700; }
+.ac-carte .m { font-size:14px; font-weight:600; color:#457b9d; margin-bottom:12px; }
+.ac-mts { display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-bottom:12px; }
+.ac-mts span { min-width:52px; padding:7px 12px; border-radius:8px; color:#fff; font-size:15px; font-weight:700; position:relative; }
+.ac-mts .pos { background:linear-gradient(135deg,#2d6a4f,#40916c); }
+.ac-mts .neg { background:linear-gradient(135deg,#9b2226,#ae2012); }
+.ac-ch { background:#0a0908; border:1px solid #3a2e22; border-radius:8px; padding:7px 10px; text-align:left; color:#6a5c4e; font-size:13px; }
+.ac-cer { position:absolute; inset:0; z-index:25; background:radial-gradient(ellipse at 50% 40%, #2a2018, #050403 80%); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; text-align:center; }
+.ac-cer h3 { margin:0; font-size:34px; color:#d4a843; font-style:italic; font-weight:600; }
+.ac-cer .txt { font-size:22px; font-style:italic; color:#e8dcc8; }
+.ac-file { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; max-width:700px; }
+.ac-file span { padding:4px 10px; border-radius:7px; background:rgba(232,220,200,.08); border:1px solid #3a2e22; font-size:12.5px; }
+.ac-file span.is-actif { border-color:#d4a843; color:#d4a843; }
+.ac-timer { position:absolute; inset:0; z-index:30; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
+.ac-timer .box { width:400px; background:#1a1410; border:1px solid #3a2e22; border-radius:16px; padding:20px; text-align:center; }
+.ac-anneau { width:150px; height:150px; border-radius:50%; margin:6px auto 14px; background:conic-gradient(#d4a843 0 72%, #3a2e22 72% 100%); display:grid; place-items:center; }
+.ac-anneau b { width:124px; height:124px; border-radius:50%; background:#1a1410; display:grid; place-items:center; font-size:34px; color:#e8dcc8; font-family:var(--font); font-variant-numeric:tabular-nums; }
+.ac-durees { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+.ac-durees span { padding:5px 10px; border-radius:7px; border:1px solid #d4a843; color:#d4a843; font-weight:700; font-size:13px; }
+.ac-durees span.is-on { background:#d4a843; color:#1a1410; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Écran de classe</a> › Mode essai et Académie</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol><li><a href="#essai">Essayer ou lancer</a></li><li><a href="#essai-seance">Essai ou séance</a></li><li><a href="#academie">Académie : sabliers et points</a></li><li><a href="#ceremonie">Cérémonie, bonus, minuteur</a></li></ol>
+  <div class="toc__nav"><a href="../classe/cours-et-tableau-blanc.html">◀ Cours et tableau blanc</a><a href="../eleve/connexion-et-accueil.html">Connexion et accueil ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Écran de classe · Essai et Académie</div>
+      <h1>Mode essai et Académie</h1>
+      <p>Deux autres façons d'utiliser le grand écran : répéter un cours sans séance, et projeter le jeu des Quatre Maisons.</p>
+      <div class="chap__resume"><span>Accueil › ▶ Essayer</span><span>Académie › Mode Classe</span><span>Écran de classe</span></div>
+    </header>
+
+    <section class="fiche fiche--large" id="essai">
+      <div class="fiche__texte">
+        <h2>Essayer un cours, ou lancer la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › heure de cours › ▶ Essayer</span></p>
+        <p class="fiche__but">« Essayer » montre un cours exactement comme en classe, pour le préparer ou le répéter, sans séance. « Lancer la séance » ouvre le vrai écran de classe, celui qui écoute le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#es-heure" data-action="click">Sur l'accueil, cliquer une heure de cours qui a un cours rédigé : sa fenêtre s'ouvre.</li>
+          <li data-cursor="#es-essayer" data-action="click">Sous <b>Tableau du cours</b>, <span class="btn-nom">▶ Essayer</span>.</li>
+          <li data-cursor="#es-test" data-duration="3400">Le cours s'ouvre comme en classe, avec l'étiquette orange « Test » : l'encre n'est pas gardée, elle disparaît en quittant.</li>
+          <li data-cursor="#es-quitter" data-action="click"><span class="btn-nom">Quitter</span> (ou Échap) revient à l'accueil. Un bouton passe en plein écran pour répéter sur le TBI.</li>
+          <li data-cursor="#es-lancer" data-duration="3400">Pour faire cours, c'est <span class="btn-nom">Lancer la séance</span> : il ouvre l'écran de classe, et le cours s'y affiche quand la séance démarre sur le téléphone.</li>
+        </ol>
+        <aside class="regles"><h3>À savoir</h3><ul><li>Le même essai s'ouvre depuis <b>Mes cours</b> (« Essayer en classe », « Rien n'est gardé en quittant ») et depuis l'éditeur de cours (« ▶ En classe »).</li><li>Essai : ni télécommande du téléphone, ni plan de classe, et rien n'est gardé.</li><li>« Lancer la séance » n'apparaît que le jour même ou pendant l'heure ; sans tableau préparé, c'est « Mode classe ».</li><li>Seul l'écran de classe (/classe) écoute le téléphone.</li></ul></aside>
+        <p class="liens">Voir aussi : <a href="seance-au-tableau.html#ouvrir">Ouvrir l'écran de classe</a> · <a href="cours-et-tableau-blanc.html#cours-projete">Le cours projeté</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre" style="position:relative"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it is-actif"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main"><div class="app__entete"><span class="app__titre">Accueil</span><span class="esp"></span><span class="muet">Semaine du 23 novembre</span></div><div class="app__corps"><div class="edt"><span></span><span class="h">Lundi</span><span class="h">Mardi</span><span class="h">Mercredi</span><span class="h">Jeudi</span><span class="h">Vendredi</span><span class="hr">8 h</span><span class="cr c3">3A<small>Salle 12</small></span><span class="vide"></span><span class="cr c5">5E<small>Salle 12</small></span><span class="cr c4">4A<small>Labo 2</small></span><span class="vide"></span><span class="hr">9 h</span><span class="cr c4">4A<small>Labo 2</small></span><span class="cr c6">6C<small>Salle 12</small></span><span class="vide"></span><span class="cr c3">3B<small>Salle 12</small></span><span class="cr c5">5E<small>Salle 12</small></span><span class="hr">10 h</span><span class="vide"></span><span class="cr c4" id="es-heure" data-on="1-2,5">4B<small>Salle 12</small></span><span class="cr c3">3A<small>Labo 2</small></span><span class="vide"></span><span class="cr c6">6C<small>Salle 12</small></span><span class="hr">11 h</span><span class="cr c5">5E<small>Salle 12</small></span><span class="cr c3">3B<small>Salle 12</small></span><span class="vide"></span><span class="cr c4">4B<small>Salle 12</small></span><span class="vide"></span><span class="hr">14 h</span><span class="cr c6">6C<small>Labo 2</small></span><span class="vide"></span><span class="vide"></span><span class="cr c5">5E<small>Salle 12</small></span><span class="cr c3">3A<small>Salle 12</small></span></div></div></div></div><div class="pop glisse-haut" data-at="2,5" style="left:420px;top:150px"><div class="pop__t">4B</div><div class="pop__s">Aujourd’hui ·10:00 – 10:55 · Salle 12</div><div class="pop__lab">Tableau du cours</div><div class="pop__board"><b>Activité 2 — Les éruptions</b><span>modifié le 23 nov.</span></div><div class="pop__liens"><span id="es-essayer" data-on="2">▶ Essayer</span><span>Copier pour les autres 4e…</span><span class="m">Supprimer</span></div><div class="pop__actions"><span class="pop__b pop__b--p" id="es-lancer" data-on="5">Lancer la séance</span><span class="pop__b">Plan de classe</span><span class="pop__b">Élèves</span></div></div><div class="pres" data-at="3-4"><h4>Les éruptions volcaniques</h4><p>Un volcan est un relief formé par l'accumulation de laves et de projections. Sous le volcan, le magma remonte depuis une chambre magmatique.</p><p>Lors d'une éruption, le magma arrive en surface : c'est la lave.</p><div class="pbar"><span class="b1">◀</span><span style="min-width:90px;text-align:center">Écran 1 / 6</span><span class="b1">▶</span><span class="sep"></span><span class="b1"><i></i></span><span class="b1"><i></i></span><span class="c" style="background:#DC2626"></span><span class="c" style="background:#2563EB"></span><span class="c" style="background:#16A34A"></span><span class="c" style="background:#111827"></span><span class="sep"></span><span class="b1"><i></i></span><span class="b1"><i style="border-style:dashed"></i></span><span class="test" id="es-test">Test</span><span class="quit" id="es-quitter" data-on="4">Quitter</span></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="essai-seance">
+      <div class="fiche__texte">
+        <h2>Essai ou séance : ce qui change</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">étiquette Test · étiquette Séance</span></p>
+        <p class="fiche__but">Le même présentateur sert aux deux. L'étiquette au bout de la barre dit dans quel mode on est.</p>
+        <ol class="etapes">
+          <li data-cursor="#cmp-l0" data-duration="3400">L'essai s'ouvre depuis l'accueil, Mes cours ou l'éditeur ; la séance, depuis « Lancer la séance », « Mode classe » ou l'adresse /classe.</li>
+          <li data-cursor="#cmp-l1">En essai, le téléphone ne pilote rien. En séance, il fait avancer le cours et commande l'écran.</li>
+          <li data-cursor="#cmp-l2">En essai, pas de plan de classe ; en séance, le plan en direct est à une touche (B).</li>
+          <li data-cursor="#cmp-l3" data-duration="3200">En essai, l'encre, les encarts dessinés et les versos disparaissent en quittant ; en séance, ils sont gardés avec la séance.</li>
+          <li data-cursor="#cmp-l4">Dans les deux cas, le cours préparé ne change jamais.</li>
+        </ol>
+        <aside class="regles"><h3>À savoir</h3><ul><li>« Test » est orange, « Séance » est vert : un coup d'œil à la barre suffit.</li><li>Un essai ouvert alors qu'une séance est en cours le signale par un avis : c'est l'écran de classe qui suit le téléphone, pas l'essai.</li></ul></aside>
+        <p class="liens">Voir aussi : <a href="#essai">Essayer un cours</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="580"><div class="cmp"><div class="cmp__tete"><span></span><div><div class="cmp__titre">Essai</div><div class="cmp__ecran"><div class="t"></div><div class="l"></div><div class="l" style="width:70%"></div><div class="pbar"><span>Écran 1 / 6</span><span class="test" id="cmp-test">Test</span><span class="quit" style="height:18px;padding:0 6px">Quitter</span></div></div></div><div><div class="cmp__titre">Séance</div><div class="cmp__ecran"><div class="t"></div><div class="l"></div><div class="l" style="width:70%"></div><div class="pbar"><span>Écran 1 / 6</span><span class="seance" id="cmp-seance">Séance</span></div></div></div></div><div class="cmp__ligne glisse-haut" data-from="1" id="cmp-l0"><b>Où l'ouvrir</b><span>Accueil « ▶ Essayer », Mes cours « Essayer en classe », éditeur « ▶ En classe »</span><span>Accueil « Lancer la séance » ou « Mode classe », adresse /classe</span></div><div class="cmp__ligne glisse-haut" data-from="2" id="cmp-l1"><b>Téléphone</b><span><span class="cmp__non">Pas de télécommande</span></span><span><span class="cmp__oui">Suivant, Précédent, minuteur, tirage, rideau…</span></span></div><div class="cmp__ligne glisse-haut" data-from="3" id="cmp-l2"><b>Plan de classe</b><span><span class="cmp__non">Aucun</span></span><span><span class="cmp__oui">En direct, avec les éclairs des actions</span></span></div><div class="cmp__ligne glisse-haut" data-from="4" id="cmp-l3"><b>Encre, encarts, versos</b><span><span class="cmp__non">Perdus en quittant</span></span><span><span class="cmp__oui">Gardés dans la séance</span></span></div><div class="cmp__ligne glisse-haut" data-from="5" id="cmp-l4"><b>Cours préparé</b><span>Jamais modifié</span><span>Jamais modifié</span></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="academie">
+      <div class="fiche__texte">
+        <h2>Projeter l'Académie : sabliers et points</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Académie › classe › Mode Classe</span></p>
+        <p class="fiche__but">Si la classe joue aux Quatre Maisons, l'Académie se projette : les sabliers des Maisons, la classe rangée par Maison, et des points donnés d'un geste.</p>
+        <ol class="etapes">
+          <li data-cursor="#ac-barre" data-duration="3600">Page Académie, choisir la classe puis <span class="btn-nom">Mode Classe</span>. En haut : ← Retour, Cérémonie, la bascule Sabliers / Classe, Bonus (s'il y a des bonus cachés) et Minuteur.</li>
+          <li data-cursor="#ac-m0" data-duration="3600">Vue <b>Sabliers</b> : un sablier par Maison ; le sable coule et la chambre du bas se remplit selon les points (plafond de 500). Sous chacun, les points qui défilent et le rang.</li>
+          <li data-cursor="#ac-cla" data-action="click"><span class="btn-nom">Classe</span> : les élèves rangés par Maison, sous leur pseudonyme ; les sabliers passent en petit à gauche.</li>
+          <li data-cursor="#ac-iris" data-action="click" data-duration="3400">Toucher un élève : une fenêtre propose +5, +10, +20, -5, -10, -20, ou un autre montant (« Autre... », « Valider ») et une raison facultative.</li>
+          <li data-cursor="#ac-iris" data-duration="3200">Les points s'ajoutent aussitôt à la Maison de l'élève.</li>
+        </ol>
+        <aside class="regles"><h3>À savoir</h3><ul><li>Seuls les pseudonymes apparaissent ; aucun aménagement, aucune note.</li><li>Les points donnés sont enregistrés : l'élève les retrouve dans l'onglet Maison de son espace.</li><li>Décor propre à l'Académie : brun-noir et or, écussons et couleurs des quatre Maisons.</li></ul></aside>
+        <p class="liens">Voir aussi : <a href="#ceremonie">Cérémonie, bonus et minuteur</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="580"><div class="tbi-pos"><div class="tbi tbi--sombre"><div class="ac"><div class="ac-barre" id="ac-barre"><div class="g"><span class="ac-ret">← Retour</span><span class="ac-btn" id="ac-cer"><i class="pt"></i>Cérémonie (26)</span></div><div class="ac-bascule"><span id="ac-sab" data-on="1-2">Sabliers</span><span id="ac-cla" data-on="3-5">Classe</span></div><div class="d"><span class="ac-btn ac-btn--or" id="ac-bonus"><i class="pt"></i>Bonus (3)</span><span class="ac-btn" id="ac-min"><i class="pt"></i>Minuteur</span></div></div><div class="ac-sabliers" data-to="2"><div class="ac-maison" id="ac-m0"><div class="ecu" style="background:linear-gradient(#1d3557,#457b9d)"></div><div class="ac-nom" style="color:#8fb8de">Maison A</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:27px;background:#1d3557"></div></div><i class="filet" style="background:#1d3557"></i><div class="bas"><div class="sable" style="height:44px;background:#1d3557"></div></div><i class="cadre-b"></i></div><div class="ac-pts">312<small>points</small></div><div class="ac-rang" style="color:#d4a843">1er</div></div><div class="ac-maison" id="ac-m1"><div class="ecu" style="background:linear-gradient(#9b2226,#ee9b00)"></div><div class="ac-nom" style="color:#ee9b00">Maison B</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:30px;background:#9b2226"></div></div><i class="filet" style="background:#9b2226"></i><div class="bas"><div class="sable" style="height:41px;background:#9b2226"></div></div><i class="cadre-b"></i></div><div class="ac-pts">287<small>points</small></div><div class="ac-rang" style="">2e</div></div><div class="ac-maison" id="ac-m2"><div class="ecu" style="background:linear-gradient(#e9c46a,#264653)"></div><div class="ac-nom" style="color:#e9c46a">Maison C</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:35px;background:#e9c46a"></div></div><i class="filet" style="background:#e9c46a"></i><div class="bas"><div class="sable" style="height:36px;background:#e9c46a"></div></div><i class="cadre-b"></i></div><div class="ac-pts">254<small>points</small></div><div class="ac-rang" style="">3e</div></div><div class="ac-maison" id="ac-m3"><div class="ecu" style="background:linear-gradient(#2d6a4f,#52b788)"></div><div class="ac-nom" style="color:#52b788">Maison D</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:38px;background:#2d6a4f"></div></div><i class="filet" style="background:#2d6a4f"></i><div class="bas"><div class="sable" style="height:33px;background:#2d6a4f"></div></div><i class="cadre-b"></i></div><div class="ac-pts">230<small>points</small></div><div class="ac-rang" style="">4e</div></div></div><div class="ac-classe" data-from="3"><div class="ac-gauche"><div class="r" style="color:#8fb8de"><i class="ecu" style="width:16px;height:19px;margin:0;background:#1d3557"></i>Maison A<span class="v"><span class="repli" data-to="4">312</span><span class="repli" data-from="5">322</span></span></div><div class="r" style="color:#ee9b00"><i class="ecu" style="width:16px;height:19px;margin:0;background:#9b2226"></i>Maison B<span class="v">287</span></div><div class="r" style="color:#e9c46a"><i class="ecu" style="width:16px;height:19px;margin:0;background:#e9c46a"></i>Maison C<span class="v">254</span></div><div class="r" style="color:#52b788"><i class="ecu" style="width:16px;height:19px;margin:0;background:#2d6a4f"></i>Maison D<span class="v">230</span></div></div><div class="ac-droite"><div><div class="ac-mt" style="color:#8fb8de;border-bottom:1px solid #1d355788">Maison A (7)</div><span class="ac-el" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Lina BO</span><span class="ac-el" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Adam KE</span><span class="ac-el" id="ac-iris" data-on="4-5" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Iris TA</span><span class="ac-el" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Malo RI</span><span class="ac-el" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Nina PO</span><span class="ac-el" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Hugo PE</span><span class="ac-el" style="background:#1d355733;color:#8fb8de;border:1px solid #1d355777">Léa GA</span></div><div><div class="ac-mt" style="color:#ee9b00;border-bottom:1px solid #9b222688">Maison B (6)</div><span class="ac-el" style="background:#9b222633;color:#ee9b00;border:1px solid #9b222677">Noé MA</span><span class="ac-el" style="background:#9b222633;color:#ee9b00;border:1px solid #9b222677">Jade LU</span><span class="ac-el" style="background:#9b222633;color:#ee9b00;border:1px solid #9b222677">Tom SA</span><span class="ac-el" style="background:#9b222633;color:#ee9b00;border:1px solid #9b222677">Rose VI</span><span class="ac-el" style="background:#9b222633;color:#ee9b00;border:1px solid #9b222677">Enzo BR</span><span class="ac-el" style="background:#9b222633;color:#ee9b00;border:1px solid #9b222677">Mia CO</span></div><div><div class="ac-mt" style="color:#e9c46a;border-bottom:1px solid #e9c46a88">Maison C (7)</div><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Zoé FA</span><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Lou BE</span><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Inès DU</span><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Yanis LE</span><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Clara JO</span><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Éva RO</span><span class="ac-el" style="background:#e9c46a33;color:#e9c46a;border:1px solid #e9c46a77">Sacha MO</span></div><div><div class="ac-mt" style="color:#52b788;border-bottom:1px solid #2d6a4f88">Maison D (6)</div><span class="ac-el" style="background:#2d6a4f33;color:#52b788;border:1px solid #2d6a4f77">Naël CH</span><span class="ac-el" style="background:#2d6a4f33;color:#52b788;border:1px solid #2d6a4f77">Ilyes HA</span><span class="ac-el" style="background:#2d6a4f33;color:#52b788;border:1px solid #2d6a4f77">Louis DE</span><span class="ac-el" style="background:#2d6a4f33;color:#52b788;border:1px solid #2d6a4f77">Rayan GI</span><span class="ac-el" style="background:#2d6a4f33;color:#52b788;border:1px solid #2d6a4f77">Jules NE</span><span class="ac-el" style="background:#2d6a4f33;color:#52b788;border:1px solid #2d6a4f77">Lucie PA</span></div></div></div><div class="ac-modal" data-at="4"><div class="ac-carte"><div class="p">Iris TA</div><div class="m">Maison A</div><div class="ac-mts"><span class="pos">+5</span><span class="pos" id="ac-p10">+10</span><span class="pos">+20</span><span class="neg">-5</span><span class="neg">-10</span><span class="neg">-20</span></div><div style="display:flex;gap:8px;margin-bottom:10px"><div class="ac-ch" style="flex:1">Autre...</div><span class="ac-btn ac-btn--or">Valider</span></div><div class="ac-ch">Raison (optionnel)</div><div style="margin-top:10px;border:1px solid #3a2e22;border-radius:8px;padding:7px;color:#8a7a66">Fermer</div></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="ceremonie">
+      <div class="fiche__texte">
+        <h2>Cérémonie, bonus et minuteur</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Académie › Mode Classe › barre du haut</span></p>
+        <p class="fiche__but">Les moments forts du jeu, en grand : la cérémonie de répartition dans les Maisons, la révélation des bonus et un minuteur au décor de l'Académie.</p>
+        <ol class="etapes">
+          <li data-cursor="#cr-cer" data-action="click"><span class="btn-nom">Cérémonie (26)</span> rejoue la répartition déjà faite, élève par élève.</li>
+          <li data-duration="3200">« Cérémonie de la Répartition » : la file des élèves, puis « L'élève s'avance... ».</li>
+          <li data-duration="3000">Un court suspense s'affiche pendant que la Maison de l'élève est tirée de ses réponses.</li>
+          <li data-duration="3200">La Maison est révélée, avec son écusson et une phrase d'accueil.</li>
+          <li data-cursor="#cr-fin" data-action="click">À la fin, « Tous les élèves ont rejoint leur Maison ! » et <span class="btn-nom">Terminer la cérémonie</span>.</li>
+          <li data-cursor="#cr-bonus" data-action="click" data-duration="3200"><span class="btn-nom">Bonus (3)</span> révèle les bonus cachés (« Révélation... ») : les points des Maisons concernées montent.</li>
+          <li data-cursor="#cr-min" data-action="click" data-duration="3200"><span class="btn-nom">Minuteur</span> : durées de 1 à 30 minutes et anneau de progression.</li>
+        </ol>
+        <aside class="regles"><h3>À savoir</h3><ul><li>La cérémonie projetée est seulement visuelle et rejouable. La vraie répartition se lance depuis le tableau de bord de l'Académie (« Lancer la répartition ») ; sans elle, l'écran dit « Aucune répartition effectuée ».</li><li>La révélation des bonus met à jour en direct la Maison de chaque élève dans son espace.</li><li>Le minuteur alerte sous 30 secondes et vibre à la fin, sur les appareils qui le permettent.</li></ul></aside>
+        <p class="liens">Voir aussi : <a href="#academie">Sabliers et points</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="580"><div class="tbi-pos"><div class="tbi tbi--sombre"><div class="ac"><div class="ac-barre" id="cr-barre"><div class="g"><span class="ac-ret">← Retour</span><span class="ac-btn" id="cr-cer"><i class="pt"></i>Cérémonie (26)</span></div><div class="ac-bascule"><span id="cr-sab" data-on="1-9">Sabliers</span><span id="cr-cla" data-on="">Classe</span></div><div class="d"><span class="ac-btn ac-btn--or repli" id="cr-bonus" data-to="5"><i class="pt"></i>Bonus (3)</span><span class="ac-btn repli" data-from="6" data-to="6"><i class="pt"></i>Révélation...</span><span class="ac-btn ac-btn--or repli" data-from="7"><i class="pt"></i>Bonus (3)</span><span class="ac-btn" id="cr-min"><i class="pt"></i>Minuteur</span></div></div><div class="ac-sabliers" ><div class="ac-maison" id="cr-m0"><div class="ecu" style="background:linear-gradient(#1d3557,#457b9d)"></div><div class="ac-nom" style="color:#8fb8de">Maison A</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:27px;background:#1d3557"></div></div><i class="filet" style="background:#1d3557"></i><div class="bas"><div class="sable" style="height:44px;background:#1d3557"></div></div><i class="cadre-b"></i></div><div class="ac-pts">312<small>points</small></div><div class="ac-rang" style="color:#d4a843">1er</div></div><div class="ac-maison" id="cr-m1"><div class="ecu" style="background:linear-gradient(#9b2226,#ee9b00)"></div><div class="ac-nom" style="color:#ee9b00">Maison B</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:30px;background:#9b2226"></div></div><i class="filet" style="background:#9b2226"></i><div class="bas"><div class="sable" style="height:41px;background:#9b2226"></div></div><i class="cadre-b"></i></div><div class="ac-pts"><span class="repli" data-to="5">287</span><span class="repli" data-from="6">297</span><small>points</small></div><div class="ac-rang" style="">2e</div></div><div class="ac-maison" id="cr-m2"><div class="ecu" style="background:linear-gradient(#e9c46a,#264653)"></div><div class="ac-nom" style="color:#e9c46a">Maison C</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:35px;background:#e9c46a"></div></div><i class="filet" style="background:#e9c46a"></i><div class="bas"><div class="sable" style="height:36px;background:#e9c46a"></div></div><i class="cadre-b"></i></div><div class="ac-pts">254<small>points</small></div><div class="ac-rang" style="">3e</div></div><div class="ac-maison" id="cr-m3"><div class="ecu" style="background:linear-gradient(#2d6a4f,#52b788)"></div><div class="ac-nom" style="color:#52b788">Maison D</div><div class="sab"><i class="cadre-h"></i><div class="haut"><div class="sable" style="height:38px;background:#2d6a4f"></div></div><i class="filet" style="background:#2d6a4f"></i><div class="bas"><div class="sable" style="height:33px;background:#2d6a4f"></div></div><i class="cadre-b"></i></div><div class="ac-pts"><span class="repli" data-to="5">230</span><span class="repli" data-from="6">245</span><small>points</small></div><div class="ac-rang" style="">4e</div></div></div><div class="ac-cer" data-from="2" data-to="5"><h3>Cérémonie de la Répartition</h3><div class="txt repli" data-at="2">L'élève s'avance...</div><div class="txt repli" data-at="3">Un instant...</div><div class="repli" data-at="4"><div class="ecu" style="width:70px;height:82px;margin:0 auto 8px;background:linear-gradient(#1d3557,#457b9d)"></div><div style="font-size:30px;font-weight:700;color:#8fb8de">Maison A</div><div class="txt" style="font-size:18px">« L'esprit qui s'envole »</div></div><div class="repli" data-at="5"><div class="txt">Tous les élèves ont rejoint leur Maison !</div><span class="ac-btn ac-btn--or" id="cr-fin" style="margin-top:14px;font-size:15px;padding:8px 18px">Terminer la cérémonie</span></div><div class="ac-file repli" data-to="4"><span class="">Lina BO</span><span class="">Adam KE</span><span class="is-actif">Iris TA</span><span class="">Noé MA</span><span class="">Jade LU</span><span class="">Zoé FA</span><span class="">Lou BE</span><span class="">Naël CH</span><span class="">Ilyes HA</span></div></div><div class="ac-timer" data-at="7"><div class="box"><div class="ac-anneau"><b>3:36</b></div><div class="ac-durees"><span>1'</span><span>2'</span><span>3'</span><span class="is-on">5'</span><span>10'</span><span>15'</span><span>20'</span><span>30'</span></div></div></div></div></div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connexion et accueil — Guide Gestion Classe</title>
+<meta name="description" content="Entrer dans l'espace élève avec son code ou sa carte QR, se repérer avec la barre du bas, lire l'accueil, choisir un thème, et ce que l'enseignant ouvre à chaque classe.">
+<meta name="guide-partie" content="eleve">
+<meta name="guide-ordre" content="10">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* commun-eleve:debut */
+/* Maquettes de l'espace élève : reprise de src/styles/eleve.css (direction A « Carnet ») et de ses thèmes. */
+.tel__ecran.el {
+  --el-bg: #F6F6F7; --el-surface: #FFFFFF; --el-line: #E6E6E9; --el-line-soft: #F0F0F2; --el-line-strong: #D4D4D8;
+  --el-text: #18181B; --el-muted: #52525B; --el-dim: #6B6B74;
+  --el-indigo: #4F46E5; --el-indigo-ink: #4338CA; --el-indigo-soft: #EEF0FF;
+  --el-pos: #15803D; --el-pos-ink: #166534; --el-pos-soft: #EAF6EE;
+  --el-warn: #B45309; --el-warn-ink: #9A4A07; --el-warn-soft: #FDF1E3;
+  --el-neg: #B91C1C; --el-neg-soft: #FBEAEA;
+  --el-track: #E9E9EC; --el-on-accent: #FFFFFF; --el-radio: #A1A1AA;
+  --el-radius: 8px; --el-radius-sm: 6px; --el-font-display: inherit; --el-card-shadow: none;
+  background-color: var(--el-bg); color: var(--el-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.4;
+}
+.tel__ecran.el .tel__statut { color: var(--el-text); position: relative; z-index: 3; }
+.el-ic, .el .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.el .ic--p { width: 18px; height: 18px; }
+.el .ic--pp { width: 15px; height: 15px; }
+.el .ic--g { width: 26px; height: 26px; }
+
+.el-corps { position: relative; flex: 1; min-height: 0; }
+.el-main { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 10px 14px 12px; overflow: hidden; }
+.el-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.el-head__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.el-kicker { font-size: 12.5px; font-weight: 500; color: var(--el-dim); }
+.el-h1 { font-family: var(--el-font-display); margin: 0; font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.el-h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--el-dim); }
+.el-section { display: flex; flex-direction: column; gap: 7px; }
+.el-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.el-note { margin: 0; font-size: 12.5px; line-height: 18px; color: var(--el-muted); }
+.el-error { margin: 0; font-size: 13px; line-height: 18px; color: var(--el-neg); }
+
+.el-card { background: var(--el-surface); border: 1px solid var(--el-line); border-radius: var(--el-radius); box-shadow: var(--el-card-shadow); transition: box-shadow .25s, border-color .25s; }
+.el-card--pad { padding: 14px; }
+.el-card--stack { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.el-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 14px; border-bottom: 1px solid var(--el-line-soft); transition: background .25s; }
+.el-row:last-child { border-bottom: 0; }
+.el-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.el-row__title { font-size: 14px; line-height: 19px; font-weight: 600; }
+.el-row__title--plain { font-weight: 500; }
+.el-row__meta { font-size: 12px; line-height: 16px; color: var(--el-dim); }
+.el-row__end { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.el-row__chev { color: var(--el-dim); transition: transform .25s; }
+.el-tile { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 9px 14px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-icon-box { flex-shrink: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--el-radius); background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-icon-box--round { width: 30px; height: 30px; border-radius: 15px; }
+
+.el-big { font-family: var(--el-font-display); font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.el-mid { font-family: var(--el-font-display); font-size: 22px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.el-grade { flex-shrink: 0; font-size: 19px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.el-unit { font-size: 12px; font-weight: 500; color: var(--el-dim); letter-spacing: 0; }
+.el-label { font-size: 12.5px; color: var(--el-muted); }
+.el-stat { display: flex; flex-direction: column; gap: 1px; padding: 11px 13px; }
+.el-bar { height: 8px; border-radius: 4px; background: var(--el-track); overflow: hidden; }
+.el-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--el-indigo); transition: width 1s ease; }
+
+.el-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); font-size: 11.5px; line-height: 17px; font-weight: 600; white-space: nowrap; }
+.el-chip--pos { background: var(--el-pos-soft); color: var(--el-pos-ink); }
+.el-chip--warn { background: var(--el-warn-soft); color: var(--el-warn-ink); }
+.el-chip--plain { background: var(--el-line-soft); color: var(--el-muted); }
+
+.el-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); color: var(--el-text); font-size: 14px; font-weight: 600; white-space: nowrap; transition: transform .15s, box-shadow .25s; }
+.el-btn--primary { border-color: var(--el-indigo); background: var(--el-indigo); color: var(--el-on-accent); }
+.el-btn--soft { border-color: transparent; background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-btn--block { width: 100%; }
+.el-btn--tall { min-height: 46px; font-size: 15px; }
+.el-btn--off { border-color: var(--el-line); background: var(--el-track); color: var(--el-dim); }
+.el-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; min-height: 34px; color: var(--el-indigo); font-size: 14px; font-weight: 600; }
+
+.el-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; background: var(--el-track); border-radius: var(--el-radius); }
+.el-seg span { min-height: 34px; display: grid; place-items: center; border-radius: var(--el-radius-sm); color: var(--el-muted); font-size: 13.5px; font-weight: 500; transition: background .25s, color .25s; }
+.el-seg span.is-on, .el-seg span.choisi { background: var(--el-surface); color: var(--el-text); font-weight: 600; }
+
+.el-rank { display: flex; flex-direction: column; padding: 0 14px 10px; }
+.el-rank__line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 8px; border-radius: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.el-rank__line span:first-child { color: var(--el-muted); }
+.el-rank__line--me { background: var(--el-indigo-soft); font-weight: 600; }
+.el-rank__line--me span:first-child { color: var(--el-indigo-ink); }
+.el-rank__gap { padding: 0 8px; color: var(--el-dim); font-size: 12px; }
+
+.el-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 6px; justify-items: center; }
+.el-stamp { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 25px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); transition: transform .35s cubic-bezier(.3,1.5,.5,1), opacity .3s; }
+.el-stamp--empty { border: 1.5px dashed var(--el-line-strong); background: none; color: var(--el-dim); font-size: 14px; font-weight: 600; }
+.el-choice { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 7px 13px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); font-size: 14px; font-weight: 500; transition: all .2s; }
+.el-choice::before { content: ''; flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--el-radio); background: var(--el-surface); box-sizing: border-box; transition: border .2s; }
+.el-choice.is-on { border: 2px solid var(--el-indigo); background: var(--el-indigo-soft); padding: 6px 12px; }
+.el-choice.is-on::before { border: 6px solid var(--el-indigo); }
+.el-banner { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--el-radius); background: var(--el-pos-soft); color: var(--el-pos-ink); font-size: 13px; line-height: 18px; font-weight: 600; }
+.el-cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 0 14px 12px; }
+.el-cats > div { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: var(--el-radius-sm); background: var(--el-bg); font-size: 12.5px; }
+
+.el-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.el-tilebox { display: flex; flex-direction: column; gap: 7px; min-height: 80px; padding: 11px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-indigo); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-tilebox__title { font-size: 14px; font-weight: 600; color: var(--el-text); display: block; }
+.el-tilebox__note { font-size: 12px; color: var(--el-dim); display: block; }
+.el-tilebox__note--on { font-weight: 600; color: var(--el-indigo-ink); }
+.el-subhead { padding: 10px 14px 7px; border-bottom: 1px solid var(--el-line-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--el-dim); }
+.el-rowhead { padding: 10px 14px 2px; font-size: 12px; line-height: 17px; font-weight: 600; color: var(--el-muted); }
+
+.el-veil { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(24, 24, 27, 0.5); }
+.el-dialog { width: 100%; max-width: 260px; padding: 20px; text-align: center; }
+.el-search { display: flex; align-items: center; gap: 9px; height: 42px; padding: 0 12px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-dim); font-size: 13.5px; }
+.el-select { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 10px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); font-size: 13px; font-weight: 500; }
+
+/* barre du bas */
+.el-nav { flex: none; position: relative; z-index: 40; display: flex; padding: 4px 4px 12px; background: var(--el-surface); border-top: 1px solid var(--el-line); }
+.el-nav > span { flex: 1; min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: var(--el-radius); color: var(--el-muted); font-size: 11px; font-weight: 500; transition: color .25s, background .25s; }
+.el-nav > span.actif, .el-nav > span.is-on { color: var(--el-indigo); font-weight: 600; }
+.el-nav--academy { background: oklch(0.08 0.01 50 / 0.92); border-top-color: transparent; }
+.el-nav--academy > span { color: oklch(0.72 0.03 60); }
+.el-nav--academy > span.actif, .el-nav--academy > span.is-on { background: oklch(0.25 0.03 50 / 0.9); color: oklch(0.90 0.06 60); }
+
+/* état « touché » */
+.el .el-tile.is-on, .el .el-card.is-on, .el .el-tilebox.is-on, .el .el-theme.is-on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-btn.is-on { transform: scale(0.97); box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-row.is-on { background: color-mix(in srgb, var(--el-indigo) 9%, transparent); }
+
+/* écran plein qui glisse par-dessus l'espace (classeur, TP, copie) */
+.el-plein { position: absolute; left: 0; right: 0; bottom: 0; top: 0; z-index: 60; background-color: var(--el-bg); display: flex; flex-direction: column; padding-top: 30px; }
+.is-hidden.el-plein { transform: translateY(26px); }
+
+/* choix du thème */
+.el-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-theme { display: flex; flex-direction: column; gap: 6px; padding: 7px 7px 9px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-theme.choisi { border: 2px solid var(--el-indigo); padding: 6px 6px 8px; }
+.el-theme__view { display: flex; flex-direction: column; gap: 5px; height: 54px; padding: 7px; border-radius: 6px; overflow: hidden; }
+.el-theme__line { display: block; height: 6px; border-radius: 3px; }
+.el-theme__card { display: flex; align-items: center; gap: 6px; flex: 1; padding: 0 7px; border-radius: 4px; }
+.el-theme__dot { display: block; width: 12px; height: 12px; border-radius: 6px; flex: none; }
+.el-theme__name { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 3px; font-size: 14px; font-weight: 600; }
+.el-theme__name .ic { color: var(--el-indigo); }
+.el-theme__note { padding: 0 3px; font-size: 12px; line-height: 15px; color: var(--el-dim); }
+
+/* ---- Cosmos ---- */
+.tel__ecran.el[data-theme='cosmos'] {
+  --el-bg: #0B1026; --el-surface: #151B3B; --el-line: #2A3160; --el-line-soft: #212854; --el-line-strong: #3A4380;
+  --el-text: #EEF1FF; --el-muted: #B9C0E6; --el-dim: #9AA3D4;
+  --el-indigo: #8EA2FF; --el-indigo-ink: #C9D2FF; --el-indigo-soft: #232B66;
+  --el-pos: #5EE0A0; --el-pos-ink: #8BF0BE; --el-pos-soft: #123B2E;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8A8A; --el-neg-soft: #45191E;
+  --el-track: #262E5C; --el-on-accent: #0B1026; --el-radio: #6E79B8;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  background-image:
+    radial-gradient(2px 2px at 150px 30px, rgba(255, 255, 255, 0.9) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 60px 150px, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 190px 110px, rgba(190, 205, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(2px 2px at 20px 84px, rgba(255, 236, 200, 0.8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 110px 178px, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='170' viewBox='0 0 240 170'%3E%3Cdefs%3E%3CradialGradient id='p' cx='0.35' cy='0.3' r='0.8'%3E%3Cstop offset='0' stop-color='%23A99BFF'/%3E%3Cstop offset='1' stop-color='%233A2EA6'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx='172' cy='58' rx='108' ry='20' fill='none' stroke='%23C9C0FF' stroke-opacity='.5' stroke-width='5' transform='rotate(-16 172 58)'/%3E%3Ccircle cx='172' cy='58' r='56' fill='url(%23p)'/%3E%3Cpath d='M120 50c34 10 72 6 104-16' fill='none' stroke='%23C9C0FF' stroke-opacity='.3' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 110% 420px at 85% -60px, rgba(124, 92, 255, 0.38), transparent 70%),
+    radial-gradient(ellipse 90% 360px at 0% 0, rgba(56, 189, 248, 0.16), transparent 70%);
+  background-size: 210px 190px, 210px 190px, 210px 190px, 210px 190px, 210px 190px, 200px 142px, 100% 520px, 100% 420px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, right -50px top -10px, 0 0, 0 0;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat, no-repeat;
+}
+.el[data-theme='cosmos'] .el-card, .el[data-theme='cosmos'] .el-tile, .el[data-theme='cosmos'] .el-tilebox { background: rgba(21, 27, 59, 0.92); }
+/* ---- Arcade ---- */
+.tel__ecran.el[data-theme='arcade'] {
+  --el-bg: #170F2E; --el-surface: #241846; --el-line: #4A3486; --el-line-soft: #30205A; --el-line-strong: #6A4FB8;
+  --el-text: #F6F0FF; --el-muted: #C9BCE8; --el-dim: #A99AD0;
+  --el-indigo: #FFD23F; --el-indigo-ink: #FFE27A; --el-indigo-soft: #3B3010;
+  --el-pos: #5CF2B0; --el-pos-ink: #8FF7C9; --el-pos-soft: #0F3B2C;
+  --el-warn: #FFB454; --el-warn-ink: #FFCF8F; --el-warn-soft: #43290B;
+  --el-neg: #FF7A9C; --el-neg-soft: #4A1528;
+  --el-track: #35245F; --el-on-accent: #1A1033; --el-radio: #8A72C8;
+  --el-radius: 2px; --el-radius-sm: 2px;
+  --el-font-display: 'Pixelify Sans', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --el-card-shadow: 4px 4px 0 #0B0618;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.el[data-theme='arcade'] .el-card, .el[data-theme='arcade'] .el-tile, .el[data-theme='arcade'] .el-tilebox, .el[data-theme='arcade'] .el-theme { border-width: 2px; }
+.el[data-theme='arcade'] .el-h2 { color: #FF8AE0; }
+.el[data-theme='arcade'] .el-btn--primary { box-shadow: 0 4px 0 #A8830A; }
+.el[data-theme='arcade'] .el-stamp, .el[data-theme='arcade'] .el-icon-box, .el[data-theme='arcade'] .el-chip { border-radius: 2px; }
+.el[data-theme='arcade'] .el-nav { border-top-width: 2px; }
+.el[data-theme='arcade'] .el-mid, .el[data-theme='arcade'] .el-big { font-family: inherit; }
+/* ---- Jungle ---- */
+.tel__ecran.el[data-theme='jungle'] {
+  --el-bg: #EEF5E8; --el-surface: #FFFFFF; --el-line: #D6E3CC; --el-line-soft: #E6EFE0; --el-line-strong: #B9CDAE;
+  --el-text: #16291B; --el-muted: #3F5545; --el-dim: #55695A;
+  --el-indigo: #1F7A3A; --el-indigo-ink: #17602D; --el-indigo-soft: #DDF0DF;
+  --el-pos-soft: #E3F4E6; --el-track: #DCE8D3; --el-radio: #8FA596;
+  --el-radius: 18px; --el-radius-sm: 22px;
+  --el-font-display: 'Fredoka', 'Inter', system-ui, sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='240' viewBox='0 0 300 240'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M300 0C250 6 196 36 176 96c44 6 100-22 124-60z' fill='%23BFDDB3'/%3E%3Cpath d='M300 24c-40 14-84 44-108 64' stroke='%23A3CB95' stroke-width='3'/%3E%3Cpath d='M300 60c-34 20-54 62-48 116 30-14 48-50 48-84z' fill='%23A6CF98'/%3E%3Cpath d='M298 78c-16 26-28 56-40 88' stroke='%238FBF80' stroke-width='3'/%3E%3Cpath d='M232 0c-30 8-62 6-92-14 20 44 62 52 92 34z' fill='%23CFE6C5'/%3E%3C/g%3E%3C/svg%3E");
+  background-position: top right; background-repeat: no-repeat; background-size: 240px 192px;
+}
+.el[data-theme='jungle'] .el-h1 { font-weight: 600; }
+.el[data-theme='jungle'] .el-seg { border-radius: 24px; }
+.el[data-theme='jungle'] .el-seg span { border-radius: 20px; }
+/* connexion */
+.el-login__text { margin: 4px 0 0; font-size: 14.5px; line-height: 21px; color: var(--el-muted); }
+.el-field-label { font-size: 13.5px; font-weight: 600; }
+.el-code { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.el-code > span { height: 50px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); display: grid; place-items: center; font-size: 22px; font-weight: 600; transition: border-color .2s; }
+.el-code > span.is-on, .el-code > span.actif { border: 2px solid var(--el-indigo); }
+.el-code i { font-style: normal; }
+.el-url { flex: none; position: relative; z-index: 3; margin: 0 12px 4px; height: 26px; border-radius: 13px; background: var(--el-track); color: var(--el-muted); font-size: 11px; display: flex; align-items: center; gap: 6px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
+.el-url b { font-weight: 600; color: var(--el-text); }
+/* contenu qui défile vers le haut */
+.el-defile { display: flex; flex-direction: column; gap: 12px; transition: transform .8s cubic-bezier(.45,.05,.25,1); }
+/* une maquette de téléphone posée dans une scène large */
+.tel-pose { position: relative; flex: none; }
+/* deux états empilés au même endroit */
+.pile { display: inline-grid; }
+.pile > * { grid-area: 1 / 1; }
+/* commun-eleve:fin */
+#ac-defile.is-on { transform: translateY(-300px); }
+.th-pile { position: absolute; inset: 10px; width: auto; height: auto; }
+.carte-qr { width: 118px; border: 1px dashed #C9C9CF; padding: 8px 6px 6px; display: flex; flex-direction: column; align-items: center; gap: 3px; background: #fff; font-family: var(--font); transition: box-shadow .3s; }
+.carte-qr svg { width: 74px; height: 74px; }
+.carte-qr b { font-size: 12px; }
+.carte-qr .code { font-size: 12px; letter-spacing: .28em; font-family: var(--mono); }
+.carte-qr .cl { font-size: 9.5px; color: #71717A; border-top: 1px solid #E6E6E9; width: 100%; text-align: center; padding-top: 2px; }
+.carte-qr.is-on { box-shadow: 0 0 0 3px rgba(249,115,22,.55); }
+.feuille-a4 { background: #fff; border-radius: 4px; box-shadow: var(--shadow-lg); padding: 16px 18px; }
+.camera { position: absolute; inset: 30px 0 0 0; background: #2B2B30; display: grid; place-items: center; z-index: 5; }
+.camera__cadre { position: relative; padding: 14px; }
+.camera__cadre::before, .camera__cadre::after { content: ''; position: absolute; width: 28px; height: 28px; border: 3px solid #fff; }
+.camera__cadre::before { left: 0; top: 0; border-right: 0; border-bottom: 0; border-radius: 8px 0 0 0; }
+.camera__cadre::after { right: 0; bottom: 0; border-left: 0; border-top: 0; border-radius: 0 0 8px 0; }
+.camera .carte-qr { transform: rotate(-4deg) scale(1.25); }
+.vis-tog { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 8px; border-radius: 6px; font-size: 12.5px; font-weight: 500; transition: background .25s; }
+.vis-tog .interrupteur { transition: background .25s; }
+.vis-tog.is-on { background: var(--surface-3); }
+.vis-tog .pic { width: 14px; height: 14px; border-radius: 4px; display: inline-block; margin-right: 6px; vertical-align: -2px; }
+.fiche-eleve { background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 16px 18px; }
+</style>
+</head>
+<body>
+<!-- icones:debut -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-maison" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-notes" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-3"/></symbol>
+<symbol id="i-livre" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-tampon" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M19.3 13.7a2.5 2.5 0 0 0-1.8-.7h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.7-.3-1.3-.7-1.8z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/></symbol>
+<symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+<symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+<symbol id="i-cube" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+<symbol id="i-sortie" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-chev-g" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-chev-b" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chev-h" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-galerie" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+<symbol id="i-doc-coche" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></symbol>
+<symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-lien" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-croix" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-recentrer" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+<symbol id="i-etoile" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-main" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+<symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5A4.6 4.6 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+<symbol id="i-entraide" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+<symbol id="i-imprimer" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 19v2M19 14h2"/></symbol>
+<symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-hautparleur" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+<symbol id="i-plein" viewBox="0 0 24 24"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></symbol>
+<symbol id="i-pages" viewBox="0 0 24 24"><path d="M2 5h8a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H2zM22 5h-8a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h8z"/></symbol>
+<symbol id="i-stylo" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-cercle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+<symbol id="i-liste" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+</defs></svg>
+<!-- icones:fin -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="qr-faux" viewBox="0 0 25 25"><g fill="#18181B"><path d="M0 0h7v7H0zM1 1v5h5V1zM2 2h3v3H2zM18 0h7v7h-7zm1 1v5h5V1zm1 1h3v3h-3zM0 18h7v7H0zm1 1v5h5v-5zm1 1h3v3H2z" fill-rule="evenodd"/><path d="M9 0h2v2H9zM12 1h2v3h-2zM9 4h2v3H9zM15 3h2v2h-2zM12 6h3v2h-3zM9 9h3v2H9zM14 9h2v3h-2zM18 9h3v2h-3zM22 9h3v3h-3zM0 9h3v2H0zM4 10h3v3H4zM9 13h2v3H9zM12 12h2v2h-2zM17 12h3v3h-3zM21 14h2v3h-2zM0 13h2v3H0zM12 15h4v2h-4zM18 17h3v2h-3zM9 18h3v2H9zM14 19h3v3h-3zM22 19h3v2h-3zM9 22h3v3H9zM18 21h2v4h-2zM13 23h3v2h-3zM22 23h3v2h-3z"/></g></symbol>
+</defs></svg>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Espace élève</a> › Connexion et accueil</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#connexion">Entrer avec son code</a></li>
+      <li><a href="#carte-qr">Entrer avec sa carte QR</a></li>
+      <li><a href="#espace">L'espace élève en bref</a></li>
+      <li><a href="#barre">La barre du bas</a></li>
+      <li><a href="#accueil">L'accueil</a></li>
+      <li><a href="#a-faire">À faire</a></li>
+      <li><a href="#derniere-note">Dernière note</a></li>
+      <li><a href="#trimestre">Ce trimestre</a></li>
+      <li><a href="#themes">Mon thème</a></li>
+      <li><a href="#quitter">Quitter</a></li>
+      <li><a href="#onglets-classe">Ce que l'enseignant ouvre</a></li>
+      <li><a href="#temoin">L'élève témoin</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../classe/mode-essai-et-academie.html">◀ Mode essai et Académie</a><a href="../eleve/notes-et-copies.html">Notes et copies ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Espace élève</div>
+      <h1>Connexion et accueil</h1>
+      <p>L'espace élève est une petite application ouverte dans le navigateur du téléphone, sans compte ni mot de passe : l'élève entre avec son code personnel à 6 chiffres. Il y retrouve ses notes, ses cours, ses TP, sa carte à tampons et, si la classe y joue, sa Maison.</p>
+      <div class="chap__resume"><span>Adresse du site › /eleve</span><span>Téléphone de l'élève</span><span>Marche aussi sur ordinateur</span><span>Réglé classe par classe par l'enseignant</span></div>
+    </header>
+
+    <!-- ============================================================ connexion -->
+    <section class="fiche fiche--etroite" id="connexion">
+      <div class="fiche__texte">
+        <h2>Entrer avec son code</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">/eleve › Mon espace</span></p>
+        <p class="fiche__but">Chaque élève a un code personnel à 6 chiffres, donné par l'enseignant. Il suffit de le taper pour ouvrir son espace : pas de compte, pas de mot de passe.</p>
+        <ol class="etapes">
+          <li data-cursor="#cx-titre" data-duration="3000">Ouvrir l'espace élève : l'écran <b>Mon espace</b> demande le code personnel.</li>
+          <li data-cursor="#cx-c6" data-action="tap" data-duration="3400">Taper les 6 chiffres sous <b>Code personnel</b>. Le curseur passe tout seul à la case suivante ; on peut aussi coller le code entier dans la première case.</li>
+          <li data-cursor="#cx-btn" data-action="tap">Appuyer sur <span class="btn-nom">Voir mes résultats</span>, grisé tant que les 6 chiffres ne sont pas saisis. Le bouton affiche <b>Chargement…</b> pendant la vérification.</li>
+          <li data-cursor="#cx-bonjour" data-duration="3000">L'espace s'ouvre sur l'accueil, au prénom de l'élève.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un code inconnu ou bloqué affiche en rouge « Code incorrect. Vérifie et réessaie. » ; sans réseau : « Erreur de connexion. Réessaie. »</li>
+            <li>Le code n'est gardé ni dans l'adresse ni sur l'appareil : recharger la page fait ressaisir le code. Seul le thème choisi reste sur le téléphone, et il s'applique déjà à cet écran.</li>
+            <li>Un élève suivi par plusieurs enseignants dans l'application ne peut pas encore choisir l'espace à ouvrir : l'écran affiche « Erreur inconnue ». Le choix d'espace n'existe pas encore dans cette page.</li>
+            <li>Le navigateur de l'élève ne lit rien directement dans la base : le serveur revérifie le code à chaque demande.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#carte-qr">Entrer avec sa carte QR</a> · <a href="#quitter">Quitter</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>8:02</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main" data-to="3" style="justify-content:center">
+                  <div class="el-card" style="display:flex;flex-direction:column;gap:20px;padding:24px 18px">
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <span class="el-icon-box" style="width:46px;height:46px"><svg class="ic ic--g"><use href="#i-livre"/></svg></span>
+                      <div><h1 class="el-h1" id="cx-titre" style="font-size:26px;line-height:32px">Mon espace</h1><p class="el-login__text">Entre ton code personnel à 6 chiffres pour voir tes résultats.</p></div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:7px">
+                      <span class="el-field-label">Code personnel</span>
+                      <div class="el-code">
+                        <span data-on="1"><i data-from="2" style="transition-delay:.15s">4</i></span>
+                        <span><i data-from="2" style="transition-delay:.45s">8</i></span>
+                        <span><i data-from="2" style="transition-delay:.75s">2</i></span>
+                        <span><i data-from="2" style="transition-delay:1.05s">9</i></span>
+                        <span><i data-from="2" style="transition-delay:1.35s">1</i></span>
+                        <span id="cx-c6" data-on="2"><i data-from="2" style="transition-delay:1.65s">3</i></span>
+                      </div>
+                    </div>
+                    <div style="position:relative">
+                      <span class="el-btn el-btn--off el-btn--tall el-btn--block" data-at="1">Voir mes résultats</span>
+                      <span class="el-btn el-btn--primary el-btn--tall el-btn--block" data-at="2" style="position:absolute;inset:0">Voir mes résultats</span>
+                      <span class="el-btn el-btn--off el-btn--tall el-btn--block" data-at="3" style="position:absolute;inset:0">Chargement…</span>
+                      <span id="cx-btn" style="position:absolute;inset:0"></span>
+                    </div>
+                  </div>
+                </div>
+                <div class="el-main glisse-haut" data-from="4">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1" id="cx-bonjour">Bonjour Lina</h1></div><span class="el-btn" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                  <section class="el-section"><h2 class="el-h2">Dernière note</h2><div class="el-tile"><span class="el-row__body"><span class="el-row__title">La respiration des êtres vivants</span><span class="el-row__meta">Évaluation du 18 novembre</span></span><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div></section>
+                </div>
+              </div>
+              <nav class="el-nav glisse-haut" data-from="4"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ carte QR -->
+    <section class="fiche fiche--large" id="carte-qr">
+      <div class="fiche__texte">
+        <h2>Entrer avec sa carte QR</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Carte d'accès imprimée › /eleve</span></p>
+        <p class="fiche__but">La carte d'accès porte un QR code propre à l'élève : en le visant avec l'appareil photo du téléphone, l'espace s'ouvre directement, sans taper le code.</p>
+        <ol class="etapes">
+          <li data-cursor="#qr-carte2" data-duration="3400">L'enseignant imprime les cartes depuis son site : une feuille A4 par classe, 30 cartes à découper. Chaque carte porte le QR, le pseudonyme, le code en clair et la classe.</li>
+          <li data-cursor="#qr-viseur" data-duration="3000">L'élève vise le QR de sa carte avec l'appareil photo de son téléphone.</li>
+          <li data-cursor="#qr-url" data-duration="3000">Le lien ouvre l'espace élève avec le code déjà rempli : il est vérifié tout seul.</li>
+          <li data-cursor="#qr-url" data-duration="3400">Le code est aussitôt effacé de l'adresse affichée, et l'accueil s'ouvre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Côté enseignant : page <b>Suivi élèves</b>, menu QR, <b>Cartes QR (PDF)</b>. Le même menu propose <b>QR code de la classe</b>, à afficher au tableau : ce QR-là n'a pas de code et ouvre seulement l'écran de saisie.</li>
+            <li>En tête de la feuille : le nom de la classe et « Scanne le QR code ou va sur » l'adresse courte du site « et saisis ton code ». Un élève sans code a « - - - - - - » sur sa carte.</li>
+            <li>La carte est la seule clé : une carte perdue donne accès à l'espace de l'élève. Le code ne restant pas dans l'adresse, il ne passe ni dans l'historique ni dans une capture d'écran.</li>
+            <li>La carte n'imprime que le pseudonyme (prénom et deux lettres), jamais le vrai nom.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div style="display:flex;gap:40px;align-items:center;justify-content:center;height:100%">
+              <div class="feuille-a4" style="width:470px">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:11px;color:#52525B;margin-bottom:10px"><b style="font-size:15px;color:#18181B">5E</b><span>Scanne le QR code ou va sur l'adresse du site et saisis ton code</span></div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;justify-items:center">
+                  <div class="carte-qr"><svg><use href="#qr-faux"/></svg><b>Adam KE</b><span class="code">517204</span><span class="cl">5E</span></div>
+                  <div class="carte-qr" id="qr-carte2" data-on="1-2"><svg><use href="#qr-faux"/></svg><b>Lina BO</b><span class="code">482913</span><span class="cl">5E</span></div>
+                  <div class="carte-qr"><svg><use href="#qr-faux"/></svg><b>Noé MA</b><span class="code">306158</span><span class="cl">5E</span></div>
+                  <div class="carte-qr"><svg><use href="#qr-faux"/></svg><b>Iris TA</b><span class="code">741630</span><span class="cl">5E</span></div>
+                  <div class="carte-qr"><svg><use href="#qr-faux"/></svg><b>Tom SA</b><span class="code">259847</span><span class="cl">5E</span></div>
+                  <div class="carte-qr"><svg><use href="#qr-faux"/></svg><b>Zoé FA</b><span class="code">- - - - - -</span><span class="cl">5E</span></div>
+                </div>
+              </div>
+              <div class="tel-pose" style="width:290px;height:590px">
+                <div class="tel"><div class="tel__ecran el">
+                  <div class="tel__statut"><span>8:02</span><span>4G</span></div>
+                  <div class="camera" data-at="1-2">
+                    <div class="camera__cadre" id="qr-viseur"><div class="carte-qr"><svg><use href="#qr-faux"/></svg><b>Lina BO</b><span class="code">482913</span><span class="cl">5E</span></div></div>
+                  </div>
+                  <div class="el-url" id="qr-url" data-from="3"><span data-at="3">…/gestion-classe/eleve<b>?code=482913</b></span><span data-at="4" style="position:absolute;left:12px">…/gestion-classe/eleve</span></div>
+                  <div class="el-corps" data-from="3">
+                    <div class="el-main" data-at="3" style="justify-content:center;align-items:center"><span class="el-note">Chargement…</span></div>
+                    <div class="el-main glisse-haut" data-at="4">
+                      <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1" style="font-size:22px">Bonjour Lina</h1></div></div>
+                      <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span></div></section>
+                    </div>
+                  </div>
+                  <nav class="el-nav" data-at="4"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span></nav>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ espace -->
+    <section class="fiche fiche--etroite" id="espace">
+      <div class="fiche__texte">
+        <h2>L'espace élève en bref</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">/eleve</span></p>
+        <p class="fiche__but">Une page unique, pensée pour un téléphone tenu d'une main : une barre en bas, cinq entrées au plus, des cartes simples. Le classeur et les TP s'ouvrent en plein écran par-dessus.</p>
+        <ol class="etapes">
+          <li data-cursor="#es-bonjour">Une fois le code accepté, l'espace s'ouvre sur <b>Accueil</b>.</li>
+          <li data-cursor="#es-nav" data-duration="3400">La barre du bas donne <b>Accueil</b>, <b>Notes</b> et <b>Cours</b>, toujours là, puis <b>Tampons</b> et <b>Maison</b> si la classe les a.</li>
+          <li data-cursor="#es-ouvrir" data-action="tap" data-duration="3200">Un TP ou le classeur s'ouvre en plein écran, par-dessus l'espace.</li>
+          <li data-cursor="#es-retour" data-action="tap" data-duration="3200">Le bouton Retour du téléphone (ou le lien <span class="btn-nom">‹ Retour</span>) le referme et ramène à l'espace, sans redemander le code.</li>
+          <li data-cursor="#es-titre" data-duration="3200">Recharger la page, ou toucher <span class="btn-nom">Quitter</span>, ramène à la saisie du code.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ce que voit l'élève dépend des réglages de sa classe : voir <a href="#onglets-classe">Ce que l'enseignant ouvre</a>.</li>
+            <li>Tout est lu au moment de la connexion ; seule la carte à tampons se rafraîchit seule, toutes les 30 secondes, quand l'onglet Tampons est ouvert.</li>
+            <li>Un élève apparaît partout sous son pseudonyme (prénom et deux lettres). Aucun vrai nom, aucun aménagement (PAP, PPRE, PAI) dans l'espace élève.</li>
+            <li>Sur ordinateur, la même page s'affiche dans une colonne centrale étroite.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp.html">Les TP</a> · <a href="cours-et-classeur.html#classeur">Le classeur</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>10:12</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main" data-to="4">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1" id="es-bonjour">Bonjour Lina</h1></div><span class="el-btn" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                  <section class="el-section"><h2 class="el-h2">À faire</h2>
+                    <div class="el-card el-card--stack"><div style="display:flex;gap:10px"><span class="el-icon-box"><svg class="ic"><use href="#i-fiole"/></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:12.5px;font-weight:600;color:var(--el-indigo-ink)">TP en cours · groupe G3</span><span style="font-size:15px;font-weight:600">Observer des levures au microscope</span><span style="font-size:13px;color:var(--el-muted)">Avec Noé MA, Iris TA et Tom SA</span></div></div><span class="el-btn el-btn--primary el-btn--block" id="es-ouvrir" data-on="3">Ouvrir le TP</span></div>
+                  </section>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div></section>
+                </div>
+                <div class="el-main" data-at="5" style="justify-content:center">
+                  <div class="el-card" style="display:flex;flex-direction:column;gap:18px;padding:22px 18px">
+                    <h1 class="el-h1" id="es-titre">Mon espace</h1>
+                    <div class="el-code"><span class="actif"></span><span></span><span></span><span></span><span></span><span></span></div>
+                    <span class="el-btn el-btn--off el-btn--tall el-btn--block">Voir mes résultats</span>
+                  </div>
+                </div>
+              </div>
+              <nav class="el-nav" id="es-nav" data-to="4"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span><span><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+              <div class="halo" data-at="2" style="left:4px;right:4px;bottom:6px;height:58px"></div>
+              <div class="el-plein glisse-haut" data-at="3">
+                <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:2px">
+                  <span class="el-back" id="es-retour"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Retour</span>
+                  <span class="el-kicker">5E</span><h1 class="el-h1">Mes TP</h1>
+                </div>
+                <div style="margin:14px 16px 0" class="el-card el-card--stack">
+                  <div><span class="el-chip el-chip--warn">TP · Activité 3</span><div style="font-size:19px;font-weight:700;margin-top:7px">Observer des levures au microscope</div><div class="el-row__meta">Aujourd'hui · 10h05</div></div>
+                  <span class="el-btn el-btn--primary el-btn--block">Ouvrir le TP</span>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ barre -->
+    <section class="fiche fiche--etroite" id="barre">
+      <div class="fiche__texte">
+        <h2>La barre du bas</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Bas de chaque écran</span></p>
+        <p class="fiche__but">Toujours au même endroit, à portée de pouce : un appui suffit pour passer d'une entrée à l'autre.</p>
+        <ol class="etapes">
+          <li data-cursor="#ba-notes" data-action="tap">Toucher <span class="btn-nom">Notes</span> : les notes d'évaluation et d'implication.</li>
+          <li data-cursor="#ba-cours" data-action="tap">Toucher <span class="btn-nom">Cours</span> : TP, annales, 3D et classeur.</li>
+          <li data-cursor="#ba-tampons" data-action="tap">Toucher <span class="btn-nom">Tampons</span> : la carte à tampons.</li>
+          <li data-cursor="#ba-maison" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Maison</span> : tout passe dans le décor sombre de la Maison, et la barre aussi.</li>
+          <li data-cursor="#ba2-accueil" data-action="tap">Toucher <span class="btn-nom">Accueil</span> pour revenir au début.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seules les entrées ouvertes à l'élève apparaissent, toujours dans cet ordre. Une entrée refermée par l'enseignant entre-temps ramène à l'accueil.</li>
+            <li>Changer d'entrée remonte en haut de la page et ramène <b>Cours</b> à son sommaire.</li>
+            <li>L'entrée choisie est en couleur d'accent et en gras. La barre respecte l'encoche et la barre de gestes des téléphones.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>10:12</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main" data-at="5">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div></div>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div></section>
+                </div>
+                <div class="el-main" data-at="1">
+                  <div class="el-head__titles"><span class="el-kicker">Trimestre 1 · 2026-2027</span><h1 class="el-h1">Notes</h1></div>
+                  <div class="el-seg"><span class="choisi">Évaluations</span><span>Implication</span></div>
+                  <div class="el-card el-card--pad" style="display:flex;justify-content:space-between;align-items:flex-end"><div><span class="el-label">Moyenne de l’année</span><div class="el-big">13,8<span class="el-unit"> /20</span></div></div></div>
+                  <div class="el-card el-card--pad" style="display:flex;justify-content:space-between"><div><div class="el-row__title">La respiration des êtres vivants</div><div class="el-row__meta">18 nov. · T1</div></div><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div>
+                </div>
+                <div class="el-main" data-at="2">
+                  <div class="el-head__titles"><span class="el-kicker">5E</span><h1 class="el-h1">Cours</h1></div>
+                  <div class="el-tiles"><div class="el-tilebox"><svg class="ic"><use href="#i-fiole"/></svg><span><span class="el-tilebox__title">Mes TP</span><span class="el-tilebox__note">Fiches et photos</span></span></div><div class="el-tilebox"><svg class="ic"><use href="#i-cube"/></svg><span><span class="el-tilebox__title">En 3D</span><span class="el-tilebox__note">Avec la caméra</span></span></div></div>
+                  <section class="el-section"><h2 class="el-h2">Mon classeur</h2><div class="el-card"><div class="el-subhead">Séquences</div><div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Le climat</span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div></div></section>
+                </div>
+                <div class="el-main" data-at="3">
+                  <div class="el-head__titles"><span class="el-kicker">Carte n° 2 · Bronze</span><h1 class="el-h1">Carte à tampons</h1></div>
+                  <div class="el-card el-card--stack"><span class="el-mid">7<span class="el-unit"> tampons sur 10</span></span>
+                    <div class="el-stamps"><span class="el-stamp"><svg class="ic"><use href="#i-etoile"/></svg></span><span class="el-stamp"><svg class="ic"><use href="#i-main"/></svg></span><span class="el-stamp"><svg class="ic"><use href="#i-etoile"/></svg></span><span class="el-stamp"><svg class="ic"><use href="#i-entraide"/></svg></span><span class="el-stamp"><svg class="ic"><use href="#i-main"/></svg></span><span class="el-stamp"><svg class="ic"><use href="#i-ampoule"/></svg></span><span class="el-stamp"><svg class="ic"><use href="#i-etoile"/></svg></span><span class="el-stamp el-stamp--empty">8</span><span class="el-stamp el-stamp--empty">9</span><span class="el-stamp el-stamp--empty">10</span></div>
+                  </div>
+                </div>
+                <div class="el-main" data-at="4" style="background:radial-gradient(ellipse at 50% 0%, oklch(0.15 0.02 55) 0%, oklch(0.06 0.01 50) 80%);margin-top:-30px;padding-top:30px;color:oklch(0.88 0.03 85)">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0"><span style="font-family:Georgia,serif;font-style:italic;font-size:19px;color:oklch(0.85 0.04 60)">Lina BO</span><span style="font-size:12px;padding:6px 10px;border:1px solid oklch(0.35 0.04 60 / .6);border-radius:8px;color:oklch(0.6 0.03 60)">Quitter</span></div>
+                  <div style="text-align:center;margin-top:50px;font-family:Georgia,serif"><div style="font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:oklch(0.62 0.11 78)">Ta Maison</div><div style="font-size:26px;font-style:italic;margin-top:6px">Maison B</div></div>
+                </div>
+              </div>
+              <nav class="el-nav" data-to="3">
+                <span data-on="5"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span>
+                <span id="ba-notes" data-on="1"><svg class="ic"><use href="#i-notes"/></svg>Notes</span>
+                <span id="ba-cours" data-on="2"><svg class="ic"><use href="#i-livre"/></svg>Cours</span>
+                <span id="ba-tampons" data-on="3"><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span>
+                <span id="ba-maison"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span>
+              </nav>
+              <nav class="el-nav el-nav--academy" data-at="4" style="position:absolute;left:0;right:0;bottom:0">
+                <span id="ba2-accueil"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span>
+                <span><svg class="ic"><use href="#i-notes"/></svg>Notes</span>
+                <span><svg class="ic"><use href="#i-livre"/></svg>Cours</span>
+                <span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span>
+                <span class="actif"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span>
+              </nav>
+              <nav class="el-nav" data-at="5" style="position:absolute;left:0;right:0;bottom:0">
+                <span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span>
+                <span><svg class="ic"><use href="#i-notes"/></svg>Notes</span>
+                <span><svg class="ic"><use href="#i-livre"/></svg>Cours</span>
+                <span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span>
+                <span><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span>
+              </nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ accueil -->
+    <section class="fiche fiche--etroite" id="accueil">
+      <div class="fiche__texte">
+        <h2>L'accueil</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Barre du bas › Accueil</span></p>
+        <p class="fiche__but">Le premier écran après la connexion : d'abord ce qui attend l'élève, puis sa dernière note, puis son trimestre en trois chiffres, et le choix du thème.</p>
+        <ol class="etapes">
+          <li data-cursor="#ac-titre">En haut : la classe et le trimestre, puis <b>Bonjour</b> et le prénom seul. À droite, <span class="btn-nom">Quitter</span>.</li>
+          <li data-cursor="#ac-afaire"><b>À faire</b> : le TP en cours, ou le bonus à choisir. La section n'existe que s'il y a quelque chose.</li>
+          <li data-cursor="#ac-note"><b>Dernière note</b> : l'évaluation notée la plus récente.</li>
+          <li data-cursor="#ac-trim"><b>Ce trimestre</b> : implication, carte à tampons, classement.</li>
+          <li data-cursor="#ac-themes" data-duration="3200">Plus bas, <b>Mon thème</b> : quatre habillages au choix.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une section sans contenu ne s'affiche pas : jamais de carte vide ni de « 0 » inutile.</li>
+            <li><b>Dernière note</b> n'apparaît que si l'enseignant a ouvert les notes à la classe ; la carte à tampons, que si la classe a les tampons.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>10:12</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <div class="el-defile" data-on="5" id="ac-defile">
+                    <div class="el-head"><div class="el-head__titles" id="ac-titre"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div><span class="el-btn" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                    <section class="el-section" id="ac-afaire"><h2 class="el-h2">À faire</h2>
+                      <div class="el-card el-card--stack"><div style="display:flex;gap:10px"><span class="el-icon-box"><svg class="ic"><use href="#i-fiole"/></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:12.5px;font-weight:600;color:var(--el-indigo-ink)">TP en cours · groupe G3</span><span style="font-size:15px;font-weight:600">Observer des levures au microscope</span><span style="font-size:13px;color:var(--el-muted)">Dépôt des photos ouvert jusqu’à 10 h 55</span></div></div><span class="el-btn el-btn--primary el-btn--block">Déposer une photo</span></div>
+                    </section>
+                    <section class="el-section" id="ac-note"><h2 class="el-h2">Dernière note</h2><div class="el-tile"><span class="el-row__body"><span class="el-row__title">La respiration des êtres vivants</span><span class="el-row__meta">Évaluation du 18 novembre</span></span><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div></section>
+                    <section class="el-section" id="ac-trim"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div></section>
+                    <section class="el-section" id="ac-themes"><h2 class="el-h2">Mon thème</h2>
+                      <div class="el-themes">
+                        <div class="el-theme choisi"><span class="el-theme__view" style="background:#F6F6F7"><span class="el-theme__line" style="width:55%;background:#18181B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#4F46E5"></span><span class="el-theme__line" style="flex:1;background:#18181B;opacity:.35"></span></span></span><span class="el-theme__name">Carnet<svg class="ic ic--p"><use href="#i-coche"/></svg></span><span class="el-theme__note">Clair et sobre</span></div>
+                        <div class="el-theme"><span class="el-theme__view" style="background:#0B1026"><span class="el-theme__line" style="width:55%;background:#EEF1FF"></span><span class="el-theme__card" style="background:#151B3B"><span class="el-theme__dot" style="background:#8EA2FF"></span><span class="el-theme__line" style="flex:1;background:#EEF1FF;opacity:.35"></span></span></span><span class="el-theme__name">Cosmos</span><span class="el-theme__note">Nuit étoilée</span></div>
+                        <div class="el-theme"><span class="el-theme__view" style="background:#170F2E"><span class="el-theme__line" style="width:55%;background:#F6F0FF"></span><span class="el-theme__card" style="background:#241846"><span class="el-theme__dot" style="background:#FFD23F"></span><span class="el-theme__line" style="flex:1;background:#F6F0FF;opacity:.35"></span></span></span><span class="el-theme__name">Arcade</span><span class="el-theme__note">Rétro, tout en pixels</span></div>
+                        <div class="el-theme"><span class="el-theme__view" style="background:#EEF5E8"><span class="el-theme__line" style="width:55%;background:#16291B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#1F7A3A"></span><span class="el-theme__line" style="flex:1;background:#16291B;opacity:.35"></span></span></span><span class="el-theme__name">Jungle</span><span class="el-theme__note">Clair et végétal</span></div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </div>
+              <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ à faire -->
+    <section class="fiche fiche--etroite" id="a-faire">
+      <div class="fiche__texte">
+        <h2>À faire</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Accueil › À faire</span></p>
+        <p class="fiche__but">En tête de l'accueil, ce qui attend une action de l'élève : le TP de son groupe en cours, et le bonus à choisir quand sa carte à tampons est pleine.</p>
+        <ol class="etapes">
+          <li data-cursor="#af-carte" data-duration="3400">Pendant un TP en groupe : <b>TP en cours · groupe G3</b>, le nom du TP, et les camarades du groupe. Le bouton <span class="btn-nom">Ouvrir le TP</span> ouvre la fiche.</li>
+          <li data-cursor="#af-ligne" data-duration="3400">Quand l'enseignant ouvre le dépôt des photos, la ligne grise donne l'heure de fermeture et le bouton devient <span class="btn-nom">Déposer une photo</span>.</li>
+          <li data-cursor="#af-btn" data-action="tap" data-duration="3200">Le toucher ouvre le TP directement sur sa partie <b>Photos</b>.</li>
+          <li data-cursor="#af-bonus" data-action="tap" data-duration="3200">Carte à tampons pleine : la tuile <b>Ta carte à tampons est pleine</b> · <b>Choisis ton bonus</b> mène à l'onglet Tampons.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le TP « en cours » est celui que l'enseignant a lancé, ou un TP terminé dont il a rouvert le dépôt.</li>
+            <li>Les TP n'ont pas de réglage de classe : ils apparaissent dès que l'élève a fait partie d'un groupe de TP.</li>
+            <li>La tuile du bonus n'apparaît que si la carte compte 10 tampons et que l'enseignant a prévu des bonus.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp.html#tp-photos">Déposer des photos</a> · <a href="implication-et-recompenses.html#bonus">Choisir son bonus</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>10:31</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div><span class="el-btn" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                  <section class="el-section"><h2 class="el-h2">À faire</h2>
+                    <div class="el-card el-card--stack" id="af-carte" data-on="1"><div style="display:flex;gap:10px"><span class="el-icon-box"><svg class="ic"><use href="#i-fiole"/></svg></span><div style="display:flex;flex-direction:column;gap:2px;min-width:0;position:relative"><span style="font-size:12.5px;font-weight:600;color:var(--el-indigo-ink)">TP en cours · groupe G3</span><span style="font-size:15px;font-weight:600">Observer des levures au microscope</span><span id="af-ligne" style="font-size:13px;color:var(--el-muted);position:relative;height:18px"><span data-at="1" style="position:absolute;left:0;white-space:nowrap">Avec Noé MA, Iris TA et Tom SA</span><span data-from="2" style="position:absolute;left:0;white-space:nowrap">Dépôt des photos ouvert jusqu’à 10 h 55</span></span></div></div>
+                      <div style="position:relative;height:40px"><span class="el-btn el-btn--primary el-btn--block" data-at="1" style="position:absolute;inset:0">Ouvrir le TP</span><span class="el-btn el-btn--primary el-btn--block" id="af-btn" data-from="2" data-on="3" style="position:absolute;inset:0">Déposer une photo</span></div>
+                    </div>
+                    <div class="el-tile glisse-haut" id="af-bonus" data-from="4" data-on="4"><span class="el-icon-box"><svg class="ic"><use href="#i-cadeau"/></svg></span><span class="el-row__body"><span class="el-row__title">Ta carte à tampons est pleine</span><span class="el-row__meta">Choisis ton bonus</span></span><svg class="ic el-row__chev"><use href="#i-chev-d"/></svg></div>
+                  </section>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span style="position:relative;height:28px;display:block"><span class="el-mid" data-to="3" style="position:absolute;left:0">9<span class="el-unit"> sur 10</span></span><span class="el-mid" data-from="4" style="position:absolute;left:0">10<span class="el-unit"> sur 10</span></span></span></div></div></section>
+                </div>
+              </div>
+              <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              <div class="el-plein glisse-haut" data-at="3">
+                <div style="padding:6px 16px 0;display:flex;flex-direction:column;gap:5px">
+                  <span class="el-back"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Mes TP</span>
+                  <h1 class="el-h1" style="font-size:20px;line-height:26px">Observer des levures au microscope</h1>
+                  <span class="el-row__meta"><span class="el-chip" style="background:#FFF1E8;color:#9A3A0E">G3</span> Aujourd'hui · 10h05 · TP · Activité 3</span>
+                </div>
+                <div style="margin:12px 16px 0;padding:4px;display:flex;gap:4px;background:var(--el-surface);border:1px solid var(--el-line);border-radius:8px;font-size:12px;font-weight:600;color:var(--el-muted)">
+                  <span style="flex:1;text-align:center;padding:10px 2px">Fiche d’activité</span><span style="flex:1;text-align:center;padding:10px 2px">Protocole</span><span style="flex:1;text-align:center;padding:10px 2px;background:var(--el-indigo);color:#fff;border-radius:6px">Photos</span>
+                </div>
+                <div style="margin:12px 16px 0;display:flex;flex-direction:column;gap:10px">
+                  <div class="el-banner">Dépôt ouvert · se ferme à 10h55, fin de l’heure</div>
+                  <span class="el-btn el-btn--primary el-btn--tall el-btn--block"><svg class="ic ic--p"><use href="#i-photo"/></svg>Prendre une photo</span>
+                  <span class="el-btn el-btn--tall el-btn--block"><svg class="ic ic--p"><use href="#i-galerie"/></svg>Galerie</span>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ dernière note -->
+    <section class="fiche fiche--etroite" id="derniere-note">
+      <div class="fiche__texte">
+        <h2>Dernière note</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Accueil › Dernière note</span></p>
+        <p class="fiche__but">La note la plus récente, sans aller la chercher.</p>
+        <ol class="etapes">
+          <li data-cursor="#dn-tuile" data-duration="3200">La tuile donne le nom de l'évaluation, sa date, et la note sur 20.</li>
+          <li data-cursor="#dn-tuile" data-action="tap" data-duration="3200">La toucher ouvre <b>Notes</b> sur <b>Évaluations</b>, avec le détail de chaque note.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La tuile n'apparaît que si l'enseignant a ouvert les notes à la classe et qu'une évaluation est notée et datée ; la plus récente par date est retenue.</li>
+            <li>Dans l'espace élève, une note n'est jamais coloriée selon sa valeur.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="notes-et-copies.html#evaluations">Notes › Évaluations</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>17:40</span><span>Wi-Fi</span></div>
+              <div class="el-corps">
+                <div class="el-main" data-at="1">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div><span class="el-btn" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                  <section class="el-section"><h2 class="el-h2">Dernière note</h2><div class="el-tile" id="dn-tuile" data-on="1-2"><span class="el-row__body"><span class="el-row__title">La respiration des êtres vivants</span><span class="el-row__meta">Évaluation du 18 novembre</span></span><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div></section>
+                </div>
+                <div class="el-main glisse-haut" data-at="2">
+                  <div class="el-head__titles"><span class="el-kicker">Trimestre 1 · 2026-2027</span><h1 class="el-h1">Notes</h1></div>
+                  <div class="el-seg"><span class="choisi">Évaluations</span><span>Implication</span></div>
+                  <div class="el-card el-card--pad" style="display:flex;justify-content:space-between;align-items:flex-end"><div><span class="el-label">Moyenne de l’année</span><div class="el-big">13,8<span class="el-unit"> /20</span></div></div><div style="display:flex;gap:12px;font-size:12px;color:var(--el-dim);text-align:center"><div>T1<div style="font-size:14px;font-weight:600;color:var(--el-text)">13,8</div></div><div>T2<div style="font-size:14px;color:var(--el-dim)">–</div></div><div>T3<div style="font-size:14px;color:var(--el-dim)">–</div></div></div></div>
+                  <div class="el-card el-card--pad is-on" style="display:flex;justify-content:space-between"><div><div class="el-row__title">La respiration des êtres vivants</div><div class="el-row__meta">18 nov. · T1 · coef. 2</div></div><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div>
+                  <div class="el-card el-card--pad" style="display:flex;justify-content:space-between"><div><div class="el-row__title">Lire un graphique de températures</div><div class="el-row__meta">6 nov. · T1</div></div><span class="el-grade">13<span class="el-unit"> /20</span></span></div>
+                </div>
+              </div>
+              <nav class="el-nav"><span data-on="1" class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span data-on="2"><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ trimestre -->
+    <section class="fiche fiche--etroite" id="trimestre">
+      <div class="fiche__texte">
+        <h2>Ce trimestre</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Accueil › Ce trimestre</span></p>
+        <p class="fiche__but">Le trimestre en trois chiffres, chacun menant à son détail.</p>
+        <ol class="etapes">
+          <li data-cursor="#tr-impl" data-action="tap" data-duration="3200">La carte <b>Implication</b> donne la note d'implication sur 20 ; la toucher ouvre Notes › Implication.</li>
+          <li data-cursor="#tr-tamp" data-action="tap" data-duration="3200">La carte <b>Carte à tampons</b> compte les tampons de la carte en cours ; la toucher ouvre Tampons.</li>
+          <li data-cursor="#tr-class" data-action="tap" data-duration="3200"><b>Classement de la classe</b> donne le rang de l'élève (« 6e sur 27 ») ; le toucher ouvre les classements.</li>
+          <li data-cursor="#tr-seule" data-duration="3200">Sans tampons dans la classe, l'implication occupe seule toute la largeur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La note d'implication vient des actions saisies par l'enseignant sur son téléphone pendant les séances (implications, malus, absences) et de l'objectif qu'il a réglé.</li>
+            <li>Les rangs s'écrivent « 1er », « 2e », « 6e ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="implication-et-recompenses.html#implication">Ma note d'implication</a> · <a href="implication-et-recompenses.html#tampons">Carte à tampons</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>17:40</span><span>Wi-Fi</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div><span class="el-btn" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                  <section class="el-section"><h2 class="el-h2">Dernière note</h2><div class="el-tile"><span class="el-row__body"><span class="el-row__title">La respiration des êtres vivants</span><span class="el-row__meta">Évaluation du 18 novembre</span></span><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div></section>
+                  <section class="el-section" style="position:relative"><h2 class="el-h2">Ce trimestre</h2>
+                    <div class="el-grid2" data-to="3"><div class="el-card el-stat" id="tr-impl" data-on="1"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat" id="tr-tamp" data-on="2"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div>
+                    <div class="el-card el-stat" id="tr-seule" data-at="4" style="position:absolute;left:0;right:0;top:25px"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div>
+                    <div class="el-tile" id="tr-class" data-on="3"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                    <div class="bulle bulle--haut" data-at="1" style="left:10px;top:108px">Ouvre Notes › Implication</div>
+                    <div class="bulle bulle--haut" data-at="2" style="left:170px;top:108px">Ouvre Tampons</div>
+                    <div class="bulle bulle--haut" data-at="3" style="left:60px;top:160px">Ouvre les classements</div>
+                  </section>
+                </div>
+              </div>
+              <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span data-to="3"><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ thèmes -->
+    <section class="fiche fiche--etroite" id="themes">
+      <div class="fiche__texte">
+        <h2>Mon thème</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Accueil › Mon thème</span></p>
+        <p class="fiche__but">L'élève habille son espace à son goût. Le choix s'applique dès l'appui et reste sur ce téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#th-carnet">En bas de l'accueil, <b>Mon thème</b> montre quatre aperçus, chacun peint dans ses propres couleurs. <b>Carnet</b> (« Clair et sobre ») est le thème de départ.</li>
+          <li data-cursor="#th-cosmos" data-action="tap"><b>Cosmos</b> (« Nuit étoilée ») : fond bleu nuit, étoiles, planète à anneau.</li>
+          <li data-cursor="#th-arcade" data-action="tap"><b>Arcade</b> (« Rétro, tout en pixels ») : violet sombre, accent jaune, angles droits et ombres en escalier.</li>
+          <li data-cursor="#th-jungle" data-action="tap"><b>Jungle</b> (« Clair et végétal ») : vert tendre, boutons en pilule, feuillages en haut.</li>
+          <li data-cursor="#th-carnet" data-action="tap">Une coche marque le thème choisi. Toucher <b>Carnet</b> revient au thème de départ.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tout l'espace change de couleurs, d'arrondis et de police de titres, sauf la Maison (qui garde son décor) et les feuilles du classeur et des TP, qui restent du papier blanc.</li>
+            <li>Le choix est gardé dans le navigateur de l'appareil, pas dans la base : en navigation privée, il ne vaut que pour la visite. Il reste après <b>Quitter</b>.</li>
+            <li>Les quatre thèmes sont libres pour l'instant ; débloquer des thèmes est une idée prévue, pas encore faite.</li>
+            <li>Chaque palette a été contrôlée pour rester lisible.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <!-- quatre copies du même écran, une par thème -->
+              <div class="tel__ecran el th-pile" data-at="1,5">
+                <div class="tel__statut"><span>18:05</span><span>Wi-Fi</span></div>
+                <div class="el-corps"><div class="el-main">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div></div>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Mon thème</h2><div class="el-themes">
+                    <div class="el-theme choisi" id="th-carnet" data-on="5"><span class="el-theme__view" style="background:#F6F6F7"><span class="el-theme__line" style="width:55%;background:#18181B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#4F46E5"></span><span class="el-theme__line" style="flex:1;background:#18181B;opacity:.35"></span></span></span><span class="el-theme__name">Carnet<svg class="ic ic--p"><use href="#i-coche"/></svg></span><span class="el-theme__note">Clair et sobre</span></div>
+                    <div class="el-theme" id="th-cosmos"><span class="el-theme__view" style="background:#0B1026"><span class="el-theme__line" style="width:55%;background:#EEF1FF"></span><span class="el-theme__card" style="background:#151B3B"><span class="el-theme__dot" style="background:#8EA2FF"></span><span class="el-theme__line" style="flex:1;background:#EEF1FF;opacity:.35"></span></span></span><span class="el-theme__name">Cosmos</span><span class="el-theme__note">Nuit étoilée</span></div>
+                    <div class="el-theme" id="th-arcade"><span class="el-theme__view" style="background:#170F2E"><span class="el-theme__line" style="width:55%;background:#F6F0FF"></span><span class="el-theme__card" style="background:#241846"><span class="el-theme__dot" style="background:#FFD23F"></span><span class="el-theme__line" style="flex:1;background:#F6F0FF;opacity:.35"></span></span></span><span class="el-theme__name">Arcade</span><span class="el-theme__note">Rétro, tout en pixels</span></div>
+                    <div class="el-theme" id="th-jungle"><span class="el-theme__view" style="background:#EEF5E8"><span class="el-theme__line" style="width:55%;background:#16291B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#1F7A3A"></span><span class="el-theme__line" style="flex:1;background:#16291B;opacity:.35"></span></span></span><span class="el-theme__name">Jungle</span><span class="el-theme__note">Clair et végétal</span></div>
+                  </div></section>
+                </div></div>
+                <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              </div>
+              <div class="tel__ecran el th-pile" data-theme="cosmos" data-at="2">
+                <div class="tel__statut"><span>18:05</span><span>Wi-Fi</span></div>
+                <div class="el-corps"><div class="el-main">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div></div>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Mon thème</h2><div class="el-themes">
+                    <div class="el-theme"><span class="el-theme__view" style="background:#F6F6F7"><span class="el-theme__line" style="width:55%;background:#18181B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#4F46E5"></span><span class="el-theme__line" style="flex:1;background:#18181B;opacity:.35"></span></span></span><span class="el-theme__name">Carnet</span><span class="el-theme__note">Clair et sobre</span></div>
+                    <div class="el-theme choisi is-on"><span class="el-theme__view" style="background:#0B1026"><span class="el-theme__line" style="width:55%;background:#EEF1FF"></span><span class="el-theme__card" style="background:#151B3B"><span class="el-theme__dot" style="background:#8EA2FF"></span><span class="el-theme__line" style="flex:1;background:#EEF1FF;opacity:.35"></span></span></span><span class="el-theme__name">Cosmos<svg class="ic ic--p"><use href="#i-coche"/></svg></span><span class="el-theme__note">Nuit étoilée</span></div>
+                    <div class="el-theme"><span class="el-theme__view" style="background:#170F2E"><span class="el-theme__line" style="width:55%;background:#F6F0FF"></span><span class="el-theme__card" style="background:#241846"><span class="el-theme__dot" style="background:#FFD23F"></span><span class="el-theme__line" style="flex:1;background:#F6F0FF;opacity:.35"></span></span></span><span class="el-theme__name">Arcade</span><span class="el-theme__note">Rétro, tout en pixels</span></div>
+                    <div class="el-theme"><span class="el-theme__view" style="background:#EEF5E8"><span class="el-theme__line" style="width:55%;background:#16291B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#1F7A3A"></span><span class="el-theme__line" style="flex:1;background:#16291B;opacity:.35"></span></span></span><span class="el-theme__name">Jungle</span><span class="el-theme__note">Clair et végétal</span></div>
+                  </div></section>
+                </div></div>
+                <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              </div>
+              <div class="tel__ecran el th-pile" data-theme="arcade" data-at="3">
+                <div class="tel__statut"><span>18:05</span><span>Wi-Fi</span></div>
+                <div class="el-corps"><div class="el-main">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div></div>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Mon thème</h2><div class="el-themes">
+                    <div class="el-theme"><span class="el-theme__view" style="background:#F6F6F7"><span class="el-theme__line" style="width:55%;background:#18181B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#4F46E5"></span><span class="el-theme__line" style="flex:1;background:#18181B;opacity:.35"></span></span></span><span class="el-theme__name">Carnet</span><span class="el-theme__note">Clair et sobre</span></div>
+                    <div class="el-theme"><span class="el-theme__view" style="background:#0B1026"><span class="el-theme__line" style="width:55%;background:#EEF1FF"></span><span class="el-theme__card" style="background:#151B3B"><span class="el-theme__dot" style="background:#8EA2FF"></span><span class="el-theme__line" style="flex:1;background:#EEF1FF;opacity:.35"></span></span></span><span class="el-theme__name">Cosmos</span><span class="el-theme__note">Nuit étoilée</span></div>
+                    <div class="el-theme choisi is-on"><span class="el-theme__view" style="background:#170F2E"><span class="el-theme__line" style="width:55%;background:#F6F0FF"></span><span class="el-theme__card" style="background:#241846"><span class="el-theme__dot" style="background:#FFD23F"></span><span class="el-theme__line" style="flex:1;background:#F6F0FF;opacity:.35"></span></span></span><span class="el-theme__name">Arcade<svg class="ic ic--p"><use href="#i-coche"/></svg></span><span class="el-theme__note">Rétro, tout en pixels</span></div>
+                    <div class="el-theme"><span class="el-theme__view" style="background:#EEF5E8"><span class="el-theme__line" style="width:55%;background:#16291B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#1F7A3A"></span><span class="el-theme__line" style="flex:1;background:#16291B;opacity:.35"></span></span></span><span class="el-theme__name">Jungle</span><span class="el-theme__note">Clair et végétal</span></div>
+                  </div></section>
+                </div></div>
+                <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              </div>
+              <div class="tel__ecran el th-pile" data-theme="jungle" data-at="4">
+                <div class="tel__statut"><span>18:05</span><span>Wi-Fi</span></div>
+                <div class="el-corps"><div class="el-main">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div></div>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div><div class="el-tile"><span class="el-row__body"><span style="font-size:13.5px;color:var(--el-muted)">Classement de la classe</span></span><span class="el-row__end">6e sur 27</span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Mon thème</h2><div class="el-themes">
+                    <div class="el-theme"><span class="el-theme__view" style="background:#F6F6F7"><span class="el-theme__line" style="width:55%;background:#18181B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#4F46E5"></span><span class="el-theme__line" style="flex:1;background:#18181B;opacity:.35"></span></span></span><span class="el-theme__name">Carnet</span><span class="el-theme__note">Clair et sobre</span></div>
+                    <div class="el-theme"><span class="el-theme__view" style="background:#0B1026"><span class="el-theme__line" style="width:55%;background:#EEF1FF"></span><span class="el-theme__card" style="background:#151B3B"><span class="el-theme__dot" style="background:#8EA2FF"></span><span class="el-theme__line" style="flex:1;background:#EEF1FF;opacity:.35"></span></span></span><span class="el-theme__name">Cosmos</span><span class="el-theme__note">Nuit étoilée</span></div>
+                    <div class="el-theme"><span class="el-theme__view" style="background:#170F2E"><span class="el-theme__line" style="width:55%;background:#F6F0FF"></span><span class="el-theme__card" style="background:#241846"><span class="el-theme__dot" style="background:#FFD23F"></span><span class="el-theme__line" style="flex:1;background:#F6F0FF;opacity:.35"></span></span></span><span class="el-theme__name">Arcade</span><span class="el-theme__note">Rétro, tout en pixels</span></div>
+                    <div class="el-theme choisi is-on"><span class="el-theme__view" style="background:#EEF5E8"><span class="el-theme__line" style="width:55%;background:#16291B"></span><span class="el-theme__card" style="background:#FFFFFF"><span class="el-theme__dot" style="background:#1F7A3A"></span><span class="el-theme__line" style="flex:1;background:#16291B;opacity:.35"></span></span></span><span class="el-theme__name">Jungle<svg class="ic ic--p"><use href="#i-coche"/></svg></span><span class="el-theme__note">Clair et végétal</span></div>
+                  </div></section>
+                </div></div>
+                <nav class="el-nav"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ quitter -->
+    <section class="fiche fiche--etroite" id="quitter">
+      <div class="fiche__texte">
+        <h2>Quitter</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Accueil › Quitter</span></p>
+        <p class="fiche__but">Refermer son espace, par exemple sur un téléphone ou un ordinateur partagé.</p>
+        <ol class="etapes">
+          <li data-cursor="#qu-btn" data-action="tap">En haut à droite de l'accueil, toucher <span class="btn-nom">Quitter</span>.</li>
+          <li data-cursor="#qu-case" data-duration="3200">Tout ce qui avait été chargé est oublié : les 6 cases sont vides et le curseur revient dans la première.</li>
+          <li data-cursor="#qu-maison" data-action="tap" data-duration="3200">Dans la Maison, le bouton <span class="btn-nom">Quitter</span> est en haut à droite, à côté du bouton de musique.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le thème choisi reste : il appartient au téléphone, pas à l'élève. Ici, le thème Cosmos garde ses couleurs sur l'écran de saisie.</li>
+            <li>Fermer simplement l'onglet ou recharger la page a le même effet : le code n'est jamais gardé.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el" data-theme="cosmos">
+              <div class="tel__statut"><span>18:20</span><span>Wi-Fi</span></div>
+              <div class="el-corps">
+                <div class="el-main" data-at="1">
+                  <div class="el-head"><div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1">Bonjour Lina</h1></div><span class="el-btn" id="qu-btn" data-on="1" style="padding:0 10px;font-size:13px;color:var(--el-muted)"><svg class="ic ic--p"><use href="#i-sortie"/></svg>Quitter</span></div>
+                  <section class="el-section"><h2 class="el-h2">Dernière note</h2><div class="el-tile"><span class="el-row__body"><span class="el-row__title">La respiration des êtres vivants</span><span class="el-row__meta">Évaluation du 18 novembre</span></span><span class="el-grade">14,5<span class="el-unit"> /20</span></span></div></section>
+                  <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">7<span class="el-unit"> sur 10</span></span></div></div></section>
+                </div>
+                <div class="el-main" data-at="2" style="justify-content:center">
+                  <div class="el-card" style="display:flex;flex-direction:column;gap:20px;padding:24px 18px">
+                    <div style="display:flex;flex-direction:column;gap:10px"><span class="el-icon-box" style="width:46px;height:46px"><svg class="ic ic--g"><use href="#i-livre"/></svg></span><div><h1 class="el-h1">Mon espace</h1><p class="el-login__text">Entre ton code personnel à 6 chiffres pour voir tes résultats.</p></div></div>
+                    <div style="display:flex;flex-direction:column;gap:7px"><span class="el-field-label">Code personnel</span><div class="el-code"><span class="actif" id="qu-case"></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                    <span class="el-btn el-btn--off el-btn--tall el-btn--block">Voir mes résultats</span>
+                  </div>
+                </div>
+                <div class="el-main" data-at="3" style="background:radial-gradient(ellipse at 50% 0%, oklch(0.15 0.02 55) 0%, oklch(0.06 0.01 50) 80%);margin-top:-30px;padding-top:30px;color:oklch(0.88 0.03 85)">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 2px;border-bottom:1px solid oklch(0.3 0.03 60 / .5)"><span style="font-family:Georgia,serif;font-style:italic;font-size:19px;color:oklch(0.85 0.04 60)">Lina BO</span><span style="display:flex;gap:8px"><span style="padding:6px 9px;border:1px solid oklch(0.35 0.04 60 / .6);border-radius:8px;color:oklch(0.6 0.03 60);display:grid;place-items:center"><svg class="ic ic--p"><use href="#i-hautparleur"/></svg></span><span id="qu-maison" style="font-size:12px;padding:7px 11px;border:1px solid oklch(0.35 0.04 60 / .6);border-radius:8px;color:oklch(0.6 0.03 60)">Quitter</span></span></div>
+                </div>
+              </div>
+              <nav class="el-nav" data-at="1"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span><span><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+              <nav class="el-nav el-nav--academy" data-at="3" style="position:absolute;left:0;right:0;bottom:0"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span><span class="actif"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ onglets par classe -->
+    <section class="fiche fiche--large" id="onglets-classe">
+      <div class="fiche__texte">
+        <h2>Ce que l'enseignant ouvre à chaque classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Effet chez l'élève</span><span class="chemin">Classes › Classes et plans › Visibilité élèves</span></p>
+        <p class="fiche__but">L'enseignant décide, classe par classe, ce qui apparaît dans l'espace de ses élèves. L'effet est visible à la prochaine connexion de l'élève.</p>
+        <ol class="etapes">
+          <li data-cursor="#oc-vis" data-action="click" data-duration="3200">Sur son site, dans <b>Classes et plans</b>, choisir la classe puis déplier <b>Visibilité élèves</b> (replié au départ).</li>
+          <li data-cursor="#oc-t-tamp" data-action="click" data-duration="3200">Allumer <b>Tampons</b> : l'entrée Tampons apparaît dans la barre de l'élève, et la carte à tampons sur son accueil.</li>
+          <li data-cursor="#oc-t-ann" data-action="click" data-duration="3200">Allumer <b>Annales</b> : la tuile Annales apparaît dans Cours.</li>
+          <li data-cursor="#oc-t-notes" data-action="click" data-duration="3400">Allumer <b>Notes</b> : la bascule <b>Évaluations / Implication</b> apparaît dans Notes, et la dernière note sur l'accueil.</li>
+          <li data-cursor="#oc-t-mais" data-action="click" data-duration="3200">Allumer <b>Maison</b> : l'entrée Maison apparaît dans la barre.</li>
+          <li data-cursor="#oc-tous" data-action="click" data-duration="3400"><span class="btn-nom">↳ Appliquer à toutes les classes</span> recopie Tampons, Annales et Notes sur toutes les classes ; la Maison reste réglée classe par classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le classeur se règle à part, depuis le classeur virtuel de la classe : <b>Accès des élèves</b> › <b>Espace élève</b> › <b>Ouvrir l’onglet</b>. Il ajoute la section <b>Mon classeur</b> dans Cours.</li>
+            <li>Sans réglage : <b>Implication</b> et <b>En 3D</b> sont toujours visibles ; <b>Mes TP</b> apparaît dès qu'un élève a fait partie d'un groupe de TP.</li>
+            <li>C'est le serveur qui tranche à chaque connexion : un élève qui a déjà son espace ouvert voit le changement en se reconnectant.</li>
+            <li>Une personnalisation élève par élève est prévue, pas encore faite.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html">Plans de classe (site enseignant)</a> · <a href="#temoin">L'élève témoin</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div style="display:flex;gap:26px;align-items:center;height:100%">
+              <div class="fenetre" style="width:640px;height:520px">
+                <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div>
+                <div class="app">
+                  <div class="app__main">
+                    <div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="muet"><span class="puce puce--5">5E</span> 5E · Salle 210</span></div>
+                    <div class="app__corps" style="display:flex;gap:14px">
+                      <div class="liste-classes" style="width:120px"><div class="liste-classes__t">Classes</div><div class="liste-classes__it"><span class="puce puce--4">4B</span>4B</div><div class="liste-classes__it is-actif"><span class="puce puce--5">5E</span>5E</div><div class="liste-classes__it"><span class="puce puce--3">3A</span>3A</div></div>
+                      <div style="flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;align-content:start;opacity:.55">
+                        <div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div><div class="place"></div>
+                      </div>
+                      <div class="panneau" style="width:200px">
+                        <div class="panneau__bloc" style="position:relative">
+                          <div id="oc-vis" style="font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-dim);padding:4px 6px">▸ Visibilité élèves</div>
+                          <div data-from="1" class="glisse-haut" style="display:flex;flex-direction:column;gap:2px;margin-top:4px">
+                            <div class="vis-tog" data-on="2-6"><span><span class="pic" style="background:#FDF1E3"></span>Tampons</span><span class="interrupteur" id="oc-t-tamp" data-on="2-6" style="--indigo:#B45309"></span></div>
+                            <div class="vis-tog" data-on="5-6"><span><span class="pic" style="background:#EEF0FF"></span>Maison</span><span class="interrupteur" id="oc-t-mais" data-on="5-6"></span></div>
+                            <div class="vis-tog" data-on="3-6"><span><span class="pic" style="background:#EAF6EE"></span>Annales</span><span class="interrupteur" id="oc-t-ann" data-on="3-6" style="--indigo:#15803D"></span></div>
+                            <div class="vis-tog" data-on="4-6"><span><span class="pic" style="background:#EEF0FF"></span>Notes</span><span class="interrupteur" id="oc-t-notes" data-on="4-6"></span></div>
+                            <div id="oc-tous" style="font-size:11.5px;color:var(--text-muted);padding:4px 8px">↳ Appliquer à toutes les classes</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="toast" data-at="6" style="position:absolute;left:340px;bottom:60px;translate:none;background:#15803D">Tampons/Annales/Notes appliqués à 6 classes</div>
+              </div>
+              <div class="tel-pose" style="width:290px;height:590px">
+                <div class="tel"><div class="tel__ecran el">
+                  <div class="tel__statut"><span>8:02</span><span>4G</span></div>
+                  <div class="el-corps">
+                    <div class="el-main" data-at="1-2,5-6">
+                      <div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1" style="font-size:21px">Bonjour Lina</h1></div>
+                      <section class="el-section"><h2 class="el-h2">Ce trimestre</h2>
+                        <div class="el-card el-stat" data-at="1"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div>
+                        <div class="el-grid2 zoom" data-at="2,5-6"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">15,2<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">3<span class="el-unit"> sur 10</span></span></div></div>
+                      </section>
+                    </div>
+                    <div class="el-main" data-at="3">
+                      <div class="el-head__titles"><span class="el-kicker">5E</span><h1 class="el-h1" style="font-size:21px">Cours</h1></div>
+                      <div class="el-tiles"><div class="el-tilebox zoom" data-from="3"><svg class="ic"><use href="#i-archive"/></svg><span><span class="el-tilebox__title">Annales</span><span class="el-tilebox__note">Brevet</span></span></div><div class="el-tilebox"><svg class="ic"><use href="#i-cube"/></svg><span><span class="el-tilebox__title">En 3D</span><span class="el-tilebox__note">Avec la caméra</span></span></div></div>
+                    </div>
+                    <div class="el-main" data-at="4">
+                      <div class="el-head__titles"><span class="el-kicker">Trimestre 1 · 2026-2027</span><h1 class="el-h1" style="font-size:21px">Notes</h1></div>
+                      <div class="el-seg zoom" data-from="4"><span class="choisi">Évaluations</span><span>Implication</span></div>
+                      <div class="el-card el-card--pad"><span class="el-label">Moyenne de l’année</span><div class="el-big" style="font-size:28px">13,8<span class="el-unit"> /20</span></div></div>
+                    </div>
+                  </div>
+                  <nav class="el-nav">
+                    <span data-on="1-2,5-6"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span>
+                    <span data-on="4"><svg class="ic"><use href="#i-notes"/></svg>Notes</span>
+                    <span data-on="3"><svg class="ic"><use href="#i-livre"/></svg>Cours</span>
+                    <span class="zoom" data-from="2"><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span>
+                    <span class="zoom repli" data-from="5"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span>
+                  </nav>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ témoin -->
+    <section class="fiche fiche--large" id="temoin">
+      <div class="fiche__texte">
+        <h2>L'élève témoin</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Élève</span><span class="chemin">Fiche élève › Profil › Désigner comme élève témoin</span></p>
+        <p class="fiche__but">Pour voir l'espace élève exactement comme un élève, l'enseignant désigne un élève fictif comme témoin et se connecte avec son code.</p>
+        <ol class="etapes">
+          <li data-cursor="#te-profil" data-action="click">Ouvrir la fiche de l'élève fictif et son menu <span class="btn-nom">Profil</span>.</li>
+          <li data-cursor="#te-item" data-action="click" data-duration="3400">Choisir <span class="btn-nom">Désigner comme élève témoin</span>. La fiche porte ensuite l'étiquette <b>Témoin</b>.</li>
+          <li data-cursor="#te-code" data-duration="3200">Sur un téléphone, ouvrir l'espace élève et taper le code de cet élève.</li>
+          <li data-cursor="#te-nav" data-duration="3400">L'espace complet s'affiche : toutes les entrées et tuiles (Tampons, Annales, Notes, Maison), quel que soit le réglage de la classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le témoin est exclu des classements, de l'export vers Pronote et des métriques de connexion ; il est marqué d'un œil dans la liste des élèves.</li>
+            <li>Le classeur ne lui apparaît que lorsque quelque chose a été ouvert à la classe ; les TP, que s'il a fait partie d'un groupe.</li>
+            <li>Le même menu propose ensuite <b>Retirer le statut de témoin</b>.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#onglets-classe">Ce que l'enseignant ouvre</a> · <a href="implication-et-recompenses.html#classements">Classements</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div style="display:flex;gap:30px;align-items:center;justify-content:center;height:100%">
+              <div class="fiche-eleve" style="width:440px;position:relative;transform:scale(1.2);transform-origin:right center">
+                <div class="ligne"><span class="avatar">CT</span><div><div style="font-size:17px;font-weight:650">Camille TE</div><div class="muet">5E · élève fictif</div></div><span class="chip zoom" data-from="2" style="background:#FDF1E3;border-color:#F6D8B5;color:#9A4A07">Témoin</span><span class="esp"></span><span class="b b--fantome b--petit" id="te-profil" data-on="1">Profil ▾</span></div>
+                <div class="menu glisse-bas" data-at="1-2" style="right:18px;top:52px;width:240px"><div class="menu__it" id="te-item" data-on="2">Désigner comme élève témoin</div></div>
+                <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)" class="muet">Implication, notes, remarques… <span data-from="2" style="margin-left:8px;color:#9A4A07">connexions non comptées (témoin)</span></div>
+              </div>
+              <div class="tel-pose" style="width:290px;height:590px">
+                <div class="tel"><div class="tel__ecran el">
+                  <div class="tel__statut"><span>8:02</span><span>4G</span></div>
+                  <div class="el-corps">
+                    <div class="el-main" data-to="3" style="justify-content:center">
+                      <div class="el-card" style="display:flex;flex-direction:column;gap:16px;padding:20px 14px">
+                        <h1 class="el-h1" style="font-size:22px">Mon espace</h1>
+                        <div class="el-code" id="te-code" style="gap:5px"><span><i data-from="3">9</i></span><span><i data-from="3">0</i></span><span><i data-from="3">0</i></span><span><i data-from="3">4</i></span><span><i data-from="3">1</i></span><span><i data-from="3">7</i></span></div>
+                        <span class="el-btn el-btn--primary el-btn--tall el-btn--block">Voir mes résultats</span>
+                      </div>
+                    </div>
+                    <div class="el-main glisse-haut" data-from="4">
+                      <div class="el-head__titles"><span class="el-kicker">5E · Trimestre 1</span><h1 class="el-h1" style="font-size:21px">Bonjour Camille</h1></div>
+                      <section class="el-section"><h2 class="el-h2">Ce trimestre</h2><div class="el-grid2"><div class="el-card el-stat"><span class="el-label">Implication</span><span class="el-mid">10<span class="el-unit"> /20</span></span></div><div class="el-card el-stat"><span class="el-label">Carte à tampons</span><span class="el-mid">0<span class="el-unit"> sur 10</span></span></div></div></section>
+                    </div>
+                  </div>
+                  <nav class="el-nav glisse-haut" id="te-nav" data-from="4"><span class="actif"><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span><span><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

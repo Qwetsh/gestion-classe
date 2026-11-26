@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cours et classeur — Guide Gestion Classe</title>
+<meta name="description" content="L'onglet Cours de l'espace élève : annales du brevet, organismes en 3D avec la caméra, et le classeur virtuel avec ses fiches, corrections, volets et bilans.">
+<meta name="guide-partie" content="eleve">
+<meta name="guide-ordre" content="40">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* commun-eleve:debut */
+/* Maquettes de l'espace élève : reprise de src/styles/eleve.css (direction A « Carnet ») et de ses thèmes. */
+.tel__ecran.el {
+  --el-bg: #F6F6F7; --el-surface: #FFFFFF; --el-line: #E6E6E9; --el-line-soft: #F0F0F2; --el-line-strong: #D4D4D8;
+  --el-text: #18181B; --el-muted: #52525B; --el-dim: #6B6B74;
+  --el-indigo: #4F46E5; --el-indigo-ink: #4338CA; --el-indigo-soft: #EEF0FF;
+  --el-pos: #15803D; --el-pos-ink: #166534; --el-pos-soft: #EAF6EE;
+  --el-warn: #B45309; --el-warn-ink: #9A4A07; --el-warn-soft: #FDF1E3;
+  --el-neg: #B91C1C; --el-neg-soft: #FBEAEA;
+  --el-track: #E9E9EC; --el-on-accent: #FFFFFF; --el-radio: #A1A1AA;
+  --el-radius: 8px; --el-radius-sm: 6px; --el-font-display: inherit; --el-card-shadow: none;
+  background-color: var(--el-bg); color: var(--el-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.4;
+}
+.tel__ecran.el .tel__statut { color: var(--el-text); position: relative; z-index: 3; }
+.el-ic, .el .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.el .ic--p { width: 18px; height: 18px; }
+.el .ic--pp { width: 15px; height: 15px; }
+.el .ic--g { width: 26px; height: 26px; }
+
+.el-corps { position: relative; flex: 1; min-height: 0; }
+.el-main { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 10px 14px 12px; overflow: hidden; }
+.el-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.el-head__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.el-kicker { font-size: 12.5px; font-weight: 500; color: var(--el-dim); }
+.el-h1 { font-family: var(--el-font-display); margin: 0; font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.el-h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--el-dim); }
+.el-section { display: flex; flex-direction: column; gap: 7px; }
+.el-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.el-note { margin: 0; font-size: 12.5px; line-height: 18px; color: var(--el-muted); }
+.el-error { margin: 0; font-size: 13px; line-height: 18px; color: var(--el-neg); }
+
+.el-card { background: var(--el-surface); border: 1px solid var(--el-line); border-radius: var(--el-radius); box-shadow: var(--el-card-shadow); transition: box-shadow .25s, border-color .25s; }
+.el-card--pad { padding: 14px; }
+.el-card--stack { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.el-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 14px; border-bottom: 1px solid var(--el-line-soft); transition: background .25s; }
+.el-row:last-child { border-bottom: 0; }
+.el-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.el-row__title { font-size: 14px; line-height: 19px; font-weight: 600; }
+.el-row__title--plain { font-weight: 500; }
+.el-row__meta { font-size: 12px; line-height: 16px; color: var(--el-dim); }
+.el-row__end { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.el-row__chev { color: var(--el-dim); transition: transform .25s; }
+.el-tile { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 9px 14px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-icon-box { flex-shrink: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--el-radius); background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-icon-box--round { width: 30px; height: 30px; border-radius: 15px; }
+
+.el-big { font-family: var(--el-font-display); font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.el-mid { font-family: var(--el-font-display); font-size: 22px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.el-grade { flex-shrink: 0; font-size: 19px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.el-unit { font-size: 12px; font-weight: 500; color: var(--el-dim); letter-spacing: 0; }
+.el-label { font-size: 12.5px; color: var(--el-muted); }
+.el-stat { display: flex; flex-direction: column; gap: 1px; padding: 11px 13px; }
+.el-bar { height: 8px; border-radius: 4px; background: var(--el-track); overflow: hidden; }
+.el-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--el-indigo); transition: width 1s ease; }
+
+.el-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); font-size: 11.5px; line-height: 17px; font-weight: 600; white-space: nowrap; }
+.el-chip--pos { background: var(--el-pos-soft); color: var(--el-pos-ink); }
+.el-chip--warn { background: var(--el-warn-soft); color: var(--el-warn-ink); }
+.el-chip--plain { background: var(--el-line-soft); color: var(--el-muted); }
+
+.el-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); color: var(--el-text); font-size: 14px; font-weight: 600; white-space: nowrap; transition: transform .15s, box-shadow .25s; }
+.el-btn--primary { border-color: var(--el-indigo); background: var(--el-indigo); color: var(--el-on-accent); }
+.el-btn--soft { border-color: transparent; background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-btn--block { width: 100%; }
+.el-btn--tall { min-height: 46px; font-size: 15px; }
+.el-btn--off { border-color: var(--el-line); background: var(--el-track); color: var(--el-dim); }
+.el-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; min-height: 34px; color: var(--el-indigo); font-size: 14px; font-weight: 600; }
+
+.el-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; background: var(--el-track); border-radius: var(--el-radius); }
+.el-seg span { min-height: 34px; display: grid; place-items: center; border-radius: var(--el-radius-sm); color: var(--el-muted); font-size: 13.5px; font-weight: 500; transition: background .25s, color .25s; }
+.el-seg span.is-on, .el-seg span.choisi { background: var(--el-surface); color: var(--el-text); font-weight: 600; }
+
+.el-rank { display: flex; flex-direction: column; padding: 0 14px 10px; }
+.el-rank__line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 8px; border-radius: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.el-rank__line span:first-child { color: var(--el-muted); }
+.el-rank__line--me { background: var(--el-indigo-soft); font-weight: 600; }
+.el-rank__line--me span:first-child { color: var(--el-indigo-ink); }
+.el-rank__gap { padding: 0 8px; color: var(--el-dim); font-size: 12px; }
+
+.el-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 6px; justify-items: center; }
+.el-stamp { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 25px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); transition: transform .35s cubic-bezier(.3,1.5,.5,1), opacity .3s; }
+.el-stamp--empty { border: 1.5px dashed var(--el-line-strong); background: none; color: var(--el-dim); font-size: 14px; font-weight: 600; }
+.el-choice { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 7px 13px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); font-size: 14px; font-weight: 500; transition: all .2s; }
+.el-choice::before { content: ''; flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--el-radio); background: var(--el-surface); box-sizing: border-box; transition: border .2s; }
+.el-choice.is-on { border: 2px solid var(--el-indigo); background: var(--el-indigo-soft); padding: 6px 12px; }
+.el-choice.is-on::before { border: 6px solid var(--el-indigo); }
+.el-banner { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--el-radius); background: var(--el-pos-soft); color: var(--el-pos-ink); font-size: 13px; line-height: 18px; font-weight: 600; }
+.el-cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 0 14px 12px; }
+.el-cats > div { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: var(--el-radius-sm); background: var(--el-bg); font-size: 12.5px; }
+
+.el-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.el-tilebox { display: flex; flex-direction: column; gap: 7px; min-height: 80px; padding: 11px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-indigo); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-tilebox__title { font-size: 14px; font-weight: 600; color: var(--el-text); display: block; }
+.el-tilebox__note { font-size: 12px; color: var(--el-dim); display: block; }
+.el-tilebox__note--on { font-weight: 600; color: var(--el-indigo-ink); }
+.el-subhead { padding: 10px 14px 7px; border-bottom: 1px solid var(--el-line-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--el-dim); }
+.el-rowhead { padding: 10px 14px 2px; font-size: 12px; line-height: 17px; font-weight: 600; color: var(--el-muted); }
+
+.el-veil { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(24, 24, 27, 0.5); }
+.el-dialog { width: 100%; max-width: 260px; padding: 20px; text-align: center; }
+.el-search { display: flex; align-items: center; gap: 9px; height: 42px; padding: 0 12px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-dim); font-size: 13.5px; }
+.el-select { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 10px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); font-size: 13px; font-weight: 500; }
+
+/* barre du bas */
+.el-nav { flex: none; position: relative; z-index: 40; display: flex; padding: 4px 4px 12px; background: var(--el-surface); border-top: 1px solid var(--el-line); }
+.el-nav > span { flex: 1; min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: var(--el-radius); color: var(--el-muted); font-size: 11px; font-weight: 500; transition: color .25s, background .25s; }
+.el-nav > span.actif, .el-nav > span.is-on { color: var(--el-indigo); font-weight: 600; }
+.el-nav--academy { background: oklch(0.08 0.01 50 / 0.92); border-top-color: transparent; }
+.el-nav--academy > span { color: oklch(0.72 0.03 60); }
+.el-nav--academy > span.actif, .el-nav--academy > span.is-on { background: oklch(0.25 0.03 50 / 0.9); color: oklch(0.90 0.06 60); }
+
+/* état « touché » */
+.el .el-tile.is-on, .el .el-card.is-on, .el .el-tilebox.is-on, .el .el-theme.is-on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-btn.is-on { transform: scale(0.97); box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-row.is-on { background: color-mix(in srgb, var(--el-indigo) 9%, transparent); }
+
+/* écran plein qui glisse par-dessus l'espace (classeur, TP, copie) */
+.el-plein { position: absolute; left: 0; right: 0; bottom: 0; top: 0; z-index: 60; background-color: var(--el-bg); display: flex; flex-direction: column; padding-top: 30px; }
+.is-hidden.el-plein { transform: translateY(26px); }
+
+/* choix du thème */
+.el-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-theme { display: flex; flex-direction: column; gap: 6px; padding: 7px 7px 9px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-theme.choisi { border: 2px solid var(--el-indigo); padding: 6px 6px 8px; }
+.el-theme__view { display: flex; flex-direction: column; gap: 5px; height: 54px; padding: 7px; border-radius: 6px; overflow: hidden; }
+.el-theme__line { display: block; height: 6px; border-radius: 3px; }
+.el-theme__card { display: flex; align-items: center; gap: 6px; flex: 1; padding: 0 7px; border-radius: 4px; }
+.el-theme__dot { display: block; width: 12px; height: 12px; border-radius: 6px; flex: none; }
+.el-theme__name { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 3px; font-size: 14px; font-weight: 600; }
+.el-theme__name .ic { color: var(--el-indigo); }
+.el-theme__note { padding: 0 3px; font-size: 12px; line-height: 15px; color: var(--el-dim); }
+
+/* ---- Cosmos ---- */
+.tel__ecran.el[data-theme='cosmos'] {
+  --el-bg: #0B1026; --el-surface: #151B3B; --el-line: #2A3160; --el-line-soft: #212854; --el-line-strong: #3A4380;
+  --el-text: #EEF1FF; --el-muted: #B9C0E6; --el-dim: #9AA3D4;
+  --el-indigo: #8EA2FF; --el-indigo-ink: #C9D2FF; --el-indigo-soft: #232B66;
+  --el-pos: #5EE0A0; --el-pos-ink: #8BF0BE; --el-pos-soft: #123B2E;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8A8A; --el-neg-soft: #45191E;
+  --el-track: #262E5C; --el-on-accent: #0B1026; --el-radio: #6E79B8;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  background-image:
+    radial-gradient(2px 2px at 150px 30px, rgba(255, 255, 255, 0.9) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 60px 150px, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 190px 110px, rgba(190, 205, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(2px 2px at 20px 84px, rgba(255, 236, 200, 0.8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 110px 178px, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='170' viewBox='0 0 240 170'%3E%3Cdefs%3E%3CradialGradient id='p' cx='0.35' cy='0.3' r='0.8'%3E%3Cstop offset='0' stop-color='%23A99BFF'/%3E%3Cstop offset='1' stop-color='%233A2EA6'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx='172' cy='58' rx='108' ry='20' fill='none' stroke='%23C9C0FF' stroke-opacity='.5' stroke-width='5' transform='rotate(-16 172 58)'/%3E%3Ccircle cx='172' cy='58' r='56' fill='url(%23p)'/%3E%3Cpath d='M120 50c34 10 72 6 104-16' fill='none' stroke='%23C9C0FF' stroke-opacity='.3' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 110% 420px at 85% -60px, rgba(124, 92, 255, 0.38), transparent 70%),
+    radial-gradient(ellipse 90% 360px at 0% 0, rgba(56, 189, 248, 0.16), transparent 70%);
+  background-size: 210px 190px, 210px 190px, 210px 190px, 210px 190px, 210px 190px, 200px 142px, 100% 520px, 100% 420px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, right -50px top -10px, 0 0, 0 0;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat, no-repeat;
+}
+.el[data-theme='cosmos'] .el-card, .el[data-theme='cosmos'] .el-tile, .el[data-theme='cosmos'] .el-tilebox { background: rgba(21, 27, 59, 0.92); }
+/* ---- Arcade ---- */
+.tel__ecran.el[data-theme='arcade'] {
+  --el-bg: #170F2E; --el-surface: #241846; --el-line: #4A3486; --el-line-soft: #30205A; --el-line-strong: #6A4FB8;
+  --el-text: #F6F0FF; --el-muted: #C9BCE8; --el-dim: #A99AD0;
+  --el-indigo: #FFD23F; --el-indigo-ink: #FFE27A; --el-indigo-soft: #3B3010;
+  --el-pos: #5CF2B0; --el-pos-ink: #8FF7C9; --el-pos-soft: #0F3B2C;
+  --el-warn: #FFB454; --el-warn-ink: #FFCF8F; --el-warn-soft: #43290B;
+  --el-neg: #FF7A9C; --el-neg-soft: #4A1528;
+  --el-track: #35245F; --el-on-accent: #1A1033; --el-radio: #8A72C8;
+  --el-radius: 2px; --el-radius-sm: 2px;
+  --el-font-display: 'Pixelify Sans', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --el-card-shadow: 4px 4px 0 #0B0618;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.el[data-theme='arcade'] .el-card, .el[data-theme='arcade'] .el-tile, .el[data-theme='arcade'] .el-tilebox, .el[data-theme='arcade'] .el-theme { border-width: 2px; }
+.el[data-theme='arcade'] .el-h2 { color: #FF8AE0; }
+.el[data-theme='arcade'] .el-btn--primary { box-shadow: 0 4px 0 #A8830A; }
+.el[data-theme='arcade'] .el-stamp, .el[data-theme='arcade'] .el-icon-box, .el[data-theme='arcade'] .el-chip { border-radius: 2px; }
+.el[data-theme='arcade'] .el-nav { border-top-width: 2px; }
+.el[data-theme='arcade'] .el-mid, .el[data-theme='arcade'] .el-big { font-family: inherit; }
+/* ---- Jungle ---- */
+.tel__ecran.el[data-theme='jungle'] {
+  --el-bg: #EEF5E8; --el-surface: #FFFFFF; --el-line: #D6E3CC; --el-line-soft: #E6EFE0; --el-line-strong: #B9CDAE;
+  --el-text: #16291B; --el-muted: #3F5545; --el-dim: #55695A;
+  --el-indigo: #1F7A3A; --el-indigo-ink: #17602D; --el-indigo-soft: #DDF0DF;
+  --el-pos-soft: #E3F4E6; --el-track: #DCE8D3; --el-radio: #8FA596;
+  --el-radius: 18px; --el-radius-sm: 22px;
+  --el-font-display: 'Fredoka', 'Inter', system-ui, sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='240' viewBox='0 0 300 240'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M300 0C250 6 196 36 176 96c44 6 100-22 124-60z' fill='%23BFDDB3'/%3E%3Cpath d='M300 24c-40 14-84 44-108 64' stroke='%23A3CB95' stroke-width='3'/%3E%3Cpath d='M300 60c-34 20-54 62-48 116 30-14 48-50 48-84z' fill='%23A6CF98'/%3E%3Cpath d='M298 78c-16 26-28 56-40 88' stroke='%238FBF80' stroke-width='3'/%3E%3Cpath d='M232 0c-30 8-62 6-92-14 20 44 62 52 92 34z' fill='%23CFE6C5'/%3E%3C/g%3E%3C/svg%3E");
+  background-position: top right; background-repeat: no-repeat; background-size: 240px 192px;
+}
+.el[data-theme='jungle'] .el-h1 { font-weight: 600; }
+.el[data-theme='jungle'] .el-seg { border-radius: 24px; }
+.el[data-theme='jungle'] .el-seg span { border-radius: 20px; }
+/* connexion */
+.el-login__text { margin: 4px 0 0; font-size: 14.5px; line-height: 21px; color: var(--el-muted); }
+.el-field-label { font-size: 13.5px; font-weight: 600; }
+.el-code { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.el-code > span { height: 50px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); display: grid; place-items: center; font-size: 22px; font-weight: 600; transition: border-color .2s; }
+.el-code > span.is-on, .el-code > span.actif { border: 2px solid var(--el-indigo); }
+.el-code i { font-style: normal; }
+.el-url { flex: none; position: relative; z-index: 3; margin: 0 12px 4px; height: 26px; border-radius: 13px; background: var(--el-track); color: var(--el-muted); font-size: 11px; display: flex; align-items: center; gap: 6px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
+.el-url b { font-weight: 600; color: var(--el-text); }
+/* contenu qui défile vers le haut */
+.el-defile { display: flex; flex-direction: column; gap: 12px; transition: transform .8s cubic-bezier(.45,.05,.25,1); }
+/* une maquette de téléphone posée dans une scène large */
+.tel-pose { position: relative; flex: none; }
+/* deux états empilés au même endroit */
+.pile { display: inline-grid; }
+.pile > * { grid-area: 1 / 1; }
+/* commun-eleve:fin */
+.ar { position: absolute; inset: 30px 0 0 0; z-index: 55; background: #1A1B1F; overflow: hidden; }
+.ar__fond { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, #3A3B40 0%, #1A1B1F 75%); }
+.ar__feuille { position: absolute; left: 50px; top: 150px; width: 240px; height: 300px; background: #F4F1EA; transform: rotate(-6deg) skewX(3deg); border-radius: 3px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.ar__img { position: absolute; left: 45px; top: 70px; width: 150px; height: 120px; border-radius: 8px; background: radial-gradient(circle at 50% 50%, #C9A27A 0 18%, #E4D3BB 19% 100%); }
+.ar__bande { position: absolute; left: 0; right: 0; bottom: 0; padding: 40px 14px 18px; background: linear-gradient(transparent, rgba(0,0,0,.85)); color: #fff; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.ar__msg { font-size: 13.5px; font-weight: 600; text-align: center; }
+.ar__msg.ok { color: #4ADE80; }
+.ar__btns { display: flex; gap: 8px; }
+.ar__btn { height: 38px; padding: 0 12px; border: 1.5px solid rgba(255,255,255,.8); border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #fff; transition: background .2s; }
+.ar__btn.is-on { background: rgba(255,255,255,.25); }
+.ar__lab { position: absolute; color: #fff; text-align: center; font-size: 13px; font-weight: 700; text-shadow: 0 1px 4px rgba(0,0,0,.9); line-height: 1.25; }
+.ar__lab small { display: block; font-weight: 500; font-size: 11.5px; }
+.microbe { position: absolute; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #F4D35E, #B8860B); box-shadow: 0 0 0 2px rgba(255,255,255,.25); transition: all 1.2s cubic-bezier(.45,.05,.25,1); }
+.grappe { position: absolute; right: 26px; top: 210px; width: 110px; height: 110px; transition: transform 1.2s cubic-bezier(.45,.05,.25,1); }
+.grappe i { position: absolute; width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #F4D35E, #B8860B); }
+.grappe.is-on { transform: scale(1.5) translate(-20px, 10px); }
+.demodex { position: absolute; left: 34px; top: 200px; width: 46px; height: 150px; border-radius: 23px 23px 18px 18px; background: linear-gradient(#E8C9A6, #C79A6E); box-shadow: inset -6px 0 10px rgba(0,0,0,.2); }
+/* classeur */
+.bd-bar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: #fff; border-bottom: 1px solid #E6E6E9; }
+.bd-btn { width: 36px; height: 36px; border: 1px solid #D4D4D8; border-radius: 8px; display: grid; place-items: center; color: #3F3F46; flex: none; transition: background .2s; }
+.bd-btn.is-on, .bd-btn.actif { background: #EEF0FF; color: #4338CA; border-color: #C7CCF7; }
+.bd-titre { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 650; color: #18181B; }
+.bd-pastille { font-size: 11px; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: #F0F0F2; color: #52525B; }
+.bd-bureau { flex: 1; min-height: 0; background: #DCDCE0; position: relative; overflow: hidden; }
+.bd-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px 12px; background: #fff; border-top: 1px solid #E6E6E9; }
+.bd-foot span.f { flex: 1; height: 40px; border-radius: 8px; display: grid; place-items: center; }
+.bd-foot .prec { border: 1px solid #D4D4D8; color: #3F3F46; background: #fff; }
+.bd-foot .suiv { background: #4F46E5; color: #fff; transition: transform .15s; }
+.bd-foot .suiv.is-on { transform: scale(.95); }
+.bd-foot .num { font-size: 12.5px; color: #52525B; font-variant-numeric: tabular-nums; min-width: 50px; text-align: center; }
+.seyes { position: absolute; left: 14px; right: 14px; top: 14px; bottom: 14px; background-color: #FDFDFB; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  background-image: linear-gradient(90deg, transparent 46px, #E06A6A 46px, #E06A6A 47.5px, transparent 47.5px), repeating-linear-gradient(#FDFDFB 0 5.5px, #E0E6F8 5.5px 6px), repeating-linear-gradient(90deg, transparent 0 23.5px, #D5DCF5 23.5px 24px);
+  transition: transform .6s cubic-bezier(.45,.05,.25,1), opacity .4s; transform-origin: left center; }
+.seyes::before { content: ''; position: absolute; inset: 0; background-image: repeating-linear-gradient(transparent 0 23.5px, #9DAEE6 23.5px 24px); pointer-events: none; }
+.seyes .trous { position: absolute; left: 10px; top: 30px; bottom: 30px; width: 14px; display: flex; flex-direction: column; justify-content: space-between; }
+.seyes .trous i { width: 14px; height: 14px; border-radius: 50%; background: #DCDCE0; box-shadow: inset 0 1px 2px rgba(0,0,0,.3); }
+.main-ecrite { font-family: 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive; color: #1F3A93; }
+.titre-act { position: absolute; left: 56px; right: 12px; top: 26px; font-size: 13px; line-height: 20px; text-decoration: underline; text-decoration-color: #C8102E; text-underline-offset: 3px; }
+.collee { position: absolute; left: 56px; right: 14px; top: 54px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); padding: 10px 10px 12px; font-size: 9.5px; line-height: 1.35; color: #18181B; transition: box-shadow .25s, transform .25s; }
+.collee.is-on { box-shadow: 0 6px 16px rgba(0,0,0,.25); transform: translateY(-2px); }
+.collee h4 { margin: 0 0 6px; font-size: 11px; }
+.collee .l { height: 5px; border-radius: 3px; background: #E4E4E7; margin: 4px 0; }
+.collee .rep { min-height: 16px; border-bottom: 1px dotted #C4C4CC; margin: 3px 0 7px; font-size: 10.5px; padding-left: 2px; }
+.onglet-corr { position: absolute; right: 0; top: -20px; font-size: 9.5px; font-weight: 650; padding: 3px 8px; background: #EEF0FF; color: #4338CA; border-radius: 6px 6px 0 0; transition: background .2s; }
+.onglet-corr.is-on { background: #4F46E5; color: #fff; }
+.coin { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; background: linear-gradient(135deg, #fff 50%, #D4D4D8 50%); box-shadow: -1px -1px 2px rgba(0,0,0,.15); }
+.volet { display: inline-block; min-width: 90px; height: 15px; border: 1px dashed #B59A6A; background: #F3E6C8; border-radius: 3px; vertical-align: middle; transition: transform .5s; transform-origin: right center; }
+.volet.is-on { transform: perspective(200px) rotateY(-70deg); }
+.bilan { position: absolute; left: 56px; right: 12px; font-size: 11.5px; line-height: 24px; color: #C00000; }
+.bilan u { text-decoration-color: #C00000; }
+.intercal { position: absolute; right: -2px; width: 26px; height: 64px; border-radius: 0 6px 6px 0; writing-mode: vertical-rl; font-size: 9px; font-weight: 700; display: grid; place-items: center; color: #3F3F46; box-shadow: 1px 1px 3px rgba(0,0,0,.2); transition: transform .2s; }
+.intercal.is-on { transform: translateX(4px); }
+.toc-tir { position: absolute; left: 0; top: 0; bottom: 0; width: 240px; background: #fff; box-shadow: 4px 0 18px rgba(0,0,0,.18); z-index: 5; padding: 12px; font-size: 12.5px; display: flex; flex-direction: column; gap: 3px; }
+.toc-tir .t { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #71717A; margin: 8px 0 2px; }
+.toc-tir .e { padding: 6px 8px; border-radius: 6px; color: #3F3F46; transition: background .2s; }
+.toc-tir .e.is-on { background: #EEF0FF; color: #4338CA; }
+.mini-menu { position: absolute; z-index: 8; background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 12px; width: 220px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+.mini-menu .o { padding: 8px 10px; border: 1px solid #E6E6E9; border-radius: 8px; transition: all .2s; }
+.mini-menu .o.is-on { border-color: #4F46E5; background: #EEF0FF; color: #4338CA; }
+#ma-defile.is-on { transform: translateY(-120px); }
+</style>
+</head>
+<body>
+<!-- icones:debut -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-maison" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-notes" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-3"/></symbol>
+<symbol id="i-livre" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-tampon" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M19.3 13.7a2.5 2.5 0 0 0-1.8-.7h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.7-.3-1.3-.7-1.8z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/></symbol>
+<symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+<symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+<symbol id="i-cube" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+<symbol id="i-sortie" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-chev-g" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-chev-b" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chev-h" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-galerie" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+<symbol id="i-doc-coche" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></symbol>
+<symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-lien" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-croix" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-recentrer" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+<symbol id="i-etoile" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-main" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+<symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5A4.6 4.6 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+<symbol id="i-entraide" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+<symbol id="i-imprimer" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 19v2M19 14h2"/></symbol>
+<symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-hautparleur" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+<symbol id="i-plein" viewBox="0 0 24 24"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></symbol>
+<symbol id="i-pages" viewBox="0 0 24 24"><path d="M2 5h8a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H2zM22 5h-8a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h8z"/></symbol>
+<symbol id="i-stylo" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-cercle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+<symbol id="i-liste" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+</defs></svg>
+<!-- icones:fin -->
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Espace élève</a> › Cours et classeur</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#cours">La page Cours</a></li>
+      <li><a href="#annales">Annales du brevet</a></li>
+      <li><a href="#en-3d">En 3D avec la caméra</a></li>
+      <li><a href="#sommaire-classeur">Mon classeur : le sommaire</a></li>
+      <li><a href="#classeur">Feuilleter le classeur</a></li>
+      <li><a href="#fiche-classeur">Une fiche du classeur</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../eleve/implication-et-recompenses.html">◀ Implication et récompenses</a><a href="../eleve/tp.html">TP en groupe ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Espace élève</div>
+      <h1>Cours et classeur</h1>
+      <p>L'onglet Cours rassemble ce qui sert à travailler : les TP du groupe, les annales du brevet, des organismes à voir en 3D avec la caméra, et le classeur de SVT tel qu'il devrait être tenu, fiches collées, corrections et bilans compris.</p>
+      <div class="chap__resume"><span>Barre du bas › Cours</span><span>Téléphone de l'élève</span><span>Classeur ouvert par l'enseignant</span></div>
+    </header>
+
+    <!-- ============================================================ cours -->
+    <section class="fiche fiche--etroite" id="cours">
+      <div class="fiche__texte">
+        <h2>La page Cours</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Barre du bas › Cours</span></p>
+        <p class="fiche__but">Le sommaire de tout ce qui sert à travailler, en tuiles, avec le sommaire du classeur dessous.</p>
+        <ol class="etapes">
+          <li data-cursor="#co-nav" data-action="tap">Toucher <span class="btn-nom">Cours</span> dans la barre du bas. En haut : la classe, puis <b>Cours</b>.</li>
+          <li data-cursor="#co-tuiles" data-duration="3600">Les tuiles : <b>Mes TP</b> (« 1 en cours » ou « Fiches et photos »), <b>Annales</b> (« Brevet ») et <b>En 3D</b> (« Avec la caméra »).</li>
+          <li data-cursor="#co-classeur" data-duration="3200">Dessous, <b>Mon classeur</b> : le sommaire des fiches ouvertes à la classe.</li>
+          <li data-cursor="#co-annales" data-action="tap">Annales et En 3D s'ouvrent dans la page ; Mes TP et le classeur, en plein écran.</li>
+          <li data-cursor="#co-retour" data-action="tap">Le lien <span class="btn-nom">‹ Cours</span>, en haut, ramène au sommaire.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Mes TP</b> apparaît dès que l'élève a fait partie d'un groupe de TP ; <b>Annales</b> selon le réglage de la classe ; <b>En 3D</b> toujours.</li>
+            <li><b>Mon classeur</b> n'existe que si l'enseignant a ouvert l'onglet Classeur à la classe, depuis le classeur virtuel (<b>Accès des élèves</b>).</li>
+            <li>Changer d'entrée dans la barre du bas ramène Cours à son sommaire.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp.html">Les TP</a> · <a href="connexion-et-accueil.html#onglets-classe">Ce que l'enseignant ouvre</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>17:30</span><span>Wi-Fi</span></div>
+              <div class="el-corps">
+                <div class="el-main" data-at="1-3,5">
+                  <div class="el-head__titles"><span class="el-kicker">5E</span><h1 class="el-h1">Cours</h1></div>
+                  <div class="el-tiles" id="co-tuiles">
+                    <div class="el-tilebox" data-on="2"><svg class="ic"><use href="#i-fiole"/></svg><span><span class="el-tilebox__title">Mes TP</span><span class="el-tilebox__note el-tilebox__note--on">1 en cours</span></span></div>
+                    <div class="el-tilebox" id="co-annales" data-on="2"><svg class="ic"><use href="#i-archive"/></svg><span><span class="el-tilebox__title">Annales</span><span class="el-tilebox__note">Brevet</span></span></div>
+                    <div class="el-tilebox" data-on="2"><svg class="ic"><use href="#i-cube"/></svg><span><span class="el-tilebox__title">En 3D</span><span class="el-tilebox__note">Avec la caméra</span></span></div>
+                  </div>
+                  <section class="el-section" id="co-classeur"><h2 class="el-h2">Mon classeur</h2>
+                    <div class="el-card"><div class="el-subhead">Séquences</div><div class="el-rowhead">Séquence 1 — Le climat</div>
+                      <div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Météo ou climat ?</span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                      <div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Météo ou climat ?</span></span><span class="el-chip el-chip--plain">Correction</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                      <div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 2 — Les climats du monde</span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                    </div>
+                  </section>
+                </div>
+                <div class="el-main glisse-gauche" data-at="4">
+                  <span class="el-back" id="co-retour"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Cours</span>
+                  <div class="el-head__titles"><h1 class="el-h1" style="font-size:21px">Annales du brevet</h1><span class="el-label" style="font-size:13.5px">186 sujets pour t’entraîner</span></div>
+                  <div class="el-search"><svg class="ic ic--p"><use href="#i-loupe"/></svg>Rechercher un thème, un centre…</div>
+                </div>
+              </div>
+              <nav class="el-nav"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span id="co-nav" class="actif"><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ annales -->
+    <section class="fiche fiche--etroite" id="annales">
+      <div class="fiche__texte">
+        <h2>Annales du brevet</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Cours › Annales</span></p>
+        <p class="fiche__but">Les sujets du brevet de SVT et des autres matières, pour s'entraîner, lus directement sur le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#an-titre">En haut : <b>Annales du brevet</b> et le nombre de sujets, qui suit les filtres.</li>
+          <li data-cursor="#an-rech" data-duration="3200">Chercher un thème ou un centre dans <b>Rechercher un thème, un centre…</b>. Une recherche ouvre toutes les sessions.</li>
+          <li data-cursor="#an-menus" data-duration="3200">Filtrer avec <b>Toutes les matières</b> (SVT, Maths, Français, Histoire-Géo-EMC, Physique-Chimie) et <b>Toutes les années</b>.</li>
+          <li data-cursor="#an-plus" data-action="tap" data-duration="3400">Les sessions sont rangées par année, la plus récente ouverte ; huit sujets d'abord, puis <span class="btn-nom">Afficher les 4 autres sujets de 2025</span>.</li>
+          <li data-cursor="#an-sujet" data-action="tap" data-duration="3400">Toucher un sujet : il s'ouvre en plein écran. En haut, l'icône lien sortant ouvre le sujet dans un nouvel onglet, la croix referme le lecteur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La tuile <b>Annales</b> n'apparaît que si l'enseignant l'a ouverte à la classe (réglage <b>Annales</b> de Visibilité élèves).</li>
+            <li>La liste réunit les sujets officiels rangés par l'application et ceux que l'enseignant a ajoutés lui-même ; l'élève ne peut que les lire.</li>
+            <li>Une seule session est ouverte à la fois, pour garder la page courte. « Aucun sujet ne correspond à ta recherche. » si rien ne correspond.</li>
+            <li>Le lecteur intégré marche aussi sur téléphone, où l'aperçu habituel des PDF reste souvent vide.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>17:32</span><span>Wi-Fi</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <div class="el-defile" id="ma-defile" data-on="4-5">
+                    <span class="el-back"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Cours</span>
+                    <div class="el-head__titles" id="an-titre"><h1 class="el-h1" style="font-size:21px">Annales du brevet</h1><span class="el-label" style="font-size:13.5px"><span class="pile"><span data-to="2">186</span><span data-from="3">42</span></span> sujets pour t’entraîner</span></div>
+                    <div class="el-search" id="an-rech"><svg class="ic ic--p"><use href="#i-loupe"/></svg>Rechercher un thème, un centre…</div>
+                    <div class="el-grid2" id="an-menus"><span class="el-select"><span class="pile"><span data-to="2">Toutes les matières</span><b data-from="3" style="font-weight:600">SVT</b></span><svg class="ic ic--pp"><use href="#i-chev-b"/></svg></span><span class="el-select">Toutes les années<svg class="ic ic--pp"><use href="#i-chev-b"/></svg></span></div>
+                    <section class="el-card">
+                      <div class="el-row"><span class="el-row__body"><span class="el-row__title" style="font-weight:700">Session 2025</span></span><span class="el-row__end el-label">12 sujets</span><svg class="ic ic--p el-row__chev" style="transform:rotate(90deg)"><use href="#i-chev-d"/></svg></div>
+                      <div class="el-row" id="an-sujet" data-on="5"><span class="el-row__body" style="gap:4px"><span class="el-row__title">Volcanisme et risques pour les populations</span><span style="display:flex;gap:7px;align-items:center"><span class="el-chip">SVT</span><span class="el-row__meta">Centres étrangers</span></span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                      <div class="el-row"><span class="el-row__body" style="gap:4px"><span class="el-row__title">La digestion des aliments</span><span style="display:flex;gap:7px;align-items:center"><span class="el-chip">SVT</span><span class="el-row__meta">Métropole</span></span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                      <div class="el-row"><span class="el-row__body" style="gap:4px"><span class="el-row__title">Vaccination et défenses de l'organisme</span><span style="display:flex;gap:7px;align-items:center"><span class="el-chip">SVT</span><span class="el-row__meta">Amérique du Nord</span></span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                      <div class="el-row" id="an-plus" data-on="4" style="justify-content:center;color:var(--el-indigo);font-size:13.5px;font-weight:600">Afficher les 4 autres sujets de 2025</div>
+                    </section>
+                    <section class="el-card"><div class="el-row"><span class="el-row__body"><span class="el-row__title" style="font-weight:700">Session 2024</span></span><span class="el-row__end el-label">11 sujets</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div></section>
+                  </div>
+                </div>
+              </div>
+              <nav class="el-nav"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span class="actif"><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              <div class="el-veil zoom" data-at="5" style="background:rgba(24,24,27,.6);padding:8px;place-items:stretch">
+                <div class="el-card" style="display:flex;flex-direction:column;overflow:hidden;margin-top:24px">
+                  <div style="display:flex;align-items:center;gap:6px;padding:8px 8px 8px 14px;border-bottom:1px solid var(--el-line)"><div style="flex:1;min-width:0"><p style="margin:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Volcanisme et risques pour les populations</p><p style="margin:0;font-size:12px;color:var(--el-dim)">SVT · Centres étrangers · 2025</p></div><span class="el-btn" style="padding:0;width:40px"><svg class="ic ic--p"><use href="#i-lien"/></svg></span><span class="el-btn" style="padding:0;width:40px"><svg class="ic ic--p"><use href="#i-croix"/></svg></span></div>
+                  <div style="flex:1;background:#525659;padding:12px;display:flex;justify-content:center"><div style="width:100%;background:#fff;padding:16px;display:flex;flex-direction:column;gap:7px"><b style="font-size:12px">Sciences de la vie et de la Terre — Durée : 30 minutes</b><i style="display:block;height:6px;border-radius:3px;background:#D4D4D8;width:80%"></i><i style="display:block;height:6px;border-radius:3px;background:#D4D4D8"></i><i style="display:block;height:6px;border-radius:3px;background:#D4D4D8;width:60%"></i><div style="height:120px;border:1px solid #D4D4D8;border-radius:4px;margin:6px 0"></div><i style="display:block;height:6px;border-radius:3px;background:#D4D4D8"></i><i style="display:block;height:6px;border-radius:3px;background:#D4D4D8;width:70%"></i></div></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 3D -->
+    <section class="fiche fiche--etroite" id="en-3d">
+      <div class="fiche__texte">
+        <h2>En 3D avec la caméra</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Cours › En 3D</span></p>
+        <p class="fiche__but">Viser une image du cours avec la caméra pour voir l'organisme en 3D, à sa taille réelle, et comprendre les ordres de grandeur : un acarien Demodex comparé à un grain de sel, puis des microbes comparés au Demodex.</p>
+        <ol class="etapes">
+          <li data-cursor="#ar-activer" data-action="tap" data-duration="3200">Sur la carte <b>En 3D</b>, toucher <span class="btn-nom">Activer la caméra</span> (<b>Chargement…</b> le temps du téléchargement), puis accepter la caméra.</li>
+          <li data-cursor="#ar-msg" data-duration="3000">Viser une des quatre images prévues : Demodex, staphylocoque, herpèsvirus, Candida albicans. Le bandeau dit « Vise une image de ton cours… ».</li>
+          <li data-cursor="#ar-lab" data-duration="3800">Image reconnue : l'organisme apparaît avec son nom et sa taille. Pour un microbe, le Demodex sert d'étalon à gauche, un cercle jaune signale le microbe à sa vraie taille et un trait mène à son agrandissement.</li>
+          <li data-cursor="#ar-zoom" data-action="tap" data-duration="3400">Le bouton <span class="btn-nom">×300</span> zoome d'un trait vers le microbe à taille réelle (×2000 pour l'herpèsvirus, ×60 pour Candida). Le bandeau indique le grossissement.</li>
+          <li data-cursor="#ar-recentrer" data-action="tap" data-duration="3200">Un doigt fait tourner l'organisme, deux doigts le déplacent et zooment (jusqu'à ×3000). Le bouton à flèche circulaire recentre tout ; <span class="btn-nom">Fermer</span> quitte la caméra.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tailles affichées : Demodex ≈ 0,3 mm (à côté d'un grain de sel ≈ 1 mm), staphylocoque ≈ 1 µm, herpèsvirus ≈ 0,15 µm, Candida ≈ 5 µm.</li>
+            <li>Les outils de réalité augmentée (environ 5 Mo) font partie du site et ne se téléchargent qu'au premier appui ; les étiquettes sont dessinées sur place, ce qui marche derrière le filtrage du collège.</li>
+            <li>La caméra est relâchée dès qu'on quitte l'onglet. En cas de refus : « La caméra n'a pas pu démarrer. Vérifie l'autorisation dans ton navigateur. »</li>
+            <li>Le zoom porte sur l'organisme et son repère ensemble, pour ne pas fausser la comparaison. La tuile est toujours visible, sans réglage.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="position:relative;z-index:60"><span>14:05</span><span>4G</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <span class="el-back"><svg class="ic ic--p"><use href="#i-chev-g"/></svg>Cours</span>
+                  <div class="el-card el-card--stack" style="align-items:flex-start">
+                    <span class="el-icon-box"><svg class="ic"><use href="#i-cube"/></svg></span>
+                    <h1 class="el-h1" style="font-size:21px">En 3D</h1>
+                    <p class="el-note" style="font-size:14px;line-height:20px">Vise une image de ton cours avec la caméra : l'organisme apparaît en 3D, avec sa taille réelle.</p>
+                    <span class="el-btn el-btn--primary el-btn--block" id="ar-activer" data-on="1"><svg class="ic ic--p"><use href="#i-photo"/></svg>Activer la caméra</span>
+                  </div>
+                </div>
+              </div>
+              <nav class="el-nav"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span class="actif"><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+              <div class="ar" data-from="2">
+                <div class="ar__fond"></div>
+                <div class="ar__feuille"><div class="ar__img"></div><div style="position:absolute;left:45px;top:200px;width:150px;height:6px;border-radius:3px;background:#CFC8BA"></div><div style="position:absolute;left:45px;top:214px;width:110px;height:6px;border-radius:3px;background:#CFC8BA"></div></div>
+                <div data-from="3">
+                  <div class="demodex"></div>
+                  <div class="ar__lab" style="left:14px;top:160px;width:90px">Demodex<small>≈ 0,3 mm</small></div>
+                  <span class="microbe" style="left:66px;top:262px;width:6px;height:6px;box-shadow:0 0 0 3px #ffe08a"></span>
+                  <svg style="position:absolute;left:0;top:0;width:340px;height:640px;pointer-events:none"><path d="M72 262 L246 214 M72 268 L246 318" stroke="#fff" stroke-width="1.2" stroke-dasharray="4 3" fill="none"/></svg>
+                  <div class="grappe" data-on="4-5"><i style="left:8px;top:30px"></i><i style="left:38px;top:14px"></i><i style="left:62px;top:40px"></i><i style="left:30px;top:52px"></i><i style="left:56px;top:70px"></i></div>
+                  <div class="ar__lab" id="ar-lab" style="left:170px;top:120px;width:150px">Staphylocoque<small>≈ 1 µm</small><small style="margin-top:4px">300 fois plus petit</small><small>qu'un Demodex</small></div>
+                </div>
+                <div class="ar__bande">
+                  <div class="ar__msg" id="ar-msg" data-at="2">Vise une image de ton cours…</div>
+                  <div class="ar__msg ok repli" data-at="3">Staphylocoque · pince pour zoomer</div>
+                  <div class="ar__msg ok repli" data-from="4">Staphylocoque · grossi 300 ×</div>
+                  <div class="ar__btns">
+                    <span class="ar__btn" id="ar-zoom" data-from="3" data-on="4"><svg class="ic ic--p"><use href="#i-loupe"/></svg>×300</span>
+                    <span class="ar__btn" id="ar-recentrer" data-on="5" style="padding:0 10px"><svg class="ic ic--p"><use href="#i-recentrer"/></svg></span>
+                    <span class="ar__btn">Fermer</span>
+                  </div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ sommaire du classeur -->
+    <section class="fiche fiche--etroite" id="sommaire-classeur">
+      <div class="fiche__texte">
+        <h2>Mon classeur : le sommaire</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Cours › Mon classeur</span></p>
+        <p class="fiche__but">Le contenu du classeur de SVT, rangé comme le classeur lui-même, pour l'ouvrir directement à la bonne page.</p>
+        <ol class="etapes">
+          <li data-cursor="#sc-charge">Le sommaire se charge : « Ouverture du sommaire… ».</li>
+          <li data-cursor="#sc-inter" data-duration="3600">Une carte par intercalaire (<b>Séquences</b>, <b>Fiches méthodes</b>, <b>Je révise</b>), le nom des chapitres en gris, puis une ligne par fiche. Une étiquette <b>Documents</b> ou <b>Correction</b> distingue deux fiches de même titre.</li>
+          <li data-cursor="#sc-ligne" data-action="tap" data-duration="3200">Toucher une ligne ouvre le classeur en plein écran, sur cette page.</li>
+          <li data-cursor="#sc-vide" data-duration="3200">Classeur encore vide : une seule tuile <b>Ouvrir mon classeur</b> · « Les activités y arrivent au fil des cours ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Mêmes pages et même ordre que le classeur. Le serveur ne rend que ce que l'enseignant a ouvert à la classe.</li>
+            <li>Côté enseignant : classeur virtuel de la classe, <b>Accès des élèves</b> › <b>Espace élève</b> › <b>Ouvrir l’onglet</b> (ou <b>Retirer l’onglet</b>).</li>
+            <li>Si le sommaire ne répond pas, il reste une ligne qui ouvre le classeur au début.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut"><span>17:30</span><span>Wi-Fi</span></div>
+              <div class="el-corps">
+                <div class="el-main">
+                  <div class="el-head__titles"><span class="el-kicker">5E</span><h1 class="el-h1">Cours</h1></div>
+                  <div class="el-tiles"><div class="el-tilebox"><svg class="ic"><use href="#i-fiole"/></svg><span><span class="el-tilebox__title">Mes TP</span><span class="el-tilebox__note">Fiches et photos</span></span></div><div class="el-tilebox"><svg class="ic"><use href="#i-cube"/></svg><span><span class="el-tilebox__title">En 3D</span><span class="el-tilebox__note">Avec la caméra</span></span></div></div>
+                  <section class="el-section"><h2 class="el-h2">Mon classeur</h2>
+                    <p class="el-note repli" id="sc-charge" data-at="1">Ouverture du sommaire…</p>
+                    <div class="repli glisse-haut" data-at="2-3" id="sc-inter" style="display:flex;flex-direction:column;gap:8px">
+                      <div class="el-card"><div class="el-subhead">Séquences</div><div class="el-rowhead">Séquence 1 — Le climat</div>
+                        <div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Météo ou climat ?</span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                        <div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Météo ou climat ?</span></span><span class="el-chip el-chip--plain">Documents</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                        <div class="el-row" id="sc-ligne" data-on="3"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Météo ou climat ?</span></span><span class="el-chip el-chip--plain">Correction</span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                        <div class="el-rowhead">Séquence 2 — Les êtres vivants</div>
+                        <div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">Activité 1 — Respirer dans l'eau</span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div>
+                      </div>
+                      <div class="el-card"><div class="el-subhead">Fiches méthodes</div><div class="el-row"><span class="el-row__body"><span class="el-row__title el-row__title--plain">FM1 — Réaliser un schéma</span></span><svg class="ic ic--p el-row__chev"><use href="#i-chev-d"/></svg></div></div>
+                    </div>
+                    <div class="el-tile repli glisse-haut" id="sc-vide" data-at="4"><span class="el-icon-box"><svg class="ic"><use href="#i-livre"/></svg></span><span class="el-row__body"><span class="el-row__title">Ouvrir mon classeur</span><span class="el-row__meta">Les activités y arrivent au fil des cours</span></span><svg class="ic el-row__chev"><use href="#i-chev-d"/></svg></div>
+                  </section>
+                </div>
+              </div>
+              <nav class="el-nav"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span class="actif"><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ classeur -->
+    <section class="fiche fiche--etroite" id="classeur">
+      <div class="fiche__texte">
+        <h2>Feuilleter le classeur</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Cours › Mon classeur › une fiche</span></p>
+        <p class="fiche__but">Le classeur de SVT tel qu'il devrait être tenu : fiches collées sur des feuilles à grands carreaux, intercalaires, titres et bilans écrits à la main, corrections quand l'enseignant les a ouvertes.</p>
+        <ol class="etapes">
+          <li data-cursor="#bd-titre" data-duration="3400">En haut : le retour à l'espace, <b>Sommaire</b>, <b>Classeur de SVT</b>, la loupe (agrandir la fiche ou voir la page entière) et la classe.</li>
+          <li data-cursor="#bd-suiv" data-action="tap" data-duration="3200">Tourner les pages avec la bande du bas (page précédente, numéro, page suivante en indigo), ou en glissant le doigt.</li>
+          <li data-cursor="#bd-somm" data-action="tap" data-duration="3200"><b>Sommaire</b> ouvre la liste par-dessus la page ; toucher une entrée y va.</li>
+          <li data-cursor="#bd-inter" data-action="tap" data-duration="3200">Toucher un onglet d'intercalaire qui dépasse (<b>Séquences</b>, <b>Fiches méthodes</b>, <b>Je révise</b>) saute à cet intercalaire.</li>
+          <li data-cursor="#bd-retour" data-action="tap">Le bouton de retour (ou celui du téléphone) referme le classeur et ramène à l'espace, sans redemander le code.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Sur grand écran, le classeur s'ouvre en double page, comme un classeur ouvert ; sur téléphone, une page à la fois, la fiche cadrée sur toute la largeur.</li>
+            <li>Le même classeur s'ouvre sans code par le lien que l'enseignant pose dans Pronote (voir la partie Pages publiques).</li>
+            <li>Les pages voisines sont préparées d'avance. Un classeur resté ouvert plus de 4 heures est relu au retour.</li>
+            <li>Messages possibles : « Ce classeur est encore vide. Les activités y arrivent au fil des cours. », « Pas de connexion. Vérifie ta connexion à Internet, puis rouvre le classeur. »</li>
+            <li>Le classeur reste du papier blanc quel que soit le thème choisi.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="background:#fff"><span>17:34</span><span>Wi-Fi</span></div>
+              <div class="bd-bar">
+                <span class="bd-btn" id="bd-retour" data-on="5"><svg class="ic ic--p"><use href="#i-chev-g"/></svg></span>
+                <span class="bd-btn" id="bd-somm" data-on="3"><svg class="ic ic--p"><use href="#i-liste"/></svg></span>
+                <span class="bd-titre" id="bd-titre"><svg class="ic ic--p"><use href="#i-livre"/></svg>Classeur de SVT</span>
+                <span class="bd-btn actif"><svg class="ic ic--p"><use href="#i-loupe"/></svg></span>
+                <span class="bd-pastille">5E</span>
+              </div>
+              <div class="bd-bureau">
+                <div class="seyes" data-to="1" style="transform-origin:left center">
+                  <div class="trous"><i></i><i></i><i></i><i></i></div>
+                  <div class="titre-act main-ecrite">Activité 1 — Météo ou climat ?</div>
+                  <div class="collee"><h4>Activité 1 — Météo ou climat ?</h4><div class="l" style="width:90%"></div><div class="l"></div><div class="l" style="width:70%"></div><div style="height:70px;border:1px solid #E4E4E7;margin:6px 0"></div><div class="l"></div><div class="l" style="width:60%"></div><div class="coin"></div></div>
+                </div>
+                <div class="seyes glisse-gauche" data-from="2">
+                  <div class="trous"><i></i><i></i><i></i><i></i></div>
+                  <div class="titre-act main-ecrite">Activité 2 — Les climats du monde</div>
+                  <div class="collee"><h4>Activité 2 — Les climats du monde</h4><div class="l" style="width:80%"></div><div class="l"></div><div style="height:90px;border:1px solid #E4E4E7;margin:6px 0;background:linear-gradient(135deg,#DBEAFE,#FEF3C7)"></div><div class="l" style="width:75%"></div><div class="l"></div><div class="coin"></div></div>
+                </div>
+                <span class="intercal" style="top:60px;background:#F6C945" id="bd-inter" data-on="4">Séquences</span>
+                <span class="intercal" style="top:130px;background:#7CC6A4">Fiches méthodes</span>
+                <span class="intercal" style="top:200px;background:#F28B82">Je révise</span>
+                <div class="toc-tir glisse-droite" data-at="3">
+                  <div class="t">Séquences</div><div class="e">Séquence 1 — Le climat</div><div class="e">Activité 1 — Météo ou climat ?</div><div class="e is-on">Activité 2 — Les climats du monde</div>
+                  <div class="t">Fiches méthodes</div><div class="e">FM1 — Réaliser un schéma</div>
+                  <div class="t">Je révise</div><div class="e">Séquence 1 — Je révise</div>
+                </div>
+              </div>
+              <div class="bd-foot">
+                <span class="f prec"><svg class="ic ic--p"><use href="#i-chev-g"/></svg></span>
+                <span class="num"><span class="pile"><span data-to="1">4 / 32</span><span data-from="2">5 / 32</span></span></span>
+                <span class="f suiv" id="bd-suiv" data-on="2"><svg class="ic ic--p"><use href="#i-chev-d"/></svg></span>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche du classeur -->
+    <section class="fiche fiche--etroite" id="fiche-classeur">
+      <div class="fiche__texte">
+        <h2>Une fiche du classeur</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Classeur › une fiche collée</span></p>
+        <p class="fiche__but">Lire la fiche telle qu'elle a été distribuée, voir la correction écrite dessus, réviser avec les volets, imprimer, et lire le bilan de l'activité.</p>
+        <ol class="etapes">
+          <li data-cursor="#fc-corr" data-action="tap" data-duration="3400"><span class="btn-nom">Afficher la correction</span> (onglet en haut à droite de la fiche) : les réponses apparaissent écrites à la main, en bleu ; sur une évaluation, en vert.</li>
+          <li data-cursor="#fc-volet" data-action="tap" data-duration="3400">Sur une fiche de mémorisation, chaque réponse est cachée sous un volet : le toucher le soulève, le toucher encore le rabat.</li>
+          <li data-cursor="#fc-coin" data-action="tap" data-duration="3200">Le coin corné en bas retourne une fiche recto verso, ou passe à la page suivante de la fiche.</li>
+          <li data-cursor="#fc-impr" data-action="tap" data-duration="3600"><span class="btn-nom">Imprimer</span> imprime la fiche en A4. Si deux versions existent, une petite fenêtre propose <b>la fiche vierge</b>, <b>la fiche corrigée</b> ou <b>Annuler</b>.</li>
+          <li data-cursor="#fc-bilan" data-duration="3600">Sous la fiche, le bilan de l'activité est écrit en rouge sur les lignes, après « Bilan : » souligné. <span class="btn-nom">Imprimer le bilan</span> l'imprime en entier.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La correction n'apparaît que si l'enseignant l'a ouverte à la classe, et disparaît s'il la referme.</li>
+            <li>Les bilans sont toujours en rouge. Leur texte vient de l'écran « Bilan » de l'activité ou, à défaut, de la feuille de bilans corrigée de la séquence.</li>
+            <li>Sur la feuille de bilans, l'onglet devient <b>Voir la fiche remplie</b> / <b>Voir la fiche vierge</b>. Une fiche de tableau blanc, sans feuille, affiche « Tableau blanc : pas de feuille à imprimer ».</li>
+            <li>Limite connue : un bilan est plus large que le texte de la fiche ; en lecture sur téléphone, il faut le faire glisser.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="background:#fff"><span>17:36</span><span>Wi-Fi</span></div>
+              <div class="bd-bar">
+                <span class="bd-btn"><svg class="ic ic--p"><use href="#i-chev-g"/></svg></span>
+                <span class="bd-btn"><svg class="ic ic--p"><use href="#i-liste"/></svg></span>
+                <span class="bd-titre"><svg class="ic ic--p"><use href="#i-livre"/></svg>Classeur de SVT</span>
+                <span class="bd-btn actif"><svg class="ic ic--p"><use href="#i-loupe"/></svg></span>
+                <span class="bd-pastille">5E</span>
+              </div>
+              <div class="bd-bureau">
+                <div class="seyes">
+                  <div class="trous"><i></i><i></i><i></i><i></i></div>
+                  <div class="titre-act main-ecrite">Activité 1 — Météo ou climat ?</div>
+                  <div class="collee" style="top:62px" data-on="3">
+                    <span class="onglet-corr" id="fc-corr" data-on="1-5">Masquer la correction</span>
+                    <h4>Activité 1 — Météo ou climat ?</h4>
+                    <div style="font-size:9.5px">1. Quelle température faisait-il le 12 mars ?</div>
+                    <div class="rep"><span class="main-ecrite" data-from="1">Il faisait 8 °C.</span></div>
+                    <div style="font-size:9.5px">2. Le climat se mesure sur combien d'années ?</div>
+                    <div class="rep"><span class="main-ecrite" data-from="1">Sur 30 ans au moins.</span></div>
+                    <div style="font-size:9.5px">À retenir : la météo est le temps</div>
+                    <div class="rep" style="border:0"><span class="volet" id="fc-volet" data-on="2-5"></span> <span class="main-ecrite" data-from="2" style="font-size:10px">d'un jour précis</span></div>
+                    <div class="coin" id="fc-coin"></div>
+                  </div>
+                  <div class="bilan main-ecrite" id="fc-bilan" style="top:300px"><u>Bilan :</u> la météo décrit le temps qu'il fait un jour donné ; le <u>climat</u> décrit le temps moyen d'une région sur au moins 30 ans.</div>
+                  <span class="el-btn" id="fc-impr" data-on="4" style="position:absolute;left:56px;top:420px;min-height:32px;font-size:12px;padding:0 10px;border-radius:6px"><svg class="ic ic--pp"><use href="#i-imprimer"/></svg>Imprimer</span>
+                  <span class="el-btn" style="position:absolute;left:150px;top:420px;min-height:32px;font-size:12px;padding:0 10px;border-radius:6px;color:#C00000"><svg class="ic ic--pp"><use href="#i-imprimer"/></svg>Imprimer le bilan</span>
+                </div>
+                <div class="mini-menu zoom" data-at="4" style="left:60px;top:250px"><b>Imprimer :</b><span class="o">la fiche vierge</span><span class="o is-on">la fiche corrigée</span><span class="o">Annuler</span></div>
+              </div>
+              <div class="bd-foot"><span class="f prec"><svg class="ic ic--p"><use href="#i-chev-g"/></svg></span><span class="num">4 / 32</span><span class="f suiv"><svg class="ic ic--p"><use href="#i-chev-d"/></svg></span></div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

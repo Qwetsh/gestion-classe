@@ -1,0 +1,1230 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Académie — Guide Gestion Classe</title>
+<meta name="description" content="Le jeu des quatre Maisons côté enseignant : activer le module pour une classe, lire le registre, donner et révéler des points, pondérer les épreuves, et projeter les sabliers, le minuteur et la cérémonie.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="82">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques communes aux chapitres Récompenses, Académie et Pronote */
+.app__side { position: relative; }
+.side__compte { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); padding: 8px 6px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.side__compte .avatar { width: 24px; height: 24px; font-size: 10.5px; }
+.pn-encart { margin-top: auto; display: flex; align-items: flex-start; gap: 7px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 9px; font-size: 11.5px; line-height: 1.35; position: relative; transition: box-shadow .25s, opacity .35s; }
+.pn-encart u { cursor: pointer; }
+.pn-encart.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-encart__i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 9px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+.pn-encart__x { margin-left: auto; font-size: 14px; line-height: 1; opacity: .7; padding: 0 2px; border-radius: 4px; }
+.ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic--p { width: 13px; height: 13px; }
+.ic--g { width: 22px; height: 22px; }
+.modale__x { margin-left: auto; color: var(--text-dim); font-size: 18px; line-height: 1; font-weight: 400; }
+.modale__tl { display: flex; align-items: center; gap: 8px; }
+.modale__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.modale__texte { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.45; white-space: pre-line; }
+.b--rouge { background: var(--neg); border-color: var(--neg); color: #fff; }
+.b--encre { background: #4338CA; border-color: #4338CA; }
+.toast { z-index: 760; }
+.toast--ok { background: var(--pos-soft); color: var(--pos); box-shadow: 0 6px 20px rgba(20,25,40,.12); border: 1px solid #CDE9D6; font-weight: 550; }
+.cl-ok { color: var(--pos); }
+.sel { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; white-space: nowrap; transition: all .25s; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; padding-left: 6px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.sw { display: inline-grid; }
+.sw > * { grid-area: 1 / 1; }
+.apres:not(.is-hidden) { transition-delay: 1.1s !important; }
+.avant.is-hidden { transition-delay: 1.1s !important; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.puls.is-on { animation: puls 1.1s ease-in-out infinite; }
+@keyframes puls { 50% { opacity: .55; } }
+.tourne { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--indigo-soft); border-top-color: var(--indigo); animation: tourne 0.9s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.natif { position: absolute; left: 50%; top: 18px; translate: -50% 0; width: 430px; background: #fff; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.35); padding: 16px 18px 14px; z-index: 780; font-family: 'Segoe UI', system-ui, sans-serif; color: #1f1f1f; }
+.natif__o { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.natif__m { font-size: 13px; line-height: 1.45; margin-bottom: 14px; }
+.natif__b { display: flex; justify-content: flex-end; gap: 8px; }
+.natif__b span { padding: 6px 16px; border-radius: 16px; font-size: 12.5px; border: 1px solid #c7c7c7; background: #fff; }
+.natif__b span.ok { background: #0b57d0; border-color: #0b57d0; color: #fff; }
+.natif__b span.is-on { box-shadow: 0 0 0 3px rgba(11,87,208,.3); }
+
+/* Académie : décor sombre et doré (polices remplacées par Georgia, sans ressource externe) */
+.ak { flex: 1; min-height: 0; background: #0a0908; color: #E9DFC9; font-family: Georgia, 'Times New Roman', serif; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.ak::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+  background-image: radial-gradient(1.2px 1.2px at 22px 30px, #d4a843 50%, transparent 52%), radial-gradient(1px 1px at 90px 80px, #e8d48b 50%, transparent 52%), radial-gradient(1.4px 1.4px at 150px 20px, #d4a843 50%, transparent 52%), radial-gradient(1px 1px at 60px 140px, #c9a84c 50%, transparent 52%), radial-gradient(1px 1px at 180px 120px, #e8d48b 50%, transparent 52%);
+  background-size: 200px 160px; animation: scint 4s ease-in-out infinite alternate; }
+@keyframes scint { to { opacity: .3; } }
+.ak > * { position: relative; }
+.ak-tete { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #3a2e22; }
+.ak-emb { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #c9a84c; position: relative; flex: none; }
+.ak-emb::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 1px solid #a6812f; }
+.ak-emb::after { content: ''; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 1.5px; background: #e8d48b; transform: rotate(35deg); }
+.ak-sur { font-size: 8.5px; letter-spacing: .28em; text-transform: uppercase; color: #A6812F; }
+.ak-titre { font-size: 21px; font-style: italic; color: #EFE6D0; line-height: 1.1; }
+.ak-sel { background: #1a1410; border: 1px solid #6b5a3a; color: #E9DFC9; font-style: italic; padding: 5px 24px 5px 10px; border-radius: 6px; font-size: 12px; position: relative; transition: box-shadow .25s; }
+.ak-sel::after { content: '▾'; position: absolute; right: 8px; color: #a6812f; font-style: normal; }
+.ak-sel.is-on, .ak-mc.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.ak-mc { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; font-weight: 700; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-family: var(--font); transition: box-shadow .25s; }
+.ak-mc .tv { width: 12px; height: 9px; border: 1.6px solid currentColor; border-radius: 2px; }
+.ak-sceau { width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #c0392b, #7b1d14); color: #f3d9c0; display: grid; place-items: center; font-style: italic; font-size: 14px; transform: rotate(-8deg); box-shadow: 0 2px 6px rgba(0,0,0,.6); flex: none; }
+.ak-corps { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; padding: 12px 20px; }
+.ak-col { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.ak-h { font-size: 18px; font-style: italic; display: flex; align-items: center; gap: 10px; color: #EFE6D0; }
+.ak-h::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #c9a84c, transparent); }
+.ak-sous { font-size: 10.5px; font-style: italic; color: #8a7a66; margin-top: -6px; }
+.pan4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.parch { background: radial-gradient(ellipse at center, #EDE3CC 55%, #CDBE9C 100%); color: #3b2a1a; border-radius: 6px; padding: 12px 6px 8px; text-align: center; position: relative; box-shadow: 0 4px 14px rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; transition: transform .35s, box-shadow .35s; }
+.parch.is-on { transform: translateY(-3px); box-shadow: 0 0 0 2.5px #F0D27A, 0 8px 18px rgba(0,0,0,.6); }
+.parch--tete { box-shadow: 0 0 0 2px #c9a84c, 0 0 22px rgba(212,168,67,.4); }
+.parch__rang { position: absolute; top: 6px; right: 8px; font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: #6b5a3a; border-radius: 4px; transition: box-shadow .25s; }
+.parch__nom { font-size: 15px; font-style: italic; margin-top: 6px; }
+.parch__dev { font-size: 9.5px; font-style: italic; color: #6b5a3a; line-height: 1.25; min-height: 24px; padding: 0 4px; }
+.orn { width: 7px; height: 7px; background: #a6812f; transform: rotate(45deg); margin: 6px 0 2px; box-shadow: -12px 12px 0 -2.5px #a6812f, 12px -12px 0 -2.5px #a6812f; }
+.parch__pl { font-size: 8px; letter-spacing: .22em; text-transform: uppercase; color: #6b5a3a; margin-top: 6px; }
+.parch__pts { font-size: 32px; font-style: italic; line-height: 1.05; border-radius: 6px; transition: box-shadow .25s; }
+.parch__cache { font-size: 10px; font-style: italic; color: #a0462e; border-radius: 4px; transition: box-shadow .25s; }
+.parch__clic { font-size: 8.5px; color: #8a7a66; margin-top: 6px; }
+.couronne { position: absolute; top: -13px; left: 50%; translate: -50% 0; width: 30px; height: 16px; background: linear-gradient(#f3d77d, #b8892a); clip-path: polygon(0 100%, 0 25%, 22% 60%, 50% 0, 78% 60%, 100% 25%, 100% 100%); filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+.zor.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+/* écussons neutres A à D (les blasons de l'application ne sont pas reproduits) */
+.ecu { width: 34px; height: 40px; flex: none; display: inline-grid; place-items: center; font-family: var(--font); font-weight: 800; font-size: 15px; color: #fff; clip-path: path('M0 0 H34 V22 C34 32 17 40 17 40 C17 40 0 32 0 22 Z'); }
+.ecu--p { width: 17px; height: 20px; font-size: 9px; clip-path: path('M0 0 H17 V11 C17 16 8.5 20 8.5 20 C8.5 20 0 16 0 11 Z'); }
+.ecu--m { width: 50px; height: 59px; font-size: 22px; clip-path: path('M0 0 H50 V32 C50 47 25 59 25 59 C25 59 0 47 0 32 Z'); }
+.ecu--g { width: 90px; height: 106px; font-size: 40px; clip-path: path('M0 0 H90 V58 C90 85 45 106 45 106 C45 106 0 85 0 58 Z'); }
+.ecu-a { background: linear-gradient(#2F7F86, #1D5257); } .ecu-b { background: linear-gradient(#7A4B8C, #4E2D5D); }
+.ecu-c { background: linear-gradient(#B98A2E, #7D5A16); } .ecu-d { background: linear-gradient(#56657A, #343F4E); }
+.ha { --hc: #2F7F86; } .hb { --hc: #7A4B8C; } .hc { --hc: #B98A2E; } .hd { --hc: #56657A; }
+/* barre latérale */
+.ak-side { border: 1px solid #3a2e22; background: #120f0c; border-radius: 8px; padding: 10px; }
+.ak-side__t { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: #c9a84c; border-bottom: 1px solid #3a2e22; padding-bottom: 6px; margin-bottom: 6px; }
+.qa { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; border: 1px solid transparent; transition: background .25s, border-color .25s; margin-bottom: 2px; }
+.qa__p { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #6b5a3a; display: grid; place-items: center; font-size: 11px; color: #c9a84c; flex: none; font-family: var(--font); }
+.qa__p .ic { width: 12px; height: 12px; }
+.qa__l { font-size: 11.5px; font-style: italic; line-height: 1.2; }
+.qa__d { font-size: 9px; color: #8a7a66; font-family: var(--font); }
+.qa--or { background: #2a2010; border-color: #c9a84c; }
+.qa--gris { opacity: .4; }
+.qa.is-on { background: #2a2016; border-color: #F0D27A; }
+.sm { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-style: italic; padding: 3px 0; }
+.sm .ak-mini { margin-left: auto; font-size: 10px; border: 1px solid #3a2e22; border-radius: 4px; padding: 1px 16px 1px 6px; color: #8a7a66; position: relative; font-style: normal; font-family: var(--font); transition: box-shadow .25s; }
+.sm .ak-mini::after { content: '▾'; position: absolute; right: 4px; }
+.ak-mini.is-on { box-shadow: 0 0 0 2px #F0D27A; color: #EFE6D0; }
+/* fenêtres parchemin */
+.pmod-fond { position: absolute; inset: 0; background: rgba(0,0,0,.72); display: grid; place-items: center; z-index: 600; }
+.pmod { background: radial-gradient(ellipse at center, #EFE6D0 50%, #D2C3A0 100%); color: #3b2a1a; border-radius: 6px; padding: 16px 20px; width: 560px; font-family: Georgia, serif; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+.pmod__sur { font-size: 9px; letter-spacing: .3em; text-transform: uppercase; color: #8a7a66; font-family: var(--mono); }
+.pmod__t { font-size: 22px; font-style: italic; line-height: 1.2; }
+.pmod__x { position: absolute; top: 12px; right: 14px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid #8a7a66; display: grid; place-items: center; font-size: 12px; color: #6b5a3a; transition: background .25s; }
+.pmod__x.is-on { background: rgba(0,0,0,.08); }
+.pl { display: flex; align-items: center; gap: 9px; padding: 5px 4px; border-bottom: 1px solid rgba(107,90,58,.25); font-size: 13px; transition: opacity .35s, background .25s; }
+.pl i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-style: normal; color: #fff; background: var(--hc); flex: none; font-family: var(--font); font-weight: 650; }
+.pl em { flex: 1; }
+.pl.is-on { background: rgba(166,129,47,.15); }
+.psel { font-size: 11px; border: 1px solid #a89773; border-radius: 4px; padding: 2px 18px 2px 7px; background: rgba(255,255,255,.5); position: relative; font-family: var(--font); transition: box-shadow .25s; white-space: nowrap; }
+.psel::after { content: '▾'; position: absolute; right: 5px; }
+.psel.is-on { box-shadow: 0 0 0 2px #a6812f; }
+.pmenu { position: absolute; z-index: 5; background: #fff; border: 1px solid #a89773; border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.25); padding: 3px; font-family: var(--font); font-size: 11.5px; color: #3b2a1a; }
+.pmenu div { padding: 4px 10px; border-radius: 4px; }
+.pmenu div.is-on, .pmenu div.actif { background: #EDE3CC; }
+.bt-parch { background: #EFE6D0; color: #2a1d10; border: 1px solid #c9a84c; border-radius: 6px; padding: 7px 12px; text-align: center; font-style: italic; font-size: 12px; transition: box-shadow .25s; }
+.bt-or { background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; border-radius: 6px; padding: 7px 12px; text-align: center; font-size: 12px; font-weight: 700; font-family: var(--font); transition: box-shadow .25s, opacity .25s; }
+.bt-parch.is-on, .bt-or.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.bt-rouge { background: #8e2a1e; color: #f3d9c0; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-family: var(--font); }
+.dd { position: absolute; z-index: 20; background: #1a1410; border: 1px solid #6b5a3a; border-radius: 6px; padding: 4px; font-size: 12px; font-style: italic; min-width: 110px; box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+.dd div { padding: 4px 9px; border-radius: 4px; }
+.dd div.is-on, .dd div.actif { background: #3a2e22; color: #F0D27A; }
+
+/* Page Académie */
+.fx { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.fxp { flex: 1; display: flex; flex-direction: column; }
+.ha { --hc2: #7fc6cc; } .hb { --hc2: #c69ad6; } .hc { --hc2: #e6be6a; } .hd { --hc2: #a9b6c8; }
+.vide-ak { flex: 1; display: grid; place-items: center; text-align: center; color: #8a7a66; font-size: 13px; font-style: italic; }
+.vide-ak b { display: block; font-size: 18px; color: #EFE6D0; margin: 10px 0 4px; font-weight: 400; }
+.chateau { width: 64px; height: 50px; margin: 0 auto; position: relative; }
+.chateau::before { content: ''; position: absolute; left: 6px; right: 6px; bottom: 0; height: 30px; background: #6b5a3a; clip-path: polygon(0 0, 14% 0, 14% 25%, 28% 25%, 28% 0, 43% 0, 43% 25%, 57% 25%, 57% 0, 72% 0, 72% 25%, 86% 25%, 86% 0, 100% 0, 100% 100%, 60% 100%, 60% 55%, 40% 55%, 40% 100%, 0 100%); }
+.chateau::after { content: ''; position: absolute; left: 26px; width: 12px; bottom: 28px; height: 22px; background: #8a7a66; clip-path: polygon(0 30%, 50% 0, 100% 30%, 100% 100%, 0 100%); }
+.cp2 { flex: 1; display: flex; gap: 14px; padding: 16px 18px; background: #fff; }
+.cp2-plan { flex: 1; border: 1px solid var(--border); border-radius: 8px; background-color: #fff; background-image: linear-gradient(rgba(20,25,40,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(20,25,40,.05) 1px, transparent 1px); background-size: 40px 40px; }
+.vis { width: 210px; flex: none; display: flex; flex-direction: column; gap: 8px; }
+.vis__bloc { border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: #fff; }
+.vis-t { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); padding: 4px; }
+.vis-l { display: flex; align-items: center; gap: 7px; padding: 5px; border-radius: 6px; font-size: 12px; transition: background .25s; }
+.vis-l i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.vis-l .interrupteur { margin-left: auto; }
+.vis-l.is-on { background: var(--surface-3); }
+.int-or.interrupteur--on { background: var(--warn); }
+.int-vert.interrupteur--on { background: var(--pos); }
+.coupe { -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+/* podium */
+.podium { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: end; padding: 0 30px; height: 300px; }
+.pod { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.pod__r { font-size: 9px; letter-spacing: .2em; color: #c9a84c; text-transform: uppercase; font-family: var(--font); font-weight: 600; }
+.pod__n { font-size: 14px; font-style: italic; }
+.pod__s { width: 100%; height: 50px; border-radius: 4px 4px 0 0; background: linear-gradient(var(--hc), #2a1d10); border: 1px solid #6b5a3a; border-bottom: 0; display: grid; place-items: center; font-size: 24px; font-style: italic; color: #F0D27A; transition: height 1.2s ease; }
+.pod__s.is-on { height: var(--h); }
+.pod__sb { width: 100%; height: 12px; background: linear-gradient(#e0bd62, #a6812f); }
+.pod--1 .ecu { filter: drop-shadow(0 0 10px rgba(240,210,122,.7)); }
+.pod--1 .pod__n { color: #F0D27A; }
+/* attribution */
+.att { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 14px; border: 1px solid #3a2e22; background: linear-gradient(#1a1410, #120f0c); border-radius: 8px; padding: 12px; }
+.mode { display: inline-flex; border: 1px solid #6b5a3a; border-radius: 6px; overflow: hidden; align-self: flex-start; }
+.mode span { padding: 5px 12px; font-size: 11.5px; font-style: italic; transition: all .25s; }
+.mode span.is-actif, .mode span.is-on { background: #EFE6D0; color: #2a1d10; }
+.mode span.off.is-on { background: transparent; color: #E9DFC9; }
+.tuiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.tuile { border: 1px solid #3a2e22; border-radius: 6px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; font-style: italic; transition: all .3s; }
+.tuile.is-on { background: var(--hc); color: #F0D27A; border-color: #c9a84c; }
+.lab { font-size: 8.5px; letter-spacing: .22em; text-transform: uppercase; color: #8a7a66; font-family: var(--mono); margin-bottom: 3px; }
+.ch-ak { border-bottom: 1px solid #6b5a3a; padding: 4px 2px; font-style: italic; font-size: 12px; min-height: 25px; transition: border-color .25s; }
+.ch-ak.is-on { border-color: #F0D27A; }
+.ch-ak .ph { color: #6b5a3a; }
+.val { font-size: 30px; font-style: italic; color: #F0D27A; line-height: 1; }
+.curseur { height: 4px; background: #3a2e22; border-radius: 2px; position: relative; margin: 10px 0 4px; }
+.curseur i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--a); background: #c9a84c; border-radius: 2px; transition: width .8s; }
+.curseur i.is-on { width: var(--b); }
+.curseur i::after { content: ''; position: absolute; right: -7px; top: -5px; width: 14px; height: 14px; border-radius: 50%; background: #F0D27A; box-shadow: 0 0 0 3px rgba(240,210,122,.25); }
+.bascule-l { display: flex; align-items: center; gap: 8px; font-size: 12px; font-style: italic; }
+.bascule-l small { display: block; font-size: 9.5px; color: #8a7a66; }
+.bascule { width: 34px; height: 18px; border-radius: 9px; background: #8e3b2a; position: relative; flex: none; transition: background .3s; }
+.bascule::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #EFE6D0; transition: left .3s; }
+.bascule.is-on { background: #c9a84c; }
+.bascule.is-on::after { left: 18px; }
+.attente { border: 1px solid #3a2e22; border-radius: 6px; padding: 8px; }
+.attente__l { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-style: italic; padding: 2px 0; }
+.attente__l b { margin-left: auto; font-weight: 400; color: #F0D27A; }
+.attente__l b.nul { color: #6b5a3a; }
+/* révélation */
+.voile-or { position: absolute; inset: 0; z-index: 40; background: radial-gradient(circle at 50% 45%, rgba(40,28,10,.2), rgba(0,0,0,.75)); pointer-events: none; }
+.gerbe { position: absolute; left: 50%; top: 45%; width: 0; height: 0; }
+.gerbe i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #F0D27A; box-shadow: 0 0 6px #F0D27A; animation: jaillit 1.6s ease-out infinite; animation-delay: var(--dl, 0s); }
+@keyframes jaillit { 0% { transform: rotate(var(--r)) translateX(0); opacity: 1; } 100% { transform: rotate(var(--r)) translateX(var(--l, 160px)); opacity: 0; } }
+/* registre des bonus */
+.rb { display: flex; flex-direction: column; gap: 5px; }
+.rb__l { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-left: 3px solid var(--hc); background: rgba(255,255,255,.03); border-radius: 0 6px 6px 0; font-size: 12.5px; transition: background .25s, opacity .35s; }
+.rb__l em { flex: 1; }
+.rb__l small { font-size: 10px; color: #8a7a66; font-family: var(--font); margin-left: 6px; }
+.rb__p { font-size: 15px; font-style: italic; color: #F0D27A; min-width: 34px; text-align: right; }
+.rb__p--neg { color: #e55; }
+.rb__x { color: #8a7a66; opacity: .35; font-family: var(--font); font-size: 12px; width: 18px; text-align: center; border-radius: 4px; transition: all .25s; }
+.rb__x.is-on { opacity: 1; color: #F0D27A; background: rgba(240,210,122,.12); }
+.rb__l.is-on { background: rgba(255,255,255,.08); }
+/* épreuves */
+.ep { border: 1px solid #3a2e22; background: #120f0c; border-radius: 8px; padding: 10px 12px; transition: box-shadow .25s; }
+.ep.is-on { box-shadow: 0 0 0 2px #F0D27A; }
+.ep__t { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+.ep__t b { font-size: 14px; font-style: italic; font-weight: 400; }
+.ep__t small { font-size: 10px; color: #8a7a66; font-family: var(--font); }
+.ep__coef { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #8a7a66; font-family: var(--font); }
+.ep__coef > span { border: 1px solid #6b5a3a; border-radius: 4px; padding: 1px 6px; color: #EFE6D0; min-width: 30px; text-align: center; transition: box-shadow .25s; }
+.ep__coef > span.is-on { box-shadow: 0 0 0 2px #F0D27A; }
+.eb { display: flex; align-items: center; gap: 8px; font-size: 11px; font-family: var(--font); padding: 2px 0; }
+.eb__b { flex: 1; height: 9px; background: #1a1410; border-radius: 5px; overflow: hidden; }
+.eb__b i { display: block; height: 100%; width: var(--w); background: linear-gradient(90deg, var(--hc), var(--hc2)); border-radius: 5px; }
+.eb__v { width: 74px; color: #E9DFC9; }
+.eb__v small { color: #F0D27A; }
+.ep__pied { font-size: 11px; color: #8a7a66; font-family: var(--font); border-top: 1px solid #3a2e22; margin-top: 6px; padding-top: 5px; }
+.etat { font-size: 9.5px; padding: 1px 7px; border-radius: 999px; font-family: var(--font); }
+.etat--fin { background: rgba(21,128,61,.25); color: #8fd6a8; }
+.etat--cours { background: rgba(180,83,9,.3); color: #f3c38a; }
+/* mode classe */
+.mc { position: absolute; top: 0; bottom: 0; right: 0; left: -190px; background: #0a0908; z-index: 500; color: #e8dcc8; font-family: Georgia, serif; display: flex; flex-direction: column; overflow: hidden; }
+.mc::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .6; background-image: radial-gradient(1.2px 1.2px at 22px 30px, #d4a843 50%, transparent 52%), radial-gradient(1px 1px at 90px 80px, #d4a843 50%, transparent 52%), radial-gradient(1.4px 1.4px at 150px 20px, #d4a843 50%, transparent 52%); background-size: 210px 150px; animation: scint 3s ease-in-out infinite alternate; }
+.mc > * { position: relative; }
+.mc-barre { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-bottom: 1px solid #3a2e22; }
+.mc-ret { color: #8a7a66; font-size: 13px; font-family: var(--font); padding: 4px 6px; border-radius: 6px; transition: box-shadow .25s; }
+.mc-ret.is-on { box-shadow: 0 0 0 2px #F0D27A; }
+.mc-btn { border: 1px solid #c9a84c; color: #d4a843; background: #1a1410; border-radius: 8px; padding: 5px 12px; font-size: 12.5px; font-family: var(--font); display: inline-flex; gap: 6px; align-items: center; transition: box-shadow .25s; white-space: nowrap; }
+.mc-btn--or { background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; border-color: transparent; font-weight: 650; }
+.mc-btn.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.mc-bas { display: inline-flex; background: #1a1410; border: 1px solid #3a2e22; border-radius: 9px; padding: 3px; margin: 0 auto; }
+.mc-bas span { padding: 5px 14px; border-radius: 7px; font-size: 12.5px; font-family: var(--font); color: #8a7a66; transition: all .25s; }
+.mc-bas span.is-actif, .mc-bas span.is-on { background: #d4a843; color: #1a1410; }
+.mc-bas span.off.is-on { background: transparent; color: #8a7a66; }
+.sab4 { flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; padding: 18px 70px; align-items: center; }
+.sabc { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.sabc__nom { font-size: 16px; font-style: italic; color: var(--hc2); }
+.sabc__pts { font-size: 30px; color: #e8dcc8; line-height: 1; }
+.sabc__pts small { display: block; font-size: 11px; color: #8a7a66; }
+.sabc__rang { font-size: 12px; color: #8a7a66; font-family: var(--font); }
+.sabc--1 .sabc__rang { color: #d4a843; }
+.sabc--1 .ecu { filter: drop-shadow(0 0 10px rgba(240,210,122,.6)); }
+.sab { width: 92px; height: 136px; position: relative; margin: 6px 0; }
+.sab__cad { position: absolute; left: 0; right: 0; height: 7px; background: linear-gradient(#e8d48b, #c9a84c); border-radius: 3px; z-index: 2; }
+.sab__cad--h { top: 0; } .sab__cad--b { bottom: 0; }
+.sab__mont { position: absolute; top: 4px; bottom: 4px; width: 3px; background: #c9a84c; border-radius: 2px; }
+.sab__ch { position: absolute; left: 10px; right: 10px; height: 61px; overflow: hidden; background: rgba(255,255,255,.07); }
+.sab__ch--h { top: 7px; clip-path: polygon(0 0, 100% 0, 54% 100%, 46% 100%); }
+.sab__ch--b { bottom: 7px; clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); }
+.sab__sable { position: absolute; left: 0; right: 0; bottom: 0; height: var(--s); background: var(--hc); transition: height 2s ease; }
+.sab__sable.is-on { height: var(--s2); }
+.sab__ch--h .sab__sable { height: 40%; }
+.sab__filet { position: absolute; left: 50%; top: 66px; width: 2px; height: 50px; margin-left: -1px; background: repeating-linear-gradient(var(--hc) 0 4px, transparent 4px 7px); background-size: 2px 14px; animation: coule .6s linear infinite; }
+@keyframes coule { to { background-position: 0 14px; } }
+/* vue classe */
+.vc { flex: 1; display: grid; grid-template-columns: 190px 1fr; gap: 20px; padding: 16px 24px; min-height: 0; }
+.vc-r { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid #3a2e22; border-radius: 8px; margin-bottom: 8px; font-style: italic; font-size: 13px; color: var(--hc2); }
+.vc-r b { margin-left: auto; font-weight: 400; color: #e8dcc8; font-size: 15px; }
+.vc-r small { font-size: 9.5px; color: #8a7a66; display: block; font-family: var(--font); font-style: normal; }
+.vc-ms { width: 14px; height: 22px; background: linear-gradient(transparent 50%, var(--hc) 50%); clip-path: polygon(0 0, 100% 0, 55% 50%, 100% 100%, 0 100%, 45% 50%); border-top: 2px solid #c9a84c; border-bottom: 2px solid #c9a84c; flex: none; }
+.vc-m { margin-bottom: 12px; }
+.vc-t { font-size: 14px; font-style: italic; color: var(--hc2); border-bottom: 1px solid #3a2e22; margin-bottom: 7px; padding-bottom: 3px; }
+.vc-el { display: inline-block; padding: 4px 11px; border-radius: 999px; background: color-mix(in srgb, var(--hc) 28%, transparent); border: 1px solid color-mix(in srgb, var(--hc) 65%, transparent); color: #efe6d0; font-size: 12px; margin: 0 4px 6px 0; font-family: var(--font); transition: background .25s; }
+.vc-el.is-on { background: var(--hc); }
+.vc-pop { position: absolute; z-index: 30; left: 50%; top: 50%; translate: -50% -50%; background: #1a1410; border: 1px solid #3a2e22; border-radius: 16px; padding: 16px; width: 300px; box-shadow: 0 20px 50px rgba(0,0,0,.6); font-family: var(--font); }
+.vc-pop__n { font-family: Georgia, serif; font-size: 20px; font-style: italic; text-align: center; }
+.vc-pop__m { text-align: center; font-size: 12px; color: var(--hc2); margin-bottom: 10px; }
+.vc-mt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.vc-mt span { text-align: center; padding: 7px 0; border-radius: 8px; color: #fff; font-weight: 650; font-size: 13px; transition: box-shadow .25s; }
+.vc-mt .pos { background: linear-gradient(#2d6a4f, #40916c); }
+.vc-mt .neg { background: linear-gradient(#9b2226, #ae2012); }
+.vc-mt span.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.vc-ch { border: 1px solid #3a2e22; border-radius: 8px; padding: 6px 9px; font-size: 12px; color: #8a7a66; transition: border-color .25s; }
+.vc-ch.is-on { border-color: #d4a843; color: #e8dcc8; }
+.vc-f { margin-top: 10px; border: 1px solid #3a2e22; border-radius: 8px; padding: 6px; text-align: center; color: #8a7a66; font-size: 12px; }
+/* minuteur */
+.mn-fond { position: absolute; inset: 0; background: rgba(0,0,0,.7); display: grid; place-items: center; z-index: 30; }
+.mn { background: #251c15; border: 1px solid #3a2e22; border-radius: 16px; padding: 18px 22px; width: 340px; text-align: center; position: relative; }
+.mn-x { position: absolute; top: 10px; right: 12px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid #3a2e22; color: #8a7a66; display: grid; place-items: center; font-size: 12px; font-family: var(--font); }
+.mn-t { font-size: 18px; font-style: italic; color: #d4a843; margin-bottom: 12px; }
+.mn-dur { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mn-dur span { border: 1px solid #c9a84c; color: #d4a843; border-radius: 8px; padding: 9px 0; font-family: var(--font); font-size: 14px; transition: all .25s; }
+.mn-dur span.is-on { background: #d4a843; color: #1a1410; }
+.anneau { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(var(--ac, #d4a843) var(--p), #3a2e22 0); display: grid; place-items: center; margin: 4px auto 12px; }
+.anneau > div { width: 134px; height: 134px; border-radius: 50%; background: #251c15; display: grid; place-content: center; }
+.anneau b { font-size: 34px; font-family: var(--font); font-weight: 600; color: var(--tc, #e8dcc8); }
+.anneau small { font-size: 11px; color: #8a7a66; font-family: var(--font); }
+.anneau--rouge { --ac: #dc2626; --tc: #f87171; animation: puls 1s ease-in-out infinite; }
+.mn-bts { display: flex; gap: 8px; justify-content: center; font-family: var(--font); }
+.mn-bts span { padding: 7px 16px; border-radius: 8px; font-size: 13px; transition: box-shadow .25s; }
+.mn-bts .pause { background: #5a1d17; color: #f3c3b8; }
+.mn-bts .rep { background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; font-weight: 650; }
+.mn-bts .rst { border: 1px solid #3a2e22; color: #8a7a66; }
+.mn-bts span.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.temps { font-size: 46px; font-style: italic; color: #F0D27A; margin: 30px 0; animation: puls 1s ease-in-out infinite; }
+/* cérémonie */
+.cer { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 16px; padding: 12px 20px; min-height: 0; }
+.cer-c { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; }
+.cer-h small { display: block; font-size: 13px; color: #c9a84c; font-style: italic; }
+.cer-h b { display: block; font-size: 26px; color: #d4a843; font-weight: 400; font-style: italic; line-height: 1.1; }
+.cer-h span { font-size: 11px; color: #8a7a66; font-family: var(--font); }
+.cer-file { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 4px; }
+.cer-file span { display: flex; align-items: center; gap: 9px; padding: 6px 12px; border: 1px solid #3a2e22; background: #1a1410; border-radius: 9px; font-family: var(--font); font-size: 12.5px; width: 230px; transition: border-color .25s; }
+.cer-file span i { width: 20px; height: 20px; border-radius: 50%; background: #3a2e22; flex: none; }
+.cer-file span.is-on { border-color: #d4a843; }
+.cer-txt { font-size: 15px; font-style: italic; color: #c9a84c; }
+.chapeau { width: 150px; filter: drop-shadow(0 0 18px rgba(212,168,67,.35)); animation: flotte 3s ease-in-out infinite; transition: transform .3s; }
+.chapeau.is-on { animation: tremble .25s linear infinite; }
+@keyframes flotte { 50% { transform: translateY(-6px); } }
+@keyframes tremble { 25% { transform: rotate(-3deg); } 75% { transform: rotate(3deg); } }
+.cer-rev__n { font-size: 40px; font-style: italic; color: var(--hc2); text-shadow: 0 0 18px var(--hc); line-height: 1.1; }
+.cer-d .m { border: 1px solid #3a2e22; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; transition: box-shadow .3s, background .3s; }
+.cer-d .m.is-on { background: color-mix(in srgb, var(--hc) 20%, transparent); box-shadow: 0 0 0 1.5px var(--hc2); }
+.cer-d .mt { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-style: italic; color: var(--hc2); margin-bottom: 4px; }
+.cer-d .pp { display: inline-block; font-size: 10.5px; font-family: var(--font); padding: 2px 7px; border-radius: 999px; background: color-mix(in srgb, var(--hc) 35%, transparent); margin: 0 3px 3px 0; }
+.cer-d .pp.neuf:not(.is-hidden) { animation: grossit .5s ease-out; }
+@keyframes grossit { from { transform: scale(.3); } }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-bulle" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-crayon" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
+  <symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z"/></symbol>
+  <symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-groupe" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 010 6M21 20c0-2.6-1.7-4.8-4-5.6"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 013 3v12a2 2 0 00-2-2H3z"/><path d="M21 5h-6a3 3 0 00-3 3v12a2 2 0 012-2h7z"/></symbol>
+  <symbol id="i-feuille" viewBox="0 0 24 24"><path d="M5 20c0-9 5-15 15-15 0 10-5 15-14 15"/><path d="M5 20l8-8"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8C10 4 6 4 6.5 7 7 8 12 8 12 8zM12 8c2-4 6-4 5.5-1-.5 1-5.5 1-5.5 1z"/></symbol>
+  <symbol id="i-sablier" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3v3l4 6 4-6V3M8 21v-3l4-6 4 6v3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-tampon" viewBox="0 0 24 24"><path d="M9 3h6v5l3 4H6l3-4z"/><path d="M5 15h14v3H5zM7 21h10"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+  <symbol id="i-calendrier" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-copier" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></symbol>
+  <symbol id="i-fichier" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></symbol>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Académie</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#ac-activer">Activer l'Académie</a></li>
+      <li><a href="#ac-registre">Le registre du professeur</a></li>
+      <li><a href="#ac-maisons">Les quatre Maisons</a></li>
+      <li><a href="#ac-maison-eleves">Les élèves d'une Maison</a></li>
+      <li><a href="#ac-podium">Le podium</a></li>
+      <li><a href="#ac-attribuer">Donner des points</a></li>
+      <li><a href="#ac-reveler">Révéler les bonus cachés</a></li>
+      <li><a href="#ac-registre-bonus">Le registre des bonus</a></li>
+      <li><a href="#ac-epreuves">Les épreuves</a></li>
+      <li><a href="#ac-mode-classe">Mode Classe : les sabliers</a></li>
+      <li><a href="#ac-vue-classe">Des points devant la classe</a></li>
+      <li><a href="#ac-minuteur">Le minuteur</a></li>
+      <li><a href="#ac-ceremonie">La cérémonie de répartition</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/recompenses.html">◀ Récompenses</a><a href="../enseignant/academie-repartition.html">Académie : questionnaire et répartition ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus</div>
+      <h1>Académie</h1>
+      <p>Un jeu de classe au long cours : les élèves sont répartis en quatre Maisons rivales, qui gagnent des points avec les travaux de groupe et les bonus donnés par l'enseignant. Ce chapitre montre le registre de l'enseignant, les points et l'affichage projeté ; le chapitre suivant traite du questionnaire et de la répartition.</p>
+      <div class="chap__resume"><span>Menu Plus › Académie</span><span>Ordinateur</span><span>Affichage projeté</span><span>Aussi dans l'espace élève</span><span>13 fiches</span></div>
+    </header>
+
+    <!-- ============================================================ 1. activer -->
+    <section class="fiche" id="ac-activer">
+      <div class="fiche__texte">
+        <h2>Activer l'Académie pour une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes et plans › Visibilité élèves › Maison</span></p>
+        <p class="fiche__but">Le module s'ouvre classe par classe. L'activer fait apparaître la classe dans la page Académie et l'onglet Maison dans l'espace de ses élèves.</p>
+        <ol class="etapes">
+          <li data-cursor="#a1-ac" data-action="click" data-duration="3200">Tant qu'aucune classe n'a le module, <b>Plus › Académie</b> affiche « Aucune classe avec le module Académie » et invite à l'activer dans la page Classes.</li>
+          <li data-cursor="#a1-cp" data-action="click">Dans <b>Classes › Classes et plans</b>, choisir la classe et déplier <b>Visibilité élèves</b>.</li>
+          <li data-cursor="#a1-int" data-action="click" data-duration="3200">Basculer <b>Maison</b> : le message « Académie des Quatre Lumières activée » confirme.</li>
+          <li data-cursor="#a1-ac" data-action="click" data-duration="3400">De retour dans <b>Académie</b>, le registre de la classe s'ouvre. La liste en haut ne propose que les classes où le module est activé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le réglage est propre à chaque classe : « Appliquer à toutes les classes » ne le recopie pas.</li>
+            <li>Désactiver (message « Module Académie désactivé ») ne supprime ni les Maisons attribuées, ni les réponses au questionnaire, ni les points.</li>
+            <li>Un élève changé de classe garde sa Maison si le module est actif dans sa nouvelle classe.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="classes.html#academie">Classes et plans</a> · <a href="../eleve/maison.html#maison">L'onglet Maison de l'élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous" id="a1-cp" data-on="2-3">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous" id="a1-ac" data-on="1,4">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak repli" data-at="1">
+          <div class="vide-ak"><div><div class="chateau"></div><b>Aucune classe avec le module Académie</b>Activez le module dans la page Classes pour commencer.</div></div>
+        </div>
+        <div class="repli fxp" data-at="2-3">
+          <div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit">Générer</span></div>
+          <div class="cp2">
+            <div class="cp2-plan"></div>
+            <div class="vis">
+              <div class="vis__bloc"><div style="font-size:13px;font-weight:600">Non placés</div><div class="muet">0 sur 26</div></div>
+              <div class="vis__bloc">
+                <div class="vis-t">▾ Visibilité élèves</div>
+                <div class="vis-l"><i style="background:var(--warn-soft);border:1.5px solid var(--warn)"></i>Tampons<span class="interrupteur interrupteur--on int-or"></span></div>
+                <div class="vis-l" data-on="3"><i style="background:#EDE7DA;border:1.5px solid #8A7A66"></i>Maison<span class="interrupteur" id="a1-int" data-on="3"></span></div>
+                <div class="vis-l"><i style="background:var(--pos-soft);border:1.5px solid var(--pos)"></i>Annales<span class="interrupteur interrupteur--on int-vert"></span></div>
+                <div class="vis-l"><i style="background:var(--indigo-soft);border:1.5px solid var(--indigo)"></i>Notes<span class="interrupteur interrupteur--on"></span></div>
+                <div style="font-size:11px;color:var(--text-muted);padding:3px 5px">↳ Appliquer à toutes les classes</div>
+              </div>
+            </div>
+          </div>
+          <div class="toast toast--ok apres" data-at="3">Académie des Quatre Lumières activée</div>
+        </div>
+        <div class="ak repli" data-at="4">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a1-sel">4B</span><span class="ak-mc" id="a1-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps">
+            <div class="ak-col">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4 coupe">
+                <div class="parch" ><div class="parch__rang">1er · 0 él.</div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">0</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">2e · 0 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">0</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">3e · 0 él.</div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">0</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">4e · 0 él.</div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">0</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+            </div>
+            <div class="ak-col"><div class="ak-side"><div class="ak-side__t">Actions rapides</div><div class="qa"><span class="qa__p"><svg class="ic"><use href="#i-fiole"/></svg></span><div><div class="qa__l">Lancer la répartition</div><div class="qa__d">26 élèves</div></div></div></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 2. registre -->
+    <section class="fiche" id="ac-registre">
+      <div class="fiche__texte">
+        <h2>Le registre du professeur</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Académie</span></p>
+        <p class="fiche__but">La page de pilotage du jeu, dans un décor sombre et doré : les Maisons et leurs points en colonne principale, l'administration dans la colonne de droite.</p>
+        <ol class="etapes">
+          <li data-cursor="#a2-sel" data-action="click" data-duration="3200">Choisir la classe dans la liste en haut à droite. La première classe activée s'ouvre d'office.</li>
+          <li data-cursor="#a2-col" data-duration="3800">La colonne principale enchaîne : <b>Les Quatre Maisons</b>, <b>Classement</b>, <b>Attribution des points</b>, puis <b>Registre des bonus</b> et <b>Épreuves</b> dès qu'il y a des bonus ou des travaux de groupe.</li>
+          <li data-cursor="#a2-qa" data-duration="3400">À droite, <b>Actions rapides</b> : révéler les bonus cachés, lancer la répartition, réaffecter un élève, lire les réponses, paramétrer le questionnaire, tout réinitialiser.</li>
+          <li data-cursor="#a2-sm" data-duration="3200">En dessous, <b>Élèves sans maison</b>, tant qu'il en reste.</li>
+          <li data-cursor="#a2-mc" data-duration="3000"><span class="btn-nom">Mode Classe</span> passe à l'affichage projeté.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La page est pensée pour un grand écran : quatre colonnes fixes, pas d'adaptation au téléphone.</li>
+            <li>Les confirmations de cette page s'affichent dans les fenêtres du navigateur, pas dans celles de l'application.</li>
+            <li>Seuls les pseudonymes apparaissent ; aucune information d'aménagement n'est affichée dans le module, projection comprise.</li>
+            <li>L'application reprend, par clin d'œil, des noms de Maisons et des blasons tirés d'une œuvre connue. Ce guide public les remplace par des écussons neutres marqués A, B, C, D.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a2-sel" data-on="1">4B</span><span class="ak-mc" id="a2-mc" data-on="5"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="dd apres" data-at="1" style="right:150px;top:52px"><div class="actif">4B</div><div>3A</div><div>5E</div></div>
+          <div class="ak-corps">
+            <div class="ak-col zor" id="a2-col" data-on="2" style="border-radius:8px">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4">
+                <div class="parch parch--tete" ><span class="couronne"></span><div class="parch__rang">1er · 7 él.</div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">312</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">4e · 6 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">2e · 6 él.</div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">287</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">3e · 7 él.</div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">254</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+              <div class="ak-h" style="margin-top:12px">Classement</div><div class="ak-sous">Podium des Maisons</div>
+              <div class="ak-h coupe" style="margin-top:8px;opacity:.6">Attribution des points</div>
+            </div>
+            <div class="ak-col">
+              <div class="ak-side zor" id="a2-qa" data-on="3">
+                <div class="ak-side__t">Actions rapides</div>
+                <div class="qa qa--or"><span class="qa__p"><svg class="ic"><use href="#i-etoile"/></svg></span><div><div class="qa__l">Révéler les bonus cachés</div><div class="qa__d">20 points en attente</div></div></div>
+                <div class="qa"><span class="qa__p"><svg class="ic"><use href="#i-fiole"/></svg></span><div><div class="qa__l">Lancer la répartition</div><div class="qa__d">26 élèves</div></div></div>
+                <div class="qa"><span class="qa__p">⇄</span><div><div class="qa__l">Réaffecter un·e élève</div><div class="qa__d">Choix manuel de la Maison</div></div></div>
+                <div class="qa"><span class="qa__p"><svg class="ic"><use href="#i-fichier"/></svg></span><div><div class="qa__l">Réponses brutes du test</div><div class="qa__d">24 réparti·es</div></div></div>
+                <div class="qa"><span class="qa__p"><svg class="ic"><use href="#i-crayon"/></svg></span><div><div class="qa__l">Paramétrer le questionnaire</div><div class="qa__d">Modifier les questions du test</div></div></div>
+                <div class="qa"><span class="qa__p">↺</span><div><div class="qa__l">Réinitialiser les maisons</div><div class="qa__d">Supprime assignations + réponses</div></div></div>
+              </div>
+              <div class="ak-side zor" id="a2-sm" data-on="4">
+                <div class="ak-side__t">Élèves sans maison</div>
+                <div class="sm">Éva RO<span class="ak-mini">Assigner...</span></div>
+                <div class="sm">Yanis LE<span class="ak-mini">Assigner...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 3. maisons -->
+    <section class="fiche" id="ac-maisons">
+      <div class="fiche__texte">
+        <h2>Les quatre Maisons et leurs points</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Les Quatre Maisons</span></p>
+        <p class="fiche__but">Quatre panneaux de parchemin, un par Maison : son identité, son rang, son effectif et ses points.</p>
+        <ol class="etapes">
+          <li data-cursor="#a3-a" data-duration="3400">Chaque Maison a son écusson, son nom, une devise et ses couleurs, qu'on retrouve partout : panneaux, podium, projection, espace élève.</li>
+          <li data-cursor="#a3-rang" data-duration="3000">En haut à droite, le rang et l'effectif : « 1er · 7 él. ».</li>
+          <li data-cursor="#a3-pts" data-duration="3200">Le total des points défile jusqu'à sa valeur à l'ouverture.</li>
+          <li data-cursor="#a3-cache" data-duration="3600">« + ? · caché » : des bonus cachés attendent d'être révélés. Ils ne comptent pas encore dans le total affiché.</li>
+          <li data-cursor="#a3-cour" data-duration="3200">La Maison en tête porte une couronne et un liseré doré.</li>
+          <li data-cursor="#a3-b" data-duration="3000">Un panneau se soulève au survol : un clic ouvre la liste de ses élèves.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le total d'une Maison = points des travaux de groupe terminés (pondérés par le coefficient de l'épreuve) + bonus visibles. Un bonus peut être négatif.</li>
+            <li>Identités fixées par l'application : rien à régler. Chaque Maison est aussi liée à un élément (Feu, Eau, Air, Terre) et à une vertu.</li>
+            <li>Un travail de groupe ne compte pour une Maison que si le groupe porte exactement le nom de la Maison (majuscules indifférentes).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#ac-epreuves">Les épreuves</a> · <a href="#ac-reveler">Révéler les bonus cachés</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a3-sel">4B</span><span class="ak-mc" id="a3-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr">
+            <div class="ak-col">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4" style="margin-top:20px;padding:0 30px;gap:16px">
+                <div class="parch parch--tete" id="a3-a" data-on="1"><span class="couronne" id="a3-cour"></span><div class="parch__rang"><span class="zor" id="a3-rang" data-on="2">1er · 7 él.</span></div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts"><span class="zor" id="a3-pts" data-on="3">312</span></div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" id="a3-b" data-on="6"><div class="parch__rang">4e · 6 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">2e · 6 él.</div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">287</div><div class="parch__cache zor" id="a3-cache" data-on="4">+ ? · caché</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">3e · 7 él.</div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">254</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 4. élèves d'une maison -->
+    <section class="fiche" id="ac-maison-eleves">
+      <div class="fiche__texte">
+        <h2>Voir et déplacer les élèves d'une Maison</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › clic sur un panneau</span></p>
+        <p class="fiche__but">La liste des élèves d'une Maison, avec de quoi en déplacer un vers une autre Maison.</p>
+        <ol class="etapes">
+          <li data-cursor="#a4-b" data-action="click">Cliquer le panneau d'une Maison.</li>
+          <li data-cursor="#a4-tete" data-duration="3400">La fenêtre parchemin <b>Maison B</b> rappelle l'élément et la vertu, l'écusson et la devise.</li>
+          <li data-cursor="#a4-l3" data-duration="3200">Une ligne par élève : ses initiales dans la couleur de la Maison, son pseudonyme et une liste des quatre Maisons.</li>
+          <li data-cursor="#a4-psel" data-action="click">Ouvrir la liste d'un élève…</li>
+          <li data-cursor="#a4-d" data-action="click" data-duration="3400">… et choisir une autre Maison : c'est enregistré aussitôt, et l'élève quitte cette liste.</li>
+          <li data-cursor="#a4-x" data-action="click">Fermer par la croix ronde, ou en cliquant hors de la fenêtre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une Maison choisie ici est marquée « manuelle » : les répartitions suivantes la conservent.</li>
+            <li>Aucune confirmation n'est demandée.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="academie-repartition.html#ar-reaffecter">Réaffecter un élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a4-sel">4B</span><span class="ak-mc" id="a4-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr">
+            <div class="ak-col">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4" style="margin-top:20px;padding:0 30px;gap:16px">
+                <div class="parch parch--tete" ><span class="couronne"></span><div class="parch__rang">1er · 7 él.</div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">312</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" id="a4-b" data-on="1"><div class="parch__rang">4e · 6 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">2e · 6 él.</div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">287</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">3e · 7 él.</div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">254</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pmod-fond apres" data-from="1" style="left:-190px">
+          <div class="pmod hb" style="width:600px">
+            <span class="pmod__x" id="a4-x" data-on="6">×</span>
+            <div id="a4-tete">
+              <div class="pmod__sur">Eau · L'Ambition</div>
+              <div class="pmod__t">Maison B</div>
+              <div style="display:flex;gap:16px;align-items:center;margin:10px 0 12px"><span class="ecu ecu-b ecu--m">B</span><div style="font-style:italic;font-size:13px;color:#5a4630">« Par les détours jusqu'aux étoiles »<div style="font-size:11px;color:#8a7a66;margin-top:3px">Per ambages ad astra</div></div></div>
+            </div>
+            <div style="position:relative">
+              <div class="pl"><i>Ad</i><em>Adam KE</em><span class="psel">Maison B</span></div>
+              <div class="pl"><i>Cl</i><em>Clara JO</em><span class="psel">Maison B</span></div>
+              <div class="pl" id="a4-l3" data-on="3"><i>Hu</i><em>Hugo PE</em><span class="psel">Maison B</span></div>
+              <div class="pl avant" data-to="4"><i>Ma</i><em>Malo RI</em><span class="psel" id="a4-psel" data-on="4">Maison B</span></div>
+              <div class="pl"><i>Ro</i><em>Rose VI</em><span class="psel">Maison B</span></div>
+              <div class="pl"><i>To</i><em>Tom SA</em><span class="psel">Maison B</span></div>
+              <div class="pmenu apres avant" data-at="4" style="right:0;top:150px"><div>Maison A</div><div class="actif">Maison B</div><div>Maison C</div><div id="a4-d" data-on="5">Maison D</div></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 5. podium -->
+    <section class="fiche" id="ac-podium">
+      <div class="fiche__texte">
+        <h2>Le podium des Maisons</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Classement</span></p>
+        <p class="fiche__but">Sous les panneaux, le même classement présenté en podium, à lire d'un coup d'œil.</p>
+        <ol class="etapes">
+          <li data-cursor="#a5-pod" data-duration="3200">Section <b>Classement</b> : les quatre Maisons, de la plus riche en points à la moins riche.</li>
+          <li data-cursor="#a5-s2" data-duration="3400">Chaque socle monte à proportion de ses points par rapport à la première, avec son total : les écarts restent lisibles sans écraser la dernière.</li>
+          <li data-cursor="#a5-p1" data-duration="3000">La première : « Ier RANG », écusson auréolé, nom en or.</li>
+          <li data-cursor="#a5-s4" data-duration="3200">Avec zéro point partout, toutes les colonnes ont la même hauteur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Lecture seule : le podium suit les totaux des panneaux, bonus cachés exclus tant qu'ils ne sont pas révélés.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a5-sel">4B</span><span class="ak-mc" id="a5-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr">
+            <div class="ak-col">
+              <div class="ak-h">Classement</div><div class="ak-sous">Podium des Maisons</div>
+              <div class="podium" id="a5-pod">
+                <div class="pod pod--1 ha" id="a5-p1"><span class="pod__r">Ier rang</span><span class="ecu ecu-a">A</span><span class="pod__n">Maison A</span><div class="pod__s" style="--h:150px" data-on="2-3"><span class="repli" data-to="3">312</span><span class="repli" data-from="4">0</span></div><div class="pod__sb"></div></div>
+                <div class="pod hc"><span class="pod__r">IIe rang</span><span class="ecu ecu-c">C</span><span class="pod__n">Maison C</span><div class="pod__s" id="a5-s2" style="--h:144px" data-on="2-3"><span class="repli" data-to="3">287</span><span class="repli" data-from="4">0</span></div><div class="pod__sb"></div></div>
+                <div class="pod hd"><span class="pod__r">IIIe rang</span><span class="ecu ecu-d">D</span><span class="pod__n">Maison D</span><div class="pod__s" style="--h:136px" data-on="2-3"><span class="repli" data-to="3">254</span><span class="repli" data-from="4">0</span></div><div class="pod__sb"></div></div>
+                <div class="pod hb"><span class="pod__r">IVe rang</span><span class="ecu ecu-b">B</span><span class="pod__n">Maison B</span><div class="pod__s" id="a5-s4" style="--h:130px" data-on="2-3"><span class="repli" data-to="3">230</span><span class="repli" data-from="4">0</span></div><div class="pod__sb"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 6. attribuer -->
+    <section class="fiche" id="ac-attribuer">
+      <div class="fiche__texte">
+        <h2>Donner ou retirer des points</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Attribution des points</span></p>
+        <p class="fiche__but">Des points pour une Maison, directement ou au nom d'un élève, visibles tout de suite ou cachés pour une révélation devant la classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#a6-mode" data-duration="2800">Mode <b>Par Maison</b> (par défaut) ou <b>Par élève</b>.</li>
+          <li data-cursor="#a6-c" data-action="click">Cliquer la tuile de la Maison : elle prend sa couleur.</li>
+          <li data-cursor="#a6-motif" data-duration="3200">Saisir le <b>Motif</b>.</li>
+          <li data-cursor="#a6-cur" data-action="click" data-duration="3200">Régler les <b>Points</b> au curseur, de −50 à +100 (10 au départ) ; la valeur s'affiche en grand, avec son signe.</li>
+          <li data-cursor="#a6-bas" data-duration="3600"><b>Bonus caché</b> (par défaut) : « Révélé à votre signal ». Basculé, il devient <b>Bonus visible</b> : « Affiché en temps réel ».</li>
+          <li data-cursor="#a6-ins" data-action="click" data-duration="3400"><span class="btn-nom">Inscrire au registre</span> : le bonus caché s'ajoute aux « Bonus cachés en attente » ; le motif se vide et le curseur revient à 10.</li>
+          <li data-cursor="#a6-eleve" data-action="click" data-duration="3400"><b>Par élève</b> : choisir l'élève dans « Choisir un élève... » ; les points vont à sa Maison.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le libellé enregistré est le motif, ou « Bonus » s'il est vide ; par élève, « pseudonyme — motif ».</li>
+            <li>Un élève sans Maison ne peut rien recevoir : le clic reste sans effet, sans message.</li>
+            <li>Des points négatifs retirent des points à la Maison.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#ac-reveler">Révéler les bonus cachés</a> · <a href="#ac-vue-classe">Donner des points en projection</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a6-sel">4B</span><span class="ak-mc" id="a6-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr">
+            <div class="ak-col">
+              <div class="ak-h">Attribution des points</div><div class="ak-sous">Par maison ou par élève — le bonus peut être caché jusqu'au reveal</div>
+              <div class="att" style="margin-top:6px">
+                <div class="col" style="gap:10px">
+                  <div class="mode" id="a6-mode"><span class="is-actif off" data-on="7">Par Maison</span><span id="a6-eleve" data-on="7">Par élève</span></div>
+                  <div class="tuiles repli" data-to="6">
+                    <div class="tuile ha"><span class="ecu ecu-a ecu--p">A</span>Maison A</div>
+                    <div class="tuile hb"><span class="ecu ecu-b ecu--p">B</span>Maison B</div>
+                    <div class="tuile hc" id="a6-c" data-on="2-5"><span class="ecu ecu-c ecu--p">C</span>Maison C</div>
+                    <div class="tuile hd"><span class="ecu ecu-d ecu--p">D</span>Maison D</div>
+                  </div>
+                  <div class="repli" data-from="7" style="position:relative"><div class="ch-ak is-on" style="position:relative">Choisir un élève...<span style="position:absolute;right:4px;color:#a6812f">▾</span></div>
+                    <div class="dd apres" style="left:0;right:0;top:30px"><div>Adam KE — Maison B</div><div class="is-on">Iris TA — Maison C</div><div>Lina BO — Maison A</div></div></div>
+                  <div><div class="lab">Motif</div><div class="ch-ak" id="a6-motif" data-on="3"><span class="ph repli" data-to="2">Ex: Épreuve de poésie</span><span class="repli" data-at="3-5" data-type="Épreuve de poésie" data-type-at="3"></span><span class="ph repli" data-at="6-7">Ex: Épreuve de poésie</span></div></div>
+                  <div><div class="lab">Points</div><div class="val"><span class="sw"><span data-to="3">+10</span><span data-at="4-5">+20</span><span class="apres" data-at="6-7">+10</span></span></div><div class="curseur" id="a6-cur"><i style="--a:40%;--b:46.7%" data-on="4-5"></i></div><div style="display:flex;justify-content:space-between;font-size:9px;color:#6b5a3a;font-family:var(--font)"><span>−50</span><span>+100</span></div></div>
+                  <div class="bascule-l" id="a6-bas"><span class="bascule"></span><div>Bonus caché<small>Révélé à votre signal</small></div></div>
+                </div>
+                <div class="col" style="gap:10px">
+                  <div class="attente">
+                    <div class="lab" style="color:#a6812f">Bonus cachés en attente</div>
+                    <div class="attente__l"><span class="ecu ecu-a ecu--p">A</span>Maison A<b class="nul">—</b></div>
+                    <div class="attente__l"><span class="ecu ecu-b ecu--p">B</span>Maison B<b class="nul">—</b></div>
+                    <div class="attente__l"><span class="ecu ecu-c ecu--p">C</span>Maison C<b class="sw"><span class="nul" data-to="5" style="color:#6b5a3a">—</span><span class="apres" data-from="6">+20</span></b></div>
+                    <div class="attente__l"><span class="ecu ecu-d ecu--p">D</span>Maison D<b class="nul">—</b></div>
+                  </div>
+                  <div class="bt-parch" id="a6-ins" data-on="6">Inscrire au registre</div>
+                  <div class="bt-or">Révéler les bonus cachés</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 7. révéler -->
+    <section class="fiche" id="ac-reveler">
+      <div class="fiche__texte">
+        <h2>Révéler les bonus cachés</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Révéler les bonus cachés</span></p>
+        <p class="fiche__but">Les bonus cachés s'accumulent en silence, puis tombent tous ensemble au moment choisi, avec une gerbe dorée : de quoi ménager le suspense devant la classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#a7-cache" data-duration="3200">Sur les panneaux, « + ? · caché » signale les Maisons qui ont des bonus en attente.</li>
+          <li data-cursor="#a7-att" data-duration="3200">Le détail est dans <b>Bonus cachés en attente</b> (et dans Actions rapides : « 35 points en attente »).</li>
+          <li data-cursor="#a7-rev" data-action="click" data-duration="3800">Cliquer <span class="btn-nom">Révéler les bonus cachés</span> : le bouton affiche « — Révélation en cours — », un voile sombre tombe et des particules d'or jaillissent.</li>
+          <li data-cursor="#a7-pts" data-duration="3600">Au bout de 3,5 secondes, les totaux roulent jusqu'à leur nouvelle valeur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le bouton est grisé quand il n'y a aucun point caché.</li>
+            <li>L'onglet Maison de l'espace élève se met à jour en direct au moment de la révélation.</li>
+            <li>La même révélation se lance depuis l'affichage projeté (bouton « Bonus (n) »).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/maison.html#ma-maison">La Maison vue par l'élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a7-sel">4B</span><span class="ak-mc" id="a7-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps">
+            <div class="ak-col">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4">
+                <div class="parch parch--tete" ><span class="couronne"></span><div class="parch__rang">1er · 7 él.</div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts"><span class="sw"><span data-to="3">312</span><span data-from="4">327</span></span></div><div class="parch__cache" data-to="3">+ ? · caché</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">4e · 6 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">2e · 6 él.</div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts"><span class="sw zor" id="a7-pts" data-on="4"><span data-to="3">287</span><span data-from="4">307</span></span></div><div class="parch__cache zor" id="a7-cache" data-on="1" data-to="3">+ ? · caché</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">3e · 7 él.</div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">254</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+            </div>
+            <div class="ak-col">
+              <div class="attente zor" id="a7-att" data-on="2" style="background:#120f0c">
+                <div class="lab" style="color:#a6812f">Bonus cachés en attente</div>
+                <div class="attente__l"><span class="ecu ecu-a ecu--p">A</span>Maison A<b class="sw"><span data-to="3">+15</span><span class="nul" data-from="4" style="color:#6b5a3a">—</span></b></div>
+                <div class="attente__l"><span class="ecu ecu-b ecu--p">B</span>Maison B<b class="nul">—</b></div>
+                <div class="attente__l"><span class="ecu ecu-c ecu--p">C</span>Maison C<b class="sw"><span data-to="3">+20</span><span class="nul" data-from="4" style="color:#6b5a3a">—</span></b></div>
+                <div class="attente__l"><span class="ecu ecu-d ecu--p">D</span>Maison D<b class="nul">—</b></div>
+              </div>
+              <div class="bt-parch">Inscrire au registre</div>
+              <div class="bt-or" id="a7-rev" data-on="3" style="position:relative;z-index:45"><span class="sw"><span data-to="2">Révéler les bonus cachés</span><span class="apres" data-at="3">— Révélation en cours —</span><span data-from="4" style="opacity:.4">Révéler les bonus cachés</span></span></div>
+            </div>
+          </div>
+          <div class="voile-or apres" data-at="3"><div class="gerbe">
+            <i style="--r:0deg"></i><i style="--r:24deg;--dl:.2s"></i><i style="--r:48deg;--dl:.5s"></i><i style="--r:72deg;--dl:.1s"></i><i style="--r:96deg;--dl:.7s"></i><i style="--r:120deg;--dl:.3s"></i><i style="--r:144deg;--dl:.6s"></i><i style="--r:168deg;--dl:.15s"></i><i style="--r:192deg;--dl:.45s"></i><i style="--r:216deg;--dl:.25s"></i><i style="--r:240deg;--dl:.65s"></i><i style="--r:264deg;--dl:.05s"></i><i style="--r:288deg;--dl:.4s"></i><i style="--r:312deg;--dl:.55s"></i><i style="--r:336deg;--dl:.35s"></i>
+          </div></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 8. registre des bonus -->
+    <section class="fiche" id="ac-registre-bonus">
+      <div class="fiche__texte">
+        <h2>Le registre des bonus</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Registre des bonus</span></p>
+        <p class="fiche__but">L'historique des points donnés à la main, pour relire et corriger.</p>
+        <ol class="etapes">
+          <li data-cursor="#a8-liste" data-duration="3000">Une ligne par bonus, du plus récent au plus ancien.</li>
+          <li data-cursor="#a8-l2" data-duration="3800">Un liseré à la couleur de la Maison, son écusson, le libellé, la date (et « · caché » s'il n'est pas encore révélé), puis les points : en or, ou en rouge s'ils sont négatifs.</li>
+          <li data-cursor="#a8-x" data-action="click" data-duration="3200">Survoler une ligne fait ressortir sa croix (« Supprimer ce bonus ») : un clic l'efface.</li>
+          <li data-cursor="#a8-liste" data-duration="3000">La ligne disparaît et les totaux des Maisons sont recalculés.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">La suppression est immédiate et définitive : aucune confirmation n'est demandée.</li>
+            <li>La section n'apparaît que s'il existe au moins un bonus.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a8-sel">4B</span><span class="ak-mc" id="a8-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr">
+            <div class="ak-col">
+              <div class="ak-h">Registre des bonus</div><div class="ak-sous">Historique des points attribués manuellement</div>
+              <div class="rb zor" id="a8-liste" data-on="1,4" style="border-radius:6px;padding:4px">
+                <div class="rb__l hc"><span class="ecu ecu-c ecu--p">C</span><em>Épreuve de poésie<small>26/11/2026 · caché</small></em><span class="rb__p">+20</span><span class="rb__x">×</span></div>
+                <div class="rb__l ha" id="a8-l2" data-on="2"><span class="ecu ecu-a ecu--p">A</span><em>Iris TA — Exposé sur les volcans<small>25/11/2026 · caché</small></em><span class="rb__p">+15</span><span class="rb__x">×</span></div>
+                <div class="rb__l hd avant" data-to="3" data-on="3"><span class="ecu ecu-d ecu--p">D</span><em>Bonus<small>24/11/2026</small></em><span class="rb__p">+10</span><span class="rb__x" id="a8-x" data-on="3">×</span></div>
+                <div class="rb__l hb"><span class="ecu ecu-b ecu--p">B</span><em>Bavardages répétés<small>21/11/2026</small></em><span class="rb__p rb__p--neg">-10</span><span class="rb__x">×</span></div>
+                <div class="rb__l ha"><span class="ecu ecu-a ecu--p">A</span><em>Noé MA: rangement du labo<small>19/11/2026</small></em><span class="rb__p">+5</span><span class="rb__x">×</span></div>
+                <div class="rb__l hc"><span class="ecu ecu-c ecu--p">C</span><em>Défi du jeudi<small>14/11/2026</small></em><span class="rb__p">+30</span><span class="rb__x">×</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 9. épreuves -->
+    <section class="fiche" id="ac-epreuves">
+      <div class="fiche__texte">
+        <h2>Les épreuves : les travaux de groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Épreuves</span></p>
+        <p class="fiche__but">Les travaux de groupe de la classe rapportent des points aux Maisons. Cette section montre ce que chaque épreuve a rapporté et permet de la pondérer.</p>
+        <ol class="etapes">
+          <li data-cursor="#a9-e1" data-duration="3400">Une carte par séance de travail de groupe, la plus récente en premier : son nom (ou « Épreuve du » et la date), sa date et son état.</li>
+          <li data-cursor="#a9-bars" data-duration="3600">Une barre par Maison : les points du groupe qui porte le nom de la Maison, malus de conduite déduit.</li>
+          <li data-cursor="#a9-coef" data-action="click" data-duration="3600">Le champ <b>×</b>, en haut à droite, pondère l'épreuve de 0 à 5 par pas de 0,5. Ici ×2 : chaque score pondéré s'affiche entre parenthèses, et le pied indique « → 230 pts pondérés ».</li>
+          <li data-cursor="#a9-e2" data-duration="3400">Une épreuve « en cours » s'affiche avec ses points bruts, mais n'entre dans les totaux qu'une fois terminée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le coefficient est enregistré à chaque changement. Saisir 0, ou vider le champ, le remet à 1 : on ne peut pas neutraliser une épreuve par un coefficient nul.</li>
+            <li>Les groupes dont le nom n'est pas exactement celui d'une Maison sont ignorés : nommer les groupes de TP comme les Maisons.</li>
+            <li>Total d'une Maison = somme des épreuves terminées (points moins malus, multipliés par le coefficient) + bonus visibles.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-en-groupes.html">TP en groupes</a> · <a href="productions-et-direct.html">Activité en direct</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a9-sel">4B</span><span class="ak-mc" id="a9-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr">
+            <div class="ak-col">
+              <div class="ak-h">Épreuves</div><div class="ak-sous">Travaux de groupe — points gagnés par Maison</div>
+              <div class="ep" id="a9-e1" data-on="1">
+                <div class="ep__t"><b>TP Microscope</b><small>24/11/2026</small><span class="etat etat--fin">terminée</span><span class="ep__coef">×<span id="a9-coef" data-on="3"><span class="sw"><span data-to="2">1</span><span class="apres" data-from="3">2</span></span></span></span></div>
+                <div id="a9-bars">
+                  <div class="eb ha"><span class="ecu ecu-a ecu--p">A</span><span class="eb__b"><i style="--w:100%"></i></span><span class="eb__v">36 pts <small class="apres" data-from="3">(72)</small></span></div>
+                  <div class="eb hc"><span class="ecu ecu-c ecu--p">C</span><span class="eb__b"><i style="--w:89%"></i></span><span class="eb__v">32 pts <small class="apres" data-from="3">(64)</small></span></div>
+                  <div class="eb hd"><span class="ecu ecu-d ecu--p">D</span><span class="eb__b"><i style="--w:78%"></i></span><span class="eb__v">28 pts <small class="apres" data-from="3">(56)</small></span></div>
+                  <div class="eb hb"><span class="ecu ecu-b ecu--p">B</span><span class="eb__b"><i style="--w:53%"></i></span><span class="eb__v">19 pts <small class="apres" data-from="3">(38)</small></span></div>
+                </div>
+                <div class="ep__pied">Total : 115 pts <span class="apres" data-from="3">→ 230 pts pondérés</span></div>
+              </div>
+              <div class="ep" id="a9-e2" data-on="4">
+                <div class="ep__t"><b>Épreuve du 26/11/2026</b><small>26/11/2026</small><span class="etat etat--cours">en cours</span><span class="ep__coef">×<span>1</span></span></div>
+                <div class="eb ha"><span class="ecu ecu-a ecu--p">A</span><span class="eb__b"><i style="--w:60%"></i></span><span class="eb__v">12 pts</span></div>
+                <div class="eb hc"><span class="ecu ecu-c ecu--p">C</span><span class="eb__b"><i style="--w:100%"></i></span><span class="eb__v">20 pts</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 10. mode classe -->
+    <section class="fiche" id="ac-mode-classe">
+      <div class="fiche__texte">
+        <h2>Mode Classe : les sabliers</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Académie › Mode Classe</span></p>
+        <p class="fiche__but">L'affichage à projeter au tableau : un grand sablier par Maison, qui se remplit avec les points.</p>
+        <ol class="etapes">
+          <li data-cursor="#a10-mc" data-action="click">Cliquer <span class="btn-nom">Mode Classe</span> : l'affichage passe en plein écran, sur fond étoilé.</li>
+          <li data-cursor="#a10-barre" data-duration="3600">En haut : <b>← Retour</b>, <b>Cérémonie (n)</b>, la bascule <b>Sabliers</b> / <b>Classe</b>, <b>Bonus (n)</b> s'il reste des bonus cachés, et <b>Minuteur</b>.</li>
+          <li data-cursor="#a10-s1" data-duration="3600">Vue <b>Sabliers</b> : les Maisons triées par points. Le sable coule, la chambre du bas se remplit selon les points, et le rang s'affiche dessous.</li>
+          <li data-cursor="#a10-s2" data-duration="3400">Quand les points changent, le remplissage monte en deux secondes et le total défile.</li>
+          <li data-cursor="#a10-ret" data-action="click"><b>← Retour</b> revient au registre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Écran destiné aux élèves : seulement des pseudonymes, des Maisons et des points ; aucun aménagement, aucune note.</li>
+            <li>Un sablier est plein à 500 points ; des points négatifs le laissent vide.</li>
+            <li>Ce mode s'affiche dans l'onglet du navigateur de l'enseignant : il n'est relié ni au téléphone ni à l'écran de classe de la séance.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../classe/mode-essai-et-academie.html#academie">L'Académie projetée</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="a10-sel">4B</span><span class="ak-mc" id="a10-mc" data-on="1"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:1fr"><div class="ak-col"><div class="ak-h">Les Quatre Maisons</div></div></div>
+        </div>
+        <div class="mc apres avant" data-from="1" data-to="4">
+          <div class="mc-barre zor" id="a10-barre" data-on="2" style="border-radius:6px">
+            <span class="mc-ret" id="a10-ret" data-on="5">← Retour</span><span class="mc-btn">Cérémonie (24)</span>
+            <span class="mc-bas"><span class="is-actif">Sabliers</span><span>Classe</span></span>
+            <span class="mc-btn mc-btn--or">Bonus (2)</span><span class="mc-btn">Minuteur</span>
+          </div>
+          <div class="sab4">
+            <div class="sabc sabc--1 ha" id="a10-s1"><span class="ecu ecu-a ecu--m">A</span><span class="sabc__nom">Maison A</span><div class="sab"><span class="sab__cad sab__cad--h"></span><span class="sab__mont" style="left:2px"></span><span class="sab__mont" style="right:2px"></span><div class="sab__ch sab__ch--h"><div class="sab__sable"></div></div><span class="sab__filet"></span><div class="sab__ch sab__ch--b"><div class="sab__sable" style="--s:62%"></div></div><span class="sab__cad sab__cad--b"></span></div><span class="sabc__pts">312<small>points</small></span><span class="sabc__rang">1er</span></div>
+            <div class="sabc hc" id="a10-s2"><span class="ecu ecu-c ecu--m">C</span><span class="sabc__nom">Maison C</span><div class="sab"><span class="sab__cad sab__cad--h"></span><span class="sab__mont" style="left:2px"></span><span class="sab__mont" style="right:2px"></span><div class="sab__ch sab__ch--h"><div class="sab__sable"></div></div><span class="sab__filet"></span><div class="sab__ch sab__ch--b"><div class="sab__sable" style="--s:57%;--s2:61%" data-on="4"></div></div><span class="sab__cad sab__cad--b"></span></div><span class="sabc__pts"><span class="sw"><span data-to="3">287</span><span class="apres" data-from="4">307</span></span><small>points</small></span><span class="sabc__rang">2e</span></div>
+            <div class="sabc hd"><span class="ecu ecu-d ecu--m">D</span><span class="sabc__nom">Maison D</span><div class="sab"><span class="sab__cad sab__cad--h"></span><span class="sab__mont" style="left:2px"></span><span class="sab__mont" style="right:2px"></span><div class="sab__ch sab__ch--h"><div class="sab__sable"></div></div><span class="sab__filet"></span><div class="sab__ch sab__ch--b"><div class="sab__sable" style="--s:51%"></div></div><span class="sab__cad sab__cad--b"></span></div><span class="sabc__pts">254<small>points</small></span><span class="sabc__rang">3e</span></div>
+            <div class="sabc hb"><span class="ecu ecu-b ecu--m">B</span><span class="sabc__nom">Maison B</span><div class="sab"><span class="sab__cad sab__cad--h"></span><span class="sab__mont" style="left:2px"></span><span class="sab__mont" style="right:2px"></span><div class="sab__ch sab__ch--h"><div class="sab__sable"></div></div><span class="sab__filet"></span><div class="sab__ch sab__ch--b"><div class="sab__sable" style="--s:46%"></div></div><span class="sab__cad sab__cad--b"></span></div><span class="sabc__pts">230<small>points</small></span><span class="sabc__rang">4e</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 11. vue classe -->
+    <section class="fiche" id="ac-vue-classe">
+      <div class="fiche__texte">
+        <h2>Donner des points devant la classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Mode Classe › Classe</span></p>
+        <p class="fiche__but">La classe rangée par Maison : un clic sur un élève, un montant, et sa Maison gagne (ou perd) des points sous les yeux de tous.</p>
+        <ol class="etapes">
+          <li data-cursor="#a11-cla" data-action="click">Basculer sur <b>Classe</b>.</li>
+          <li data-cursor="#a11-liste" data-duration="3400">À gauche, quatre petits sabliers avec leur total ; à droite, les élèves sous leur Maison, par ordre alphabétique. Les Maisons vides ne s'affichent pas.</li>
+          <li data-cursor="#a11-iris" data-action="click">Cliquer le pseudonyme d'un élève : une petite fenêtre s'ouvre.</li>
+          <li data-cursor="#a11-raison" data-duration="3200">Facultatif : une <b>Raison (optionnel)</b>.</li>
+          <li data-cursor="#a11-p10" data-action="click" data-duration="3400">Cliquer un montant (+5, +10, +20, −5, −10, −20), ou en saisir un dans « Autre... » puis <span class="btn-nom">Valider</span> : les points s'ajoutent aussitôt à sa Maison.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les points donnés ici sont toujours visibles tout de suite, jamais cachés. Ils rejoignent le registre des bonus (« pseudonyme: raison », ou le pseudonyme seul).</li>
+            <li>Seuls les élèves déjà répartis apparaissent. « Fermer » annule.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="mc">
+          <div class="mc-barre">
+            <span class="mc-ret">← Retour</span><span class="mc-btn">Cérémonie (24)</span>
+            <span class="mc-bas"><span class="is-actif off" data-on="1-5">Sabliers</span><span id="a11-cla" data-on="1-5">Classe</span></span>
+            <span class="mc-btn">Minuteur</span>
+          </div>
+          <div class="vc apres" data-from="1" id="a11-liste">
+            <div>
+              <div class="vc-r ha"><span class="vc-ms"></span><div>Maison A<small>1er</small></div><b>312</b></div>
+              <div class="vc-r hc"><span class="vc-ms"></span><div>Maison C</div><b><span class="sw"><span data-to="4">287</span><span class="apres" data-from="5">297</span></span></b></div>
+              <div class="vc-r hd"><span class="vc-ms"></span><div>Maison D</div><b>254</b></div>
+              <div class="vc-r hb"><span class="vc-ms"></span><div>Maison B</div><b>230</b></div>
+            </div>
+            <div>
+              <div class="vc-m ha"><div class="vc-t">Maison A (7)</div><span class="vc-el">Adam KE</span><span class="vc-el">Jade LU</span><span class="vc-el">Lina BO</span><span class="vc-el">Lou BE</span><span class="vc-el">Nina PO</span><span class="vc-el">Noé MA</span><span class="vc-el">Sacha MO</span></div>
+              <div class="vc-m hc"><div class="vc-t">Maison C (6)</div><span class="vc-el">Enzo BR</span><span class="vc-el">Inès DU</span><span class="vc-el" id="a11-iris" data-on="3-5">Iris TA</span><span class="vc-el">Léa GA</span><span class="vc-el">Mia CO</span><span class="vc-el">Zoé FA</span></div>
+              <div class="vc-m hd"><div class="vc-t">Maison D (7)</div><span class="vc-el">Hugo PE</span><span class="vc-el">Ilyes HA</span><span class="vc-el">Jules NE</span><span class="vc-el">Louis DE</span><span class="vc-el">Lucie PA</span><span class="vc-el">Malo RI</span><span class="vc-el">Naël CH</span></div>
+              <div class="vc-m hb"><div class="vc-t">Maison B (6)</div><span class="vc-el">Chloé VA</span><span class="vc-el">Clara JO</span><span class="vc-el">Rayan GI</span><span class="vc-el">Rose VI</span><span class="vc-el">Tom SA</span><span class="vc-el">Yanis LE</span></div>
+            </div>
+          </div>
+          <div class="vc-pop hc apres avant" data-at="3-4">
+            <div class="vc-pop__n">Iris TA</div><div class="vc-pop__m">Maison C</div>
+            <div class="vc-mt"><span class="pos">+5</span><span class="pos" id="a11-p10" data-on="5">+10</span><span class="pos">+20</span><span class="neg">-5</span><span class="neg">-10</span><span class="neg">-20</span></div>
+            <div style="display:flex;gap:8px;margin-bottom:8px"><div class="vc-ch" style="flex:1">Autre...</div><span class="bt-or">Valider</span></div>
+            <div class="vc-ch" id="a11-raison" data-on="4"><span class="repli" data-to="3">Raison (optionnel)</span><span class="repli" data-from="4" data-type="Bonne réponse" data-type-at="4"></span></div>
+            <div class="vc-f">Fermer</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 12. minuteur -->
+    <section class="fiche" id="ac-minuteur">
+      <div class="fiche__texte">
+        <h2>Le minuteur</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Mode Classe › Minuteur</span></p>
+        <p class="fiche__but">Un compte à rebours au décor de l'Académie, pour minuter une épreuve devant la classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#a12-btn" data-action="click">Cliquer <span class="btn-nom">Minuteur</span> : la fenêtre propose 1', 2', 3', 5', 10', 15', 20' et 30'.</li>
+          <li data-cursor="#a12-5" data-action="click" data-duration="3400">Choisir une durée : l'anneau doré se vide au fil du temps, « en cours » sous les chiffres.</li>
+          <li data-cursor="#a12-pause" data-action="click"><span class="btn-nom">Pause</span> fige le temps (« en pause ») ; <span class="btn-nom">Reprendre</span> repart.</li>
+          <li data-cursor="#a12-ann" data-duration="3200">Sous 30 secondes, l'anneau et les chiffres passent au rouge et pulsent.</li>
+          <li data-cursor="#a12-rst" data-action="click" data-duration="3400">À zéro, « Temps ! » s'affiche en or. <span class="btn-nom">Reset</span> revient au choix de la durée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>À la fin, l'appareil vibre s'il le permet ; aucun son n'est joué.</li>
+            <li>Fermer la fenêtre (croix ronde, ou clic à côté) arrête le minuteur.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="outils.html">Outils de classe</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="mc">
+          <div class="mc-barre">
+            <span class="mc-ret">← Retour</span><span class="mc-btn">Cérémonie (24)</span>
+            <span class="mc-bas"><span class="is-actif">Sabliers</span><span>Classe</span></span>
+            <span class="mc-btn mc-btn--or">Bonus (2)</span><span class="mc-btn" id="a12-btn" data-on="1">Minuteur</span>
+          </div>
+          <div class="sab4" style="opacity:.5">
+            <div class="sabc ha"><span class="ecu ecu-a ecu--m">A</span><span class="sabc__nom">Maison A</span></div>
+            <div class="sabc hc"><span class="ecu ecu-c ecu--m">C</span><span class="sabc__nom">Maison C</span></div>
+            <div class="sabc hd"><span class="ecu ecu-d ecu--m">D</span><span class="sabc__nom">Maison D</span></div>
+            <div class="sabc hb"><span class="ecu ecu-b ecu--m">B</span><span class="sabc__nom">Maison B</span></div>
+          </div>
+          <div class="mn-fond apres" data-from="1">
+            <div class="mn">
+              <span class="mn-x">×</span>
+              <div class="mn-t">Minuteur</div>
+              <div class="repli" data-at="1"><div class="mn-dur"><span>1'</span><span>2'</span><span>3'</span><span id="a12-5">5'</span><span>10'</span><span>15'</span><span>20'</span><span>30'</span></div></div>
+              <div class="repli" data-at="2-3"><div class="anneau" style="--p:84%"><div><b>4:12</b><small><span class="repli" data-at="2">en cours</span><span class="repli" data-at="3">en pause</span></small></div></div>
+                <div class="mn-bts"><span class="pause repli" id="a12-pause" data-at="2">Pause</span><span class="rep repli" data-at="3">Reprendre</span><span class="rst">Reset</span></div></div>
+              <div class="repli" data-at="4"><div class="anneau anneau--rouge" id="a12-ann" style="--p:8%"><div><b>0:24</b><small>en cours</small></div></div>
+                <div class="mn-bts"><span class="pause">Pause</span><span class="rst">Reset</span></div></div>
+              <div class="repli" data-at="5"><div class="temps">Temps !</div><div class="mn-bts"><span class="rst" id="a12-rst" data-on="5">Reset</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 13. cérémonie -->
+    <section class="fiche" id="ac-ceremonie">
+      <div class="fiche__texte">
+        <h2>La cérémonie de répartition</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Mode Classe › Cérémonie (n)</span></p>
+        <p class="fiche__but">Révéler, élève par élève et devant la classe, la Maison déjà attribuée, avec un peu de théâtre.</p>
+        <ol class="etapes">
+          <li data-cursor="#a13-cer" data-action="click">Cliquer <span class="btn-nom">Cérémonie (24)</span> : « Cérémonie de la Répartition », « 24 élèves à célébrer », et la file des élèves.</li>
+          <li data-cursor="#a13-iris" data-action="click" data-duration="3200">Cliquer l'élève qui s'avance : un chapeau flotte au centre, et un message invite l'élève à poser la main dessus.</li>
+          <li data-cursor="#a13-chap" data-action="click" data-duration="3400">L'élève (ou l'enseignant) clique le chapeau : il tremble pendant deux secondes et demie (« Mmm... voyons, voyons... »).</li>
+          <li data-cursor="#a13-rev" data-duration="3800">Révélation : « Iris TA rejoint... », le nom de la Maison en grand dans sa couleur, l'écusson et la devise. À droite, la Maison accueille l'élève.</li>
+          <li data-cursor="#a13-suiv" data-action="click"><span class="btn-nom">Élève suivant</span> (ou <b>Terminer</b> pour le dernier).</li>
+          <li data-cursor="#a13-fin" data-action="click" data-duration="3200">À la fin : « Tous les élèves ont rejoint leur Maison ! » et <span class="btn-nom">Terminer la cérémonie</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La cérémonie est purement visuelle et rejouable : elle n'écrit rien et ne décide rien. Elle rejoue les Maisons déjà attribuées par la répartition ou à la main.</li>
+            <li>Sans répartition préalable, elle affiche « Aucune répartition effectuée » et renvoie à « Lancer la répartition ».</li>
+            <li>L'ordre de passage est libre ; l'état de la cérémonie est perdu si on la quitte (« ← Retour »).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="academie-repartition.html#ar-repartition">Lancer la répartition</a> · <a href="../classe/mode-essai-et-academie.html#ceremonie">Cérémonie projetée</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="mc">
+          <div class="mc-barre">
+            <span class="mc-ret">← Retour</span><span class="mc-btn" id="a13-cer" data-on="1">Cérémonie (24)</span>
+            <span class="mc-bas"><span class="is-actif">Sabliers</span><span>Classe</span></span>
+            <span class="mc-btn">Minuteur</span>
+          </div>
+          <div class="cer apres" data-from="1">
+            <div class="cer-c">
+              <div class="cer-h"><small>Cérémonie de la</small><b>Répartition</b><span>24 élèves à célébrer</span></div>
+              <div class="cer-file repli" data-at="1"><span><i></i>Adam KE</span><span id="a13-iris"><i></i>Iris TA</span><span><i></i>Lina BO</span><span><i></i>Malo RI</span><span><i></i>Noé MA</span></div>
+              <div class="repli fx" data-at="2-3">
+                <div style="font-size:18px;font-style:italic">Iris TA</div>
+                <svg class="chapeau" id="a13-chap" data-on="3" viewBox="0 0 120 100"><path d="M18 82 C44 70 76 70 102 82 C80 93 40 93 18 82Z" fill="#5a4330"/><path d="M36 79 C44 56 52 40 60 16 C65 30 72 35 84 40 C73 47 75 61 84 79 C68 75 52 75 36 79Z" fill="#7a5c40"/><path d="M60 16 C65 30 72 35 84 40" stroke="#3d2c1e" stroke-width="2" fill="none"/><path d="M42 72 C55 68 68 68 80 72" stroke="#c9a84c" stroke-width="2.5" fill="none"/></svg>
+                <div class="cer-txt"><span class="repli" data-at="2">Pose ta main ici...</span><span class="repli" data-at="3">Mmm... voyons, voyons...</span></div>
+              </div>
+              <div class="repli hc fx" data-at="4-5" id="a13-rev">
+                <div class="cer-txt">Iris TA rejoint...</div>
+                <div class="cer-rev__n">Maison C</div>
+                <span class="ecu ecu-c ecu--g">C</span>
+                <div style="font-style:italic;font-size:13px">« L'esprit qui s'envole »</div>
+                <div style="font-size:11px;color:#8a7a66;font-family:var(--font)">Le Savoir · Air</div>
+                <span class="bt-or" id="a13-suiv" data-on="5" style="margin-top:4px">Élève suivant</span>
+              </div>
+              <div class="repli fx" data-at="6" style="margin-top:40px;gap:14px">
+                <div class="cer-txt" style="font-size:20px">Tous les élèves ont rejoint leur Maison !</div>
+                <span class="bt-or" id="a13-fin">Terminer la cérémonie</span>
+              </div>
+            </div>
+            <div class="cer-d">
+              <div class="m ha"><div class="mt"><span class="ecu ecu-a ecu--p">A</span>Maison A</div><span class="pp">Adam KE</span><span class="pp">Lina BO</span><span class="pp repli" data-at="6">Noé MA</span></div>
+              <div class="m hb"><div class="mt"><span class="ecu ecu-b ecu--p">B</span>Maison B</div><span class="pp">Rose VI</span><span class="pp repli" data-at="6">Tom SA</span></div>
+              <div class="m hc" data-on="4-5"><div class="mt"><span class="ecu ecu-c ecu--p">C</span>Maison C</div><span class="pp">Enzo BR</span><span class="pp repli neuf" data-from="4">Iris TA</span><span class="pp repli" data-at="6">Zoé FA</span></div>
+              <div class="m hd"><div class="mt"><span class="ecu ecu-d ecu--p">D</span>Maison D</div><span class="pp">Malo RI</span><span class="pp repli" data-at="6">Hugo PE</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="academie-repartition.html">Suite : questionnaire et répartition</a> · <a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1906 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Historique et synchronisation — Guide Gestion Classe</title>
+<meta name="description" content="Relire les séances passées, comprendre la synchronisation entre le téléphone et le site, travailler sans réseau, et les fonctions communes de l'application téléphone.">
+<meta name="guide-partie" content="telephone">
+<meta name="guide-ordre" content="90">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---------- maquettes de l'application téléphone (charte « Direction B » : neutres clairs, indigo, vert pour l'action) */
+.tel__ecran { font-size: 13px; }
+.i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; display: inline-block; vertical-align: middle; }
+.i--p { fill: currentColor; stroke: none; }
+.m-hl { position: absolute; left: 0; right: 0; top: 0; z-index: 680; background: #9CA3AF; color: #fff; font-size: 11.5px; font-weight: 500; text-align: center; padding: 4px 0; }
+.m-hl::before { content: ''; display: inline-block; width: 6px; height: 6px; border: 1.5px solid #fff; border-radius: 50%; margin-right: 6px; vertical-align: 0; }
+.m-tete { display: flex; align-items: center; gap: 8px; padding: 6px 14px 10px; flex: none; }
+.m-tete__txt { flex: 1; min-width: 0; }
+.m-tete__t { font-size: 19px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-tete__s { font-size: 12px; color: var(--t-text2); white-space: nowrap; }
+.m-h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.3px; padding: 4px 18px 10px; flex: none; }
+.m-corps { flex: 1; min-height: 0; padding: 0 14px 12px; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 8px; }
+.m-rond { width: 38px; height: 38px; border-radius: 50%; background: #fff; border: 1px solid var(--t-border); display: grid; place-items: center; color: var(--t-text2); position: relative; flex: none; transition: all 0.25s; }
+.m-rond.is-on { background: #FAFBFC; transform: scale(0.94); color: var(--t-primary); }
+.m-carte { background: #fff; border: 1px solid var(--t-border); border-radius: 12px; padding: 10px 12px; transition: all 0.25s; position: relative; }
+.m-carte.is-on { border-color: var(--t-primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.15); }
+.m-pills { display: flex; gap: 6px; flex-wrap: nowrap; overflow: hidden; flex: none; }
+.m-pill { padding: 5px 11px; border-radius: 999px; background: #EDEEF2; color: var(--t-text2); font-size: 12px; font-weight: 600; white-space: nowrap; transition: all 0.25s; }
+.m-pill.is-on, .m-pill--on { background: var(--t-text); color: #fff; }
+.m-pill--b { background: #fff; border: 1px solid var(--t-border); color: var(--t-text); font-weight: 500; font-size: 13px; }
+.m-pill--i.is-on, .m-pill--i.m-pill--on { background: var(--t-primary); }
+.m-ligne { display: flex; align-items: center; gap: 7px; background: #fff; border: 1px solid var(--t-border); border-radius: 12px; padding: 0 10px; height: 40px; flex: none; transition: all 0.25s; }
+.m-ligne.is-on { background: #FAFBFC; border-color: var(--t-primary); }
+.m-ligne--abs { background: #FEF2F2; border-color: #FECACA; }
+.m-ligne--abs .m-nom { color: #B91C1C; }
+.m-pt { width: 9px; height: 9px; border-radius: 50%; background: #E5E7EB; flex: none; }
+.m-pt--ok { background: #059669; } .m-pt--att { background: #F59E0B; } .m-pt--abs { background: #EF4444; }
+.m-nom { font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.m-esp { flex: 1; }
+.m-tag { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 999px; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
+.m-tag .i { width: 11px; height: 11px; stroke-width: 2.4; }
+.m-tag--g { background: #F3F4F7; color: #6B7280; } .m-tag--i { background: #EEF0FF; color: #4F46E5; }
+.m-tag--v { background: #ECFDF5; color: #059669; } .m-tag--o { background: #FEF1D8; color: #B45309; }
+.m-tag--r { background: #FEF2F2; color: #B91C1C; } .m-tag--b { background: #EFF6FF; color: #3B82F6; }
+.m-tag--s { background: #F5F3FF; color: #6D28D9; } .m-tag--j { background: #FFFBEB; color: #B45309; }
+.m-btn { height: 44px; border-radius: 12px; background: var(--t-primary); color: #fff; font-weight: 600; font-size: 14px; display: grid; place-items: center; transition: all 0.2s; flex: none; text-align: center; padding: 0 10px; }
+.m-btn--blanc { background: #fff; color: var(--t-text); border: 1px solid var(--t-border); }
+.m-btn--doux { background: #EEF0FF; color: var(--t-primary); }
+.m-btn.is-on { transform: scale(0.97); filter: brightness(0.93); }
+.m-btn--off { opacity: 0.45; }
+.m-lien { text-align: center; font-size: 13px; color: var(--t-text2); flex: none; }
+.m-lien--i { color: var(--t-primary); font-weight: 600; }
+.m-sec { font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--t-text3); }
+.m-aide { font-size: 11px; color: var(--t-text3); text-align: center; }
+.m-bandeau { display: flex; align-items: center; gap: 8px; border-radius: 12px; padding: 8px 10px; font-size: 11.5px; background: #FFFBEB; color: #B45309; flex: none; }
+.m-bandeau b { margin-left: auto; color: var(--t-primary); font-size: 12px; }
+.m-bandeau--r { background: #FEF2F2; color: #B91C1C; }
+.m-voile { position: absolute; inset: 0; z-index: 700; background: rgba(15,23,42,0.35); display: grid; place-items: center; }
+.m-alerte { background: #fff; border-radius: 22px; padding: 20px 20px 14px; width: 292px; box-shadow: 0 18px 50px rgba(0,0,0,0.25); }
+.m-alerte__t { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.m-alerte__m { font-size: 12.5px; color: #4B5563; line-height: 1.45; }
+.m-alerte__m + .m-alerte__m { margin-top: 6px; }
+.m-alerte__b { display: flex; justify-content: flex-end; gap: 20px; margin-top: 16px; font-size: 13.5px; font-weight: 600; color: var(--t-primary); }
+.m-alerte__b .rouge { color: #EF4444; }
+.m-alerte__b span { transition: all 0.2s; padding: 2px 4px; border-radius: 6px; }
+.m-alerte__b span.is-on { background: #EEF0FF; }
+.m-onglets { height: 54px; flex: none; border-top: 1px solid #E5E7EB; background: #fff; display: flex; justify-content: space-around; align-items: center; }
+.m-onglets span { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 10.5px; font-weight: 600; color: #9CA3AF; transition: color 0.25s; }
+.m-onglets .i { width: 21px; height: 21px; }
+.m-onglets .is-actif, .m-onglets .is-on { color: var(--t-primary); }
+.m-onglets .is-actif .i, .m-onglets .is-on .i { stroke-width: 2.2; }
+.m-ecran { position: absolute; inset: 30px 0 0 0; background: var(--t-bg); display: flex; flex-direction: column; z-index: 500; }
+.m-roue { width: 22px; height: 22px; border-radius: 50%; border: 3px solid #E0E7FF; border-top-color: #4F46E5; animation: m-tourne 0.9s linear infinite; flex: none; }
+.m-roue--b { border-color: rgba(255,255,255,0.35); border-top-color: #fff; }
+.ecran span.is-hidden, .ecran b.is-hidden, .ecran svg.is-hidden { display: none; }
+.tourne { animation: m-tourne 1s linear infinite; }
+@keyframes m-tourne { to { transform: rotate(360deg); } }
+/* écran de séance */
+.m-st { display: flex; align-items: center; gap: 8px; background: #fff; border-bottom: 1px solid var(--t-border); padding: 8px 14px; flex: none; }
+.m-st__ann { color: #EF4444; font-size: 13px; font-weight: 500; min-width: 56px; }
+.m-st__mid { flex: 1; text-align: center; line-height: 1.2; }
+.m-st__mid b { font-size: 15px; display: block; }
+.m-st__mid span { font-size: 11px; color: #059669; font-weight: 600; }
+.m-st__fin { background: #059669; color: #fff; border-radius: 9px; padding: 6px 12px; font-size: 12.5px; font-weight: 600; }
+.m-seg { display: flex; align-items: center; gap: 6px; padding: 8px 12px 6px; flex: none; }
+.m-seg__piste { flex: 1; display: flex; background: #EDEEF2; border-radius: 10px; padding: 3px; }
+.m-seg__piste i { flex: 1; text-align: center; font-style: normal; font-size: 12.5px; color: var(--t-text2); padding: 6px 0; border-radius: 8px; }
+.m-seg__piste i.on { background: #fff; color: var(--t-text); font-weight: 600; box-shadow: 0 1px 3px rgba(20,25,40,0.08); }
+.m-seg .m-rond { width: 34px; height: 34px; border-radius: 10px; }
+.m-seg .m-rond .i { width: 17px; height: 17px; }
+.m-outils { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding: 2px 12px 8px; flex: none; }
+.m-outil { height: 46px; border-radius: 10px; border: 1px solid #E5E7EB; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 9.5px; font-weight: 600; position: relative; transition: all 0.2s; }
+.m-outil .i { width: 16px; height: 16px; }
+.m-outil.is-on { background: #FAFBFC; transform: scale(0.93); }
+.m-outil .pastille { position: absolute; top: 4px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: #4F46E5; }
+.m-plan { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding: 4px 12px; }
+.m-plan .t-place { height: 54px; font-size: 11px; border-radius: 8px; }
+.m-plan .t-place.is-on { border-color: #10B981; box-shadow: 0 0 0 3px rgba(16,185,129,0.25); }
+.m-tableau { margin: 6px 12px 0; height: 16px; border-radius: 4px; background: #E5E7EB; color: #6B7280; font-size: 8.5px; font-weight: 700; letter-spacing: 0.1em; display: grid; place-items: center; }
+/* menu radial (anneau segmenté) */
+.m-radial { position: absolute; z-index: 690; width: 0; height: 0; }
+.m-voile20 { position: absolute; inset: 0; z-index: 680; background: rgba(0,0,0,0.2); }
+.m-anneau { position: absolute; width: 300px; height: 300px; left: -150px; top: -150px; border-radius: 50%;
+  background: conic-gradient(from -44deg, rgba(15,23,42,0.78) 0 88deg, transparent 0 90deg, rgba(15,23,42,0.78) 0 178deg, transparent 0 180deg, rgba(15,23,42,0.78) 0 268deg, transparent 0 270deg, rgba(15,23,42,0.78) 0 358deg, transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 39px, #000 40px); mask: radial-gradient(circle, transparent 39px, #000 40px); }
+.m-anneau--bas { background: conic-gradient(from -44deg, transparent 0 180deg, rgba(167,139,250,0.92) 0 268deg, transparent 0); }
+.m-centre { position: absolute; width: 70px; height: 70px; left: -35px; top: -35px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.25); display: grid; place-items: center; font-size: 10.5px; font-weight: 700; text-align: center; line-height: 1.1; }
+.m-lib { position: absolute; width: 80px; margin-left: -40px; margin-top: -18px; color: #fff; font-size: 10.5px; font-weight: 600; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.m-lib .i { width: 18px; height: 18px; }
+.m-ombre { position: absolute; width: 280px; height: 280px; left: -140px; top: -140px; border-radius: 50%; background: rgba(0,0,0,0.18); }
+.m-bulle-sm { position: absolute; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 8.5px; font-weight: 700; box-shadow: 0 6px 16px rgba(0,0,0,0.25); transition: transform 0.3s; }
+.m-bulle-sm .i { width: 17px; height: 17px; }
+.m-bulle-sm.is-on { transform: scale(1.15); box-shadow: 0 0 0 3px #fff, 0 6px 16px rgba(0,0,0,0.25); }
+.m-pilule { position: absolute; left: 50%; bottom: 18px; translate: -50% 0; z-index: 695; background: rgba(15,23,42,0.85); color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 999px; white-space: nowrap; }
+/* copies */
+.m-vign { width: 78px; height: 106px; border-radius: 6px; background: #F3F4F7; border: 1px solid #E5E7EB; position: relative; flex: none; overflow: hidden; transition: all 0.3s; }
+.m-vign__page { position: absolute; inset: 8px 9px 22px; background: #fff; border-radius: 2px; box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  background-image: repeating-linear-gradient(#fff 0 7px, #D7DBE3 7px 8px); }
+.m-vign__x { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: #EF4444; color: #fff; display: grid; place-items: center; }
+.m-vign__x .i { width: 11px; height: 11px; stroke-width: 3; }
+.m-vign__l { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 9.5px; font-weight: 600; color: var(--t-text2); display: flex; align-items: center; justify-content: center; gap: 2px; }
+.m-vign__l .i { width: 10px; height: 10px; stroke-width: 2.6; }
+.m-vign--n .m-vign__l { color: var(--t-primary); }
+.m-vign--plus { border: 1.5px dashed #818CF8; background: #EEF0FF; color: #4F46E5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 11px; font-weight: 600; }
+.m-vign.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,0.3); }
+.m-cmds { display: flex; justify-content: center; gap: 9px; margin-top: 4px; color: var(--t-text); }
+.m-cmds .i { width: 15px; height: 15px; }
+.m-cmds .off { color: #E5E7EB; }
+.m-bande { display: flex; gap: 8px; overflow: hidden; flex: none; }
+.m-case { width: 18px; height: 18px; border-radius: 6px; border: 1.5px solid #D4D8E1; background: #fff; display: grid; place-items: center; flex: none; transition: all 0.2s; }
+.m-case .i { width: 12px; height: 12px; stroke-width: 3; color: #fff; opacity: 0; }
+.m-togg { flex: 1; display: flex; align-items: center; gap: 7px; border: 1px solid var(--t-border); border-radius: 12px; padding: 9px 8px; font-size: 11.5px; background: #fff; transition: all 0.25s; }
+.m-togg.is-on, .m-togg--on { border-color: #4F46E5; background: #EEF0FF; }
+.m-togg.is-on .m-case, .m-togg--on .m-case { background: #4F46E5; border-color: #4F46E5; }
+.m-togg.is-on .m-case .i, .m-togg--on .m-case .i { opacity: 1; }
+.m-vers { min-width: 36px; text-align: center; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--t-border); background: #fff; font-size: 12px; font-weight: 600; transition: all 0.25s; }
+.m-vers.is-on, .m-vers--on { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+.m-champ { height: 40px; border: 1px solid var(--t-border); border-radius: 12px; background: #fff; display: flex; align-items: center; padding: 0 12px; font-size: 14px; flex: none; }
+.m-champ--vide { color: var(--t-text3); }
+.m-champ.is-on { border-color: #4F46E5; }
+.m-clavier { position: absolute; left: 0; right: 0; bottom: 0; height: 190px; background: #E9EBF0; z-index: 640; display: grid; grid-template-rows: repeat(4, 1fr); gap: 6px; padding: 10px 6px; }
+.m-clavier div { display: flex; gap: 5px; justify-content: center; }
+.m-clavier i { flex: 0 0 29px; background: #fff; border-radius: 5px; box-shadow: 0 1px 0 #C9CDD6; }
+.m-clavier i.l { flex: 0 0 150px; }
+.m-scanner { position: absolute; inset: 0; z-index: 720; background: #111317; color: #fff; display: flex; flex-direction: column; }
+.m-scanner__vue { flex: 1; position: relative; margin: 40px 18px 0; border-radius: 10px; background: radial-gradient(circle at 40% 35%, #3A3F4A, #1C1F25); overflow: hidden; }
+.m-scanner__feuille { position: absolute; left: 22%; top: 14%; width: 56%; height: 66%; background: #F4F1EA; transform: rotate(-7deg); border-radius: 2px;
+  background-image: repeating-linear-gradient(#F4F1EA 0 10px, #CFCBC2 10px 11px); }
+.m-scanner__cadre { position: absolute; left: 21%; top: 12%; width: 58%; height: 70%; border: 2.5px solid #7DD3FC; border-radius: 4px; transform: rotate(-7deg); background: rgba(125,211,252,0.12); }
+.m-scanner__bas { height: 120px; display: flex; align-items: center; justify-content: space-around; font-size: 11px; color: #D1D5DB; }
+.m-scanner__decl { width: 62px; height: 62px; border-radius: 50%; border: 4px solid #fff; display: grid; place-items: center; }
+.m-scanner__decl::after { content: ''; width: 46px; height: 46px; border-radius: 50%; background: #fff; }
+.m-scanner__decl.is-on::after { background: #9CA3AF; }
+.m-prep { position: absolute; inset: 0; z-index: 730; background: rgba(15,23,42,0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #fff; font-size: 14px; font-weight: 600; }
+.m-grille { display: grid; gap: 3px; justify-content: center; }
+.m-gc { width: 50px; height: 44px; border-radius: 6px; border: 1px solid #E5E7EB; background: #fff; display: grid; place-items: center; font-size: 9px; font-weight: 600; text-align: center; line-height: 1.1; transition: all 0.25s; }
+.m-gc--off { background: #F1F2F5; border-color: #F1F2F5; }
+.m-gc--occ { background: #EEF0FF; border-color: #818CF8; color: #1F2433; }
+.m-gc.is-on { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+.m-gc { position: relative; }
+.m-grille.is-on .m-gc--libre { border: 1.5px dashed #818CF8; }
+.m-occ { position: absolute; inset: -1px; border-radius: 6px; background: #EEF0FF; border: 1px solid #818CF8; display: grid; place-items: center; font-size: 9px; font-weight: 600; line-height: 1.1; transition: all 0.25s; }
+.m-occ.is-on { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+/* réunion parents */
+.m-recherche { height: 40px; border: 1px solid var(--t-border); border-radius: 12px; background: #fff; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 13.5px; color: var(--t-text3); flex: none; }
+.m-recherche .i { width: 16px; height: 16px; }
+.m-recherche.is-on { border-color: #4F46E5; }
+.m-recherche b { color: var(--t-text); font-weight: 400; }
+.m-classe-t { display: flex; align-items: center; gap: 6px; font-size: 14.5px; font-weight: 700; margin-top: 4px; flex: none; }
+.m-classe-t span { font-size: 10.5px; font-weight: 600; color: var(--t-text2); background: #F3F4F7; border-radius: 999px; padding: 1px 7px; }
+.m-el { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--t-border); border-radius: 14px; padding: 7px 10px; flex: none; transition: all 0.25s; }
+.m-el.is-on { background: #FAFBFC; transform: scale(0.98); border-color: #4F46E5; }
+.m-el__n { flex: 1; min-width: 0; line-height: 1.25; }
+.m-el__n b { display: block; font-size: 13.5px; font-weight: 600; }
+.m-el__n span { font-size: 11px; color: var(--t-text3); }
+.m-el .i { color: var(--t-text3); width: 15px; height: 15px; }
+.m-score { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+.m-score--p { background: #ECFDF5; color: #059669; } .m-score--n { background: #FFFBEB; color: #B45309; } .m-score--z { background: #F3F4F7; color: #6B7280; }
+.m-bloc { background: #fff; border: 1px solid #EEF0F4; border-radius: 14px; padding: 10px 12px; flex: none; transition: all 0.25s; }
+.m-bloc.is-on { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
+.m-avatar { width: 40px; height: 40px; border-radius: 50%; background: #EEF0FF; color: #4F46E5; font-weight: 700; display: grid; place-items: center; font-size: 14px; flex: none; }
+.m-gros { text-align: right; line-height: 1.05; }
+.m-gros b { font-size: 20px; font-weight: 700; display: block; }
+.m-gros span { font-size: 9.5px; color: var(--t-text3); }
+.m-cpts { display: grid; grid-template-columns: repeat(5, 1fr); background: #F3F4F7; border-radius: 12px; padding: 7px 4px; text-align: center; flex: none; }
+.m-cpts b { display: block; font-size: 14px; }
+.m-cpts span { font-size: 9px; color: var(--t-text2); }
+.m-histo { display: flex; align-items: flex-end; justify-content: space-between; height: 34px; padding: 0 6px; }
+.m-histo div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.m-histo p { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin: 0; }
+.m-histo p i { width: 6px; border-radius: 2px; }
+.m-histo small { font-size: 8px; color: var(--t-text3); }
+.m-cmp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.m-cmp div { background: #F3F4F7; border-radius: 10px; padding: 6px 4px; text-align: center; }
+.m-cmp div:first-child { background: #EEF0FF; }
+.m-cmp b { display: block; font-size: 15px; }
+.m-cmp span { font-size: 9.5px; color: var(--t-text2); }
+.m-rang { display: flex; justify-content: space-between; font-size: 11.5px; padding: 3px 0; }
+.m-rang b small { font-weight: 400; color: var(--t-text3); font-size: 10px; margin-left: 3px; }
+.m-ev { display: flex; gap: 8px; padding: 7px 0; border-top: 1px solid #F1F5F9; }
+.m-ev:first-child { border-top: 0; }
+.m-ev__g { flex: 1; min-width: 0; font-size: 10.5px; color: var(--t-text2); line-height: 1.35; }
+.m-ev__g b { display: block; font-size: 12.5px; color: var(--t-text); }
+.m-ev__g i { color: var(--t-text); }
+.m-ev__d { text-align: right; font-size: 10px; color: var(--t-text3); line-height: 1.2; }
+.m-ev__d b { display: block; font-size: 16px; }
+.c-vert { color: #059669; } .c-rouge { color: #EF4444; } .c-ambre { color: #B45309; } .c-indigo { color: #4F46E5; } .c-bleu { color: #3B82F6; }
+.m-jr { padding: 7px 0; border-top: 1px solid #F1F5F9; font-size: 11px; }
+.m-jr:first-child { border-top: 0; }
+.m-jr__t { display: flex; gap: 6px; align-items: baseline; margin-bottom: 4px; }
+.m-jr__t b { font-size: 12px; } .m-jr__t span { color: var(--t-text3); }
+.m-jr__c { border-left: 3px solid #3B82F6; padding-left: 8px; margin-top: 5px; font-size: 11.5px; }
+.m-jr__c em { font-style: normal; color: var(--t-text2); font-weight: 600; }
+/* partage et PDF */
+.m-partage .m-app { display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 10.5px; color: var(--t-text2); }
+.m-partage .m-app i { width: 46px; height: 46px; border-radius: 14px; display: grid; place-items: center; color: #fff; font-style: normal; font-weight: 700; font-size: 15px; }
+.m-pdf { position: absolute; z-index: 760; left: 22px; right: 22px; top: 70px; background: #fff; border-radius: 4px; box-shadow: 0 0 0 600px rgba(15,23,42,0.45), 0 18px 50px rgba(0,0,0,0.35); padding: 16px 16px 12px; font-family: Arial, sans-serif; color: #333; font-size: 8.5px; line-height: 1.35; }
+.m-pdf__t { text-align: center; color: #6366F1; font-size: 15px; font-weight: 700; padding-bottom: 4px; border-bottom: 2px solid #6366F1; }
+.m-pdf__s { text-align: center; color: #666; font-size: 10px; margin: 4px 0 8px; }
+.m-pdf__meta { display: grid; grid-template-columns: repeat(4, 1fr); background: #f5f5f5; border-radius: 4px; padding: 5px; text-align: center; margin-bottom: 8px; }
+.m-pdf__meta b { display: block; font-size: 9px; }
+.m-pdf h6 { margin: 8px 0 4px; font-size: 10px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 2px; }
+.m-pdf__stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.m-pdf__stats div { border-radius: 4px; text-align: center; padding: 4px 0; font-size: 7.5px; }
+.m-pdf__stats b { display: block; font-size: 12px; }
+.m-pdf table { width: 100%; border-collapse: collapse; font-size: 8px; }
+.m-pdf th { background: #f5f5f5; text-align: left; padding: 3px; }
+.m-pdf td { padding: 3px; border-bottom: 1px solid #eee; }
+.m-pdf__el { border: 1px solid #eee; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px; }
+.m-pdf__el b { font-size: 9px; }
+.m-pdf__et { display: inline-block; border-radius: 3px; padding: 1px 4px; margin: 2px 2px 0 0; font-size: 7.5px; }
+.m-pdf__pied { text-align: center; color: #999; font-size: 7.5px; margin-top: 8px; }
+.m-nomvrai { background: #FEF3C7; border-radius: 2px; padding: 0 2px; }
+/* site (ordinateur) */
+.w-liste { width: 230px; flex: none; border: 1px solid var(--border); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 3px; background: #fff; }
+.w-el { display: flex; align-items: center; gap: 5px; padding: 5px 6px; border-radius: 6px; font-size: 12px; transition: background 0.25s; }
+.w-el.is-on { background: var(--indigo-soft); }
+.w-el b { font-weight: 600; flex: 1; }
+.w-b { font-size: 10px; font-weight: 650; padding: 1px 6px; border-radius: 999px; }
+.w-b--i { background: var(--indigo-soft); color: var(--indigo); } .w-b--v { background: var(--pos-soft); color: var(--pos); } .w-b--g { background: var(--surface-3); color: var(--text-muted); } .w-b--r { background: var(--neg-soft); color: var(--neg); }
+.w-page { flex: 1; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); display: grid; place-items: center; position: relative; }
+.w-page__f { width: 230px; height: 300px; background: #fff; box-shadow: var(--shadow); background-image: repeating-linear-gradient(#fff 0 13px, #DADDE4 13px 14px); border-radius: 2px; }
+/* accueil */
+.m-badge { position: absolute; top: -4px; right: -4px; min-width: 16px; height: 16px; border-radius: 8px; background: #EF4444; color: #fff; font-size: 9px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; border: 1.5px solid #fff; }
+.m-rond--av { background: #4F46E5; color: #fff; border-color: #4F46E5; font-weight: 700; font-size: 15px; }
+.m-rond--off { opacity: 0.5; }
+.m-rond.m-rond--sync { color: #4F46E5; }
+.m-hero { margin: 90px auto 0; width: 150px; height: 150px; border-radius: 50%; background: #059669; box-shadow: 0 8px 30px rgba(5,150,105,0.3); display: grid; place-items: center; color: #fff; transition: transform 0.2s; }
+.m-hero.is-on { transform: scale(0.96); }
+.m-hero__t { text-align: center; font-size: 20px; font-weight: 700; margin-top: 22px; }
+.m-hero__s { text-align: center; font-size: 13px; color: #6B7280; margin-top: 4px; padding: 0 20px; }
+.m-derniere { margin: 30px 18px 0; background: #fff; border: 1px solid #E5E7EB; border-radius: 12px; padding: 11px 12px; display: flex; align-items: center; gap: 6px; font-size: 13px; color: #1F2433; transition: all 0.25s; }
+.m-derniere.is-on { background: #FAFBFC; border-color: #4F46E5; }
+.m-derniere .i { color: #9CA3AF; width: 16px; height: 16px; margin-left: auto; }
+/* historique */
+.m-jour { font-size: 12.5px; font-weight: 600; color: #6B7280; margin-top: 4px; flex: none; }
+.m-seance { background: #fff; border: 1px solid #E5E7EB; border-radius: 16px; padding: 11px 13px; flex: none; transition: all 0.25s; }
+.m-seance.is-on { background: #FAFBFC; transform: scale(0.98); border-color: #4F46E5; }
+.m-seance__t { display: flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; }
+.m-seance__t .i { margin-left: auto; color: #9CA3AF; width: 16px; height: 16px; }
+.m-seance__th { font-size: 12.5px; color: #6B7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-seance__g { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid #F1F5F9; margin-top: 8px; padding-top: 7px; }
+.m-seance__g span { font-size: 9.5px; color: #9CA3AF; text-transform: uppercase; letter-spacing: 0.04em; display: block; }
+.m-seance__g b { font-size: 12.5px; }
+.m-chip { padding: 5px 12px; border-radius: 999px; background: #fff; border: 1px solid #E5E7EB; font-size: 13px; white-space: nowrap; transition: all 0.25s; }
+.m-chip.is-on, .m-chip--on { background: #1F2433; border-color: #1F2433; color: #fff; font-weight: 600; }
+.m-evt { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #E5E7EB; }
+.m-evt:first-child { border-top: 0; }
+.m-evt__ic { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 14px; flex: none; }
+.m-evt__n { flex: 1; min-width: 0; line-height: 1.25; }
+.m-evt__n b { font-size: 13.5px; display: block; }
+.m-evt__n span { font-size: 11.5px; color: #6B7280; }
+.m-evt__n i { display: block; font-size: 11px; color: #9CA3AF; }
+.m-evt time { font-size: 11px; color: #9CA3AF; }
+.m-res { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; text-align: center; font-size: 9px; color: #9CA3AF; }
+.m-res b { display: grid; place-items: center; height: 38px; border-radius: 12px; font-size: 15px; margin-bottom: 2px; }
+/* fenêtre centrée */
+.m-modale { background: #fff; border-radius: 20px; width: 290px; padding: 26px 22px 20px; text-align: center; box-shadow: 0 18px 50px rgba(0,0,0,0.25); }
+/* schéma */
+.sc { width: 100%; height: 100%; background: #fff; border-radius: 26px; box-shadow: var(--shadow-lg); padding: 18px 16px; display: flex; flex-direction: column; gap: 6px; font-family: 'IBM Plex Sans', var(--font); color: #1F2433; position: relative; overflow: hidden; }
+.sc-t { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9CA3AF; }
+.sc-h { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+.sc-boite { border: 1.5px solid #E5E7EB; border-radius: 14px; padding: 9px 11px; background: #FAFBFC; transition: all 0.3s; flex: none; }
+.sc-boite.is-on { border-color: #4F46E5; background: #EEF0FF; box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
+.sc-boite__t { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.sc-boite__t .i { width: 17px; height: 17px; color: #4F46E5; }
+.sc-fl { align-self: center; display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: #6B7280; height: 30px; transition: opacity 0.3s; flex: none; }
+.sc-fl::before { content: ''; width: 2px; height: 26px; background: linear-gradient(#9CA3AF, #9CA3AF) no-repeat; }
+.sc-fl--bas::before { background: linear-gradient(#4F46E5, #4F46E5); }
+.sc-fl.is-on { color: #4F46E5; font-weight: 600; }
+.sc-it { display: flex; gap: 7px; align-items: flex-start; font-size: 11.5px; line-height: 1.35; padding: 3px 4px; border-radius: 6px; transition: background 0.3s; }
+.sc-it::before { content: ''; width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex: none; background: #9CA3AF; }
+.sc-it.ok::before { background: #059669; } .sc-it.att::before { background: #F59E0B; } .sc-it.ko::before { background: #EF4444; } .sc-it.ind::before { background: #4F46E5; }
+.sc-it.is-on { background: #EEF0FF; }
+.sc-paquet { position: absolute; z-index: 5; padding: 3px 9px; border-radius: 999px; background: #4F46E5; color: #fff; font-size: 10.5px; font-weight: 600; white-space: nowrap; box-shadow: 0 4px 10px rgba(79,70,229,0.3); }
+.sc-legende { font-size: 10.5px; color: #9CA3AF; margin-top: auto; }
+/* barre système Android */
+.m-nav { position: absolute; left: 0; right: 0; bottom: 0; height: 36px; background: rgba(20,20,24,0.85); display: flex; justify-content: space-around; align-items: center; z-index: 650; }
+.m-nav i { width: 14px; height: 14px; border: 2px solid #fff; opacity: 0.85; }
+.m-nav i:nth-child(1) { border-radius: 2px; transform: rotate(45deg); border-right: 0; border-top: 0; }
+.m-nav i:nth-child(2) { border-radius: 50%; }
+.m-nav i:nth-child(3) { border-radius: 3px; }
+.m-interr { width: 42px; height: 26px; border-radius: 13px; background: #EDEEF2; position: relative; flex: none; transition: background 0.25s; }
+.m-interr::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: left 0.25s; }
+.m-interr.is-on, .m-interr--on { background: #4F46E5; }
+.m-interr.is-on::after, .m-interr--on::after { left: 18px; }
+.m-interr--on.is-off { background: #EDEEF2; }
+.m-interr--on.is-off::after { left: 2px; }
+.m-regl { display: flex; align-items: center; gap: 10px; padding: 11px 0; border-top: 1px solid #F1F5F9; }
+.m-regl__ic { width: 36px; height: 36px; border-radius: 10px; background: #EEF0FF; color: #4F46E5; display: grid; place-items: center; flex: none; }
+.m-regl__t { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+.m-regl__t span { display: block; font-size: 11.5px; color: #6B7280; font-weight: 400; }
+.m-note { display: flex; gap: 8px; align-items: flex-start; background: #FEF1D8; border-radius: 12px; padding: 9px 11px; flex: none; }
+.m-note .i { color: #F59E0B; width: 17px; height: 17px; flex: none; margin-top: 1px; }
+.m-note__t { flex: 1; font-size: 13px; font-weight: 500; line-height: 1.35; }
+.m-note__t small { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #F59E0B; }
+.m-vu { display: inline-flex; align-items: center; gap: 3px; background: #fff; border: 1px solid #E5E7EB; border-radius: 999px; padding: 4px 9px; font-size: 11.5px; font-weight: 600; flex: none; transition: all 0.2s; }
+.m-vu .i { width: 13px; height: 13px; color: #1F2433; }
+.m-vu.is-on { background: #F3F4F7; }
+.m-type { flex: 1; height: 38px; border-radius: 12px; border: 1px solid #E5E7EB; display: grid; place-items: center; font-size: 12.5px; color: #6B7280; transition: all 0.25s; }
+.m-type--bug.is-on { background: #EF4444; border-color: #EF4444; color: #fff; }
+.m-type--sug.is-on { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+.m-volet { position: absolute; left: 0; right: 0; top: 0; z-index: 700; background: #23252B; color: #E5E7EB; padding: 30px 14px 16px; border-radius: 0 0 22px 22px; }
+.m-notif { background: #33363E; border-radius: 16px; padding: 10px 12px; font-size: 11.5px; margin-top: 8px; }
+.m-notif b { display: block; font-size: 12.5px; color: #fff; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-bulle" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+  <symbol id="i-chev-g" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></symbol>
+  <symbol id="i-grille" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+  <symbol id="i-corb" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></symbol>
+  <symbol id="i-nuage" viewBox="0 0 24 24"><path d="M12 13v8"/><path d="M4 14.9A7 7 0 1 1 15.7 8h1.8a4.5 4.5 0 0 1 2.5 8.2"/><path d="m8 17 4-4 4 4"/></symbol>
+  <symbol id="i-nuage-off" viewBox="0 0 24 24"><path d="m2 2 20 20"/><path d="M5.8 5.8A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.3-.2"/><path d="M21.5 16.1A4.5 4.5 0 0 0 17.5 10h-1.8a7 7 0 0 0-5.4-4.9"/></symbol>
+  <symbol id="i-alerte" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.5 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-micro" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-maison" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></symbol>
+  <symbol id="i-reglage" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-ecran" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-sablier" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M5 2h14"/><path d="M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22"/><path d="M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/></symbol>
+  <symbol id="i-reprendre" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-fl-g" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+  <symbol id="i-fl-d" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-aleat" viewBox="0 0 24 24"><path d="M2 18h3l9-12h6"/><path d="M2 6h3l3 4"/><path d="M14 14l2 4h4"/><path d="m18 3 3 3-3 3"/><path d="m18 15 3 3-3 3"/></symbol>
+  <symbol id="i-rem" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-main" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></symbol>
+  <symbol id="i-sortie" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></symbol>
+  <symbol id="i-croixc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/></symbol>
+  <symbol id="i-croix-med" viewBox="0 0 24 24"><path d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6z"/></symbol>
+  <symbol id="i-porte" viewBox="0 0 24 24"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4.56v16.16a.5.5 0 0 1-.6.49L5 19.5V5.6a1 1 0 0 1 .8-1L12 3.56a1 1 0 0 1 1 1Z"/></symbol>
+  <symbol id="i-presse" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></symbol>
+  <symbol id="i-interdit" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></symbol>
+  <symbol id="i-eclair" viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></symbol>
+  <symbol id="i-vibre" viewBox="0 0 24 24"><rect width="8" height="14" x="8" y="5" rx="1"/><path d="m2 8 2 2-2 2 2 2-2 2"/><path d="m22 8-2 2 2 2-2 2 2 2"/></symbol>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Application téléphone</a> › Historique et synchronisation</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#hs-liste">L'historique des séances</a></li>
+      <li><a href="#hs-recherche">Chercher une séance</a></li>
+      <li><a href="#hs-filtre">Filtrer par classe</a></li>
+      <li><a href="#hs-actualiser">Tirer pour actualiser</a></li>
+      <li><a href="#hs-supprimer">Supprimer une séance</a></li>
+      <li><a href="#hs-detail">Le détail d'une séance</a></li>
+      <li><a href="#hs-resume">Le bilan chiffré</a></li>
+      <li><a href="#hs-evenements">La liste des actions</a></li>
+      <li><a href="#hs-pdf">Exporter la séance en PDF</a></li>
+      <li><a href="#hs-derniere">Raccourci Dernière séance</a></li>
+      <li><a href="#sy-apercu">Ce qui part, et quand</a></li>
+      <li><a href="#sy-bouton">Bouton Synchroniser</a></li>
+      <li><a href="#sy-pastille">La pastille rouge</a></li>
+      <li><a href="#sy-erreur">Erreur de synchronisation</a></li>
+      <li><a href="#sy-lancement">Au lancement</a></li>
+      <li><a href="#sy-reseau">Retour du réseau</a></li>
+      <li><a href="#sy-seance">Début et fin de séance</a></li>
+      <li><a href="#sy-premier-plan">Retour dans l'application</a></li>
+      <li><a href="#sy-direct-actions">Envoi immédiat des actions</a></li>
+      <li><a href="#sy-direct-tp">Envoi immédiat des TP</a></li>
+      <li><a href="#sy-direct-tampons">Envoi immédiat des tampons</a></li>
+      <li><a href="#sy-ecran-classe">Canal avec l'écran projeté</a></li>
+      <li><a href="#sy-bandeau">Bandeau Mode hors-ligne</a></li>
+      <li><a href="#sy-hors-ligne">Hors ligne : ce qui marche</a></li>
+      <li><a href="#sy-descente">Ce qui descend du site</a></li>
+      <li><a href="#sy-suppressions">Les suppressions</a></li>
+      <li><a href="#sy-conflits">Qui gagne ?</a></li>
+      <li><a href="#sy-vie-privee">Ce qui reste sur le téléphone</a></li>
+      <li><a href="#sy-base-locale">La base du téléphone</a></li>
+      <li><a href="#sy-file-copies">La file des copies</a></li>
+      <li><a href="#tr-onglets">La barre d'onglets</a></li>
+      <li><a href="#tr-plein-ecran">Plein écran</a></li>
+      <li><a href="#tr-erreur">L'écran d'erreur</a></li>
+      <li><a href="#tr-retour">Votre retour</a></li>
+      <li><a href="#tr-note-cours">Note pour ce cours</a></li>
+      <li><a href="#tr-reglages">Les réglages de séance</a></li>
+      <li><a href="#tr-annonces">Annonces (prévues)</a></li>
+      <li><a href="#tr-notifications">Notifications : aucune</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../telephone/copies-et-reunion-parents.html">◀ Copies, réunion parents et PDF</a><a href="../classe/seance-au-tableau.html">La séance au tableau ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Application téléphone · Fonctionnement</div>
+      <h1>Historique, synchronisation et hors ligne</h1>
+      <p>Le téléphone garde tout dans sa propre base : la séance marche sans réseau, et la synchronisation échange ensuite avec le site. Ce chapitre montre l'historique des séances, ce qui part et quand, ce qui se passe quand les deux côtés ont changé, ce qui marche sans réseau, et les fonctions communes à toute l'application.</p>
+      <div class="chap__resume"><span>Onglet Historique</span><span>Accueil › Synchroniser</span><span>Mode hors-ligne</span><span>Téléphone</span><span>Les vrais noms restent sur le téléphone</span></div>
+    </header>
+
+    <!-- ============================================================ HISTORIQUE : liste -->
+    <section class="fiche fiche--etroite" id="hs-liste">
+      <div class="fiche__texte">
+        <h2>L'historique des séances</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Barre du bas › Historique</span></p>
+        <p class="fiche__but">Retrouver toutes les séances terminées, rangées par jour du plus récent au plus ancien, avec la classe, le thème, l'heure, la salle et la durée.</p>
+        <ol class="etapes">
+          <li data-cursor="#hl-tab" data-action="tap">Toucher l'onglet <b>Historique</b> (l'horloge), le troisième de la barre du bas.</li>
+          <li data-cursor="#hl-jour" data-duration="3200">Les séances sont groupées par jour : « Aujourd'hui », « Hier », puis le jour et la date ; au-delà d'une semaine, l'année s'ajoute.</li>
+          <li data-cursor="#hl-c1" data-duration="3600">Chaque carte : la classe (et le groupe si la séance était en demi-groupe), le thème, puis l'heure de début, la salle et la durée.</li>
+          <li data-cursor="#hl-c1" data-action="tap">Toucher une carte ouvre le détail de la séance.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seules les séances terminées sont là : la séance en cours se reprend depuis l'accueil.</li>
+            <li>Tout est lu dans le téléphone : la liste s'affiche sans réseau.</li>
+            <li>Une séance restée ouverte sur un autre appareil arrive terminée à l'heure de la synchronisation : sa durée peut paraître très longue.</li>
+            <li>Une séance supprimée sur le site ne disparaît pas du téléphone, et un thème ou des notes modifiés sur le site ne redescendent pas (seul le groupe de classe est mis à jour).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-h1">Historique</div>
+        <div class="m-corps" style="gap:8px">
+          <div class="m-recherche"><svg class="i"><use href="#i-loupe"/></svg>Rechercher (classe, salle, thème)…</div>
+          <div class="m-pills"><span class="m-chip m-chip--on">Toutes</span><span class="m-chip">3A</span><span class="m-chip">4B</span><span class="m-chip">5B</span><span class="m-chip">5D</span></div>
+          <div class="m-jour" id="hl-jour">Aujourd'hui</div>
+          <div class="m-seance" id="hl-c1" data-on="3-4"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          <div class="m-seance"><div class="m-seance__t">5D · Groupe A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Le climat de la Terre</div><div class="m-seance__g"><div><span>Heure</span><b>08:00</b></div><div><span>Salle</span><b>310</b></div><div><span>Durée</span><b>55 min</b></div></div></div>
+          <div class="m-jour">Hier</div>
+          <div class="m-seance"><div class="m-seance__t">4B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les volcans</div><div class="m-seance__g"><div><span>Heure</span><b>14:00</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>1h05</b></div></div></div>
+          <div class="m-jour">Lundi 24 Novembre</div>
+          <div class="m-seance"><div class="m-seance__t">3A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les antibiotiques</div><div class="m-seance__g"><div><span>Heure</span><b>09:00</b></div><div><span>Salle</span><b>Labo</b></div><div><span>Durée</span><b>54 min</b></div></div></div>
+        </div>
+        <div class="m-onglets"><span><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span class="is-actif" id="hl-tab"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : recherche -->
+    <section class="fiche fiche--etroite" id="hs-recherche">
+      <div class="fiche__texte">
+        <h2>Chercher une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Historique › barre de recherche</span></p>
+        <p class="fiche__but">Retrouver une séance en tapant un bout du nom de la classe, de la salle ou du thème.</p>
+        <ol class="etapes">
+          <li data-cursor="#hr-champ" data-action="tap">Toucher le champ <b>Rechercher (classe, salle, thème)…</b></li>
+          <li data-cursor="#hr-champ" data-duration="3200">Taper quelques lettres, par exemple « volc » : la liste se filtre à chaque lettre.</li>
+          <li data-cursor="#hr-x" data-action="tap">La croix à droite efface la recherche.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La recherche ne tient pas compte des majuscules et ne porte que sur la classe, la salle et le thème : ni le groupe, ni les élèves, ni les notes de séance.</li>
+            <li>Elle se combine avec le filtre de classe. Aucun résultat : « Aucune séance ne correspond à … ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-h1">Historique</div>
+        <div class="m-corps" style="gap:8px">
+          <div class="m-recherche" id="hr-champ" data-on="1-2"><svg class="i"><use href="#i-loupe"/></svg><span class="repli" data-at="1">Rechercher (classe, salle, thème)…</span><b class="repli" data-at="2-3"><span data-type="volc" data-type-at="2"></span></b><span class="m-esp"></span><svg class="i repli" id="hr-x" data-at="2-3" data-on="3" style="width:15px;height:15px"><use href="#i-croixc"/></svg></div>
+          <div class="m-pills"><span class="m-chip m-chip--on">Toutes</span><span class="m-chip">3A</span><span class="m-chip">4B</span><span class="m-chip">5B</span><span class="m-chip">5D</span></div>
+          <div class="m-jour repli" data-at="1">Aujourd'hui</div>
+          <div class="m-seance repli" data-at="1"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          <div class="m-jour">Hier</div>
+          <div class="m-seance"><div class="m-seance__t">4B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les volcans</div><div class="m-seance__g"><div><span>Heure</span><b>14:00</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>1h05</b></div></div></div>
+          <div class="m-jour">Jeudi 13 Novembre 2026</div>
+          <div class="m-seance"><div class="m-seance__t">4A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Volcans effusifs et explosifs</div><div class="m-seance__g"><div><span>Heure</span><b>11:00</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>55 min</b></div></div></div>
+        </div>
+        <div class="m-clavier" data-at="1-2" style="bottom:54px"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i class="l"></i><i></i></div></div>
+        <div class="m-onglets"><span><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span class="is-actif"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : filtre classe -->
+    <section class="fiche fiche--etroite" id="hs-filtre">
+      <div class="fiche__texte">
+        <h2>Filtrer par classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Historique › puces de classes</span></p>
+        <p class="fiche__but">N'afficher que les séances d'une classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#hf-5b" data-action="tap">Toucher une classe dans la rangée de puces (on la fait glisser de côté s'il y a beaucoup de classes).</li>
+          <li data-cursor="#hf-c" data-duration="3200">La liste ne montre plus que ses séances. Les séances en demi-groupe restent sous leur classe, le groupe écrit dans la carte.</li>
+          <li data-cursor="#hf-tout" data-action="tap"><span class="btn-nom">Toutes</span> revient à l'ensemble.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La rangée n'apparaît que si le téléphone connaît au moins une classe.</li>
+            <li>Classe sans séance : « Aucune séance pour cette classe ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-h1">Historique</div>
+        <div class="m-corps" style="gap:8px">
+          <div class="m-recherche"><svg class="i"><use href="#i-loupe"/></svg>Rechercher (classe, salle, thème)…</div>
+          <div class="m-pills"><span class="m-chip" id="hf-tout" data-on="1,3">Toutes</span><span class="m-chip">3A</span><span class="m-chip">4B</span><span class="m-chip" id="hf-5b" data-on="2">5B</span><span class="m-chip">5D</span></div>
+          <div class="m-jour">Aujourd'hui</div>
+          <div class="m-seance" id="hf-c"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          <div class="m-seance repli" data-at="1,3"><div class="m-seance__t">5D · Groupe A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Le climat de la Terre</div><div class="m-seance__g"><div><span>Heure</span><b>08:00</b></div><div><span>Salle</span><b>310</b></div><div><span>Durée</span><b>55 min</b></div></div></div>
+          <div class="m-jour repli" data-at="1,3">Hier</div>
+          <div class="m-seance repli" data-at="1,3"><div class="m-seance__t">4B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les volcans</div><div class="m-seance__g"><div><span>Heure</span><b>14:00</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>1h05</b></div></div></div>
+          <div class="m-jour repli" data-at="2">Lundi 24 Novembre</div>
+          <div class="m-seance repli" data-at="2"><div class="m-seance__t">5B · Groupe 1<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les aliments</div><div class="m-seance__g"><div><span>Heure</span><b>15:00</b></div><div><span>Salle</span><b>Labo</b></div><div><span>Durée</span><b>53 min</b></div></div></div>
+        </div>
+        <div class="m-onglets"><span><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span class="is-actif"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : actualiser -->
+    <section class="fiche fiche--etroite" id="hs-actualiser">
+      <div class="fiche__texte">
+        <h2>Tirer pour actualiser</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Historique › tirer la liste vers le bas</span></p>
+        <p class="fiche__but">Lancer une synchronisation complète, puis réafficher la liste à jour : par exemple des séances faites sur un autre téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#ha-c1" data-action="drag" data-drag-to="#ha-c2">La liste tout en haut, glisser le doigt vers le bas puis lâcher.</li>
+          <li data-cursor="#ha-roue" data-duration="3400">Une roue indigo tourne en haut de la liste pendant la synchronisation et le rechargement.</li>
+          <li data-cursor="#ha-new" data-duration="3200">La liste revient à jour, avec les séances arrivées du serveur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Si une synchronisation tourne déjà, le geste ne fait que recharger la liste du téléphone. La roue reste visible tant qu'une synchronisation tourne, même lancée ailleurs.</li>
+            <li>Pendant cette synchronisation, le gros bouton de l'accueil est bloqué (« Synchronisation en cours… »).</li>
+            <li>Sans réseau, le geste lance quand même la synchronisation : elle échoue, et l'accueil peut afficher « Erreur de synchronisation ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-h1">Historique</div>
+        <div class="m-corps" style="gap:8px">
+          <div class="m-recherche"><svg class="i"><use href="#i-loupe"/></svg>Rechercher (classe, salle, thème)…</div>
+          <div class="m-pills"><span class="m-chip m-chip--on">Toutes</span><span class="m-chip">3A</span><span class="m-chip">4B</span><span class="m-chip">5B</span><span class="m-chip">5D</span></div>
+          <div class="repli" data-at="2" style="align-self:center;padding:6px"><div class="m-roue" id="ha-roue" style="width:28px;height:28px"></div></div>
+          <div class="m-jour">Aujourd'hui</div>
+          <div class="m-seance repli" id="ha-new" data-at="3" data-on="3"><div class="m-seance__t">3A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les antibiotiques</div><div class="m-seance__g"><div><span>Heure</span><b>11:00</b></div><div><span>Salle</span><b>Labo</b></div><div><span>Durée</span><b>55 min</b></div></div></div>
+          <div class="m-seance" id="ha-c1"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          <div class="m-seance" id="ha-c2"><div class="m-seance__t">5D · Groupe A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Le climat de la Terre</div><div class="m-seance__g"><div><span>Heure</span><b>08:00</b></div><div><span>Salle</span><b>310</b></div><div><span>Durée</span><b>55 min</b></div></div></div>
+        </div>
+        <div class="m-onglets"><span><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span class="is-actif"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="bulle bulle--bas" data-at="3" style="left:150px;top:110px">Séance faite sur un autre téléphone</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : supprimer -->
+    <section class="fiche fiche--etroite" id="hs-supprimer">
+      <div class="fiche__texte">
+        <h2>Supprimer une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Historique › appui long sur une carte</span></p>
+        <p class="fiche__but">Effacer une séance et toutes ses actions (participations, malus, absences, remarques, sorties).</p>
+        <ol class="etapes">
+          <li data-cursor="#hsu-c" data-action="long">Appui long (une demi-seconde) sur la carte. Rien sur la carte n'annonce ce geste.</li>
+          <li data-cursor="#hsu-ok" data-action="tap" data-duration="4200">La fenêtre « Supprimer la séance » rappelle la date et la classe, et que tous les événements seront supprimés (et le TP en groupes lié, s'il y en a un). Toucher <span class="btn-nom">Supprimer</span>.</li>
+          <li data-cursor="#hsu-jour" data-duration="3000">La séance disparaît, puis la liste se synchronise et se recharge.</li>
+          <li data-cursor="#hsu-c" data-duration="4200">Limite actuelle : si la séance avait déjà été envoyée au serveur, la synchronisation la fait revenir, avec ses actions.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Limite actuelle : la suppression n'est faite que dans le téléphone ; rien n'est demandé au serveur. Une séance déjà envoyée revient donc à la synchronisation suivante, qui part justement juste après (constaté en lisant le programme, pas essayé sur téléphone). Seule une séance jamais envoyée disparaît pour de bon.</li>
+            <li>Pas d'annulation possible, pas de vibration. En cas d'échec : « Impossible de supprimer la séance ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-h1">Historique</div>
+        <div class="m-corps" style="gap:8px">
+          <div class="m-recherche"><svg class="i"><use href="#i-loupe"/></svg>Rechercher (classe, salle, thème)…</div>
+          <div class="m-pills"><span class="m-chip m-chip--on">Toutes</span><span class="m-chip">3A</span><span class="m-chip">4B</span><span class="m-chip">5B</span><span class="m-chip">5D</span></div>
+          <div class="m-jour" id="hsu-jour">Aujourd'hui</div>
+          <div class="m-seance repli" id="hsu-c" data-at="1-2,4" data-on="1,4"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          <div class="m-seance"><div class="m-seance__t">5D · Groupe A<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Le climat de la Terre</div><div class="m-seance__g"><div><span>Heure</span><b>08:00</b></div><div><span>Salle</span><b>310</b></div><div><span>Durée</span><b>55 min</b></div></div></div>
+          <div class="m-jour">Hier</div>
+          <div class="m-seance"><div class="m-seance__t">4B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">Les volcans</div><div class="m-seance__g"><div><span>Heure</span><b>14:00</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>1h05</b></div></div></div>
+        </div>
+        <div class="m-onglets"><span><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span class="is-actif"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="m-voile zoom" data-at="2"><div class="m-alerte"><div class="m-alerte__t">Supprimer la séance</div><div class="m-alerte__m">Voulez-vous vraiment supprimer la séance du mercredi 26 novembre 2026 (5B) ? Tous les événements (participations, malus, etc.) seront également supprimés.</div><div class="m-alerte__b"><span>Annuler</span><span class="rouge" id="hsu-ok" data-on="2">Supprimer</span></div></div></div>
+        <div class="bulle bulle--bas" data-at="4" style="left:30px;top:150px;max-width:280px">Limite actuelle : la séance déjà envoyée revient à la synchronisation</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : détail -->
+    <section class="fiche fiche--etroite" id="hs-detail">
+      <div class="fiche__texte">
+        <h2>Le détail d'une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Historique › une séance</span></p>
+        <p class="fiche__but">Relire une séance passée : où, quand, combien de temps, le bilan des actions et chaque action élève par élève, avec l'heure.</p>
+        <ol class="etapes">
+          <li data-cursor="#hd-info" data-duration="3400">En haut, la classe (et le groupe), la date en toutes lettres, puis la salle, l'heure et la durée.</li>
+          <li data-cursor="#hd-res" data-duration="3000">La section « Resume » compte les actions par type.</li>
+          <li data-cursor="#hd-evt" data-duration="3000">La section « Evenements » liste chaque action dans l'ordre.</li>
+          <li data-cursor="#hd-retour" data-action="tap"><span class="btn-nom">← Retour</span> (ou le geste retour du téléphone) ramène à la liste. <span class="btn-nom">PDF</span>, à droite, fabrique le rapport.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tout est lu dans le téléphone : marche sans réseau.</li>
+            <li>Les élèves y figurent sous leur vrai nom si le téléphone le connaît, sinon sous leur pseudonyme. Cet écran reste sur le téléphone.</li>
+            <li>Le thème et les notes de séance n'apparaissent pas ici, mais dans le PDF. Les titres « Detail seance », « Resume », « Evenements » sont écrits sans accents dans l'application.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="copies-et-reunion-parents.html#pdf-seance">PDF d'une séance</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="ligne" style="padding:6px 14px 8px"><span class="c-indigo" id="hd-retour" style="font-weight:600;font-size:14px">← Retour</span><span class="m-esp" style="text-align:center;font-weight:700;font-size:16px">Detail seance</span><span style="background:#EEF0FF;color:#4F46E5;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600;display:flex;gap:4px;align-items:center"><svg class="i" style="width:14px;height:14px"><use href="#i-doc"/></svg>PDF</span></div>
+        <div class="m-corps">
+          <div id="hd-info" class="col" style="gap:8px;border-radius:16px" data-on="1">
+            <div class="m-bloc ligne" style="gap:12px;padding:14px"><span style="width:46px;height:46px;border-radius:12px;background:#EEF0FF;display:grid;place-items:center;color:#4F46E5"><svg class="i"><use href="#i-presse"/></svg></span><div><b style="font-size:18px">5B</b><div class="m-tete__s">Mercredi 26 Novembre 2026</div></div></div>
+            <div class="m-cpts" style="grid-template-columns:repeat(3,1fr)"><div><span>SALLE</span><b>210</b></div><div><span>HEURE</span><b>10:05</b></div><div><span>DUREE</span><b>52 min</b></div></div>
+          </div>
+          <div style="font-weight:700;font-size:15px">Resume</div>
+          <div class="m-bloc m-res" id="hd-res" data-on="2">
+            <div><b style="background:#ECFDF5;color:#10B981">9</b>Implication</div><div><b style="background:#FFFBEB;color:#F59E0B">3</b>Malus</div><div><b style="background:#FEF2F2;color:#EF4444">1</b>Absence</div><div><b style="background:#EFF6FF;color:#3B82F6">2</b>Remarque</div><div><b style="background:#F5F3FF;color:#8B5CF6">2</b>Sortie</div><div><b style="background:#ECFDF5;color:#10B981">2</b>Retour</div>
+          </div>
+          <div style="font-weight:700;font-size:15px">Evenements (19)</div>
+          <div class="m-bloc" id="hd-evt" data-on="3" style="padding-top:2px;padding-bottom:2px">
+            <div class="m-evt"><span class="m-evt__ic" style="background:#FEF2F2;color:#EF4444">A</span><div class="m-evt__n"><b>Hugo Perrin</b><span>Absence</span></div><time>10:06</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#ECFDF5;color:#10B981">+</span><div class="m-evt__n"><b>Adam Keller</b><span>Implication</span></div><time>10:12</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#F5F3FF;color:#8B5CF6">S</span><div class="m-evt__n"><b>Lina Bonnet</b><span>Sortie - infirmerie</span></div><time>10:30</time></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : résumé -->
+    <section class="fiche fiche--etroite" id="hs-resume">
+      <div class="fiche__texte">
+        <h2>Le bilan chiffré (« Resume »)</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Détail d'une séance › Resume</span></p>
+        <p class="fiche__but">Voir d'un coup d'œil combien d'implications, de malus, d'absences, de remarques, de sorties et de retours ont été notés.</p>
+        <ol class="etapes">
+          <li data-cursor="#hre-1" data-duration="3200">Six pastilles, chacune dans la couleur de son action : Implication (vert), Malus (orange), Absence (rouge)…</li>
+          <li data-cursor="#hre-5" data-duration="3200">… Remarque (bleu), Sortie (violet) et Retour (vert), le retour d'un élève sorti.</li>
+          <li data-cursor="#hre-0" data-duration="3200">Les six pastilles sont toujours là, même à zéro.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Lecture seule : rien ne se modifie ici.</li>
+            <li>« Implication » correspond à une participation notée par le menu radial.</li>
+            <li>Ici, contrairement au reste de l'application, les zéros s'affichent.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="ligne" style="padding:6px 14px 8px"><span class="c-indigo" style="font-weight:600;font-size:14px">← Retour</span><span class="m-esp" style="text-align:center;font-weight:700;font-size:16px">Detail seance</span><span style="background:#EEF0FF;color:#4F46E5;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600">PDF</span></div>
+        <div class="m-corps">
+          <div class="m-bloc ligne" style="gap:12px;padding:14px"><span style="width:46px;height:46px;border-radius:12px;background:#EEF0FF;display:grid;place-items:center;color:#4F46E5"><svg class="i"><use href="#i-presse"/></svg></span><div><b style="font-size:18px">4B</b><div class="m-tete__s">Mardi 25 Novembre 2026</div></div></div>
+          <div class="ligne" style="gap:8px"><span style="width:32px;height:32px;border-radius:10px;background:#ECFDF5;display:grid;place-items:center;color:#10B981"><svg class="i" style="width:16px;height:16px"><use href="#i-grille"/></svg></span><b style="font-size:15px">Resume</b></div>
+          <div class="m-bloc m-res">
+            <div id="hre-1" data-on="1" style="border-radius:12px"><b style="background:#ECFDF5;color:#10B981">12</b>Implication</div><div data-on="1" style="border-radius:12px"><b style="background:#FFFBEB;color:#F59E0B">4</b>Malus</div><div id="hre-0" data-on="1,3" style="border-radius:12px"><b style="background:#FEF2F2;color:#EF4444">0</b>Absence</div><div data-on="2" style="border-radius:12px"><b style="background:#EFF6FF;color:#3B82F6">1</b>Remarque</div><div id="hre-5" data-on="2" style="border-radius:12px"><b style="background:#F5F3FF;color:#8B5CF6">2</b>Sortie</div><div data-on="2" style="border-radius:12px"><b style="background:#ECFDF5;color:#10B981">2</b>Retour</div>
+          </div>
+        </div>
+        <style>#hs-resume .m-res > div.is-on { box-shadow: 0 0 0 2px #4F46E5; }</style>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : événements -->
+    <section class="fiche fiche--etroite" id="hs-evenements">
+      <div class="fiche__texte">
+        <h2>La liste des actions (« Evenements »)</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Détail d'une séance › Evenements</span></p>
+        <p class="fiche__but">Relire chaque action notée pendant la séance : quel élève, quoi, la précision éventuelle, la remarque écrite, à quelle heure.</p>
+        <ol class="etapes">
+          <li data-cursor="#hev-1" data-duration="3400">Une ligne par action, dans l'ordre de l'heure. À gauche, un signe dans la couleur de l'action : + implication, - malus, A absence, ! remarque, S sortie, ↩ retour.</li>
+          <li data-cursor="#hev-2" data-duration="3400">Au centre, l'élève puis le type, suivi de la précision (« Sortie - infirmerie ») ; une remarque écrite s'affiche dessous, en italique.</li>
+          <li data-cursor="#hev-h" data-duration="2800">À droite, l'heure de l'action.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Lecture seule : ni modification ni suppression ici.</li>
+            <li>Un élève qui n'est plus dans le téléphone apparaît « Eleve inconnu » ; ses actions faites ailleurs ne sont pas retéléchargées.</li>
+            <li>Aucune action : « Aucun evenement enregistre ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="ligne" style="padding:6px 14px 8px"><span class="c-indigo" style="font-weight:600;font-size:14px">← Retour</span><span class="m-esp" style="text-align:center;font-weight:700;font-size:16px">Detail seance</span><span style="background:#EEF0FF;color:#4F46E5;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600">PDF</span></div>
+        <div class="m-corps">
+          <div class="ligne" style="gap:8px"><span style="width:32px;height:32px;border-radius:10px;background:#EFF6FF;display:grid;place-items:center;color:#3B82F6"><svg class="i" style="width:16px;height:16px"><use href="#i-note"/></svg></span><b style="font-size:15px">Evenements (19)</b></div>
+          <div class="m-bloc" style="padding-top:2px;padding-bottom:2px">
+            <div class="m-evt" id="hev-1" data-on="1" style="border-radius:8px"><span class="m-evt__ic" style="background:#FEF2F2;color:#EF4444">A</span><div class="m-evt__n"><b>Hugo Perrin</b><span>Absence</span></div><time>10:06</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#ECFDF5;color:#10B981">+</span><div class="m-evt__n"><b>Adam Keller</b><span>Implication</span></div><time>10:12</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#FFFBEB;color:#F59E0B">-</span><div class="m-evt__n"><b>Tom SA</b><span>Malus</span></div><time>10:18</time></div>
+            <div class="m-evt" id="hev-2" data-on="2" style="border-radius:8px"><span class="m-evt__ic" style="background:#F5F3FF;color:#8B5CF6">S</span><div class="m-evt__n"><b>Lina Bonnet</b><span>Sortie - infirmerie</span></div><time>10:30</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#ECFDF5;color:#10B981">↩</span><div class="m-evt__n"><b>Lina Bonnet</b><span>Retour</span></div><time>10:41</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#EFF6FF;color:#3B82F6">!</span><div class="m-evt__n"><b>Noé Marchal</b><span>Remarque</span><i>Très bonne question sur l'estomac</i></div><time id="hev-h" data-on="3" style="border-radius:4px;padding:1px 3px">10:44</time></div>
+            <div class="m-evt"><span class="m-evt__ic" style="background:#ECFDF5;color:#10B981">+</span><div class="m-evt__n"><b>Iris Tavernier</b><span>Implication</span></div><time>10:47</time></div>
+          </div>
+        </div>
+        <div class="bulle bulle--haut" data-at="2" style="left:40px;top:470px;max-width:270px">« Tom SA » : pseudonyme, car son vrai nom n'a pas été saisi sur ce téléphone</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : PDF -->
+    <section class="fiche fiche--etroite" id="hs-pdf">
+      <div class="fiche__texte">
+        <h2>Exporter la séance en PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Détail d'une séance › PDF</span></p>
+        <p class="fiche__but">Produire le rapport de séance en PDF et l'envoyer ou l'enregistrer par le menu de partage du téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#hp-b" data-action="tap">Toucher <span class="btn-nom">PDF</span> en haut à droite.</li>
+          <li data-cursor="#hp-b" data-duration="2600">Le bouton pâlit et une petite roue tourne pendant la fabrication.</li>
+          <li data-cursor="#hp-app" data-duration="3200">Le menu de partage s'ouvre, avec le nom du fichier (classe et date) : choisir l'application de destination.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Marche sans réseau : le PDF est fabriqué dans le téléphone.</li>
+            <li class="important">Le PDF contient les vrais noms des élèves quand le téléphone les connaît : le partager les fait sortir du téléphone. À ne pas projeter ni diffuser hors de l'établissement.</li>
+            <li>Échec : « Impossible d'exporter le PDF ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="copies-et-reunion-parents.html#pdf-seance">Le contenu du PDF de séance</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="ligne" style="padding:6px 14px 8px"><span class="c-indigo" style="font-weight:600;font-size:14px">← Retour</span><span class="m-esp" style="text-align:center;font-weight:700;font-size:16px">Detail seance</span><span id="hp-b" data-on="1" style="background:#EEF0FF;color:#4F46E5;border-radius:12px;padding:6px 10px;font-size:13px;font-weight:600;display:flex;gap:4px;align-items:center"><span class="repli" data-at="2" style="opacity:.5;display:flex;gap:4px;align-items:center"><span class="m-roue" style="width:13px;height:13px;border-width:2px"></span>PDF</span><span class="repli" data-at="1,3" style="display:flex;gap:4px;align-items:center"><svg class="i" style="width:14px;height:14px"><use href="#i-doc"/></svg>PDF</span></span></div>
+        <div class="m-corps">
+          <div class="m-bloc ligne" style="gap:12px;padding:14px"><span style="width:46px;height:46px;border-radius:12px;background:#EEF0FF;display:grid;place-items:center;color:#4F46E5"><svg class="i"><use href="#i-presse"/></svg></span><div><b style="font-size:18px">5D · Groupe A</b><div class="m-tete__s">Mercredi 26 Novembre 2026</div></div></div>
+          <div class="m-cpts" style="grid-template-columns:repeat(3,1fr)"><div><span>SALLE</span><b>310</b></div><div><span>HEURE</span><b>08:00</b></div><div><span>DUREE</span><b>55 min</b></div></div>
+        </div>
+        <div class="voile" data-at="3"></div>
+        <div class="feuille m-partage glisse-haut" data-at="3">
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px">seance_5D_2026-11-26.pdf</div>
+          <div class="m-tete__s" style="margin-bottom:14px">Partager</div>
+          <div class="ligne" style="justify-content:space-around">
+            <span class="m-app" id="hp-app"><i style="background:#2563EB">C</i>Courriel</span>
+            <span class="m-app"><i style="background:#059669">F</i>Fichiers</span>
+            <span class="m-app"><i style="background:#6B7280">I</i>Imprimer</span>
+            <span class="m-app"><i style="background:#D97706">M</i>Messages</span>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ HISTORIQUE : dernière séance -->
+    <section class="fiche fiche--etroite" id="hs-derniere">
+      <div class="fiche__texte">
+        <h2>Le raccourci « Dernière séance » de l'accueil</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Accueil › sous le gros bouton</span></p>
+        <p class="fiche__but">Rappeler la dernière séance terminée et ouvrir l'historique d'un seul appui.</p>
+        <ol class="etapes">
+          <li data-cursor="#hde-c" data-duration="3400">Sous le gros bouton vert, la carte dit la classe, depuis quand (« il y a 2 h », « hier », ou une date courte) et la durée.</li>
+          <li data-cursor="#hde-c" data-action="tap">La toucher…</li>
+          <li data-cursor="#hde-tab" data-duration="3000">… ouvre l'onglet Historique : la liste, pas le détail de cette séance.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pendant une séance en cours, la carte est remplacée par « Reprendre la séance ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond"><svg class="i"><use href="#i-sync"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s">Suivre la participation en classe en moins de 2 secondes</div>
+          <div class="m-derniere" id="hde-c" data-on="1-2" style="margin-left:0;margin-right:0">Dernière séance : 5B · il y a 2 h, 52 min<svg class="i"><use href="#i-chev-d"/></svg></div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span id="hde-tab"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="m-ecran glisse-gauche" data-at="3" style="bottom:54px">
+          <div class="m-h1">Historique</div>
+          <div class="m-corps" style="gap:8px">
+            <div class="m-recherche"><svg class="i"><use href="#i-loupe"/></svg>Rechercher (classe, salle, thème)…</div>
+            <div class="m-jour">Aujourd'hui</div>
+            <div class="m-seance"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          </div>
+        </div>
+        <div class="m-onglets repli" data-at="3" style="position:absolute;left:0;right:0;bottom:0;z-index:520"><span><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span class="is-actif"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : vue d'ensemble -->
+    <section class="fiche fiche--etroite" id="sy-apercu">
+      <div class="fiche__texte">
+        <h2>La synchronisation : ce qui part, et quand</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Partout, automatiquement</span></p>
+        <p class="fiche__but">Le téléphone a sa propre base : tout ce qu'on y fait s'enregistre d'abord dedans, sans attendre le réseau. La synchronisation échange ensuite avec le serveur, donc avec le site.</p>
+        <ol class="etapes">
+          <li data-cursor="#sa-tel" data-duration="3600">Chaque geste (séance, action élève, tampon, plan, TP) est écrit dans le téléphone. Tant qu'il n'est pas parti, il est « en attente ».</li>
+          <li data-cursor="#sa-direct" data-duration="3800">Pendant la séance, chaque action élève part dans la seconde si le réseau est là, pour que l'écran projeté la voie. Sinon, elle attend : rien n'est perdu.</li>
+          <li data-cursor="#sa-quand" data-duration="4600">La synchronisation complète, le filet de sécurité, part seule : au lancement, au retour du réseau, au début et à la fin d'une séance, au retour dans l'application. Ou à la main.</li>
+          <li data-cursor="#sa-ordre" data-duration="4000">Elle descend d'abord ce qui a changé sur le site, puis envoie tout ce qui attend.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Jamais deux synchronisations à la fois. Chaque moitié (descente, envoi) a deux minutes au plus.</li>
+            <li>Chaque type de données part à part : si l'un est refusé, les autres partent quand même ; l'erreur est rapportée à la fin.</li>
+            <li>Une synchronisation réussie ne montre rien. En échec, l'accueil affiche « Erreur de synchronisation ».</li>
+            <li>Les copies d'évaluation ont leur propre file d'envoi.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Deux façons d'envoyer</div>
+          <div class="sc-boite" id="sa-tel" data-on="1">
+            <div class="sc-boite__t"><svg class="i"><use href="#i-livre"/></svg>Base du téléphone</div>
+            <div class="sc-it ok">Séances, actions, tampons, plans, TP : écrits ici d'abord</div>
+            <div class="sc-it att">Marque « en attente » tant que rien n'est parti</div>
+          </div>
+          <div class="ligne" style="justify-content:space-around">
+            <div class="sc-fl sc-fl--bas" id="sa-direct" data-on="2">Envoi immédiat<br>(séance en cours)</div>
+            <div class="sc-fl sc-fl--bas" data-on="3-4">Synchronisation<br>complète</div>
+          </div>
+          <div class="sc-boite" id="sa-ordre" data-on="4">
+            <div class="sc-boite__t"><svg class="i"><use href="#i-nuage"/></svg>Serveur</div>
+            <div class="sc-it ind">1. Descente : ce qui a changé sur le site</div>
+            <div class="sc-it ind">2. Envoi : tout ce qui attend sur le téléphone</div>
+          </div>
+          <div class="sc-fl">vu par</div>
+          <div class="sc-boite"><div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Site, écran projeté, espace élève</div></div>
+          <div class="sc-boite" id="sa-quand" data-on="3" style="margin-top:4px">
+            <div class="sc-boite__t"><svg class="i"><use href="#i-sync"/></svg>Quand part la synchronisation complète ?</div>
+            <div class="sc-it">À chaque lancement de l'application</div>
+            <div class="sc-it">Une seconde après le retour du réseau</div>
+            <div class="sc-it">Au début et à la fin d'une séance (avec réseau)</div>
+            <div class="sc-it">Au retour dans l'application, si la dernière date de plus de 30 min</div>
+            <div class="sc-it">À la main : bouton de l'accueil, ou tirer l'historique</div>
+          </div>
+          <div class="sc-paquet glisse-haut" data-at="2" style="left:40px;top:250px">+1 Implication</div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : bouton -->
+    <section class="fiche fiche--etroite" id="sy-bouton">
+      <div class="fiche__texte">
+        <h2>Le bouton « Synchroniser »</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Accueil › rond aux flèches circulaires</span></p>
+        <p class="fiche__but">Forcer tout de suite une synchronisation complète : récupérer les nouveautés du site et envoyer ce qui attend.</p>
+        <ol class="etapes">
+          <li data-cursor="#sb-b" data-action="tap">Sur l'accueil, toucher le premier rond en haut à droite, aux deux flèches circulaires.</li>
+          <li data-cursor="#sb-hero" data-duration="3600">Les flèches tournent et passent en indigo ; le gros bouton vert affiche une roue et « Synchronisation en cours… » : il est bloqué jusqu'à la fin.</li>
+          <li data-cursor="#sb-b" data-duration="3400">C'est fini : rien ne s'affiche si tout s'est bien passé, la pastille rouge disparaît. En cas d'échec, une fenêtre d'erreur s'ouvre.</li>
+          <li data-cursor="#sb-b" data-duration="3200">Sans réseau, le rond est pâle et ne réagit pas.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le bouton est aussi inactif pendant une synchronisation déjà en cours.</li>
+            <li>Après une synchronisation manuelle réussie, les listes de classes et de salles sont rechargées.</li>
+            <li>Une synchronisation manuelle bloque le gros bouton « Démarrer une séance » jusqu'à la fin (quatre minutes au plus) ; celle du lancement, non.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-hl" data-at="4">Mode hors-ligne</div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sb-b" data-on="1"><svg class="i repli" data-at="1,3"><use href="#i-sync"/></svg><svg class="i repli tourne" data-at="2" style="color:#4F46E5"><use href="#i-sync"/></svg><svg class="i repli" data-at="4" style="opacity:.5"><use href="#i-sync"/></svg><b class="m-badge repli" data-at="1">26</b><b class="m-badge repli" data-at="4">3</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero" id="sb-hero"><span class="repli" data-to="1"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></span><span class="m-roue m-roue--b repli" data-at="2" style="width:40px;height:40px;border-width:4px"></span><span class="repli" data-from="3"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></span></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s"><span data-at="2">Synchronisation en cours…</span><span data-at="1,3-4">Suivre la participation en classe en moins de 2 secondes</span></div>
+          <div class="m-derniere" style="margin-left:0;margin-right:0">Dernière séance : 5B · il y a 2 h, 52 min<svg class="i"><use href="#i-chev-d"/></svg></div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : pastille -->
+    <section class="fiche fiche--etroite" id="sy-pastille">
+      <div class="fiche__texte">
+        <h2>La pastille rouge : ce qui attend d'être envoyé</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Accueil › coin du bouton Synchroniser</span></p>
+        <p class="fiche__but">Savoir si des données du téléphone ne sont pas encore arrivées sur le serveur, donc sur le site.</p>
+        <ol class="etapes">
+          <li data-cursor="#sp-b" data-duration="3600">Le chiffre compte les lignes jamais envoyées : séances, actions, élèves, plans, tampons, TP… et les suppressions à transmettre.</li>
+          <li data-cursor="#sp-b" data-duration="3600">Ce n'est pas un nombre de séances : une séance de 25 actions compte 26. Au-delà de 99 : « 99+ ».</li>
+          <li data-cursor="#sp-b" data-duration="3000">Tout est parti : la pastille disparaît. Elle est cachée aussi pendant une synchronisation.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Elle se recalcule toutes les 30 secondes, après chaque synchronisation et après chaque tampon posé.</li>
+            <li>Limite actuelle : une action dont l'élève ou la séance n'existe plus dans le téléphone ne peut pas partir mais reste comptée ; la pastille peut alors ne jamais revenir à zéro.</li>
+            <li>Elle compte aussi ce qu'un autre compte aurait laissé en attente sur ce téléphone. Les copies d'évaluation n'y sont pas comptées.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sp-b"><svg class="i"><use href="#i-sync"/></svg><b class="m-badge repli" data-at="1">26</b><b class="m-badge repli" data-at="2">99+</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s">Suivre la participation en classe en moins de 2 secondes</div>
+          <div class="m-derniere" style="margin-left:0;margin-right:0">Dernière séance : 5B · il y a 5 min, 52 min<svg class="i"><use href="#i-chev-d"/></svg></div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="bulle bulle--haut" data-at="1" style="left:120px;top:96px;max-width:200px">1 séance + 25 actions = 26 lignes en attente</div>
+        <div class="bulle bulle--haut" data-at="2" style="left:120px;top:96px;max-width:200px">Plusieurs séances faites sans réseau</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : erreur -->
+    <section class="fiche fiche--etroite" id="sy-erreur">
+      <div class="fiche__texte">
+        <h2>La fenêtre « Erreur de synchronisation »</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Par-dessus l'accueil</span></p>
+        <p class="fiche__but">Prévenir que des données n'ont pas pu être échangées avec le serveur, que la synchronisation ait été lancée à la main ou toute seule.</p>
+        <ol class="etapes">
+          <li data-cursor="#se-t" data-duration="3000">La fenêtre apparaît en fondu, avec une croix rouge et le titre.</li>
+          <li data-cursor="#se-m" data-duration="3800">Le message, en rouge, est souvent technique et en anglais (par exemple un délai dépassé). Les données restent dans le téléphone : elles repartiront.</li>
+          <li data-cursor="#se-f" data-action="tap">Toucher <span class="btn-nom">Fermer</span>, ou n'importe où autour, ou le geste retour.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une réussite n'affiche rien.</li>
+            <li>Limite actuelle : si l'envoi dépasse deux minutes, l'erreur est notée mais la fenêtre ne s'ouvre pas ; et les erreurs partielles de la descente (une partie du site illisible) ne sont jamais montrées.</li>
+            <li>La fenêtre appartient à l'accueil : elle pourrait s'ouvrir alors qu'on est sur un autre onglet (pas vérifié sur téléphone).</li>
+            <li>Que faire : vérifier le réseau, puis relancer avec le bouton Synchroniser. Si le message revient, le noter et l'envoyer par « Votre retour ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond"><svg class="i"><use href="#i-sync"/></svg><b class="m-badge">26</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+        </div>
+        <div class="m-voile zoom" style="background:rgba(15,23,42,.6)">
+          <div class="m-modale">
+            <div style="width:60px;height:60px;border-radius:50%;background:#FDE8E8;color:#EF4444;display:grid;place-items:center;margin:0 auto 14px"><svg class="i" style="width:30px;height:30px;stroke-width:2.6"><use href="#i-x"/></svg></div>
+            <div id="se-t" style="font-size:19px;font-weight:700;margin-bottom:8px">Erreur de synchronisation</div>
+            <div id="se-m" style="color:#EF4444;font-size:14px;line-height:1.4;margin-bottom:18px">Pull serveur : Pull serveur timeout apres 120s</div>
+            <div class="m-btn m-btn--doux" id="se-f" data-on="3" style="border-radius:16px">Fermer</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : au lancement -->
+    <section class="fiche fiche--etroite" id="sy-lancement">
+      <div class="fiche__texte">
+        <h2>Synchronisation au lancement</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Automatique, à l'ouverture</span></p>
+        <p class="fiche__but">Récupérer sans y penser ce qui a été préparé sur le site (nouvelle classe, nouveaux élèves, plan refait) et envoyer ce qui attendait.</p>
+        <ol class="etapes">
+          <li data-cursor="#sl-init" data-duration="2600">À l'ouverture : « Initialisation... » (préparation de la base du téléphone), puis la vérification du compte.</li>
+          <li data-cursor="#sl-b" data-duration="3400">Sur l'accueil, les flèches du bouton Synchroniser tournent : la synchronisation part, une fois par lancement.</li>
+          <li data-cursor="#sl-hero" data-action="tap" data-duration="3400">Le gros bouton vert reste utilisable pendant ce temps : on peut démarrer la séance tout de suite.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une fois par lancement, même si le téléphone connaît déjà les classes ; les listes de classes et de salles sont rafraîchies ensuite.</li>
+            <li>Sans réseau, elle échoue (fenêtre d'erreur possible) ; c'est le retour du réseau qui prend le relais.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sl-b"><svg class="i tourne" style="color:#4F46E5"><use href="#i-sync"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero" id="sl-hero" data-on="3"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s">Suivre la participation en classe en moins de 2 secondes</div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="m-ecran" data-at="1" style="inset:0;background:#FAFAFA;align-items:center;justify-content:center;gap:12px;z-index:700"><div class="m-roue" style="width:34px;height:34px;border-width:4px"></div><div id="sl-init" style="font-size:15px;color:#6B7280">Initialisation...</div></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : retour du réseau -->
+    <section class="fiche fiche--etroite" id="sy-reseau">
+      <div class="fiche__texte">
+        <h2>Synchronisation au retour du réseau</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Automatique, partout</span></p>
+        <p class="fiche__but">Envoyer tout seul ce qui a été noté sans réseau, dès que le téléphone retrouve Internet.</p>
+        <ol class="etapes">
+          <li data-cursor="#sr-hl" data-duration="3000">Sans réseau, le bandeau « Mode hors-ligne » est en haut ; la pastille compte ce qui attend.</li>
+          <li data-cursor="#sr-b" data-duration="3000">Le réseau revient : le bandeau disparaît.</li>
+          <li data-cursor="#sr-hero" data-duration="3600">Une seconde plus tard, la synchronisation part : flèches qui tournent, gros bouton bloqué avec « Synchronisation en cours… ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'état du réseau n'est pris en compte qu'après une demi-seconde de stabilité, pour éviter les clignotements.</li>
+            <li>Un réseau dont l'accès à Internet n'est pas encore connu est compté comme présent.</li>
+            <li>Contrairement à celle du lancement, cette synchronisation bloque le gros bouton de l'accueil jusqu'à la fin.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-hl" id="sr-hl" data-at="1">Mode hors-ligne</div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sr-b"><svg class="i repli" data-at="1" style="opacity:.5"><use href="#i-sync"/></svg><svg class="i repli" data-at="2"><use href="#i-sync"/></svg><svg class="i repli tourne" data-at="3" style="color:#4F46E5"><use href="#i-sync"/></svg><b class="m-badge repli" data-to="2">31</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero" id="sr-hero"><span class="repli" data-to="2"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></span><span class="m-roue m-roue--b repli" data-at="3" style="width:40px;height:40px;border-width:4px"></span></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s"><span data-at="3">Synchronisation en cours…</span><span data-to="2">Suivre la participation en classe en moins de 2 secondes</span></div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : début et fin de séance -->
+    <section class="fiche fiche--etroite" id="sy-seance">
+      <div class="fiche__texte">
+        <h2>Synchronisation au début et à la fin d'une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Automatique, avec réseau</span></p>
+        <p class="fiche__but">Au début, que la séance existe tout de suite sur le serveur pour que l'écran projeté s'y accroche ; à la fin, que l'heure de fin et toutes les actions partent.</p>
+        <ol class="etapes">
+          <li data-cursor="#ss-dem" data-action="tap">Démarrer la séance : une demi-seconde après, une synchronisation part (avec la classe et la salle).</li>
+          <li data-cursor="#ss-plan" data-duration="3200">Pendant l'heure, rien de particulier ne s'affiche sur l'écran de séance.</li>
+          <li data-cursor="#ss-fin" data-action="tap">Toucher <span class="btn-nom">Terminer</span> : nouvelle synchronisation, qui emporte l'heure de fin et les actions. Pareil à la fin d'un TP en groupes.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seulement si le réseau est là à ce moment ; sinon, c'est le retour du réseau qui s'en charge.</li>
+            <li>En cas d'échec, la fenêtre d'erreur s'affiche à l'accueil.</li>
+            <li>Si la classe a été supprimée sur le site entre-temps, la séance est abandonnée et effacée du téléphone.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-st"><span class="m-st__ann">Annuler</span><div class="m-st__mid"><b>5B</b><span><span data-at="1">0 min</span><span data-from="2">54 min</span></span></div><span class="m-st__fin" id="ss-fin" data-on="3">Terminer</span></div>
+        <div class="m-seg"><span class="m-seg__piste"><i class="on">Plan de classe</i><i>Groupes</i></span><span class="m-rond"><svg class="i"><use href="#i-ecran"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-reglage"/></svg></span></div>
+        <div class="m-plan" id="ss-plan">
+          <div class="t-place">Lina</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div><div class="t-place">Noé</div><div class="t-place">Zoé</div>
+          <div class="t-place">Iris</div><div class="t-place">Adam<span class="cpt c-part repli" data-from="2">+2</span></div><div class="t-place t-place--vide"></div><div class="t-place">Jade</div><div class="t-place">Malo</div>
+          <div class="t-place">Inès</div><div class="t-place t-place--absent">Hugo<br>ABS</div><div class="t-place t-place--vide"></div><div class="t-place">Rose<span class="cpt c-bav repli" data-from="2">1</span></div><div class="t-place">Sacha</div>
+        </div>
+        <div class="m-ecran glisse-haut" data-at="1" style="padding:0 0 14px">
+          <div class="m-tete"><svg class="i" style="width:24px;height:24px"><use href="#i-chev-g"/></svg><div class="m-tete__t">Nouvelle séance</div></div>
+          <div class="m-corps">
+            <div class="m-sec">1 · Choisir une classe</div>
+            <div class="grille3" style="gap:8px"><span class="m-btn m-btn--blanc">3A</span><span class="m-btn m-btn--blanc">4B</span><span class="m-btn" style="background:#4F46E5">5B</span></div>
+            <div class="m-sec" style="margin-top:6px">3 · Salle</div>
+            <div class="grille3" style="gap:8px"><span class="m-btn" style="background:#4F46E5">210</span><span class="m-btn m-btn--blanc">310</span><span class="m-btn m-btn--blanc">Labo</span></div>
+            <div class="m-esp"></div>
+            <div class="m-btn" id="ss-dem" data-on="1" style="background:#059669">Démarrer la séance</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : retour dans l'application -->
+    <section class="fiche fiche--etroite" id="sy-premier-plan">
+      <div class="fiche__texte">
+        <h2>Synchronisation au retour dans l'application</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Automatique, avec réseau</span></p>
+        <p class="fiche__but">Rattraper les actions ou tampons qui n'avaient pas pu partir, et rafraîchir les données si elles sont anciennes.</p>
+        <ol class="etapes">
+          <li data-cursor="#sp2-autre" data-duration="3000">On passe par une autre application, ou l'écran s'éteint.</li>
+          <li data-cursor="#sp2-b" data-duration="3800">De retour dans Gestion Classe : si la dernière synchronisation date de plus de 30 minutes, une synchronisation complète part (flèches qui tournent, gros bouton bloqué)…</li>
+          <li data-cursor="#sp2-b" data-duration="3600">… sinon, seul ce qui attend est envoyé, sans rien afficher. S'il n'y a rien en attente, rien ne se passe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seulement avec réseau.</li>
+            <li>Depuis le lancement, si aucune synchronisation n'a encore eu lieu, c'est une synchronisation complète.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sp2-b"><svg class="i repli tourne" data-at="2" style="color:#4F46E5"><use href="#i-sync"/></svg><svg class="i repli" data-at="1,3"><use href="#i-sync"/></svg><b class="m-badge repli" data-at="1">2</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><span class="repli" data-at="1,3"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></span><span class="m-roue m-roue--b repli" data-at="2" style="width:40px;height:40px;border-width:4px"></span></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s"><span data-at="2">Synchronisation en cours…</span><span data-at="1,3">Suivre la participation en classe en moins de 2 secondes</span></div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="m-ecran glisse-gauche" data-at="1" id="sp2-autre" style="inset:0;background:#2B2F38;color:#D1D5DB;align-items:center;justify-content:center;font-size:14px;z-index:700">Une autre application</div>
+        <div class="bulle bulle--haut" data-at="2" style="left:90px;top:90px;max-width:230px">Dernière synchronisation il y a plus de 30 min : synchronisation complète</div>
+        <div class="bulle bulle--haut" data-at="3" style="left:90px;top:90px;max-width:230px">Synchronisation récente : les 2 éléments en attente partent en silence</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : envoi immédiat des actions -->
+    <section class="fiche fiche--etroite" id="sy-direct-actions">
+      <div class="fiche__texte">
+        <h2>Envoi immédiat des actions en séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Séance › menu radial</span></p>
+        <p class="fiche__but">Que l'écran projeté et le site voient l'action en direct, sans attendre la fin de la séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#sd-adam" data-duration="3200">Une action est notée par le menu radial : vibration et bannière de confirmation, qui ne dépendent jamais du réseau.</li>
+          <li data-cursor="#sd-adam" data-duration="3800">Elle est d'abord écrite dans le téléphone, puis envoyée dans la seconde si le réseau est là : l'écran projeté la montre.</li>
+          <li data-cursor="#sd-rose" data-duration="3800">Sans réseau, l'envoi échoue en silence : l'action reste en attente et partira à la prochaine synchronisation.</li>
+          <li data-cursor="#sd-ann" data-action="tap" data-duration="3600">Annuler une action (bannière « Annuler », retrait d'une absence) l'efface du téléphone ; si elle était déjà partie, sa suppression est transmise aussitôt, ou plus tard.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une action élève se note en moins de 2 secondes, confirmée par une vibration, avec ou sans réseau.</li>
+            <li>Point non éclairci : une annulation faite pendant l'envoi lui-même pourrait laisser l'action sur le serveur (pas vérifié).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="pendant-la-seance.html">L'écran de séance</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-hl" data-at="3">Mode hors-ligne</div>
+        <div class="m-st" style="margin-top:0"><span class="m-st__ann">Annuler</span><div class="m-st__mid"><b>5B</b><span>23 min</span></div><span class="m-st__fin">Terminer</span></div>
+        <div class="m-seg"><span class="m-seg__piste"><i class="on">Plan de classe</i><i>Groupes</i></span><span class="m-rond"><svg class="i"><use href="#i-ecran"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-reglage"/></svg></span></div>
+        <div class="m-plan">
+          <div class="t-place">Lina</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div><div class="t-place">Noé</div><div class="t-place">Zoé</div>
+          <div class="t-place">Iris</div><div class="t-place" id="sd-adam">Adam<span class="cpt c-part">+1</span></div><div class="t-place t-place--vide"></div><div class="t-place">Jade</div><div class="t-place">Malo</div>
+          <div class="t-place">Inès</div><div class="t-place">Hugo</div><div class="t-place t-place--vide"></div><div class="t-place" id="sd-rose">Rose<span class="cpt c-bav repli" data-from="3">1</span></div><div class="t-place">Sacha</div>
+        </div>
+        <div class="glisse-bas" data-at="1-2,4" style="position:absolute;left:12px;right:12px;top:40px;z-index:600;background:#10B981;color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;display:flex;gap:6px;box-shadow:0 8px 20px rgba(16,185,129,.35)">Adam KE · +1 Implication<span class="m-esp"></span><u id="sd-ann">Annuler</u></div>
+        <div class="glisse-bas" data-at="3" style="position:absolute;left:12px;right:12px;top:40px;z-index:600;background:#F59E0B;color:#fff;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;display:flex;gap:6px">Rose VI · Malus<span class="m-esp"></span><u>Annuler</u></div>
+        <div class="zoom" data-at="2" style="position:absolute;left:30px;right:30px;bottom:40px;z-index:600;background:#14151A;border:8px solid #26272D;border-radius:8px;padding:10px;color:#F4F4F5;font-size:11px">
+          <div style="font-size:9px;letter-spacing:.08em;color:#9CA3AF;margin-bottom:6px">ÉCRAN PROJETÉ</div>
+          <div class="grille4" style="gap:5px"><span style="background:#2A2B31;border-radius:5px;padding:5px;text-align:center">Lina</span><span style="background:#2A2B31;border-radius:5px;padding:5px;text-align:center">Tom</span><span style="background:#2A2B31;border-radius:5px;padding:5px;text-align:center">Iris</span><span style="background:#065F46;border-radius:5px;padding:5px;text-align:center">Adam +1</span></div>
+        </div>
+        <div class="bulle bulle--bas" data-at="3" style="left:60px;top:420px;max-width:240px">Sans réseau : l'action attend sur le téléphone</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : TP -->
+    <section class="fiche fiche--etroite" id="sy-direct-tp">
+      <div class="fiche__texte">
+        <h2>Envoi immédiat d'un TP en groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--eleve">Élève</span><span class="chemin">Séance › vue Groupes</span></p>
+        <p class="fiche__but">Que l'espace élève et le site suivent le TP en direct : notes, déplacements d'élèves, malus, commentaires, photos.</p>
+        <ol class="etapes">
+          <li data-cursor="#st-tel" data-duration="3400">Pendant le TP, les gestes rapprochés sont regroupés : l'envoi part 1,5 seconde après le dernier geste.</li>
+          <li data-cursor="#st-photo" data-duration="3400">Pour une photo, le fichier part d'abord, puis la ligne qui la décrit.</li>
+          <li data-cursor="#st-site" data-duration="3400">Le site et l'espace élève reçoivent la mise à jour. En cas d'échec, rien ne s'affiche : la synchronisation complète rattrapera.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Rien ne part tant que le TP est en brouillon.</li>
+            <li>Une note modifiée pendant l'envoi n'est pas marquée « partie » : elle repart au tour suivant.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-en-groupes.html">TP en groupes</a></p>
+              </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Un TP en groupes, en direct</div>
+          <div class="sc-boite" id="st-tel" data-on="1">
+            <div class="sc-boite__t"><svg class="i"><use href="#i-users"/></svg>Téléphone, vue Groupes</div>
+            <div class="sc-it ind">Note du groupe 2 changée</div>
+            <div class="sc-it ind">Élève déplacé du groupe 1 au groupe 3</div>
+            <div class="sc-it ind" id="st-photo" data-on="2">Photo du groupe 4</div>
+            <div class="sc-it att">Attendre 1,5 s après le dernier geste</div>
+          </div>
+          <div class="sc-fl sc-fl--bas" data-on="1-2">un seul envoi groupé</div>
+          <div class="sc-boite"><div class="sc-boite__t"><svg class="i"><use href="#i-nuage"/></svg>Serveur</div><div class="sc-it">1. le fichier photo · 2. la ligne de la photo</div></div>
+          <div class="sc-fl" data-on="3">mise à jour</div>
+          <div class="sc-boite" id="st-site" data-on="3"><div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Site et espace élève</div><div class="sc-it ok">Le TP suit, sans recharger</div></div>
+          <div class="sc-paquet glisse-haut" data-at="1" style="left:190px;top:270px">3 changements</div>
+          <div class="sc-legende">Si l'envoi échoue : silence, la synchronisation complète rattrape.</div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : tampons -->
+    <section class="fiche fiche--etroite" id="sy-direct-tampons">
+      <div class="fiche__texte">
+        <h2>Envoi immédiat des tampons</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--eleve">Élève</span><span class="chemin">Séance › carte à tampons d'un élève</span></p>
+        <p class="fiche__but">Que la carte de récompenses de l'élève soit à jour sur le site et dans son espace élève.</p>
+        <ol class="etapes">
+          <li data-cursor="#stp-pose" data-duration="3200">Un tampon posé part aussitôt vers le serveur.</li>
+          <li data-cursor="#stp-15" data-duration="3600">Si l'envoi échoue, un nouvel essai est programmé 15 secondes plus tard ; la pastille rouge de l'accueil augmente en attendant.</li>
+          <li data-cursor="#stp-ok" data-duration="3400">Sinon, le retour dans l'application ou la synchronisation suivante s'en charge. Un tampon refusé n'empêche pas les autres de partir.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un tampon posé sur le téléphone n'est jamais écrasé par le serveur : en cas de doublon, il est décalé ou renuméroté.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Un tampon pour Lina BO</div>
+          <div class="sc-boite" id="stp-pose" data-on="1"><div class="sc-boite__t"><svg class="i"><use href="#i-coche"/></svg>Tampon posé sur le téléphone</div><div class="sc-it ok">Enregistré tout de suite, avec ou sans réseau</div></div>
+          <div class="sc-fl sc-fl--bas" data-on="1">envoi immédiat</div>
+          <div class="sc-boite" id="stp-15" data-on="2"><div class="sc-boite__t"><svg class="i"><use href="#i-sablier"/></svg>Échec ?</div><div class="sc-it att">Nouvel essai 15 secondes plus tard</div><div class="sc-it att">La pastille rouge de l'accueil compte le tampon</div></div>
+          <div class="sc-fl" data-on="3">sinon, plus tard</div>
+          <div class="sc-boite" id="stp-ok" data-on="3"><div class="sc-boite__t"><svg class="i"><use href="#i-sync"/></svg>Retour dans l'application, ou synchronisation</div><div class="sc-it ok">Les tampons partent un par un</div></div>
+          <div class="sc-boite"><div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Site et espace élève</div><div class="sc-it">La carte de l'élève est à jour</div></div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : écran de classe -->
+    <section class="fiche fiche--etroite" id="sy-ecran-classe">
+      <div class="fiche__texte">
+        <h2>Le canal direct avec l'écran projeté</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Séance › bouton écran</span></p>
+        <p class="fiche__but">Piloter depuis le téléphone l'écran projeté en classe (page « Lancer la séance » du site) pendant la séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#sec-tel" data-duration="3400">À l'ouverture de la séance, le téléphone rejoint un canal propre à cette séance ; il le quitte à la fin.</li>
+          <li data-cursor="#sec-cmd" data-duration="4000">Les commandes partent des boutons de la séance : plan ou tableau, minuteur, rideau, écran suivant ou précédent d'un cours, vue d'ensemble, élève tiré au sort.</li>
+          <li data-cursor="#sec-off" data-duration="3600">Sans réseau, une commande est perdue : rien n'est mis en attente, il suffit de la refaire.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'élève tiré au sort part sous son pseudonyme, jamais sous son vrai nom. Aucun aménagement (PAP, PPRE, PAI) n'est envoyé à l'écran projeté.</li>
+            <li>Pour que l'écran trouve la séance, elle doit avoir été envoyée (synchronisation du début de séance).</li>
+            <li>Le canal prévoit aussi des messages de l'écran vers le téléphone (tampon demandé depuis le tableau, tirage fait au tableau) : le téléphone ne les écoute pas encore.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../index.html">Sommaire du guide (partie Écran de classe)</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Téléphone → écran projeté</div>
+          <div class="sc-boite" id="sec-tel" data-on="1"><div class="sc-boite__t"><svg class="i"><use href="#i-scan"/></svg>Téléphone, séance de la 5B</div><div class="sc-it ind">Canal de la séance : rejoint à l'ouverture, quitté à la fin</div></div>
+          <div class="sc-fl sc-fl--bas" data-on="2">commandes, en direct</div>
+          <div class="sc-boite" id="sec-cmd" data-on="2">
+            <div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Écran projeté</div>
+            <div class="sc-it">Afficher le plan ou le tableau</div>
+            <div class="sc-it">Lancer ou arrêter un minuteur</div>
+            <div class="sc-it">Rideau</div>
+            <div class="sc-it">Écran suivant, précédent, vue d'ensemble d'un cours</div>
+            <div class="sc-it">Élève tiré au sort : « Lina BO »</div>
+          </div>
+          <div class="sc-boite" id="sec-off" data-on="3" style="margin-top:8px"><div class="sc-boite__t" style="color:#B91C1C"><svg class="i" style="color:#EF4444"><use href="#i-nuage-off"/></svg>Sans réseau</div><div class="sc-it ko">La commande est perdue, pas mise en attente</div><div class="sc-it ok">Les actions élèves, elles, attendent et partiront</div></div>
+          <div class="sc-paquet glisse-haut" data-at="2" style="left:200px;top:215px">Minuteur 5 min</div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : bandeau hors ligne -->
+    <section class="fiche fiche--etroite" id="sy-bandeau">
+      <div class="fiche__texte">
+        <h2>Le bandeau « Mode hors-ligne »</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">En haut de tous les écrans</span></p>
+        <p class="fiche__but">Signaler que le téléphone n'a pas Internet. Tout continue de s'enregistrer dans le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#sbd-b" data-duration="3400">Le réseau tombe : une bande grise apparaît en fondu tout en haut, avec un petit rond et « Mode hors-ligne ». Elle passe par-dessus le haut de l'écran.</li>
+          <li data-cursor="#sbd-sync" data-duration="3000">Le bouton de synchronisation de l'accueil pâlit. On continue à travailler normalement.</li>
+          <li data-cursor="#sbd-nom" data-duration="3000">Le réseau revient : le bandeau disparaît aussitôt, et la synchronisation part une seconde plus tard.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Hors ligne veut dire : pas de connexion, ou une connexion dont l'accès à Internet est confirmé absent. Dans les premiers instants, l'application se croit en ligne.</li>
+            <li>Un changement n'est pris en compte qu'après une demi-seconde, pour éviter le clignotement.</li>
+            <li>Les écrans de copies d'évaluation répètent ce bandeau.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-hl" id="sbd-b" data-to="2">Mode hors-ligne</div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700" id="sbd-nom">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sbd-sync"><svg class="i repli" data-to="2" style="opacity:.5"><use href="#i-sync"/></svg><svg class="i repli tourne" data-at="3" style="color:#4F46E5"><use href="#i-sync"/></svg><b class="m-badge repli" data-to="2">8</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s">Suivre la participation en classe en moins de 2 secondes</div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : hors ligne -->
+    <section class="fiche fiche--etroite" id="sy-hors-ligne">
+      <div class="fiche__texte">
+        <h2>Hors ligne : ce qui marche, ce qui attend le réseau</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Toute l'application</span></p>
+        <p class="fiche__but">Savoir à quoi s'attendre en salle sans Wi-Fi : la séance marche entièrement ; quelques fonctions ont besoin du réseau.</p>
+        <ol class="etapes">
+          <li data-cursor="#sh-ok" data-duration="4600">Marche sans réseau : la séance complète (actions, sorties, remarques écrites, tampons, étiquettes, tirage au sort), les TP en groupes, l'historique et ses PDF, classes, élèves, plans, groupes, salles.</li>
+          <li data-cursor="#sh-ok2" data-duration="4200">Marche aussi : le scan des copies (avec sa propre file d'envoi), la création d'une évaluation au téléphone, la partie locale de la réunion parents, les trois PDF.</li>
+          <li data-cursor="#sh-att" data-duration="4800">Attend le réseau : connexion et inscription, synchronisation, note pour ce cours (elle ne s'affiche pas), photos d'élèves, proposition de groupe par l'emploi du temps, notes et implication en réunion, pages déjà envoyées d'une copie, effacement des scans, « Votre retour », pilotage de l'écran projeté.</li>
+          <li data-cursor="#sh-lim" data-duration="5200">Limites actuelles, à connaître avant d'aller dans une salle sans réseau (détail ci-contre).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tout ce qui « marche sans réseau » partira seul au retour du réseau ; rien à faire.</li>
+            <li>Limite actuelle : l'évaluation orale (bouton « Oral » de la séance) s'écrit directement sur le serveur ; sans réseau, elle ne fonctionne pas.</li>
+            <li>Limite actuelle : une remarque avec photo, enregistrée sans réseau, garde son texte mais perd sa photo, sans avertissement.</li>
+            <li>Limite actuelle : ouvrir l'application sans réseau ramène aujourd'hui à l'écran de connexion ; une correction est en préparation. Mieux vaut l'ouvrir une première fois avec du réseau.</li>
+            <li>Les commandes envoyées à l'écran projeté sans réseau sont perdues : il suffit de les refaire.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc" style="gap:5px">
+          <div class="sc-t">Sans réseau</div>
+          <div class="sc-boite" id="sh-ok" data-on="1">
+            <div class="sc-boite__t" style="color:#059669"><svg class="i" style="color:#059669"><use href="#i-coche"/></svg>Marche sans réseau</div>
+            <div class="sc-it ok">Séance complète : actions, sorties, remarques, tampons, étiquettes, tirage</div>
+            <div class="sc-it ok">TP en groupes</div>
+            <div class="sc-it ok">Historique, détail et PDF d'une séance</div>
+            <div class="sc-it ok">Classes, élèves, plans, groupes, salles</div>
+          </div>
+          <div class="sc-boite" id="sh-ok2" data-on="2">
+            <div class="sc-it ok">Scan des copies et création d'une éval (file d'envoi)</div>
+            <div class="sc-it ok">Réunion : liste, scores, compteurs, comportement, journal</div>
+            <div class="sc-it ok">PDF de séance, d'élève, de classe</div>
+          </div>
+          <div class="sc-boite" id="sh-att" data-on="3">
+            <div class="sc-boite__t" style="color:#B45309"><svg class="i" style="color:#F59E0B"><use href="#i-sablier"/></svg>Attend le réseau</div>
+            <div class="sc-it att">Connexion, synchronisation, « Votre retour »</div>
+            <div class="sc-it att">Note pour ce cours, photos d'élèves, groupe proposé</div>
+            <div class="sc-it att">Réunion : implication, notes, oral</div>
+            <div class="sc-it att">Voir les pages envoyées, effacer les scans</div>
+            <div class="sc-it att">Pilotage de l'écran projeté</div>
+          </div>
+          <div class="sc-boite" id="sh-lim" data-on="4">
+            <div class="sc-boite__t" style="color:#B91C1C"><svg class="i" style="color:#EF4444"><use href="#i-alerte"/></svg>Limites actuelles</div>
+            <div class="sc-it ko">Évaluation orale : ne marche pas</div>
+            <div class="sc-it ko">Photo d'une remarque : perdue</div>
+            <div class="sc-it ko">Ouvrir l'application : retour à la connexion</div>
+          </div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : descente -->
+    <section class="fiche fiche--etroite" id="sy-descente">
+      <div class="fiche__texte">
+        <h2>Ce que le téléphone récupère du site</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Première moitié de chaque synchronisation</span></p>
+        <p class="fiche__but">Retrouver sur le téléphone ce qui a été préparé sur le site enseignant.</p>
+        <ol class="etapes">
+          <li data-cursor="#sde-1" data-duration="4000">Classes (et leurs renommages), élèves, salles, plans de classe, groupes de classe et plans de groupe arrivent ou sont mis à jour.</li>
+          <li data-cursor="#sde-2" data-duration="4000">Séances et actions faites sur un autre appareil, modèles de « Mes TP », TP en groupes, tampons, bonus et cartes arrivent aussi.</li>
+          <li data-cursor="#sde-3" data-duration="4000">Les vrais noms ne descendent jamais : le serveur ne les a pas. Un élève créé sur le site apparaît sous son pseudonyme jusqu'à ce qu'on saisisse son nom sur le téléphone.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Élèves : pseudonyme, classe et indicateurs PAP, PPRE, PAI sont toujours repris du serveur. Salles et positions des plans de classe aussi.</li>
+            <li>Séances et actions venues d'ailleurs sont seulement ajoutées, jamais modifiées ni retirées. Une action d'un élève inconnu du téléphone est ignorée.</li>
+            <li>Si une partie ne peut pas être lue, rien n'est supprimé du téléphone pour cette partie, et l'erreur n'est pas montrée.</li>
+            <li>Limite actuelle : le serveur renvoie au plus 1 000 lignes par demande. Au-delà (cas d'un changement de téléphone avec beaucoup de séances), des données valides pourraient être retirées du téléphone. Une correction est en préparation ; les volumes actuels restent sous ce seuil.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">La descente</div>
+          <div class="sc-boite"><div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Site enseignant</div><div class="sc-it">Ce qui a été créé ou modifié depuis l'ordinateur</div></div>
+          <div class="sc-fl sc-fl--bas" data-on="1-2">descend</div>
+          <div class="sc-boite" id="sde-1" data-on="1">
+            <div class="sc-it ind">Classes et renommages</div>
+            <div class="sc-it ind">Élèves : pseudonyme, classe, PAP / PPRE / PAI</div>
+            <div class="sc-it ind">Salles, plans de classe, groupes, plans de groupe</div>
+          </div>
+          <div class="sc-boite" id="sde-2" data-on="2">
+            <div class="sc-it ind">Séances et actions d'un autre appareil (ajout seul)</div>
+            <div class="sc-it ind">Modèles « Mes TP », TP en groupes</div>
+            <div class="sc-it ind">Tampons, bonus, cartes (sans écraser le téléphone)</div>
+          </div>
+          <div class="sc-boite" id="sde-3" data-on="3"><div class="sc-boite__t" style="color:#B91C1C"><svg class="i" style="color:#EF4444"><use href="#i-x"/></svg>Ne descend jamais</div><div class="sc-it ko">Les vrais noms : le serveur ne les connaît pas</div></div>
+          <div class="sc-boite"><div class="sc-boite__t"><svg class="i"><use href="#i-livre"/></svg>Base du téléphone</div></div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : suppressions -->
+    <section class="fiche fiche--etroite" id="sy-suppressions">
+      <div class="fiche__texte">
+        <h2>Les suppressions, dans les deux sens</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Synchronisations et envoi immédiat</span></p>
+        <p class="fiche__but">Qu'une suppression faite d'un côté se retrouve de l'autre, sans faire « revenir » ce qui a été effacé.</p>
+        <ol class="etapes">
+          <li data-cursor="#ssu-1" data-duration="4200">Sur le téléphone : action annulée, tampon retiré, groupe effacé, photo ou critère de TP supprimé… Si la ligne était déjà partie, une suppression en attente est notée et transmise en tête de la synchronisation suivante (tout de suite pour une action).</li>
+          <li data-cursor="#ssu-2" data-duration="4200">Exception, limite actuelle : la suppression d'une séance depuis l'historique n'est jamais transmise. La séance et ses actions reviennent à la synchronisation suivante.</li>
+          <li data-cursor="#ssu-3" data-duration="4200">Sur le site : une classe, un élève, une salle ou un groupe supprimé disparaît du téléphone, avec ce qui en dépend (pour une classe ou un élève : séances, actions, tampons et vrais noms).</li>
+          <li data-cursor="#ssu-4" data-duration="3600">En revanche, les séances et actions supprimées sur le site restent sur le téléphone.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tant qu'une suppression attend, la descente ne fait pas revenir la ligne. Une suppression refusée par le serveur reste en attente et sera retentée. La pastille rouge de l'accueil compte les suppressions en attente.</li>
+            <li>Ce qui a été créé sur le téléphone et jamais envoyé est protégé : une suppression venue du site ne le touche pas.</li>
+            <li>Limite actuelle : dans un cas rare (vérification des classes ratée pendant l'envoi des groupes), des groupes créés sur le téléphone et pas encore envoyés peuvent être supprimés. Une correction est en préparation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Supprimer d'un côté, de l'autre</div>
+          <div class="sc-boite" id="ssu-1" data-on="1"><div class="sc-boite__t"><svg class="i"><use href="#i-livre"/></svg>Supprimé sur le téléphone</div><div class="sc-it ok">Action, tampon, groupe, photo, critère : transmis au serveur</div></div>
+          <div class="sc-boite" id="ssu-2" data-on="2"><div class="sc-it ko">Séance supprimée dans l'historique : pas transmise, elle revient</div></div>
+          <div class="sc-fl sc-fl--bas">↑ ↓</div>
+          <div class="sc-boite" id="ssu-3" data-on="3"><div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Supprimé sur le site</div><div class="sc-it ok">Classe, élève, salle, groupe : retiré du téléphone</div><div class="sc-it ok">Avec séances, actions, tampons et vrais noms concernés</div></div>
+          <div class="sc-boite" id="ssu-4" data-on="4"><div class="sc-it att">Séances et actions supprimées sur le site : restent sur le téléphone</div></div>
+          <div class="sc-legende">Ce qui n'a jamais quitté le téléphone est protégé.</div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : conflits -->
+    <section class="fiche fiche--etroite" id="sy-conflits">
+      <div class="fiche__texte">
+        <h2>Modifié des deux côtés : qui gagne ?</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Synchronisation complète</span></p>
+        <p class="fiche__but">Comprendre ce qui se passe quand la même chose est modifiée sur le site et sur le téléphone entre deux synchronisations. Aucune fenêtre ne demande de choisir.</p>
+        <ol class="etapes">
+          <li data-cursor="#sco-tel" data-duration="4000">Le téléphone gagne : nom de classe, modèles de TP et leurs critères, plans de groupe, tampons et cartes, groupe d'une séance. Sa modification n'est pas écrasée, puis elle part.</li>
+          <li data-cursor="#sco-site" data-duration="4000">Le site gagne, même si une modification attendait sur le téléphone : élèves (pseudonyme, classe, PAP / PPRE / PAI), salles, positions des plans de classe.</li>
+          <li data-cursor="#sco-lim" data-duration="4600">Limite actuelle : un plan de classe ou une salle retouché sur le téléphone après son premier envoi n'est plus renvoyé ; la synchronisation suivante remet la version du site.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Conseil, tant que cette limite existe : retoucher les plans de classe et les salles sur le site plutôt que sur le téléphone.</li>
+            <li>Un élève ajouté au même groupe des deux côtés ne crée pas de doublon.</li>
+            <li>Séances et actions ne sont jamais fusionnées : ce sont des ajouts.</li>
+            <li>Constaté en lisant le programme, pas essayé sur téléphone.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Qui gagne ?</div>
+          <div class="sc-boite" id="sco-tel" data-on="1"><div class="sc-boite__t"><svg class="i"><use href="#i-livre"/></svg>Le téléphone gagne</div>
+            <div class="sc-it ind">Nom de classe</div><div class="sc-it ind">Modèles de TP et critères</div><div class="sc-it ind">Plans de groupe</div><div class="sc-it ind">Tampons et cartes</div><div class="sc-it ind">Groupe d'une séance</div></div>
+          <div class="sc-boite" id="sco-site" data-on="2"><div class="sc-boite__t"><svg class="i"><use href="#i-ecran"/></svg>Le site gagne</div>
+            <div class="sc-it ind">Élèves : pseudonyme, classe, PAP / PPRE / PAI</div><div class="sc-it ind">Salles</div><div class="sc-it ind">Positions des plans de classe</div></div>
+          <div class="sc-boite" id="sco-lim" data-on="3"><div class="sc-boite__t" style="color:#B91C1C"><svg class="i" style="color:#EF4444"><use href="#i-alerte"/></svg>Limite actuelle</div><div class="sc-it ko">Plan ou salle retouché au téléphone après le premier envoi : pas renvoyé, remplacé par la version du site</div></div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : vie privée -->
+    <section class="fiche fiche--etroite" id="sy-vie-privee">
+      <div class="fiche__texte">
+        <h2>Ce qui ne quitte jamais le téléphone</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Base du téléphone</span></p>
+        <p class="fiche__but">Garantir la pseudonymisation : pour le serveur, un élève est un prénom et deux lettres (« Lina BO »).</p>
+        <ol class="etapes">
+          <li data-cursor="#svp-reste" data-duration="4200">Restent sur le téléphone : prénom, nom et nom complet des élèves, les étiquettes de surlignage, les réglages de séance.</li>
+          <li data-cursor="#svp-part" data-duration="4600">Partent au serveur : pseudonyme, classe, actions (type, précision, heure), texte des remarques, thème et notes de séance, plans, notes de TP, tampons.</li>
+          <li data-cursor="#svp-pdf" data-duration="4200">Seule exception : les trois PDF fabriqués sur le téléphone contiennent les vrais noms. Les partager les fait sortir.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ce que l'enseignant écrit dans une remarque, un thème ou une note de séance part tel quel : ne pas y écrire de nom de famille.</li>
+            <li>La déconnexion n'efface pas la base du téléphone, vrais noms compris.</li>
+            <li>Une classe ou un élève supprimé sur le site efface aussi les vrais noms correspondants sur le téléphone.</li>
+            <li>Sur le site et sur l'écran projeté, seul le pseudonyme apparaît.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="copies-et-reunion-parents.html#pdf-partage">Partager un PDF</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740">
+        <div class="sc">
+          <div class="sc-t">Schéma</div>
+          <div class="sc-h">Lina Bonnet, pour qui ?</div>
+          <div class="sc-boite" id="svp-reste" data-on="1"><div class="sc-boite__t"><svg class="i"><use href="#i-livre"/></svg>Reste sur le téléphone</div>
+            <div class="sc-it ok">Vrai nom : « Lina Bonnet »</div><div class="sc-it ok">Étiquettes de surlignage</div><div class="sc-it ok">Réglages de séance</div></div>
+          <div class="sc-fl sc-fl--bas" data-on="2">seulement le pseudonyme</div>
+          <div class="sc-boite" id="svp-part" data-on="2"><div class="sc-boite__t"><svg class="i"><use href="#i-nuage"/></svg>Part au serveur</div>
+            <div class="sc-it ind">« Lina BO », classe 5B</div><div class="sc-it ind">Actions : type, précision, heure</div><div class="sc-it att">Texte des remarques, thème, notes de séance (tels quels)</div><div class="sc-it ind">Plans, notes de TP, tampons</div></div>
+          <div class="sc-boite" id="svp-pdf" data-on="3"><div class="sc-boite__t" style="color:#B91C1C"><svg class="i" style="color:#EF4444"><use href="#i-doc"/></svg>Exception : les PDF</div><div class="sc-it ko">Séance, élève, classe : vrais noms dedans. Partager = sortir du téléphone</div></div>
+        </div>
+      </div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : base locale -->
+    <section class="fiche fiche--etroite" id="sy-base-locale">
+      <div class="fiche__texte">
+        <h2>La base de données du téléphone</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Invisible, préparée à chaque lancement</span></p>
+        <p class="fiche__but">Garder tout le travail dans le téléphone pour fonctionner sans réseau.</p>
+        <ol class="etapes">
+          <li data-cursor="#sbl-init" data-duration="3000">À chaque lancement, « Initialisation... » : la base du téléphone se prépare.</li>
+          <li data-cursor="#sbl-init" data-duration="3600">Après une mise à jour de l'application, la base est mise à niveau toute seule ; rien n'est perdu.</li>
+          <li data-cursor="#sbl-err" data-duration="3400">Si elle ne peut pas s'ouvrir : « Erreur » et un message technique. Fermer complètement l'application et la relancer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un seul fichier dans le téléphone, protégé contre les incohérences : une action ne peut pas viser un élève qui n'existe pas.</li>
+            <li>Si la liaison avec la base se coupe, elle est rouverte automatiquement.</li>
+            <li>Aucun bouton ne permet de vider la base : elle ne se vide pas non plus à la déconnexion.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran" style="background:#FAFAFA">
+        <div class="tel__statut"></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px">
+          <div class="m-roue repli" data-to="2" style="width:34px;height:34px;border-width:4px"></div>
+          <div id="sbl-init" class="repli" data-to="2" style="font-size:15px;color:#6B7280">Initialisation...</div>
+          <div id="sbl-err" class="repli" data-at="3" style="text-align:center;padding:0 30px"><div style="font-size:20px;font-weight:700;color:#EF4444;margin-bottom:6px">Erreur</div><div style="font-size:12.5px;color:#6B7280">Message technique de la base du téléphone</div></div>
+        </div>
+        <div class="bulle bulle--haut" data-at="2" style="left:60px;top:430px;max-width:240px">Nouvelle version installée : la base est mise à niveau</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ SYNCHRO : file des copies -->
+    <section class="fiche fiche--etroite" id="sy-file-copies">
+      <div class="fiche__texte">
+        <h2>La file d'envoi des copies d'évaluation</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Démarrée avec l'application</span></p>
+        <p class="fiche__but">Envoyer les pages de copies scannées dès que le réseau le permet, où que l'on soit dans l'application.</p>
+        <ol class="etapes">
+          <li data-cursor="#sfc-b" data-duration="3400">Les copies scannées sans réseau attendent dans leur propre file, signalée sur l'écran des copies.</li>
+          <li data-cursor="#sfc-tab" data-duration="3400">On peut quitter les copies et travailler ailleurs : la file part au retour du réseau, au retour dans l'application, et toutes les 20 secondes tant que l'application est ouverte.</li>
+          <li data-cursor="#sfc-p" data-duration="3200">Ces copies ne comptent pas dans la pastille rouge de l'accueil.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Cette file est distincte de la synchronisation générale ; le bouton Synchroniser ne la concerne pas.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="copies-et-reunion-parents.html#cp-file">Scanner sans réseau : la file d'envoi</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-tete repli" data-at="1"><svg class="i" style="width:24px;height:24px"><use href="#i-chev-g"/></svg><div class="m-tete__txt"><div class="m-tete__t">Éval Nutrition</div><div class="m-tete__s">14/25 copies · 2 absents · 9 à scanner</div></div></div>
+        <div class="m-corps repli" data-at="1">
+          <div class="m-bandeau" id="sfc-b"><svg class="i"><use href="#i-nuage"/></svg>5 pages sur le téléphone, envoi dès que possible<b>Réessayer</b></div>
+          <div class="m-ligne"><span class="m-pt m-pt--att"></span><span class="m-nom">Hugo PE</span><span class="m-esp"></span><span class="m-tag m-tag--o">3 p. · <svg class="i"><use href="#i-sablier"/></svg>3</span></div>
+          <div class="m-ligne"><span class="m-pt m-pt--att"></span><span class="m-nom">Iris TA</span><span class="m-esp"></span><span class="m-tag m-tag--o">2 p. · <svg class="i"><use href="#i-sablier"/></svg>2</span></div>
+        </div>
+        <div class="repli" data-from="2" style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="sfc-p"><svg class="i"><use href="#i-sync"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+        </div>
+        <div class="m-onglets repli" data-from="2"><span class="is-actif" id="sfc-tab"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="bulle bulle--haut" data-at="2-3" style="left:30px;top:520px;max-width:280px">Pendant ce temps, les 5 pages partent en arrière-plan dès que le réseau le permet</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : onglets -->
+    <section class="fiche fiche--etroite" id="tr-onglets">
+      <div class="fiche__texte">
+        <h2>La barre d'onglets</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Bas de l'écran</span></p>
+        <p class="fiche__but">Passer d'une grande partie de l'application à l'autre.</p>
+        <ol class="etapes">
+          <li data-cursor="#to-acc" data-duration="2800">Quatre onglets : <b>Accueil</b> (la maison), <b>Classes</b> (le livre ouvert)…</li>
+          <li data-cursor="#to-his" data-action="tap">… <b>Historique</b> (l'horloge) et <b>Réunions</b> (deux silhouettes). L'onglet actif est en indigo.</li>
+          <li data-cursor="#to-acc" data-action="tap" data-duration="3400">Sur les écrans plein écran (séance, plan, salles, fiche élève, TP en groupes, copies), la barre disparaît pour laisser toute la place.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pour revenir d'un écran plein écran : la flèche ou le lien « Retour » en haut, ou le geste retour du téléphone.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="repli" data-at="1,3" style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond"><svg class="i"><use href="#i-sync"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+          <div class="m-hero__s">Suivre la participation en classe en moins de 2 secondes</div>
+        </div>
+        <div class="repli" data-at="2" style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <div class="m-h1">Historique</div>
+          <div class="m-corps" style="gap:8px">
+            <div class="m-jour">Aujourd'hui</div>
+            <div class="m-seance"><div class="m-seance__t">5B<svg class="i"><use href="#i-chev-d"/></svg></div><div class="m-seance__th">La digestion</div><div class="m-seance__g"><div><span>Heure</span><b>10:05</b></div><div><span>Salle</span><b>210</b></div><div><span>Durée</span><b>52 min</b></div></div></div>
+          </div>
+        </div>
+        <div class="m-onglets"><span id="to-acc" data-on="1,3" class=""><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span id="to-his" data-on="2"><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="bulle bulle--bas" data-at="3" style="left:40px;top:560px;max-width:260px">En séance, plus de barre : tout l'écran pour le plan</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : plein écran -->
+    <section class="fiche fiche--etroite" id="tr-plein-ecran">
+      <div class="fiche__texte">
+        <h2>Plein écran</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Toute l'application</span></p>
+        <p class="fiche__but">Donner toute la hauteur au plan de classe et éviter les appuis involontaires sur les boutons du téléphone pendant la séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#tp-haut" data-duration="3200">Rien à faire : pas d'heure ni de batterie en haut, pas de boutons du téléphone en bas.</li>
+          <li data-cursor="#tp-bas" data-action="drag" data-drag-to="#tp-plan" data-duration="3200">Glisser depuis le bord bas de l'écran fait réapparaître la barre de navigation du téléphone.</li>
+          <li data-cursor="#tp-plan" data-duration="3000">Elle se cache d'elle-même deux secondes et demie plus tard, et à chaque retour dans l'application.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La barre de navigation n'est masquée que sur Android ; la barre d'état l'est sur tous les écrans, connexion et chargement compris.</li>
+            <li>Le bandeau « Mode hors-ligne » s'affiche dans la place laissée libre en haut.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut" id="tp-haut"></div>
+        <div class="m-st"><span class="m-st__ann">Annuler</span><div class="m-st__mid"><b>5B</b><span>12 min</span></div><span class="m-st__fin">Terminer</span></div>
+        <div class="m-seg"><span class="m-seg__piste"><i class="on">Plan de classe</i><i>Groupes</i></span><span class="m-rond"><svg class="i"><use href="#i-ecran"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-reglage"/></svg></span></div>
+        <div class="m-plan" id="tp-plan">
+          <div class="t-place">Lina</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div><div class="t-place">Noé</div><div class="t-place">Zoé</div>
+          <div class="t-place">Iris</div><div class="t-place">Adam</div><div class="t-place t-place--vide"></div><div class="t-place">Jade</div><div class="t-place">Malo</div>
+          <div class="t-place">Inès</div><div class="t-place">Hugo</div><div class="t-place t-place--vide"></div><div class="t-place">Rose</div><div class="t-place">Sacha</div>
+          <div class="t-place">Lou</div><div class="t-place">Naël</div><div class="t-place t-place--vide"></div><div class="t-place">Mia</div><div class="t-place">Léa</div>
+          <div class="t-place">Éva</div><div class="t-place">Yanis</div><div class="t-place t-place--vide"></div><div class="t-place">Nora</div><div class="t-place">Paul</div>
+        </div>
+        <div class="m-tableau">TABLEAU</div>
+        <span id="tp-bas" style="position:absolute;left:170px;bottom:6px;width:2px;height:2px"></span>
+        <div class="m-nav glisse-haut" data-at="2"><i></i><i></i><i></i></div>
+        <div class="bulle bulle--haut" data-at="1" style="left:90px;top:38px;max-width:220px">Ni heure ni batterie : tout l'écran sert</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : écran d'erreur -->
+    <section class="fiche fiche--etroite" id="tr-erreur">
+      <div class="fiche__texte">
+        <h2>L'écran « Oups, une erreur s'est produite »</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Remplace tout l'écran, en cas de panne</span></p>
+        <p class="fiche__but">Éviter que l'application se ferme brutalement après une erreur imprévue, et proposer de réessayer.</p>
+        <ol class="etapes">
+          <li data-cursor="#te-t" data-duration="3200">L'écran d'erreur remplace l'application : panneau d'avertissement, « Oups, une erreur s'est produite » et une phrase d'explication.</li>
+          <li data-cursor="#te-b" data-action="tap">Toucher <span class="btn-nom">Reessayer</span> (écrit sans accent) pour réafficher l'application.</li>
+          <li data-cursor="#te-aide" data-duration="3200">Si l'erreur revient : fermer complètement l'application, puis la relancer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ce qui était déjà enregistré dans le téléphone n'est pas perdu : c'est dans sa base.</li>
+            <li>L'erreur n'est envoyée nulle part : pour la signaler, utiliser « Votre retour » sur l'accueil.</li>
+            <li>Les erreurs de synchronisation ou d'enregistrement n'ouvrent pas cet écran.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 30px;text-align:center">
+          <div style="width:64px;height:58px;color:#F59E0B;margin-bottom:16px"><svg class="i" style="width:64px;height:58px;stroke-width:1.6"><use href="#i-alerte"/></svg></div>
+          <div id="te-t" style="font-size:21px;font-weight:600;margin-bottom:8px">Oups, une erreur s'est produite</div>
+          <div style="font-size:14.5px;color:#6B7280;margin-bottom:24px">L'application a rencontre un probleme inattendu.</div>
+          <div class="m-btn" id="te-b" data-on="2" style="background:#10B981;width:180px;font-size:15px">Reessayer</div>
+          <div id="te-aide" style="font-size:12px;color:#9CA3AF;margin-top:16px">Si le probleme persiste, fermez et relancez l'application.</div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : votre retour -->
+    <section class="fiche fiche--etroite" id="tr-retour">
+      <div class="fiche__texte">
+        <h2>Envoyer un retour (« Votre retour »)</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Accueil › rond à la bulle</span></p>
+        <p class="fiche__but">Signaler un bogue, proposer une idée ou faire une remarque sur l'application, directement depuis le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#tr-b" data-action="tap">Sur l'accueil, toucher le deuxième rond en haut à droite (la bulle).</li>
+          <li data-cursor="#tr-bug" data-action="tap" data-duration="3200">La fenêtre « Votre retour » monte. Sous <b>Type</b>, choisir <span class="btn-nom">Bug</span>, <span class="btn-nom">Suggestion</span> (choisi d'office) ou <span class="btn-nom">Autre</span>.</li>
+          <li data-cursor="#tr-msg" data-duration="3600">Sous <b>Message</b>, écrire le texte.</li>
+          <li data-cursor="#tr-env" data-action="tap"><span class="btn-nom">Envoyer</span> (inactif tant que le message est vide).</li>
+          <li data-cursor="#tr-merci" data-duration="3000">« Merci pour votre retour ! » : la fenêtre se ferme seule une seconde et demie plus tard.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le retour part avec l'identifiant et l'adresse de courriel du compte. Ne pas y écrire le nom réel d'un élève.</li>
+            <li>Il faut du réseau. Limite actuelle : sans réseau, rien ne s'affiche ; la fenêtre reste ouverte avec le texte, sans message d'erreur, et le retour n'est pas mis en attente.</li>
+            <li><span class="btn-nom">Annuler</span>, la croix, un appui en dehors ou le geste retour ferment sans envoyer.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond"><svg class="i"><use href="#i-sync"/></svg></span><span class="m-rond" id="tr-b" data-on="1"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+        </div>
+        <div class="m-voile glisse-haut" data-from="2">
+          <div style="background:#fff;border-radius:16px;width:320px;box-shadow:0 18px 50px rgba(0,0,0,.25);overflow:hidden">
+            <div class="repli" data-to="4">
+              <div class="ligne" style="padding:16px 18px;border-bottom:1px solid #F1F5F9;align-items:flex-start"><div style="flex:1"><b style="font-size:18px">Votre retour</b><div class="m-tete__s">Aidez-nous à améliorer l'application</div></div><span style="width:34px;height:34px;border-radius:12px;background:#F3F4F7;display:grid;place-items:center;color:#6B7280"><svg class="i" style="width:16px;height:16px"><use href="#i-x"/></svg></span></div>
+              <div style="padding:14px 18px" class="col">
+                <div style="font-size:13px;font-weight:600;color:#6B7280">Type</div>
+                <div class="ligne" style="gap:8px"><span class="m-type m-type--bug" id="tr-bug" data-on="3-4">Bug</span><span class="m-type m-type--sug" data-on="2">Suggestion</span><span class="m-type">Autre</span></div>
+                <div style="font-size:13px;font-weight:600;color:#6B7280;margin-top:6px">Message</div>
+                <div id="tr-msg" style="min-height:110px;background:#F7F7F9;border:1px solid #E5E7EB;border-radius:12px;padding:10px;font-size:13.5px"><span class="repli" data-at="2" style="color:#9CA3AF">Votre idée ou commentaire...</span><span data-type="Le PDF de classe ne s'ouvre pas sur ma tablette." data-type-at="3"></span></div>
+              </div>
+              <div class="ligne" style="gap:10px;padding:12px 18px;border-top:1px solid #F1F5F9"><span class="m-btn m-btn--blanc" style="flex:1">Annuler</span><span class="m-btn" id="tr-env" data-on="4" style="flex:1"><span data-to="2" style="opacity:.5">Envoyer</span><span data-from="3">Envoyer</span></span></div>
+            </div>
+            <div class="repli" data-at="5" id="tr-merci" style="padding:30px 18px;text-align:center"><div style="width:56px;height:56px;border-radius:50%;background:#ECFDF5;color:#059669;display:grid;place-items:center;margin:0 auto 12px"><svg class="i" style="width:28px;height:28px;stroke-width:2.4"><use href="#i-coche"/></svg></div><b style="font-size:17px">Merci pour votre retour !</b></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : note pour ce cours -->
+    <section class="fiche fiche--etroite" id="tr-note-cours">
+      <div class="fiche__texte">
+        <h2>« Note pour ce cours » (bandeau jaune)</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance, puis écran de séance</span></p>
+        <p class="fiche__but">Rappeler, au moment du cours, la note écrite à l'avance sur le site (accueil, emploi du temps, « Note pour ce cours ») : rendre des copies, faire passer un élève à l'oral…</p>
+        <ol class="etapes">
+          <li data-cursor="#tn-red" data-duration="3600">En choisissant la classe au démarrage, un bandeau jaune réduit apparaît sous les classes s'il existe une note pour ce cours.</li>
+          <li data-cursor="#tn-dem" data-action="tap">Démarrer la séance.</li>
+          <li data-cursor="#tn-full" data-duration="3600">Pendant la séance, le bandeau complet « Note pour ce cours » rappelle la note, au-dessus du plan.</li>
+          <li data-cursor="#tn-vu" data-action="tap">Toucher <span class="btn-nom">Vu</span> : la note est marquée traitée et le bandeau disparaît.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La note est retrouvée par classe et par heure : un cours commencé il y a moins de 50 minutes ou qui commence dans moins de 30 minutes. En demi-groupe, seules les notes du groupe ou de la classe entière comptent.</li>
+            <li>Elle est lue sur le serveur : sans réseau, aucun bandeau, sans message.</li>
+            <li>« Vu » la marque traitée partout, site compris ; pas d'annulation. Si l'envoi échoue, le bandeau revient.</li>
+            <li>Le téléphone ne crée ni ne modifie jamais une note : elle s'écrit sur le site.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-st"><span class="m-st__ann">Annuler</span><div class="m-st__mid"><b>5B</b><span>2 min</span></div><span class="m-st__fin">Terminer</span></div>
+        <div class="m-note repli" id="tn-full" data-to="3" style="margin:10px 14px 0"><svg class="i"><use href="#i-note"/></svg><div class="m-note__t"><small>Note pour ce cours</small>Rendre les copies de l'éval Météo. Lina BO passe à l'oral.</div><span class="m-vu" id="tn-vu" data-on="4"><svg class="i"><use href="#i-coche"/></svg>Vu</span></div>
+        <div class="m-seg"><span class="m-seg__piste"><i class="on">Plan de classe</i><i>Groupes</i></span><span class="m-rond"><svg class="i"><use href="#i-ecran"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-reglage"/></svg></span></div>
+        <div class="m-plan">
+          <div class="t-place">Lina</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div><div class="t-place">Noé</div><div class="t-place">Zoé</div>
+          <div class="t-place">Iris</div><div class="t-place">Adam</div><div class="t-place t-place--vide"></div><div class="t-place">Jade</div><div class="t-place">Malo</div>
+          <div class="t-place">Inès</div><div class="t-place">Hugo</div><div class="t-place t-place--vide"></div><div class="t-place">Rose</div><div class="t-place">Sacha</div>
+        </div>
+        <div class="m-ecran" data-to="2" style="padding-bottom:14px">
+          <div class="m-tete"><svg class="i" style="width:24px;height:24px"><use href="#i-chev-g"/></svg><div class="m-tete__t">Nouvelle séance</div></div>
+          <div class="m-corps">
+            <div class="m-sec">1 · Choisir une classe</div>
+            <div class="grille3" style="gap:8px"><span class="m-btn m-btn--blanc">3A</span><span class="m-btn m-btn--blanc">4B</span><span class="m-btn" style="background:#4F46E5">5B</span></div>
+            <div class="m-note" id="tn-red" data-on="1" style="padding:7px 10px"><svg class="i" style="width:15px;height:15px"><use href="#i-note"/></svg><div class="m-note__t" style="font-size:12px">Rendre les copies de l'éval Météo. Lina BO passe à l'oral.</div></div>
+            <div class="m-sec" style="margin-top:6px">3 · Salle</div>
+            <div class="grille3" style="gap:8px"><span class="m-btn" style="background:#4F46E5">210</span><span class="m-btn m-btn--blanc">310</span><span class="m-btn m-btn--blanc">Labo</span></div>
+            <div class="m-esp"></div>
+            <div class="m-btn" id="tn-dem" data-on="2" style="background:#059669">Démarrer la séance</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : réglages -->
+    <section class="fiche fiche--etroite" id="tr-reglages">
+      <div class="fiche__texte">
+        <h2>Les réglages de séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Séance › roue dentée</span></p>
+        <p class="fiche__but">Régler trois comportements de la séance. Ce sont les seuls réglages de l'application : il n'y a pas d'écran « Paramètres » général.</p>
+        <ol class="etapes">
+          <li data-cursor="#tg-roue" data-action="tap">Pendant une séance, toucher la roue dentée en haut à droite, à côté du bouton écran.</li>
+          <li data-cursor="#tg-flick" data-action="tap" data-duration="3600">La feuille « Réglages de séance » monte. <b>Mode expert (flick)</b> : un geste rapide dans une direction valide l'action sans afficher le menu (éteint d'office).</li>
+          <li data-cursor="#tg-vib" data-duration="3600"><b>Vibrations différenciées</b> : une vibration différente par action, pour valider sans regarder (allumé d'office).</li>
+          <li data-cursor="#tg-grille" data-action="tap" data-duration="3400"><b>Grille compacte</b> : cases resserrées pour voir toute la classe sans faire défiler (allumé d'office). L'effet est immédiat.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les réglages sont gardés sur le téléphone, d'une séance et d'un lancement à l'autre. Ils ne sont pas synchronisés : chaque téléphone a les siens.</li>
+            <li>Si leur lecture échoue, les valeurs d'office reviennent.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seance-et-menu-radial.html">Le menu radial</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div class="m-st"><span class="m-st__ann">Annuler</span><div class="m-st__mid"><b>5B</b><span>8 min</span></div><span class="m-st__fin">Terminer</span></div>
+        <div class="m-seg"><span class="m-seg__piste"><i class="on">Plan de classe</i><i>Groupes</i></span><span class="m-rond"><svg class="i"><use href="#i-ecran"/></svg></span><span class="m-rond" id="tg-roue" data-on="1"><svg class="i"><use href="#i-reglage"/></svg></span></div>
+        <div class="m-plan">
+          <div class="t-place">Lina</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div><div class="t-place">Noé</div><div class="t-place">Zoé</div>
+          <div class="t-place">Iris</div><div class="t-place">Adam</div><div class="t-place t-place--vide"></div><div class="t-place">Jade</div><div class="t-place">Malo</div>
+        </div>
+        <div class="voile" data-from="2"></div>
+        <div class="feuille glisse-haut" data-from="2">
+          <div style="font-size:18px;font-weight:700;margin-bottom:6px">Réglages de séance</div>
+          <div class="m-regl" style="border-top:0"><span class="m-regl__ic"><svg class="i"><use href="#i-eclair"/></svg></span><div class="m-regl__t">Mode expert (flick)<span>Un geste rapide dans une direction valide l'action sans afficher le menu.</span></div><span class="m-interr" id="tg-flick" data-on="3-4"></span></div>
+          <div class="m-regl"><span class="m-regl__ic"><svg class="i"><use href="#i-vibre"/></svg></span><div class="m-regl__t">Vibrations différenciées<span>Une signature haptique distincte par action pour valider sans regarder.</span></div><span class="m-interr m-interr--on" id="tg-vib"></span></div>
+          <div class="m-regl"><span class="m-regl__ic"><svg class="i"><use href="#i-grille"/></svg></span><div class="m-regl__t">Grille compacte<span>Cellules resserrées pour voir toute la classe sans défiler.</span></div><span class="m-interr m-interr--on" id="tg-grille" data-on="4"></span></div>
+        </div>
+        <style>#tr-reglages #tg-grille.is-on { background: #EDEEF2; } #tr-reglages #tg-grille.is-on::after { left: 2px; }</style>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : annonces -->
+    <section class="fiche fiche--etroite" id="tr-annonces">
+      <div class="fiche__texte">
+        <h2>Annonces : prévues, pas encore affichées</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Aucun écran pour l'instant</span></p>
+        <p class="fiche__but">Le site permet de publier des annonces (maintenance, nouveauté). Le téléphone contient de quoi les afficher, mais ce bandeau n'est placé sur aucun écran.</p>
+        <ol class="etapes">
+          <li data-cursor="#ta-acc" data-duration="3400">Aujourd'hui, l'accueil du téléphone n'affiche aucune annonce.</li>
+          <li data-cursor="#ta-ex" data-duration="3800">S'il était affiché, chaque annonce serait un bandeau arrondi, coloré selon son genre (information, avertissement, réussite).</li>
+          <li data-cursor="#ta-ex" data-action="drag" data-drag-to="#ta-fin" data-duration="3400">On le fermerait en le glissant de côté ou par sa croix ; sinon il partirait seul après 5 secondes.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Fonction en préparation : l'enseignant ne voit aujourd'hui aucune annonce sur le téléphone. Elles restent visibles sur le site.</li>
+            <li>Une annonce fermée reviendrait au lancement suivant : rien ne serait mémorisé.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <div style="flex:1;padding:6px 18px 0;position:relative" id="ta-acc">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond"><svg class="i"><use href="#i-sync"/></svg></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="glisse-droite" id="ta-ex" data-at="2-3" style="margin-top:14px;background:#EEF0FF;color:#4F46E5;border-radius:16px;padding:10px 12px;font-size:12.5px;font-weight:600;display:flex;gap:8px;align-items:center;border:1.5px dashed #818CF8">Exemple non affiché : maintenance ce soir à 22 h<span class="m-esp"></span><svg class="i" style="width:14px;height:14px"><use href="#i-x"/></svg></div>
+          <span id="ta-fin" style="position:absolute;right:-10px;top:110px;width:2px;height:2px"></span>
+          <div class="m-hero" style="margin-top:60px"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="bulle bulle--haut" data-at="2-3" style="left:40px;top:160px;max-width:260px">Illustration seulement : ce bandeau n'apparaît pas aujourd'hui</div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ TRANSVERSE : notifications -->
+    <section class="fiche fiche--etroite" id="tr-notifications">
+      <div class="fiche__texte">
+        <h2>Notifications du téléphone : aucune</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Volet de notifications</span></p>
+        <p class="fiche__but">Gestion Classe n'envoie aucune notification : ni rappel de cours, ni alerte de synchronisation.</p>
+        <ol class="etapes">
+          <li data-cursor="#tno-volet" data-action="drag" data-drag-to="#tno-bas" data-duration="3200">Ouvrir le volet de notifications du téléphone : rien ne vient de Gestion Classe.</li>
+          <li data-cursor="#tno-in" data-duration="3600">Les messages de l'application restent dans l'application : fenêtres de confirmation, « Erreur de synchronisation », bandeau « Mode hors-ligne », bandeau « Note pour ce cours ».</li>
+          <li data-cursor="#tno-in" data-duration="3200">Pour savoir si tout est parti, regarder la pastille rouge du bouton Synchroniser.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une note pour un cours n'est donc rappelée qu'au démarrage de la séance, pas avant.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+        <div class="tel__statut"></div>
+        <span id="tno-volet" style="position:absolute;left:170px;top:4px;width:2px;height:2px"></span>
+        <span id="tno-bas" style="position:absolute;left:170px;top:300px;width:2px;height:2px"></span>
+        <div style="flex:1;padding:6px 18px 0">
+          <div class="ligne" style="justify-content:space-between;align-items:flex-start"><div><div style="font-size:14px;color:#6B7280">Bonjour,</div><div style="font-size:24px;font-weight:700">M. Martin</div></div><div class="ligne" style="gap:8px"><span class="m-rond" id="tno-in"><svg class="i"><use href="#i-sync"/></svg><b class="m-badge">4</b></span><span class="m-rond"><svg class="i"><use href="#i-bulle"/></svg></span><span class="m-rond m-rond--av">M</span></div></div>
+          <div class="m-hero"><svg class="i i--p" style="width:52px;height:52px;margin-left:8px" viewBox="0 0 24 24"><path d="M6 4l14 8-14 8z"/></svg></div>
+          <div class="m-hero__t">Démarrer une séance</div>
+        </div>
+        <div class="m-onglets"><span class="is-actif"><svg class="i"><use href="#i-maison"/></svg>Accueil</span><span><svg class="i"><use href="#i-livre"/></svg>Classes</span><span><svg class="i"><use href="#i-horloge"/></svg>Historique</span><span><svg class="i"><use href="#i-users"/></svg>Réunions</span></div>
+        <div class="m-volet glisse-bas" data-at="1">
+          <div style="font-size:12px;color:#9CA3AF">Notifications</div>
+          <div class="m-notif"><b>Messages</b>Une autre application</div>
+          <div class="m-notif"><b>Agenda</b>Une autre application</div>
+          <div style="text-align:center;font-size:12px;color:#9CA3AF;margin-top:12px">Rien de Gestion Classe</div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

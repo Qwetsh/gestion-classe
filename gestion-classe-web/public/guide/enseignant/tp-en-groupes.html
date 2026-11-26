@@ -1,0 +1,872 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TP en groupes — Guide Gestion Classe</title>
+<meta name="description" content="La fiche d'un TP noté en groupes, au bureau : groupes, photos, commentaire, barème, note de chaque membre, fiches à découper, et ce que voient les élèves.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="62">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Les états qui se remplacent ne gardent pas leur place une fois cachés (les couches flottantes, si). */
+.ecran .is-hidden:not(.modale-fond):not(.bulle):not(.menu):not(.toast):not(.tp-pdf) { display: none; }
+/* Fiche d'un TP au bureau (components/groups/GroupSessionDetail.tsx) */
+.tp { font-size: 12px; color: var(--text); }
+.tp-corps { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; position: relative; }
+.tp-band { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border-radius: 10px; border: 2px solid #C2410C; background: #FFF7F0; transition: box-shadow .25s; }
+.tp-band__t { font-size: 11px; font-weight: 800; letter-spacing: .05em; color: #9A3412; }
+.tp-band__s { font-size: 12px; color: var(--text-muted); }
+.tp-band__n { font-size: 12px; font-weight: 600; color: #9A3412; white-space: nowrap; }
+.tp-band__b { font-size: 21px; font-weight: 700; color: #9A3412; }
+.tp-phrase { font-size: 11.5px; color: var(--text-muted); margin-top: -4px; }
+.tp-depot { display: flex; align-items: center; gap: 9px; padding: 8px 12px; border-radius: 10px; font-size: 12px; }
+.tp-depot--ouv { background: #FBFEFC; border: 1px solid #86C99B; }
+.tp-depot--fer { background: var(--surface-3); border: 1px solid var(--border); }
+.tp-depot .pt { width: 9px; height: 9px; border-radius: 5px; flex: none; }
+.tp-depot b { font-size: 12.5px; }
+.tp-noir { background: #18181B !important; border-color: #18181B !important; color: #fff !important; }
+.tp-cols { display: flex; gap: 10px; align-items: flex-start; min-height: 0; }
+.tp-col { border-radius: 10px; transition: box-shadow .3s; }
+.tp-col.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.tp-filtres { display: flex; gap: 4px; margin-bottom: 6px; }
+.tp-filtre { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; background: var(--surface-3); color: var(--text-muted); transition: all .25s; }
+.tp-filtre.is-on, .tp-filtre--on { background: var(--text); color: #fff; }
+.tp-liste { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #fff; }
+.tp-g { padding: 7px 9px; border-bottom: 1px solid var(--border); transition: background .25s; }
+.tp-g:last-child { border-bottom: 0; }
+.tp-g.is-on, .tp-g--on { background: var(--indigo-soft); }
+.tp-g__l { display: flex; align-items: center; gap: 6px; }
+.tp-g__l b { font-size: 12px; }
+.tp-g__m { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-sw { width: 13px; height: 13px; border-radius: 4px; border: 1.5px solid; flex: none; }
+.tp-badge { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; white-space: nowrap; }
+.tp-anoter { background: #FDF1E3; color: #B45309; }
+.tp-ph { background: var(--surface-3); color: var(--text-muted); }
+.tp-ok { font-size: 11px; font-weight: 700; color: var(--pos); }
+.tp-titre { display: flex; align-items: center; gap: 6px; }
+.tp-titre b { font-size: 14px; }
+.tp-nav { width: 26px; height: 24px; border: 1px solid var(--border-strong); border-radius: 6px; display: grid; place-items: center; font-size: 10px; background: #fff; }
+.tp-cadre { position: relative; border-radius: 10px; background: #2A3142; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.tp-cadre svg { height: 100%; }
+.tp-etiq { position: absolute; left: 10px; top: 10px; padding: 4px 9px; border-radius: 6px; background: rgba(0,0,0,.6); color: #fff; font-size: 11px; font-weight: 600; }
+.tp-outils { position: absolute; right: 10px; top: 10px; display: flex; gap: 5px; }
+.tp-bs { height: 24px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--border-strong); background: #fff; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: box-shadow .25s; }
+.tp-bs.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.tp-bs--rouge { color: #B91C1C; border-color: #F3B4B4; }
+.tp-vignettes { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+.tp-vig { position: relative; width: 64px; height: 64px; border-radius: 8px; background: #2A3142; overflow: hidden; border: 2px solid transparent; transition: border-color .25s; flex: none; }
+.tp-vig svg { width: 100%; height: 100%; display: block; }
+.tp-vig.is-on, .tp-vig--on { border-color: var(--indigo); }
+.tp-vig i { position: absolute; left: 3px; bottom: 3px; font-style: normal; font-size: 9px; font-weight: 700; padding: 0 4px; border-radius: 4px; background: #fff; color: var(--text); }
+.tp-vig i.prof { background: #18181B; color: #fff; }
+.tp-vig--petit { width: 48px; height: 48px; }
+.tp-ajout { width: 64px; height: 64px; border-radius: 8px; border: 1.5px dashed var(--border-strong); color: var(--indigo); font-size: 10.5px; font-weight: 600; display: grid; place-items: center; text-align: center; line-height: 1.25; padding: 3px; background: #fff; transition: box-shadow .25s; }
+.tp-ajout.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.tp-lbl { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+.tp-zone { min-height: 52px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12.5px; line-height: 1.4; background: #fff; transition: border-color .25s, box-shadow .25s; }
+.tp-zone.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.tp-zone--vide { color: var(--text-dim); }
+.tp-fil { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; background: #fff; }
+.tp-fil__l { display: flex; gap: 10px; font-size: 12px; padding: 3px 0; transition: background .25s; border-radius: 4px; }
+.tp-fil__l span:first-child { width: 40px; color: var(--text-dim); flex: none; }
+.tp-fil__l.is-on { background: var(--indigo-soft); }
+.tp-bar { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: #fff; display: flex; flex-direction: column; gap: 6px; }
+.tp-bar__h { display: flex; justify-content: space-between; align-items: baseline; }
+.tp-bar__h b { font-size: 13px; }
+.tp-crit { display: flex; align-items: center; gap: 5px; min-height: 34px; border-bottom: 1px solid var(--border); font-size: 12px; }
+.tp-crit__n { flex: 1; min-width: 0; padding: 3px 5px; border: 1px solid transparent; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: all .25s; }
+.tp-crit__n.is-on { border-color: var(--indigo); background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.tp-pas { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--border-strong); background: #fff; display: grid; place-items: center; font-weight: 700; font-size: 13px; transition: all .2s; flex: none; }
+.tp-pas.is-on { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+.tp-val { min-width: 26px; text-align: center; font-weight: 700; }
+.tp-max { width: 32px; height: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-3); color: var(--text-muted); display: grid; place-items: center; font-size: 11.5px; transition: all .25s; flex: none; }
+.tp-max.is-on { border-color: var(--indigo); background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.tp-x { width: 16px; color: var(--text-dim); font-size: 14px; text-align: center; flex: none; }
+.tp-ajcrit { height: 30px; border: 1px dashed var(--border-strong); border-radius: 8px; color: var(--indigo); font-weight: 600; font-size: 12px; display: grid; place-items: center; transition: box-shadow .25s; }
+.tp-ajcrit.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.tp-malus { display: flex; align-items: center; gap: 5px; padding: 7px 9px; border-radius: 8px; background: #FDF1E3; color: #B45309; font-size: 12px; }
+.tp-malus small { display: block; font-size: 10.5px; }
+.tp-ng { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.tp-ng b.n { font-size: 20px; color: #9A3412; }
+.tp-mbr { display: flex; align-items: center; gap: 6px; min-height: 30px; font-size: 12px; border-bottom: 1px solid var(--border); }
+.tp-mbr .q { flex: 1; min-width: 0; }
+.tp-mbr small { font-size: 10.5px; color: var(--text-dim); }
+.tp-aj { background: #EEF0FF; color: var(--indigo); }
+.tp-saisie { width: 44px; height: 24px; border: 1px solid var(--indigo); border-radius: 6px; box-shadow: 0 0 0 3px rgba(79,70,229,.15); display: flex; align-items: center; padding: 0 6px; font-size: 12px; }
+.tp-valider { height: 34px; border-radius: 6px; background: var(--indigo); color: #fff; font-weight: 600; font-size: 12.5px; display: grid; place-items: center; transition: transform .15s, box-shadow .2s; }
+.tp-valider.is-on { transform: scale(.97); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.tp-aide { font-size: 10.5px; color: var(--text-dim); text-align: center; }
+.tp--grand .tp-fil__l, .tp--grand .tp-zone { font-size: 14.5px; }
+.tp--grand .tp-lbl, .tp--grand .muet { font-size: 13px; }
+.tp--grand .tp-fil__l span:first-child { width: 50px; }
+.tp-coche { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-muted); }
+.tp-details { border-top: 1px solid var(--border); padding-top: 9px; }
+.tp-details__s { font-size: 12.5px; font-weight: 600; color: var(--text-muted); display: flex; gap: 6px; align-items: center; }
+.tp-details__s::before { content: ''; width: 0; height: 0; border-left: 6px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform .25s; }
+.tp-details__s.is-on::before, .tp-details__s--ouv::before { transform: rotate(90deg); }
+.tp-tag { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; font-size: 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
+.tp-tag i { font-style: normal; color: var(--text-dim); }
+.tp-tag i.is-on { background: var(--neg-soft); color: var(--neg); }
+.tp-carnet { width: 100%; border-collapse: collapse; font-size: 12px; }
+.tp-carnet th { text-align: left; font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--border); background: var(--surface-2); vertical-align: top; }
+.tp-carnet td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.tp-carnet .t { color: var(--indigo); font-weight: 600; font-size: 12px; display: block; border-radius: 4px; transition: background .25s; }
+.tp-carnet .t.is-on { background: var(--indigo-soft); }
+.tp-carnet .m { font-size: 10.5px; color: var(--text-dim); }
+.tp-pdf { position: absolute; right: 14px; top: 10px; width: 380px; height: 505px; background: #fff; border-radius: 4px; box-shadow: var(--shadow-lg); padding: 12px; display: flex; flex-direction: column; gap: 8px; z-index: 50; }
+.tp-pdf__f { flex: 1; border: 1.2px dashed #A1A1AA; border-radius: 4px; padding: 8px 10px; font-size: 10.5px; line-height: 1.3; display: flex; gap: 8px; transition: box-shadow .25s; }
+.tp-pdf__f.is-on { box-shadow: 0 0 0 3px rgba(249,115,22,.35); }
+.tp-pdf__f .g { flex: 1; min-width: 0; }
+.tp-pdf__f .tn { color: #C2410C; font-weight: 700; font-size: 11px; }
+.tp-pdf__f .ps { font-size: 16px; font-weight: 700; margin: 2px 0; }
+.tp-pdf__tab { width: 140px; border-collapse: collapse; font-size: 9.5px; }
+.tp-pdf__tab td { border: 1px solid #D4D4D8; padding: 1px 3px; }
+.tp-pdf__tab .tot td { background: #C2410C; color: #fff; font-weight: 700; }
+.tp-pdf__tab .mal td { color: #B91C1C; }
+/* téléphone de l'élève (components/StudentTp.tsx, student/StudentHome.tsx) */
+.el { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; font-size: 13px; position: relative; flex: 1; min-height: 0; overflow: hidden; }
+.el-h1 { font-size: 24px; font-weight: 700; letter-spacing: -.01em; }
+.el-h2 { font-size: 13px; font-weight: 600; color: var(--text-dim); text-transform: none; }
+.el-carte { background: #fff; border: 1px solid #E6E6E9; border-radius: 8px; padding: 13px; display: flex; flex-direction: column; gap: 10px; }
+.el-ic { width: 40px; height: 40px; border-radius: 8px; background: #EEF0FF; flex: none; display: grid; place-items: center; }
+.el-ic::before { content: ''; width: 12px; height: 16px; border: 2px solid #4F46E5; border-top: 0; border-radius: 0 0 6px 6px; }
+.el-btn { height: 44px; border-radius: 6px; background: #4F46E5; color: #fff; font-weight: 600; font-size: 14px; display: grid; place-items: center; transition: transform .15s; }
+.el-btn.is-on { transform: scale(.97); }
+.el-btn--blanc { background: #fff; color: var(--text); border: 1px solid #E6E6E9; }
+.el-retour { font-size: 13px; color: #4F46E5; font-weight: 600; }
+.el-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 6px; font-size: 11.5px; font-weight: 700; background: #FFF1E2; color: #9A3412; }
+.el-chip::before { content: ''; width: 7px; height: 7px; border-radius: 2px; background: #F97316; }
+.el-tabs { display: flex; gap: 3px; padding: 4px; background: #fff; border: 1px solid #E6E6E9; border-radius: 8px; }
+.el-tab { flex: 1; min-height: 38px; border-radius: 6px; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.15; color: var(--text-muted); gap: 3px; transition: all .25s; }
+.el-tab.is-on, .el-tab--on { background: #4F46E5; color: #fff; }
+.el-tab i { font-style: normal; font-size: 10px; padding: 0 4px; border-radius: 5px; background: #FFF1E2; color: #9A3412; }
+.el-ouvert { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 4px 10px; border-radius: 6px; background: #EAF6EE; color: #15803D; font-size: 12px; font-weight: 600; }
+.el-ouvert::before { content: ''; width: 8px; height: 8px; border-radius: 4px; background: #15803D; flex: none; }
+.el-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.el-photo { position: relative; height: 104px; border-radius: 6px; background: #3B4152; overflow: hidden; }
+.el-photo svg { width: 100%; height: 100%; display: block; }
+.el-photo i { position: absolute; left: 5px; bottom: 5px; font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 5px; background: rgba(24,24,27,.82); color: #fff; }
+.el-photo i.prof { background: #4F46E5; }
+.el-feuille { background: #fff; border: 1px solid #E6E6E9; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 10.5px; }
+.el-feuille .l { height: 6px; border-radius: 3px; background: #E4E4E7; }
+.el-muet { font-size: 11.5px; color: var(--text-dim); line-height: 1.35; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › TP en groupes</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#ouvrir">Ouvrir la fiche d'un TP</a></li>
+    <li><a href="#vue">La fiche du TP en un coup d'œil</a></li>
+    <li><a href="#depot">Le dépôt des photos des élèves</a></li>
+    <li><a href="#groupes">Passer d'un groupe à l'autre</a></li>
+    <li><a href="#photos">Les photos du groupe</a></li>
+    <li><a href="#commentaire">Commentaire au groupe et faits de la séance</a></li>
+    <li><a href="#noter">Noter le groupe</a></li>
+    <li><a href="#bareme">Retoucher le barème</a></li>
+    <li><a href="#membres">La note de chaque membre</a></li>
+    <li><a href="#materiel">Matériel et fiches à découper</a></li>
+    <li><a href="#supprimer">Supprimer le TP</a></li>
+    <li><a href="#eleves">Ce que voient les élèves</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/seance-sur-tablette.html">◀ Séance sur tablette</a><a href="../enseignant/travail-de-groupe-sur-tablette.html">Travail de groupe sur tablette ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Évaluations</div>
+      <h1>TP en groupes</h1>
+      <p>Le TP se mène au téléphone : îlots, points de groupe, photos. Au bureau, sa fiche rassemble tout ce qu'il a produit pour finir la notation tranquillement : chaque geste s'enregistre aussitôt et la note du groupe arrive dans le carnet de chacun de ses membres.</p>
+      <div class="chap__resume"><span>Évaluations › Carnet et fiches › colonne du TP</span><span>Ordinateur</span><span>Le TP se mène au téléphone</span></div>
+    </header>
+
+
+    <!-- ============================================================ ouvrir -->
+    <section class="fiche" id="ouvrir">
+      <div class="fiche__texte">
+        <h2>Ouvrir la fiche d'un TP</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Évaluations › Carnet et fiches › colonne du TP</span></p>
+        <p class="fiche__but">Un TP terminé au téléphone devient une colonne du carnet, avec la note du groupe pour chaque membre. Sa fiche s'ouvre depuis le titre de cette colonne.</p>
+        <ol class="etapes">
+          <li data-cursor="#ou-menu" data-action="click">Dans le menu, ouvrir <b>Évaluations</b> puis <span class="btn-nom">Carnet et fiches</span>, et choisir la classe.</li>
+          <li data-cursor="#ou-col" data-duration="3200">Repérer la colonne du TP : son titre est le nom du TP, et la ligne grise dit « Groupe · 23/11 · /20 ».</li>
+          <li data-cursor="#ou-col" data-action="click">Cliquer le titre de la colonne : la fiche de l'évaluation s'ouvre.</li>
+          <li data-cursor="#ou-band" data-duration="3400">Sous le nom du TP et sa ligne « TP de groupe · 5e B · /20 · coef 1 », la partie <b>TP en groupes</b> reprend tout ce que le TP a produit.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un TP lancé sans nom s'appelle « TP de groupe du 23/11 » ; sa colonne s'intitule simplement « TP de groupe ».</li>
+            <li>Une fiche de TP n'a pas de bouton <b>Dupliquer</b> : un TP se refait au téléphone.</li>
+            <li>Limite actuelle : une page « Groupes » qui liste tous les TP par classe existe, mais aucun menu ni bouton n'y mène ; on passe par le carnet.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/tp-en-groupes.html">Mener un TP au téléphone</a> · <a href="carnet-et-evaluations.html">Carnet et évaluations</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous" id="ou-menu" data-on="1-4">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__entete" data-to="3"><span class="app__titre">Évaluations</span></div>
+        <div class="app__entete" data-from="4" style="flex-direction:column;align-items:flex-start;justify-content:center;gap:0;height:62px">
+          <span class="app__titre">Observation au microscope</span>
+          <span class="muet" style="font-size:12px">TP de groupe · 5e B · /20 · coef 1</span>
+        </div>
+        <div class="app__corps tp" data-to="3">
+          <div class="ligne" style="margin-bottom:12px"><span class="chip">4B</span><span class="chip chip--plein">5e B</span><span class="chip">5E</span><span class="chip">3A</span><span class="esp"></span><span class="chip">T1</span></div>
+          <table class="tp-carnet">
+            <tr><th style="width:150px">Élève</th><th>Éval 1 — météo<div class="m">Écrit · 06/11 · /20</div></th><th>Activité 2<div class="m">Activité · 16/11 · /10</div></th><th style="width:180px"><span class="t" id="ou-col" data-on="2-3">Observation au microscope</span><div class="m">Groupe · 23/11 · /20</div></th></tr>
+            <tr><td>Adam KE</td><td class="note note--bien">15</td><td>8</td><td class="note">16</td></tr>
+            <tr><td>Inès KA</td><td class="note note--moy">11,5</td><td>6</td><td class="note">17,5</td></tr>
+            <tr><td>Jade LU</td><td class="note note--bien">17</td><td>9</td><td class="note">14</td></tr>
+            <tr><td>Lina BO</td><td class="note note--bien">14</td><td>7</td><td class="note">17,5</td></tr>
+            <tr><td>Malo RI</td><td class="note note--mal">8</td><td>5</td><td class="note">12</td></tr>
+            <tr><td>Noé MA</td><td class="note note--moy">12</td><td>abs</td><td class="note">17,5</td></tr>
+            <tr><td>Rose VI</td><td class="note note--bien">16</td><td>8</td><td class="note">14</td></tr>
+          </table>
+          <div class="bulle bulle--droite" data-at="2" style="right:200px;top:52px">Le titre de colonne ouvre la fiche</div>
+        </div>
+        <div class="app__corps tp" data-from="4" style="padding-top:12px">
+          <div class="ligne" style="margin-bottom:10px"><span class="esp"></span><span class="b b--fantome b--petit">Modifier</span><span class="b b--danger b--petit">Supprimer</span></div>
+          <div style="border:1px solid var(--border);border-radius:10px;padding:12px" class="col">
+            <div class="tp-band" id="ou-band" data-on="4">
+              <div style="flex:1"><div class="tp-band__t">PARTIE TP · NOTÉE PAR GROUPE</div><div class="tp-band__s">5e B · lundi 23 novembre 2026 · 26 élèves en 6 groupes</div></div>
+              <span class="tp-band__n">6 groupes notés sur 6</span><span class="tp-band__b">/20</span>
+            </div>
+            <div class="tp-phrase">La note du groupe va à chacun de ses membres, absents compris. Un élève qui change de groupe prend la note du nouveau.</div>
+            <div class="tp-cols" style="opacity:.55">
+              <div class="tp-liste" style="width:180px"><div class="tp-g tp-g--on"><div class="tp-g__l"><span class="tp-sw" style="background:#E0E7FF;border-color:#818CF8"></span><b>G1</b><span class="esp"></span><span class="tp-ok">16/20</span></div></div><div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#CCFBF1;border-color:#2DD4BF"></span><b>G2</b><span class="esp"></span><span class="tp-ok">14/20</span></div></div><div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="esp"></span><span class="tp-ok">17,5/20</span></div></div></div>
+              <div class="tp-cadre" style="flex:1;height:150px"><svg viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="1.2"><rect x="28" y="18" width="16" height="10" rx="2"/><rect x="44" y="18" width="16" height="10" rx="2"/><rect x="60" y="20" width="12" height="10" rx="2"/><rect x="26" y="28" width="18" height="11" rx="2"/><rect x="44" y="28" width="16" height="11" rx="2"/><rect x="60" y="30" width="14" height="11" rx="2"/><rect x="30" y="39" width="16" height="11" rx="2"/><rect x="46" y="39" width="16" height="11" rx="2"/></g><g fill="#7C3AED"><circle cx="36" cy="23" r="1.6"/><circle cx="52" cy="23" r="1.6"/><circle cx="35" cy="34" r="1.6"/><circle cx="53" cy="33" r="1.6"/><circle cx="38" cy="45" r="1.6"/></g></svg></div>
+              <div class="tp-bar" style="width:190px"><div class="tp-bar__h"><b>Barème du TP</b><span class="muet">4 critères · /20</span></div><div class="tp-crit"><span class="tp-crit__n">Mise au point</span><b>4</b></div><div class="tp-crit"><span class="tp-crit__n">Dessin d'observation</span><b>5</b></div></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ vue -->
+    <section class="fiche fiche--large" id="vue">
+      <div class="fiche__texte">
+        <h2>La fiche du TP en un coup d'œil</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › partie TP en groupes</span></p>
+        <p class="fiche__but">Trois colonnes pour finir la notation au bureau : les groupes à gauche, le travail du groupe au centre, le barème à droite.</p>
+        <ol class="etapes">
+          <li data-cursor="#vu-band">Le bandeau orange rappelle la classe, le jour et la répartition : « 26 élèves en 6 groupes ».</li>
+          <li data-cursor="#vu-compte">À droite, ce qui reste à faire (« 4 groupes notés sur 6 ») et le barème total, ici sur 20.</li>
+          <li data-cursor="#vu-phrase" data-duration="3400">La phrase grise donne la règle : la note du groupe va à chacun de ses membres, absents compris.</li>
+          <li data-cursor="#vu-c1">À gauche, les groupes, avec leur note ou la pastille « À noter ».</li>
+          <li data-cursor="#vu-c2">Au centre, le groupe choisi : ses photos, le commentaire et ce qui a été noté au téléphone.</li>
+          <li data-cursor="#vu-c3">À droite, le barème : un point donné s'enregistre aussitôt, sans bouton général.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les couleurs des groupes sont celles des îlots du téléphone (huit teintes : indigo, vert d'eau, orange, rose, bleu, jaune, violet, vert).</li>
+            <li>Les notes du carnet de chaque membre sont recalculées à partir du groupe ; une note ajustée à la main ne suit plus le groupe.</li>
+            <li>Si le TP n'est pas encore terminé au téléphone, le bandeau l'indique (« TP pas encore terminé au téléphone ») et les notes n'arrivent pas encore au carnet.</li>
+            <li>Sur un écran étroit, les trois colonnes passent les unes sous les autres.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp">
+          <div class="tp-band" id="vu-band" data-on="1">
+            <div style="flex:1"><div class="tp-band__t">PARTIE TP · NOTÉE PAR GROUPE</div><div class="tp-band__s">5e B · lundi 23 novembre 2026 · 26 élèves en 6 groupes</div></div>
+            <span id="vu-compte" class="ligne" data-on="2" style="gap:10px;border-radius:6px;padding:2px 4px"><span class="tp-band__n">4 groupes notés sur 6</span><span class="tp-band__b">/20</span></span>
+          </div>
+          <div class="tp-phrase" id="vu-phrase">La note du groupe va à chacun de ses membres, absents compris. Un élève qui change de groupe prend la note du nouveau.</div>
+          <div class="tp-cols">
+            <div class="tp-col" id="vu-c1" data-on="4" style="width:200px;flex:none">
+              <div class="tp-filtres"><span class="tp-filtre tp-filtre--on">Tous 6</span><span class="tp-filtre">À noter 2</span><span class="tp-filtre">Notés 4</span></div>
+              <div class="tp-liste">
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#E0E7FF;border-color:#818CF8"></span><b>G1</b><span class="esp"></span><span class="tp-badge tp-ph">2 ph.</span><span class="tp-ok">16/20</span></div><div class="tp-g__m">Adam KE, Jade LU, Hugo PE</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#CCFBF1;border-color:#2DD4BF"></span><b>G2</b><span class="esp"></span><span class="tp-ok">14/20</span></div><div class="tp-g__m">Rose VI, Malo RI, Léa GA</div></div>
+                <div class="tp-g tp-g--on"><div class="tp-g__l"><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="esp"></span><span class="tp-badge tp-ph">3 ph.</span><span class="tp-ok">17,5/20</span></div><div class="tp-g__m">Lina BO, Noé MA (abs.), Inès KA</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FCE7F3;border-color:#F472B6"></span><b>G4</b><span class="esp"></span><span class="tp-badge tp-anoter">À noter</span></div><div class="tp-g__m">Tom SA, Zoé FA, Iris TA</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#DBEAFE;border-color:#60A5FA"></span><b>G5</b><span class="esp"></span><span class="tp-ok">13/20</span></div><div class="tp-g__m">Naël CH, Lou BE, Sacha MO</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FEF9C3;border-color:#FACC15"></span><b>G6</b><span class="esp"></span><span class="tp-badge tp-anoter">À noter</span></div><div class="tp-g__m">Mia CO, Ilyes HA, Éva RO</div></div>
+              </div>
+            </div>
+            <div class="tp-col col" id="vu-c2" data-on="5" style="flex:1;min-width:0;gap:7px">
+              <div class="tp-titre"><span class="tp-nav">◀</span><span class="tp-nav">▶</span><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="muet">3 membres</span><span class="esp"></span><span class="muet">3 photos du groupe</span></div>
+              <div class="tp-cadre" style="height:160px"><svg viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="1.2"><rect x="28" y="18" width="16" height="10" rx="2"/><rect x="44" y="18" width="16" height="10" rx="2"/><rect x="26" y="28" width="18" height="11" rx="2"/><rect x="44" y="28" width="16" height="11" rx="2"/><rect x="60" y="30" width="14" height="11" rx="2"/><rect x="30" y="39" width="16" height="11" rx="2"/><rect x="46" y="39" width="16" height="11" rx="2"/></g></svg><span class="tp-etiq">Lina · 10h42</span></div>
+              <div class="tp-lbl">Commentaire au groupe</div>
+              <div class="tp-zone" style="min-height:40px">Bonne mise au point. Le dessin doit être fait au crayon, avec un titre.</div>
+              <div class="tp-fil"><div class="tp-lbl">Pendant la séance (au téléphone)</div><div class="tp-fil__l"><span>10h12</span><span>Noé MA absent(e)</span></div><div class="tp-fil__l"><span>10h31</span><span style="color:var(--pos)">Implication + pour tout le groupe</span></div></div>
+            </div>
+            <div class="tp-col" id="vu-c3" data-on="6" style="width:220px;flex:none">
+              <div class="tp-bar">
+                <div class="tp-bar__h"><b>Barème du TP</b><span class="muet">4 critères · /20</span></div>
+                <div class="tp-crit"><span class="tp-crit__n">Mise au point</span><span class="tp-pas">−</span><span class="tp-val">3,5</span><span class="tp-pas">+</span></div>
+                <div class="tp-crit"><span class="tp-crit__n">Dessin d'observation</span><span class="tp-pas">−</span><span class="tp-val">6</span><span class="tp-pas">+</span></div>
+                <div class="tp-crit"><span class="tp-crit__n">Légendes</span><span class="tp-pas">−</span><span class="tp-val">4</span><span class="tp-pas">+</span></div>
+                <div class="tp-crit"><span class="tp-crit__n">Titre et grossissement</span><span class="tp-pas">−</span><span class="tp-val">4</span><span class="tp-pas">+</span></div>
+                <div class="tp-ng"><b>Note du groupe</b><span><b class="n">17,5</b> <span class="muet">/ 20</span></span></div>
+                <div class="tp-valider">Valider G3 et passer à G4 ▶</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ dépôt -->
+    <section class="fiche" id="depot">
+      <div class="fiche__texte">
+        <h2>Le dépôt des photos des élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Élève</span><span class="chemin">Fiche du TP › bandeau du dépôt</span></p>
+        <p class="fiche__but">Pendant le TP, les élèves peuvent envoyer des photos de leur manipulation depuis leur téléphone. Le bandeau dit si le dépôt est ouvert et combien de photos sont arrivées.</p>
+        <ol class="etapes">
+          <li data-cursor="#dp-etat" data-duration="3400">Lire l'état : « Dépôt des élèves ouvert », l'heure de fermeture automatique et le nombre de photos reçues.</li>
+          <li data-cursor="#dp-vig" data-duration="3200">Tant que le dépôt est ouvert, une nouvelle photo d'élève arrive seule dans la fiche, et le compteur monte.</li>
+          <li data-cursor="#dp-fermer" data-action="click">Cliquer <span class="btn-nom">Fermer plus tôt</span> pour arrêter les envois avant la fin de l'heure.</li>
+          <li data-cursor="#dp-rouvrir" data-action="click">Le bandeau passe au gris, « fermé par vous ». <span class="btn-nom">Rouvrir 30 min</span> rouvre le dépôt…</li>
+          <li data-cursor="#dp-rouv" data-duration="3200">… pour une demi-heure : « rouvert, se referme tout seul à 11h28 ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le dépôt s'ouvre au lancement du TP et se ferme quand le TP est terminé au téléphone, au plus tard 2 heures après son début.</li>
+            <li>Les nouvelles photos arrivent toutes les 20 secondes tant que le dépôt est ouvert. Les photos déjà déposées restent après la fermeture.</li>
+            <li>Si le changement échoue : « Le dépôt n'a pas pu changer. Réessayez. »</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#eleves">Ce que voient les élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp">
+          <div class="tp-band">
+            <div style="flex:1"><div class="tp-band__t">PARTIE TP · NOTÉE PAR GROUPE</div><div class="tp-band__s">5e B · lundi 23 novembre 2026 · 26 élèves en 6 groupes · TP pas encore terminé au téléphone</div></div>
+            <span class="tp-band__n">0 groupe noté sur 6</span><span class="tp-band__b">/20</span>
+          </div>
+          <div class="tp-depot tp-depot--ouv" id="dp-etat" data-at="1-3">
+            <span class="pt" style="background:#15803D"></span><b style="color:#15803D">Dépôt des élèves ouvert</b>
+            <span style="color:var(--text-muted)">se ferme tout seul à la fin de l'heure (11h10 au plus tard) · <span data-at="1">8 photos d'élèves dans 4 groupes</span><span data-at="2-3">9 photos d'élèves dans 5 groupes</span></span>
+            <span class="esp"></span><span class="b b--petit tp-noir" id="dp-fermer" data-on="3">Fermer plus tôt</span>
+          </div>
+          <div class="tp-depot tp-depot--fer" data-at="4">
+            <span class="pt" style="background:#71717A"></span><b>Dépôt des élèves fermé</b>
+            <span style="color:var(--text-muted)">fermé par vous · 9 photos d'élèves dans 5 groupes</span>
+            <span class="esp"></span><span class="b b--fantome b--petit" id="dp-rouvrir" data-on="4">Rouvrir 30 min</span>
+          </div>
+          <div class="tp-depot tp-depot--ouv" id="dp-rouv" data-at="5">
+            <span class="pt" style="background:#15803D"></span><b style="color:#15803D">Dépôt des élèves ouvert</b>
+            <span style="color:var(--text-muted)">rouvert, se referme tout seul à 11h28 · 9 photos d'élèves dans 5 groupes</span>
+            <span class="esp"></span><span class="b b--petit tp-noir">Fermer plus tôt</span>
+          </div>
+          <div class="tp-phrase" style="margin-top:2px">La note du groupe va à chacun de ses membres, absents compris. Un élève qui change de groupe prend la note du nouveau.</div>
+          <div class="tp-cols">
+            <div class="tp-liste" style="width:200px;flex:none">
+              <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#E0E7FF;border-color:#818CF8"></span><b>G1</b><span class="esp"></span><span class="tp-badge tp-ph">2 ph.</span><span class="tp-badge tp-anoter">À noter</span></div></div>
+              <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#CCFBF1;border-color:#2DD4BF"></span><b>G2</b><span class="esp"></span><span class="tp-badge tp-ph">1 ph.</span><span class="tp-badge tp-anoter">À noter</span></div></div>
+              <div class="tp-g tp-g--on"><div class="tp-g__l"><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="esp"></span><span class="tp-badge tp-ph" data-to="1">3 ph.</span><span class="tp-badge tp-ph" data-from="2">4 ph.</span><span class="tp-badge tp-anoter">À noter</span></div></div>
+              <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FCE7F3;border-color:#F472B6"></span><b>G4</b><span class="esp"></span><span class="tp-badge tp-ph">2 ph.</span><span class="tp-badge tp-anoter">À noter</span></div></div>
+              <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#DBEAFE;border-color:#60A5FA"></span><b>G5</b><span class="esp"></span><span class="tp-badge tp-anoter">À noter</span></div></div>
+              <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FEF9C3;border-color:#FACC15"></span><b>G6</b><span class="esp"></span><span class="tp-badge tp-anoter">À noter</span></div></div>
+            </div>
+            <div class="col" style="flex:1;min-width:0;gap:8px">
+              <div class="tp-titre"><span class="tp-nav">◀</span><span class="tp-nav">▶</span><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="muet">3 membres</span></div>
+              <div class="tp-cadre" style="height:190px"><svg viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="1.2"><rect x="28" y="18" width="16" height="10" rx="2"/><rect x="44" y="18" width="16" height="10" rx="2"/><rect x="26" y="28" width="18" height="11" rx="2"/><rect x="44" y="28" width="16" height="11" rx="2"/><rect x="60" y="30" width="14" height="11" rx="2"/><rect x="30" y="39" width="16" height="11" rx="2"/></g></svg><span class="tp-etiq">Lina · 10h42</span></div>
+              <div class="tp-vignettes" id="dp-vig">
+                <span class="tp-vig tp-vig--on"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="2"><rect x="25" y="30" width="22" height="15"/><rect x="47" y="30" width="22" height="15"/><rect x="30" y="45" width="22" height="15"/></g></svg><i>Lina</i></span>
+                <span class="tp-vig"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="40" cy="42" r="6"/><circle cx="58" cy="50" r="7"/><circle cx="46" cy="62" r="5"/></g></svg><i class="prof">Prof</i></span>
+                <span class="tp-vig"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#cfd8e3"/><rect x="20" y="35" width="60" height="30" rx="3" fill="#fff" stroke="#94A3B8"/><circle cx="50" cy="50" r="9" fill="#C4B5FD"/></svg><i>Inès</i></span>
+                <span class="tp-vig zoom" data-from="2"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#E8EEF6"/><g fill="none" stroke="#EC4899" stroke-width="2"><ellipse cx="40" cy="45" rx="12" ry="8"/><ellipse cx="60" cy="58" rx="12" ry="8"/></g></svg><i>Lina</i></span>
+                <span class="tp-ajout">+ Ajouter une photo</span>
+              </div>
+            </div>
+          </div>
+          <div class="bulle bulle--haut" data-at="2" style="left:420px;top:470px">Arrivée toute seule : le dépôt est ouvert</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ groupes -->
+    <section class="fiche" id="groupes">
+      <div class="fiche__texte">
+        <h2>Passer d'un groupe à l'autre</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › colonne de gauche</span></p>
+        <p class="fiche__but">La colonne des groupes montre ce qui reste à noter et permet d'aller droit au groupe voulu.</p>
+        <ol class="etapes">
+          <li data-cursor="#gr-g3" data-duration="3400">Chaque ligne : couleur de l'îlot, nom du groupe, nombre de photos, puis la note en vert ou la pastille orange « À noter ». Dessous, les membres ; « (abs.) » marque un absent.</li>
+          <li data-cursor="#gr-anoter" data-action="click">Cliquer <span class="btn-nom">À noter 2</span> : seuls les groupes incomplets restent.</li>
+          <li data-cursor="#gr-g6" data-action="click">Cliquer un groupe : il s'affiche au centre et à droite.</li>
+          <li data-cursor="#gr-tous" data-action="click"><span class="btn-nom">Tous 6</span> remet la liste entière.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un groupe est « noté » quand chacun des critères a reçu une note, zéro compris.</li>
+            <li>Les flèches ◀ ▶ au-dessus de la photo font aussi passer d'un groupe au suivant.</li>
+            <li>« Aucun groupe ici. » s'affiche quand le filtre ne laisse rien.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp">
+          <div class="tp-band">
+            <div style="flex:1"><div class="tp-band__t">PARTIE TP · NOTÉE PAR GROUPE</div><div class="tp-band__s">5e B · lundi 23 novembre 2026 · 26 élèves en 6 groupes</div></div>
+            <span class="tp-band__n">4 groupes notés sur 6</span><span class="tp-band__b">/20</span>
+          </div>
+          <div class="tp-cols">
+            <div style="width:270px;flex:none">
+              <div class="tp-filtres"><span class="tp-filtre" id="gr-tous" data-on="1,4">Tous 6</span><span class="tp-filtre" id="gr-anoter" data-on="2-3">À noter 2</span><span class="tp-filtre">Notés 4</span></div>
+              <div class="tp-liste">
+                <div class="tp-g repli" data-at="1,4"><div class="tp-g__l"><span class="tp-sw" style="background:#E0E7FF;border-color:#818CF8"></span><b>G1</b><span class="esp"></span><span class="tp-badge tp-ph">2 ph.</span><span class="tp-ok">16/20</span></div><div class="tp-g__m">Adam KE, Jade LU, Hugo PE</div></div>
+                <div class="tp-g repli" data-at="1,4"><div class="tp-g__l"><span class="tp-sw" style="background:#CCFBF1;border-color:#2DD4BF"></span><b>G2</b><span class="esp"></span><span class="tp-ok">14/20</span></div><div class="tp-g__m">Rose VI, Malo RI, Léa GA</div></div>
+                <div class="tp-g repli" id="gr-g3" data-at="1,4" data-on="1"><div class="tp-g__l"><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="esp"></span><span class="tp-badge tp-ph">3 ph.</span><span class="tp-ok">17,5/20</span></div><div class="tp-g__m">Lina BO, Noé MA (abs.), Inès KA</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FCE7F3;border-color:#F472B6"></span><b>G4</b><span class="esp"></span><span class="tp-badge tp-ph">2 ph.</span><span class="tp-badge tp-anoter">À noter</span></div><div class="tp-g__m">Tom SA, Zoé FA, Iris TA</div></div>
+                <div class="tp-g repli" data-at="1,4"><div class="tp-g__l"><span class="tp-sw" style="background:#DBEAFE;border-color:#60A5FA"></span><b>G5</b><span class="esp"></span><span class="tp-ok">13/20</span></div><div class="tp-g__m">Naël CH, Lou BE, Sacha MO</div></div>
+                <div class="tp-g" id="gr-g6" data-on="3-4"><div class="tp-g__l"><span class="tp-sw" style="background:#FEF9C3;border-color:#FACC15"></span><b>G6</b><span class="esp"></span><span class="tp-badge tp-ph">1 ph.</span><span class="tp-badge tp-anoter">À noter</span></div><div class="tp-g__m">Mia CO, Ilyes HA, Éva RO</div></div>
+              </div>
+            </div>
+            <div class="col" style="flex:1;min-width:0;gap:8px">
+              <div class="tp-titre" data-to="2"><span class="tp-nav">◀</span><span class="tp-nav">▶</span><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="muet">3 membres</span><span class="esp"></span><span class="muet">3 photos du groupe</span></div>
+              <div class="tp-titre" data-from="3"><span class="tp-nav">◀</span><span class="tp-nav">▶</span><span class="tp-sw" style="background:#FEF9C3;border-color:#FACC15"></span><b>G6</b><span class="muet">3 membres</span><span class="esp"></span><span class="muet">1 photo du groupe</span></div>
+              <div class="tp-cadre" style="height:250px">
+                <svg data-to="2" viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="1.2"><rect x="28" y="18" width="16" height="10" rx="2"/><rect x="44" y="18" width="16" height="10" rx="2"/><rect x="26" y="28" width="18" height="11" rx="2"/><rect x="44" y="28" width="16" height="11" rx="2"/><rect x="30" y="39" width="16" height="11" rx="2"/></g></svg>
+                <svg data-from="3" style="position:absolute;inset:0;margin:auto" viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="40" cy="30" r="5"/><circle cx="57" cy="36" r="6"/><circle cx="46" cy="46" r="4"/><circle cx="62" cy="24" r="3.5"/></g></svg>
+                <span class="tp-etiq" data-to="2">Lina · 10h42</span><span class="tp-etiq" data-from="3">Mia · 10h47</span>
+              </div>
+              <div class="tp-lbl">Commentaire au groupe</div>
+              <div class="tp-zone tp-zone--vide" style="min-height:44px">Ce que le groupe doit retenir de sa manipulation</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ photos -->
+    <section class="fiche" id="photos">
+      <div class="fiche__texte">
+        <h2>Les photos du groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › colonne centrale</span></p>
+        <p class="fiche__but">Les photos prises par le groupe, ou par l'enseignant au téléphone, s'affichent en grand. On peut en ajouter, les ranger dans le bon groupe ou les supprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#ph-suiv" data-action="click">Passer d'un groupe à l'autre avec <span class="btn-nom">◀</span> <span class="btn-nom">▶</span>.</li>
+          <li data-cursor="#ph-v2" data-action="click">Cliquer une vignette : elle s'affiche dans le cadre, avec son auteur et son heure. <span class="btn-nom">Ouvrir en grand</span> l'agrandit en plein écran.</li>
+          <li data-cursor="#ph-ranger" data-action="click">La liste <b>Ranger la photo</b> la change de groupe, ou la met dans <b>Toute la classe</b>.</li>
+          <li data-cursor="#ph-classe" data-duration="3200">Une photo de toute la classe passe sous les vignettes : elle est visible par tous les groupes.</li>
+          <li data-cursor="#ph-ajout" data-action="click"><span class="btn-nom">+ Ajouter une photo</span> envoie une ou plusieurs images de l'ordinateur dans le groupe affiché.</li>
+          <li data-cursor="#ph-suppr" data-action="click"><span class="btn-nom">Supprimer</span> demande confirmation : « Supprimer cette photo ? Le groupe ne la verra plus. »</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une photo d'élève est étiquetée de son seul prénom, sans les deux lettres ; une photo de l'enseignant porte « Prof ».</li>
+            <li>Les photos ajoutées au bureau sont réduites avant l'envoi (« Envoi… » pendant ce temps).</li>
+            <li>Le groupe voit ses photos dans son onglet du TP, sur l'espace élève.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#eleves">Ce que voient les élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp">
+          <div class="tp-titre"><span class="tp-nav">◀</span><span class="tp-nav" id="ph-suiv" data-on="1">▶</span><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="muet">3 membres</span><span class="esp"></span><span class="muet" data-to="3">3 photos du groupe</span><span class="muet" data-at="4">2 photos du groupe</span><span class="muet" data-from="5">3 photos du groupe</span></div>
+          <div class="tp-cadre" style="height:350px">
+            <svg data-at="1" viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="1.2"><rect x="28" y="18" width="16" height="10" rx="2"/><rect x="44" y="18" width="16" height="10" rx="2"/><rect x="60" y="20" width="12" height="10" rx="2"/><rect x="26" y="28" width="18" height="11" rx="2"/><rect x="44" y="28" width="16" height="11" rx="2"/><rect x="60" y="30" width="14" height="11" rx="2"/><rect x="30" y="39" width="16" height="11" rx="2"/><rect x="46" y="39" width="16" height="11" rx="2"/></g><g fill="#7C3AED"><circle cx="36" cy="23" r="1.6"/><circle cx="52" cy="23" r="1.6"/><circle cx="35" cy="34" r="1.6"/><circle cx="53" cy="33" r="1.6"/><circle cx="38" cy="45" r="1.6"/></g></svg>
+            <svg data-from="2" style="position:absolute;inset:0;margin:auto" viewBox="0 0 100 70"><circle cx="50" cy="35" r="30" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="40" cy="30" r="5"/><circle cx="57" cy="36" r="6"/><circle cx="46" cy="46" r="4"/><circle cx="62" cy="24" r="3.5"/><circle cx="32" cy="42" r="3"/></g><g fill="#3F6212"><circle cx="40" cy="30" r="1.5"/><circle cx="57" cy="36" r="1.8"/></g></svg>
+            <span class="tp-etiq" data-at="1">Lina · 10h42</span>
+            <span class="tp-etiq" data-from="2">Prof · 10h35<span data-from="4"> · toute la classe</span></span>
+            <span class="tp-outils"><span class="tp-bs">Ouvrir en grand</span><span class="tp-bs" id="ph-ranger" data-on="3"><span data-to="3">G3</span><span data-from="4">Toute la classe</span> ▾</span><span class="tp-bs tp-bs--rouge" id="ph-suppr" data-on="6">Supprimer</span></span>
+            <div class="menu" data-at="3" style="right:96px;top:40px;min-width:130px"><div class="menu__it">G1</div><div class="menu__it">G2</div><div class="menu__it">G3</div><div class="menu__it">G4</div><div class="menu__it">G5</div><div class="menu__it">G6</div><div class="menu__it is-on">Toute la classe</div></div>
+          </div>
+          <div class="tp-vignettes">
+            <span class="tp-vig" data-on="1"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="2"><rect x="25" y="30" width="22" height="15"/><rect x="47" y="30" width="22" height="15"/><rect x="30" y="45" width="22" height="15"/></g></svg><i>Lina</i></span>
+            <span class="tp-vig repli" id="ph-v2" data-to="3" data-on="2-3"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="40" cy="42" r="6"/><circle cx="58" cy="50" r="7"/><circle cx="46" cy="62" r="5"/></g></svg><i class="prof">Prof</i></span>
+            <span class="tp-vig"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#cfd8e3"/><rect x="20" y="35" width="60" height="30" rx="3" fill="#fff" stroke="#94A3B8"/><circle cx="50" cy="50" r="9" fill="#C4B5FD"/></svg><i>Inès</i></span>
+            <span class="tp-vig zoom repli" data-from="5"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#E7E5E4"/><path d="M20 70 L50 25 L80 70 Z" fill="#A8A29E"/><circle cx="50" cy="55" r="8" fill="#fff"/></svg><i class="prof">Prof</i></span>
+            <span class="tp-ajout" id="ph-ajout" data-on="5"><span data-to="4">+ Ajouter une photo</span><span data-at="5">Envoi…</span><span data-from="6">+ Ajouter une photo</span></span>
+          </div>
+          <div class="tp-vignettes" data-from="4" id="ph-classe" style="margin-top:2px">
+            <span class="tp-lbl" style="width:100%">Toute la classe (1) · visibles par tous les groupes</span>
+            <span class="tp-vig tp-vig--petit tp-vig--on"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="40" cy="42" r="6"/><circle cx="58" cy="50" r="7"/><circle cx="46" cy="62" r="5"/></g></svg><i class="prof">Prof</i></span>
+          </div>
+          <div class="modale-fond" data-at="6" style="align-items:start;justify-items:start;padding:70px 0 0 60px"><div class="modale" style="width:360px"><div style="font-size:12px;color:var(--text-dim);margin-bottom:6px">qwetsh.github.io indique</div><div style="font-size:13.5px;margin-bottom:14px">Supprimer cette photo ? Le groupe ne la verra plus.</div><div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit">OK</span></div></div></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ commentaire -->
+    <section class="fiche" id="commentaire">
+      <div class="fiche__texte">
+        <h2>Commentaire au groupe et faits de la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › bas de la colonne centrale</span></p>
+        <p class="fiche__but">Écrire au groupe ce qu'il doit retenir de sa manipulation, et relire ce qui a été noté pendant le TP au téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#cm-zone" data-action="click">Cliquer dans <b>Commentaire au groupe</b>.</li>
+          <li data-cursor="#cm-zone" data-duration="4200">Écrire le commentaire : l'enregistrement part tout seul, un instant après la dernière frappe (« Enregistrement… »).</li>
+          <li data-cursor="#cm-etat">« Enregistré » : le commentaire est joint à la note de chaque membre dans le carnet.</li>
+          <li data-cursor="#cm-fil" data-duration="3400">L'encadré <b>Pendant la séance (au téléphone)</b> reprend, heure par heure, les absences, sorties, implications, bavardages et remarques du groupe.</li>
+          <li data-cursor="#cm-tous" data-duration="3200">Les points donnés à tout le groupe d'un coup ne font qu'une ligne : « Implication + pour tout le groupe ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le groupe lit ce commentaire dans son TP, sur l'espace élève : « Le mot du professeur à ton groupe ».</li>
+            <li>Si l'enregistrement échoue, « Non enregistré » s'affiche en rouge.</li>
+            <li>Un TP lancé depuis le site sur tablette n'a pas de séance liée : l'encadré reste vide (« Rien de noté pour ce groupe. »).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/tp-notation.html">Noter pendant le TP au téléphone</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp tp--grand" style="gap:9px">
+          <div class="tp-titre"><span class="tp-nav">◀</span><span class="tp-nav">▶</span><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="muet">3 membres</span><span class="esp"></span><span class="muet">3 photos du groupe</span></div>
+          <div class="tp-vignettes">
+            <span class="tp-vig tp-vig--on"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="2"><rect x="25" y="30" width="22" height="15"/><rect x="47" y="30" width="22" height="15"/><rect x="30" y="45" width="22" height="15"/></g></svg><i>Lina</i></span>
+            <span class="tp-vig"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="40" cy="42" r="6"/><circle cx="58" cy="50" r="7"/><circle cx="46" cy="62" r="5"/></g></svg><i class="prof">Prof</i></span>
+            <span class="tp-vig"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#cfd8e3"/><rect x="20" y="35" width="60" height="30" rx="3" fill="#fff" stroke="#94A3B8"/><circle cx="50" cy="50" r="9" fill="#C4B5FD"/></svg><i>Inès</i></span>
+            <span class="tp-ajout">+ Ajouter une photo</span>
+          </div>
+          <div class="tp-lbl" style="margin-top:4px">Commentaire au groupe</div>
+          <div class="tp-zone" id="cm-zone" data-on="1-2" style="min-height:66px">
+            <span class="muet" data-at="1" style="font-size:12.5px">Ce que le groupe doit retenir de sa manipulation</span>
+            <span data-from="2" data-type="Bonne mise au point au faible grossissement. Le dessin se fait au crayon, avec un titre et le grossissement." data-type-at="2"></span>
+          </div>
+          <div class="ligne muet" style="justify-content:space-between;margin-top:-4px"><span>Joint à la note de chaque membre dans le carnet.</span><span id="cm-etat" style="border-radius:4px;padding:0 4px" data-on="3"><span data-at="2">Enregistrement…</span><span data-from="3">Enregistré</span></span></div>
+          <div class="tp-fil" id="cm-fil" data-on="4">
+            <div class="tp-lbl" style="margin-bottom:3px">Pendant la séance (au téléphone)</div>
+            <div class="tp-fil__l"><span>10h12</span><span>Noé MA absent(e)</span></div>
+            <div class="tp-fil__l"><span>10h20</span><span style="color:var(--pos)">Inès KA : implication +</span></div>
+            <div class="tp-fil__l" id="cm-tous" data-on="5"><span>10h31</span><span style="color:var(--pos)">Implication + pour tout le groupe</span></div>
+            <div class="tp-fil__l"><span>10h34</span><span>Lina BO sorti(e) (toilettes), revenu(e) à 10h41</span></div>
+            <div class="tp-fil__l"><span>10h45</span><span style="color:#B45309">Inès KA : bavardage</span></div>
+            <div class="tp-fil__l"><span>10h50</span><span>Lina BO : a nettoyé la paillasse sans qu'on le demande</span></div>
+            <div class="tp-fil__l"><span></span><span style="color:#B45309">Malus conduite −1 pour le groupe</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ noter -->
+    <section class="fiche" id="noter">
+      <div class="fiche__texte">
+        <h2>Noter le groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › Barème du TP</span></p>
+        <p class="fiche__but">Le barème se remplit critère par critère, avec un malus de conduite ; un bouton valide le groupe et passe au suivant.</p>
+        <ol class="etapes">
+          <li data-cursor="#no-p1" data-action="click">Sur un critère jamais noté, le premier <span class="btn-nom">+</span> donne le maximum (le premier <span class="btn-nom">−</span> donnerait zéro).</li>
+          <li data-cursor="#no-m1" data-action="click">Ensuite, <span class="btn-nom">−</span> et <span class="btn-nom">+</span> avancent d'un demi-point.</li>
+          <li data-cursor="#no-p2" data-action="click">Noter les autres critères : quand tous ont une note, la pastille « à finir » disparaît.</li>
+          <li data-cursor="#no-mal" data-action="click">Le <b>Malus conduite</b> se retire de la note du groupe.</li>
+          <li data-cursor="#no-val" data-action="click" data-duration="3200">Cliquer <span class="btn-nom">Valider G4 et passer à G6 ▶</span> (G5 est déjà noté).</li>
+          <li data-cursor="#no-g6">G4 affiche sa note dans la liste ; G6, encore vierge, s'ouvre à droite.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Note du groupe = somme des critères moins le malus, jamais sous zéro.</li>
+            <li>Chaque point s'enregistre aussitôt. <b>Valider</b> compte 0 aux critères laissés vides, puis saute au prochain groupe non noté (en revenant au début si besoin).</li>
+            <li>Quand tout est noté, le bouton devient « Tous les groupes sont notés ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp">
+          <div class="tp-cols">
+            <div style="width:250px;flex:none">
+              <div class="tp-filtres"><span class="tp-filtre tp-filtre--on">Tous 6</span><span class="tp-filtre">À noter <span data-to="5">2</span><span data-from="6">1</span></span><span class="tp-filtre">Notés <span data-to="5">4</span><span data-from="6">5</span></span></div>
+              <div class="tp-liste">
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#E0E7FF;border-color:#818CF8"></span><b>G1</b><span class="esp"></span><span class="tp-ok">16/20</span></div><div class="tp-g__m">Adam KE, Jade LU, Hugo PE</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#CCFBF1;border-color:#2DD4BF"></span><b>G2</b><span class="esp"></span><span class="tp-ok">14/20</span></div><div class="tp-g__m">Rose VI, Malo RI, Léa GA</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="esp"></span><span class="tp-ok">17,5/20</span></div><div class="tp-g__m">Lina BO, Noé MA (abs.), Inès KA</div></div>
+                <div class="tp-g" data-on="1-5"><div class="tp-g__l"><span class="tp-sw" style="background:#FCE7F3;border-color:#F472B6"></span><b>G4</b><span class="esp"></span><span class="tp-badge tp-anoter" data-to="5">À noter</span><span class="tp-ok" data-from="6">17,5/20</span></div><div class="tp-g__m">Tom SA, Zoé FA, Iris TA</div></div>
+                <div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#DBEAFE;border-color:#60A5FA"></span><b>G5</b><span class="esp"></span><span class="tp-ok">13/20</span></div><div class="tp-g__m">Naël CH, Lou BE, Sacha MO</div></div>
+                <div class="tp-g" id="no-g6" data-on="6"><div class="tp-g__l"><span class="tp-sw" style="background:#FEF9C3;border-color:#FACC15"></span><b>G6</b><span class="esp"></span><span class="tp-badge tp-anoter">À noter</span></div><div class="tp-g__m">Mia CO, Ilyes HA, Éva RO</div></div>
+              </div>
+            </div>
+            <div class="tp-bar" style="flex:1;min-width:0;font-size:13px">
+              <div class="tp-bar__h"><b>Barème du TP <span class="muet" style="font-weight:500">· <span data-to="5">G4</span><span data-from="6">G6</span></span></b><span class="muet">4 critères · /20</span></div>
+              <div class="tp-crit"><span class="tp-crit__n">Mise au point</span><span class="tp-pas" id="no-m1" data-on="2">−</span><span class="tp-val"><span data-at="1">4</span><span data-at="2-5">3,5</span><span data-from="6" class="muet">—</span></span><span class="tp-pas" id="no-p1" data-on="1">+</span><span class="muet">/</span><span class="tp-max">4</span><span class="tp-x">×</span></div>
+              <div class="tp-crit"><span class="tp-crit__n">Dessin d'observation</span><span class="tp-pas">−</span><span class="tp-val"><span class="muet" data-to="2">—</span><span data-at="3-5">6</span><span class="muet" data-from="6">—</span></span><span class="tp-pas" id="no-p2" data-on="3">+</span><span class="muet">/</span><span class="tp-max">6</span><span class="tp-x">×</span></div>
+              <div class="tp-crit"><span class="tp-crit__n">Légendes</span><span class="tp-pas">−</span><span class="tp-val"><span data-to="5">4</span><span class="muet" data-from="6">—</span></span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">5</span><span class="tp-x">×</span></div>
+              <div class="tp-crit"><span class="tp-crit__n">Titre et grossissement</span><span class="tp-pas">−</span><span class="tp-val"><span data-to="5">5</span><span class="muet" data-from="6">—</span></span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">5</span><span class="tp-x">×</span></div>
+              <div class="tp-ajcrit">+ Ajouter un critère</div>
+              <div class="tp-malus"><span style="flex:1"><b>Malus conduite</b><small>retiré de la note du groupe</small></span><span class="tp-pas">−</span><span class="tp-val"><span data-to="3">0</span><span data-at="4-5">−1</span><span data-from="6">0</span></span><span class="tp-pas" id="no-mal" data-on="4">+</span></div>
+              <div class="tp-ng"><b>Note du groupe</b><span><span class="tp-badge tp-anoter" data-at="1-2,6" style="margin-right:8px">à finir</span><b class="n"><span data-at="1">13</span><span data-at="2">12,5</span><span data-at="3">18,5</span><span data-at="4-5">17,5</span><span data-from="6">0</span></b> <span class="muet" style="font-size:13px">/ 20</span></span></div>
+              <div class="tp-valider" id="no-val" data-on="5"><span data-to="5">Valider G4 et passer à G6 ▶</span><span data-from="6">Valider G6</span></div>
+              <div class="tp-aide">Chaque point s'enregistre aussitôt. Valider compte 0 aux critères laissés vides.</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ barème -->
+    <section class="fiche" id="bareme">
+      <div class="fiche__texte">
+        <h2>Retoucher le barème</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › Barème du TP</span></p>
+        <p class="fiche__but">Le barème venu du téléphone se corrige au bureau : nom d'un critère, maximum, critère en plus ou en moins. Il vaut pour tous les groupes du TP.</p>
+        <ol class="etapes">
+          <li data-cursor="#ba-nom" data-action="click" data-duration="3400">Cliquer le nom d'un critère et le réécrire ; il s'enregistre en quittant la case (ou avec Entrée).</li>
+          <li data-cursor="#ba-max" data-action="click">Changer le maximum dans la petite case après « / » : le total du barème suit.</li>
+          <li data-cursor="#ba-ajout" data-action="click">Cliquer <span class="btn-nom">+ Ajouter un critère</span>.</li>
+          <li data-cursor="#ba-ok" data-action="click">Taper le nom et le maximum, puis <span class="btn-nom">Ajouter</span> (ou Entrée ; Échap annule).</li>
+          <li data-cursor="#ba-nouveau">Le nouveau critère arrive en bas, à noter pour chaque groupe.</li>
+          <li data-cursor="#ba-case" data-action="click" data-duration="3200">Cocher <b>Mettre aussi à jour ce barème dans Mes TP</b> recopie le barème dans le modèle du TP.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Baisser un maximum ramène à ce maximum les points déjà donnés au-dessus.</li>
+            <li>La croix <b>×</b> retire un critère après confirmation ; ses points disparaissent dans tous les groupes.</li>
+            <li>La case Mes TP n'apparaît que si le TP vient d'un modèle de Mes TP. Succès : « Barème recopié dans Mes TP ».</li>
+            <li>Un nom ou un maximum manquant est refusé : « Donnez un nom et un maximum au critère. »</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="classeur-virtuel-et-tp.html">Mes TP</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp" style="align-items:center">
+          <div class="tp-bar" style="width:470px;font-size:13px;zoom:1.4">
+            <div class="tp-bar__h"><b>Barème du TP</b><span class="muet"><span data-to="1">4 critères · /20</span><span data-at="2-4">4 critères · /19</span><span data-from="5">5 critères · /20</span></span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Mise au point</span><span class="tp-pas">−</span><span class="tp-val">3,5</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">4</span><span class="tp-x">×</span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Dessin d'observation</span><span class="tp-pas">−</span><span class="tp-val">6</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">6</span><span class="tp-x">×</span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Légendes</span><span class="tp-pas">−</span><span class="tp-val"><span data-to="1">5</span><span data-from="2">4</span></span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max" id="ba-max" data-on="2"><span data-to="1">5</span><span data-from="2">4</span></span><span class="tp-x">×</span></div>
+            <div class="tp-crit"><span class="tp-crit__n" id="ba-nom" data-on="1"><span data-at="1" data-type="Titre, échelle et grossissement" data-type-at="1"></span><span data-from="2">Titre, échelle et grossissement</span></span><span class="tp-pas">−</span><span class="tp-val">4</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">5</span><span class="tp-x">×</span></div>
+            <div class="tp-crit" id="ba-nouveau" data-from="5" style="background:var(--indigo-soft)"><span class="tp-crit__n">Propreté de la lame</span><span class="tp-pas">−</span><span class="tp-val muet">—</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">1</span><span class="tp-x">×</span></div>
+            <div class="tp-ajcrit" id="ba-ajout" data-at="1-3" data-on="3">+ Ajouter un critère</div>
+            <div class="ligne" data-at="4"><span class="champ is-on" style="flex:1" data-type="Propreté de la lame" data-type-at="4"></span><span class="champ" style="width:48px">1</span><span class="b b--petit" id="ba-ok" data-on="4">Ajouter</span></div>
+            <div class="tp-ajcrit" data-from="5">+ Ajouter un critère</div>
+            <label class="tp-coche" id="ba-case"><span class="case" data-on="6"></span>Mettre aussi à jour ce barème dans Mes TP</label>
+            <div class="tp-malus"><span style="flex:1"><b>Malus conduite</b><small>retiré de la note du groupe</small></span><span class="tp-pas">−</span><span class="tp-val">0</span><span class="tp-pas">+</span></div>
+            <div class="tp-ng"><b>Note du groupe</b><span><span class="tp-badge tp-anoter" data-from="5" style="margin-right:8px">à finir</span><b class="n"><span data-to="1">18,5</span><span data-from="2">17,5</span></b> <span class="muet" style="font-size:13px">/ <span data-to="1">20</span><span data-at="2-4">19</span><span data-from="5">20</span></span></span></div>
+          </div>
+          <div class="toast" data-at="6">Barème recopié dans Mes TP</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ membres -->
+    <section class="fiche" id="membres">
+      <div class="fiche__texte">
+        <h2>La note de chaque membre</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › Note de chaque membre</span></p>
+        <p class="fiche__but">Chaque élève reçoit au carnet la note de son groupe. Pour un cas particulier, on lui donne une note différente, puis on peut le remettre sur la note du groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#mb-liste" data-duration="3400">Lire la liste : la note de chacun, et en gris « absent(e), garde la note » ou « sorti(e) 7 min ».</li>
+          <li data-cursor="#mb-aj" data-action="click">Cliquer <span class="btn-nom">Ajuster</span> à côté d'un élève : une case s'ouvre, préremplie avec la note du groupe.</li>
+          <li data-cursor="#mb-ok" data-action="click">Taper la note, sur le barème du TP, puis <span class="btn-nom">OK</span> (ou Entrée ; Échap annule).</li>
+          <li data-cursor="#mb-suivre" data-duration="3200">La pastille « ajustée » signale une note qui ne suit plus le groupe.</li>
+          <li data-cursor="#mb-suivre" data-action="click"><span class="btn-nom">Suivre le groupe</span> remet l'élève sur la note de son groupe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La note saisie sur le barème du TP est convertie sur 20 pour le carnet ; une note hors du barème est refusée.</li>
+            <li>Un absent garde la note de son groupe. Le temps de sortie se calcule à partir des sorties et retours notés au téléphone.</li>
+            <li>Tant que le TP n'est pas terminé au téléphone : « Les notes arrivent au carnet quand le TP est terminé au téléphone. », et pas de bouton Ajuster.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp" style="align-items:center">
+          <div class="tp-bar" style="width:520px;font-size:13px;zoom:1.25">
+            <div class="tp-bar__h"><b>Barème du TP</b><span class="muet">4 critères · /20</span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Mise au point</span><span class="tp-pas">−</span><span class="tp-val">3,5</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">4</span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Dessin d'observation</span><span class="tp-pas">−</span><span class="tp-val">6</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">6</span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Légendes</span><span class="tp-pas">−</span><span class="tp-val">4</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">5</span></div>
+            <div class="tp-crit"><span class="tp-crit__n">Titre et grossissement</span><span class="tp-pas">−</span><span class="tp-val">4</span><span class="tp-pas">+</span><span class="muet">/</span><span class="tp-max">5</span></div>
+            <div class="tp-ng"><b>Note du groupe</b><span><b class="n">17,5</b> <span class="muet" style="font-size:13px">/ 20</span></span></div>
+            <div id="mb-liste" style="border-radius:6px">
+              <div class="tp-lbl" style="margin:2px 0">Note de chaque membre</div>
+              <div class="tp-mbr"><span class="q">Lina BO</span><b>17,5</b><span class="tp-bs">Ajuster</span></div>
+              <div class="tp-mbr"><span class="q">Noé MA <small>absent(e), garde la note</small></span><b>17,5</b><span class="tp-bs">Ajuster</span></div>
+              <div class="tp-mbr"><span class="q">Inès KA <small>sorti(e) 7 min</small></span>
+                <span data-to="2" class="ligne" style="gap:6px"><b>17,5</b><span class="tp-bs" id="mb-aj" data-on="2">Ajuster</span></span>
+                <span data-at="3" class="ligne" style="gap:6px"><span class="tp-saisie"><span data-type="15" data-type-at="3"></span></span><span class="tp-bs" id="mb-ok" data-on="3">OK</span></span>
+                <span data-from="4" class="ligne" style="gap:6px"><span class="tp-badge tp-aj" data-at="4">ajustée</span><b><span data-at="4">15</span><span data-at="5">17,5</span></b><span class="tp-bs" id="mb-suivre" data-on="5"><span data-at="4">Suivre le groupe</span><span data-at="5">Ajuster</span></span></span>
+              </div>
+            </div>
+            <div class="tp-valider">Tous les groupes sont notés</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ matériel -->
+    <section class="fiche" id="materiel">
+      <div class="fiche__texte">
+        <h2>Matériel et fiches à découper</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › Matériel, fiches à découper, suppression du TP</span></p>
+        <p class="fiche__but">Tenir la liste du matériel du TP, et imprimer pour chaque élève une petite fiche de résultat à coller dans le cahier.</p>
+        <ol class="etapes">
+          <li data-cursor="#ma-sum" data-action="click">En bas de la fiche, déplier <b>Matériel, fiches à découper, suppression du TP</b>.</li>
+          <li data-cursor="#ma-champ" data-action="click" data-duration="3200">Sous <b>Matériel nécessaire</b>, taper un élément puis Entrée ou <span class="btn-nom">+</span> : il devient une étiquette.</li>
+          <li data-cursor="#ma-x" data-action="click">La croix d'une étiquette la retire.</li>
+          <li data-cursor="#ma-pdf" data-action="click"><span class="btn-nom">Fiches à découper (PDF)</span> télécharge le fichier : trois fiches par page A4, une par élève.</li>
+          <li data-cursor="#ma-fiche" data-duration="3600">Chaque fiche : nom du TP, classe et date, pseudo de l'élève, son groupe et ses coéquipiers, les points par critère, le malus éventuel et le total.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les élèves sont rangés par ordre alphabétique ; les fiches sont encadrées en pointillé pour la découpe.</li>
+            <li>Le fichier porte le nom du TP, suivi de « _fiches.pdf ».</li>
+            <li>Échec : « Erreur lors de la sauvegarde du matériel ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="tp-corps tp">
+          <div class="tp-cols" style="opacity:.5">
+            <div class="tp-liste" style="width:200px"><div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FFEDD5;border-color:#FB923C"></span><b>G3</b><span class="esp"></span><span class="tp-ok">17,5/20</span></div></div><div class="tp-g"><div class="tp-g__l"><span class="tp-sw" style="background:#FCE7F3;border-color:#F472B6"></span><b>G4</b><span class="esp"></span><span class="tp-ok">17,5/20</span></div></div></div>
+            <div class="tp-zone" style="flex:1">Bonne mise au point au faible grossissement.</div>
+            <div class="tp-bar" style="width:200px"><div class="tp-valider">Tous les groupes sont notés</div></div>
+          </div>
+          <div class="tp-details">
+            <div class="tp-details__s" id="ma-sum" data-on="1-5">Matériel, fiches à découper, suppression du TP</div>
+            <div class="col" data-from="1" style="margin-top:10px;gap:10px">
+              <div class="tp-lbl">Matériel nécessaire</div>
+              <div class="ligne" style="flex-wrap:wrap"><span class="tp-tag">microscope <i>×</i></span><span class="tp-tag">lames <i>×</i></span><span class="tp-tag" data-to="3">bleu de méthylène <i id="ma-x" data-on="3" style="border-radius:3px;padding:0 2px">×</i></span><span class="tp-tag zoom" data-from="2">lamelles <i>×</i></span></div>
+              <div class="ligne"><span class="champ" id="ma-champ" data-on="2" style="width:330px"><span class="muet" data-at="1" style="font-size:13px">Ex : microscope, lame, bleu de méthylène…</span><span data-at="2" data-type="lamelles" data-type-at="2"></span></span><span class="b b--fantome b--petit">+</span></div>
+              <div class="ligne"><span class="b b--fantome" id="ma-pdf" data-on="4">Fiches à découper (PDF)</span><span class="b b--danger">Supprimer le TP</span></div>
+            </div>
+          </div>
+          <div class="tp-pdf glisse-gauche" data-from="4">
+            <div class="tp-pdf__f" id="ma-fiche" data-on="5"><div class="g"><div class="tn">Observation au microscope</div><div>5e B - lundi 23 novembre 2026</div><div class="ps">Adam KE</div><div>Groupe : G1</div><div>Avec : Jade LU, Hugo PE</div></div><table class="tp-pdf__tab"><tr><td>Mise au point</td><td>4</td></tr><tr><td>Dessin</td><td>5</td></tr><tr><td>Légendes</td><td>4</td></tr><tr><td>Titre</td><td>3</td></tr><tr class="tot"><td>TOTAL</td><td>16/20</td></tr></table></div>
+            <div class="tp-pdf__f"><div class="g"><div class="tn">Observation au microscope</div><div>5e B - lundi 23 novembre 2026</div><div class="ps">Inès KA</div><div>Groupe : G3</div><div>Avec : Lina BO, Noé MA</div></div><table class="tp-pdf__tab"><tr><td>Mise au point</td><td>3,5</td></tr><tr><td>Dessin</td><td>6</td></tr><tr><td>Légendes</td><td>4</td></tr><tr><td>Titre</td><td>5</td></tr><tr class="mal"><td>Malus conduite</td><td>−1</td></tr><tr class="tot"><td>TOTAL</td><td>17,5/20</td></tr></table></div>
+            <div class="tp-pdf__f"><div class="g"><div class="tn">Observation au microscope</div><div>5e B - lundi 23 novembre 2026</div><div class="ps">Jade LU</div><div>Groupe : G1</div><div>Avec : Adam KE, Hugo PE</div></div><table class="tp-pdf__tab"><tr><td>Mise au point</td><td>4</td></tr><tr><td>Dessin</td><td>5</td></tr><tr><td>Légendes</td><td>4</td></tr><tr><td>Titre</td><td>3</td></tr><tr class="tot"><td>TOTAL</td><td>16/20</td></tr></table></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ supprimer -->
+    <section class="fiche" id="supprimer">
+      <div class="fiche__texte">
+        <h2>Supprimer le TP</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fiche du TP › Matériel, fiches à découper, suppression du TP</span></p>
+        <p class="fiche__but">Effacer un TP lancé par erreur, avec ses groupes, ses notes, ses critères et ses photos.</p>
+        <ol class="etapes">
+          <li data-cursor="#su-btn" data-action="click">Dans le bloc déplié du bas, cliquer <span class="btn-nom">Supprimer le TP</span>.</li>
+          <li data-cursor="#su-texte" data-duration="3800">Lire la fenêtre : tout le TP part définitivement, son évaluation du carnet va à la corbeille, et la séance liée part avec ses événements.</li>
+          <li data-cursor="#su-ok" data-action="click">Confirmer avec <span class="btn-nom">Supprimer</span> (« Suppression… »), ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#su-carnet">Retour au carnet : la colonne du TP a disparu.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">La suppression du TP et de sa séance liée est définitive : implications, bavardages et remarques de cette heure disparaissent aussi de l'historique des élèves.</li>
+            <li>L'encadré rouge sur la séance liée n'apparaît que si le TP a été mené au téléphone avec une séance.</li>
+            <li>Échec : « Erreur lors de la suppression ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html">Séances</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it is-actif"><span class="ico"></span>Évaluations</div><div class="side__it side__sous is-actif">Carnet et fiches</div><div class="side__it side__sous">Activité en direct</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__entete" data-to="3" style="flex-direction:column;align-items:flex-start;justify-content:center;gap:0;height:62px"><span class="app__titre">Observation au microscope</span><span class="muet" style="font-size:12px">TP de groupe · 5e B · /20 · coef 1</span></div>
+        <div class="app__entete" data-from="4"><span class="app__titre">Évaluations</span></div>
+        <div class="tp-corps tp" data-to="3">
+          <div class="tp-band"><div style="flex:1"><div class="tp-band__t">PARTIE TP · NOTÉE PAR GROUPE</div><div class="tp-band__s">5e B · lundi 23 novembre 2026 · 26 élèves en 6 groupes</div></div><span class="tp-band__n">6 groupes notés sur 6</span><span class="tp-band__b">/20</span></div>
+          <div class="tp-details">
+            <div class="tp-details__s tp-details__s--ouv">Matériel, fiches à découper, suppression du TP</div>
+            <div class="col" style="margin-top:10px;gap:10px">
+              <div class="tp-lbl">Matériel nécessaire</div>
+              <div class="ligne"><span class="tp-tag">microscope <i>×</i></span><span class="tp-tag">lames <i>×</i></span><span class="tp-tag">lamelles <i>×</i></span></div>
+              <div class="ligne"><span class="b b--fantome">Fiches à découper (PDF)</span><span class="b b--danger" id="su-btn" data-on="1">Supprimer le TP</span></div>
+            </div>
+          </div>
+          <div class="modale-fond" data-from="2"><div class="modale" style="width:440px">
+            <div class="modale__t">Supprimer ce TP ?</div>
+            <div id="su-texte" style="font-size:13px;line-height:1.45;color:var(--text-muted);border-radius:6px">Le TP <b style="color:var(--text)">Observation au microscope</b> et toutes ses données (groupes, notes, critères, photos) seront définitivement supprimés. Son évaluation dans le carnet est mise à la corbeille.
+              <div style="margin-top:10px;padding:9px 11px;border-radius:8px;background:var(--neg-soft);color:var(--neg);font-size:12.5px">La séance liée et tous ses événements (participations, bavardages, etc.) seront également supprimés.</div>
+            </div>
+            <div class="ligne" style="justify-content:flex-end;margin-top:14px"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="su-ok" data-on="3" style="background:var(--neg);border-color:var(--neg)"><span data-to="2">Supprimer</span><span data-at="3">Suppression…</span></span></div>
+          </div></div>
+        </div>
+        <div class="app__corps tp" data-from="4">
+          <div class="ligne" style="margin-bottom:12px"><span class="chip">4B</span><span class="chip chip--plein">5e B</span><span class="chip">5E</span><span class="chip">3A</span><span class="esp"></span><span class="chip">T1</span></div>
+          <table class="tp-carnet" id="su-carnet">
+            <tr><th style="width:150px">Élève</th><th>Éval 1 — météo<div class="m">Écrit · 06/11 · /20</div></th><th>Activité 2<div class="m">Activité · 16/11 · /10</div></th></tr>
+            <tr><td>Adam KE</td><td class="note note--bien">15</td><td>8</td></tr>
+            <tr><td>Inès KA</td><td class="note note--moy">11,5</td><td>6</td></tr>
+            <tr><td>Jade LU</td><td class="note note--bien">17</td><td>9</td></tr>
+            <tr><td>Lina BO</td><td class="note note--bien">14</td><td>7</td></tr>
+            <tr><td>Malo RI</td><td class="note note--mal">8</td><td>5</td></tr>
+          </table>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ élèves -->
+    <section class="fiche fiche--etroite" id="eleves">
+      <div class="fiche__texte">
+        <h2>Ce que voient les élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Espace élève › Mes TP</span></p>
+        <p class="fiche__but">Chaque membre retrouve le TP de son groupe sur son téléphone : les documents, les photos du groupe, et ensuite le mot du professeur.</p>
+        <ol class="etapes">
+          <li data-cursor="#el-deposer" data-action="tap" data-duration="3200">Pendant le TP, l'accueil de l'élève affiche « TP en cours · groupe G3 » et le bouton <span class="btn-nom">Déposer une photo</span> tant que le dépôt est ouvert.</li>
+          <li data-cursor="#el-prendre" data-duration="3400">Dans l'onglet <b>Photos</b> : <span class="btn-nom">Prendre une photo</span> ou <span class="btn-nom">Galerie</span>, et les photos du groupe, marquées « Toi », « Prof » ou « Classe ».</li>
+          <li data-cursor="#el-fiche" data-action="tap">L'onglet <b>Fiche d'activité</b> (et <b>Protocole</b>, <b>Documents</b>) montre les documents du TP.</li>
+          <li data-cursor="#el-mot" data-duration="3600">Après le TP, le dépôt est fermé ; « Le mot du professeur à ton groupe » reprend le commentaire écrit au bureau.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les documents de chaque TP sont préparés tout seuls depuis Mes TP (fiche, protocole, documents de l'activité reliée), à l'ouverture de Mes TP ou de Mes cours.</li>
+            <li>Cet onglet ne montre jamais la correction ni la note : « La correction et ta note sont dans Notes. »</li>
+            <li>Un élève peut retirer ses propres photos tant que le dépôt est ouvert.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/tp.html">Le TP sur l'espace élève</a></p>
+      </div>
+      <div class="scene scene--eleve"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div class="el" data-at="1">
+          <div class="el-h1" style="margin-top:8px">Bonjour Lina</div>
+          <div class="el-h2">À faire</div>
+          <div class="el-carte">
+            <div class="ligne" style="align-items:flex-start;gap:12px"><span class="el-ic"></span><div class="col" style="gap:3px"><span style="font-size:12.5px;font-weight:600;color:#3730A3">TP en cours · groupe G3</span><span style="font-size:16px;font-weight:600">Observation au microscope</span><span class="el-muet" style="font-size:13px">Dépôt des photos ouvert jusqu'à 11h10</span></div></div>
+            <div class="el-btn" id="el-deposer" data-on="1">Déposer une photo</div>
+          </div>
+          <div class="el-h2">Dernière note</div>
+          <div class="el-carte" style="opacity:.6"><span style="font-weight:600">Éval 1 — météo</span><span class="el-muet">14/20</span></div>
+        </div>
+        <div class="el" data-from="2">
+          <span class="el-retour">‹ Mes TP</span>
+          <div style="font-size:20px;font-weight:700;line-height:1.2">Observation au microscope</div>
+          <div class="ligne" style="font-size:12.5px;color:var(--text-muted)"><span class="el-chip">G3</span>Aujourd'hui · 10h05</div>
+          <div class="el-tabs"><span class="el-tab" id="el-fiche" data-on="3">Fiche d’activité</span><span class="el-tab">Protocole</span><span class="el-tab" data-on="2,4">Photos <i>4</i></span></div>
+          <div data-at="2,4" class="col" style="gap:8px">
+            <div class="el-ouvert" data-at="2">Dépôt ouvert · se ferme à 11h10, fin de l’heure</div>
+            <div class="ligne" data-at="2" id="el-prendre"><span class="el-btn" style="flex:1">Prendre une photo</span><span class="el-btn el-btn--blanc" style="flex:1">Galerie</span></div>
+            <div class="el-carte" data-at="4" style="padding:10px"><b style="font-size:13px">Dépôt fermé à la fin de l’heure</b><span class="el-muet">Plus d’envoi possible. Les photos restent visibles.</span></div>
+            <div class="ligne" style="justify-content:space-between;font-size:11px;color:var(--text-dim)"><span>Photos du groupe G3</span><span>toi, Noé MA, Inès KA</span></div>
+            <div class="el-photos">
+              <div class="el-photo"><svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice"><circle cx="50" cy="35" r="30" fill="#E8EEF6"/><g fill="none" stroke="#8B5CF6" stroke-width="1.4"><rect x="28" y="18" width="16" height="10"/><rect x="44" y="18" width="16" height="10"/><rect x="30" y="28" width="16" height="11"/></g></svg><i>Toi</i></div>
+              <div class="el-photo"><svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice"><circle cx="50" cy="35" r="30" fill="#F1F5E8"/><g fill="#65A30D"><circle cx="42" cy="30" r="5"/><circle cx="57" cy="38" r="6"/></g></svg><i class="prof">Prof</i></div>
+              <div class="el-photo" data-at="2"><svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice"><rect width="100" height="70" fill="#cfd8e3"/><rect x="25" y="22" width="50" height="26" rx="3" fill="#fff"/><circle cx="50" cy="35" r="8" fill="#C4B5FD"/></svg><i>Inès</i></div>
+              <div class="el-photo" data-at="2"><svg viewBox="0 0 100 70" preserveAspectRatio="xMidYMid slice"><rect width="100" height="70" fill="#E7E5E4"/><path d="M25 60 L50 15 L75 60 Z" fill="#A8A29E"/></svg><i>Classe</i></div>
+            </div>
+            <div class="el-carte" id="el-mot" data-at="4" style="padding:12px;gap:4px"><span style="font-size:11.5px;font-weight:600;color:var(--text-dim)">Le mot du professeur à ton groupe</span><span style="font-size:13px;line-height:1.4">Bonne mise au point au faible grossissement. Le dessin se fait au crayon, avec un titre et le grossissement.</span></div>
+            <div class="el-muet" data-at="4">La correction et ta note sont dans Notes.</div>
+          </div>
+          <div data-at="3" class="el-feuille">
+            <b style="font-size:12px">Activité 3 — Observer des cellules</b>
+            <span class="el-muet">Doc 1 · La préparation microscopique</span>
+            <span class="l" style="width:92%"></span><span class="l" style="width:85%"></span><span class="l" style="width:70%"></span>
+            <div style="height:90px;border-radius:6px;background:#F4F4F5;display:grid;place-items:center"><svg viewBox="0 0 100 60" width="120"><circle cx="50" cy="30" r="26" fill="#E8EEF6" stroke="#A1A1AA"/><g fill="none" stroke="#8B5CF6"><rect x="34" y="18" width="14" height="10"/><rect x="48" y="18" width="14" height="10"/><rect x="38" y="28" width="14" height="10"/></g></svg></div>
+            <span class="l" style="width:88%"></span><span class="l" style="width:60%"></span>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+

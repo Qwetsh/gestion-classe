@@ -1,0 +1,1320 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Groupes, salles et plans — Guide Gestion Classe</title>
+<meta name="description" content="Sur le téléphone : les groupes de classe (répartition, échanges, répartition automatique), les salles et l'éditeur de plan de classe.">
+<meta name="guide-partie" content="telephone">
+<meta name="guide-ordre" content="60">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---------- Application téléphone : briques propres à ce chapitre (charte constants/theme.ts) */
+.tel__ecran { font-size: 13px; }
+.tel__onglets .is-on { color: var(--t-primary); font-weight: 600; }
+.m-barre { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--t-surface); border-bottom: 1px solid var(--t-border); position: relative; z-index: 2; }
+.m-barre__g { color: var(--t-participation); font-size: 14.5px; font-weight: 500; min-width: 70px; transition: opacity .2s; }
+.m-barre__g.is-on { opacity: .45; }
+.m-barre__t { flex: 1; text-align: center; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-barre__d { min-width: 70px; text-align: right; font-size: 12px; font-weight: 600; color: var(--t-primary); display: flex; justify-content: flex-end; align-items: center; transition: opacity .2s; }
+.m-barre__d.is-on { opacity: .45; }
+.m-barre__d--off { opacity: .5; }
+.m-corps { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.m-pile { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; transition: transform .7s cubic-bezier(.45,.05,.25,1); }
+.m-h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
+.m-sous { font-size: 13px; color: var(--t-text2); margin-top: 2px; }
+.m-carte { background: #fff; border: 1px solid var(--t-border); border-radius: 16px; transition: all .25s; position: relative; }
+.m-carte.is-on { background: #FAFBFC; transform: scale(.98); }
+.m-carte--ombre { border-color: transparent; box-shadow: 0 1px 3px rgba(20,25,40,.06); }
+.m-ligne { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--t-border); transition: background .25s; min-height: 40px; }
+.m-ligne:last-child { border-bottom: 0; }
+.m-ligne.is-on { background: #F1F2F6; }
+.m-lib { color: var(--t-text2); font-size: 13px; }
+.m-val { margin-left: auto; font-weight: 500; font-size: 13px; text-align: right; }
+.m-val i { font-style: normal; color: var(--t-participation); }
+.m-chev { margin-left: auto; color: var(--t-text3); font-size: 20px; line-height: 1; padding-left: 4px; }
+.m-sec { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.m-sec__t { font-size: 17px; font-weight: 600; flex: 1; }
+.m-pbtn { font-size: 11px; font-weight: 600; color: #fff; padding: 4px 10px; border-radius: 12px; background: var(--t-participation); transition: transform .15s, box-shadow .2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.m-pbtn--bleu { background: var(--t-remarque); }
+.m-pbtn.is-on { transform: scale(.94); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.m-pbtn .m-roue { width: 11px; height: 11px; border-width: 2px; }
+.m-av { width: 32px; height: 32px; border-radius: 50%; background: var(--t-participation); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; flex: none; }
+.m-id { min-width: 0; }
+.m-nom { font-size: 13px; font-weight: 500; line-height: 1.25; white-space: nowrap; }
+.m-pseudo { font-size: 11px; color: var(--t-text2); line-height: 1.25; }
+.m-badges { display: inline-flex; gap: 3px; margin-left: auto; }
+.m-badge { font-size: 8.5px; font-weight: 700; color: var(--t-primary); background: var(--t-primary-soft); border-radius: 4px; padding: 1px 4px; line-height: 1.3; }
+.m-badges + .m-chev { margin-left: 0; }
+.m-tuile { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.m-tuile--1 { background: #EEF0FF; color: #4F46E5; } .m-tuile--2 { background: #ECFDF5; color: #059669; } .m-tuile--3 { background: #FFFBEB; color: #B45309; }
+.m-cl { display: flex; align-items: center; gap: 12px; padding: 12px; }
+.m-cl__n { font-size: 15px; font-weight: 600; }
+.m-cl__s { font-size: 12px; color: var(--t-text2); }
+.m-voile { position: absolute; inset: 0; background: rgba(0,0,0,.5); z-index: 590; }
+.m-fen { position: absolute; left: 7%; right: 7%; top: 50%; translate: 0 -50%; z-index: 600; background: #fff; border-radius: 16px; padding: 18px; box-shadow: 0 18px 50px rgba(0,0,0,.25); }
+.m-fen--haut { top: 64px; translate: none; }
+.m-fen__t { font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 12px; }
+.m-fen__p { font-size: 12.5px; color: var(--t-text2); text-align: center; margin-bottom: 10px; line-height: 1.4; }
+.m-champ { height: 40px; border-radius: 12px; background: var(--t-bg); border: 1px solid var(--t-border); padding: 0 12px; display: flex; align-items: center; font-size: 15px; transition: border-color .25s; }
+.m-champ + .m-champ { margin-top: 8px; }
+.m-champ.is-on { border-color: var(--t-primary); }
+.m-ph { color: var(--t-text3); }
+.m-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 14px; }
+.m-texte-btn { color: var(--t-text2); font-size: 14px; }
+.m-vbtn { background: var(--t-participation); color: #fff; font-weight: 600; border-radius: 12px; padding: 9px 16px; min-width: 96px; text-align: center; font-size: 14px; transition: transform .15s, opacity .25s; }
+.m-vbtn--off { opacity: .5; }
+.m-vbtn.is-on { transform: scale(.95); }
+.m-alerte { position: absolute; left: 8%; right: 8%; top: 50%; translate: 0 -50%; z-index: 600; background: #FBFBFE; border-radius: 22px; padding: 20px 20px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
+.m-alerte__t { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.m-alerte__p { font-size: 13px; color: #3F4354; line-height: 1.45; }
+.m-alerte__b { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+.m-alerte__b span { font-size: 13.5px; font-weight: 600; color: var(--t-primary); padding: 8px 10px; border-radius: 18px; transition: background .2s; }
+.m-alerte__b span.is-on { background: var(--t-primary-soft); }
+.m-danger { border: 1px solid #EF4444; border-radius: 16px; background: #fff; padding: 12px; }
+.m-danger__t { color: #EF4444; font-weight: 600; font-size: 13.5px; margin-bottom: 8px; }
+.m-rbtn { background: #EF4444; color: #fff; text-align: center; border-radius: 12px; padding: 11px; font-weight: 600; font-size: 14.5px; transition: transform .15s; }
+.m-rbtn.is-on { transform: scale(.96); }
+.m-danger__p { font-size: 11px; color: var(--t-text2); text-align: center; margin-top: 8px; line-height: 1.4; }
+.m-decompte { background: var(--t-bg); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.65; margin: 10px 0 14px; }
+.m-2btn { display: flex; gap: 10px; }
+.m-2btn > span { flex: 1; text-align: center; padding: 10px; border-radius: 12px; font-weight: 600; font-size: 14px; transition: transform .15s; }
+.m-2btn .gris { border: 1px solid var(--t-border); color: var(--t-text2); }
+.m-2btn .rouge { background: #EF4444; color: #fff; }
+.m-2btn .is-on { transform: scale(.95); }
+.m-triangle { width: 50px; height: 44px; margin: 0 auto 10px; background: #F59E0B; clip-path: polygon(50% 0, 100% 100%, 0 100%); display: flex; align-items: flex-end; justify-content: center; color: #fff; font-weight: 800; font-size: 22px; line-height: 1.4; }
+.m-roue { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; display: inline-block; animation: m-tourne .8s linear infinite; }
+@keyframes m-tourne { to { transform: rotate(360deg); } }
+.m-bandeau { position: absolute; left: 12px; right: 12px; top: 10px; z-index: 650; background: #059669; color: #fff; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+.m-clavier { position: absolute; left: 0; right: 0; bottom: 0; z-index: 605; background: #E3E5EA; padding: 10px 5px 18px; display: grid; gap: 8px; }
+.m-clavier b { height: 36px; border-radius: 6px; background: repeating-linear-gradient(90deg, #fff 0 27px, transparent 27px 33px); background-position: 3px 0; }
+.m-clavier b:nth-child(2) { margin: 0 16px; } .m-clavier b:nth-child(3) { margin: 0 44px; }
+.m-clavier b:nth-child(4) { background: linear-gradient(90deg, transparent 0 24%, #fff 24% 76%, transparent 76%); }
+.m-appli { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; font-size: 10.5px; color: var(--t-text2); margin-top: 14px; }
+.m-appli i { display: block; width: 44px; height: 44px; border-radius: 14px; margin: 0 auto 5px; background: var(--t-surface2); border: 1px solid var(--t-border); }
+.m-fichier { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; }
+.m-fichier i { width: 30px; height: 36px; border-radius: 4px; background: #FDE8E8; border: 1px solid #F3C4C4; flex: none; position: relative; }
+.m-fichier i::after { content: 'PDF'; position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 7px; font-weight: 800; color: #B91C1C; font-style: normal; }
+.m-fichier i.xls { background: #E7F5EC; border-color: #B7DFC5; }
+.m-fichier i.xls::after { content: 'XLSX'; color: #15803D; }
+.m-doc { position: absolute; left: 14px; right: 14px; top: 20px; bottom: 24px; z-index: 620; background: #fff; border-radius: 3px; box-shadow: 0 12px 40px rgba(0,0,0,.35); padding: 18px 14px; font-size: 10px; color: #333; }
+.m-doc h4 { margin: 0 0 2px; font-size: 18px; color: #1F2433; }
+.m-doc .m-doc__s { font-size: 11px; color: #6B7280; margin-bottom: 8px; }
+.m-doc .m-doc__blocs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 6px; }
+.m-doc .m-doc__blocs span { background: #F3F4F7; border-radius: 3px; padding: 5px; font-size: 9px; }
+.m-doc .m-doc__blocs b { display: block; font-size: 12px; color: #1F2433; }
+.m-doc table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.m-doc th, .m-doc td { border-bottom: 1px solid #E5E7EB; padding: 5px 3px; text-align: left; font-size: 10px; vertical-align: top; }
+.m-doc th { background: #F3F4F7; }
+.m-doc td small { display: block; color: #9CA3AF; font-size: 8.5px; }
+.m-doc .pos { color: #059669; font-weight: 700; } .m-doc .neg { color: #D97706; font-weight: 700; }
+.m-pied { position: absolute; bottom: 12px; left: 14px; right: 14px; font-size: 9px; color: #9CA3AF; text-align: center; }
+.m-vide { border: 1.5px dashed var(--t-border); border-radius: 16px; background: #fff; padding: 16px; text-align: center; }
+.m-vide svg { display: block; margin: 0 auto 6px; }
+.m-vide__t { font-size: 13px; font-weight: 500; color: var(--t-text2); }
+.m-vide__s { font-size: 11px; color: var(--t-text3); margin-top: 2px; }
+.m-mono { font-family: var(--mono); font-size: 12px; color: var(--t-text2); }
+.bulle { max-width: 210px; }
+.toc__nav a::before { content: none; }
+.m-defile { transition: transform .8s cubic-bezier(.45,.05,.25,1); }
+.m-bloc { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.m-defile.is-on { transform: translateY(var(--y)); }
+.tel__statut { background: var(--t-bg); }
+.tel__statut, .m-barre, .s-tete, .tel__onglets { transition: filter .3s; }
+.tel__ecran:has(.m-voile:not(.is-hidden)) :is(.tel__statut, .m-barre, .s-tete, .tel__onglets) { filter: brightness(.5); }
+.tel__ecran:has(.voile:not(.is-hidden)) :is(.tel__statut, .m-barre, .s-tete, .tel__onglets) { filter: brightness(.65); }
+.m-feuille { padding-bottom: 22px; }
+.m-feuille__t { font-size: 17px; font-weight: 600; text-align: center; margin-bottom: 12px; }
+.m-opt { display: flex; align-items: center; gap: 12px; background: var(--t-bg); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; font-weight: 500; margin-bottom: 8px; transition: transform .15s, background .2s; }
+.m-opt.is-on { background: #E9EAF0; transform: scale(.98); }
+.m-opt svg { flex: none; }
+
+/* ---------- groupes de classe (app/(main)/classes/[id]/groups.tsx) */
+.g-tete { display: flex; align-items: center; padding: 6px 8px; flex: none; background: var(--t-bg); }
+.g-rond { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font-size: 24px; line-height: 1; color: var(--t-text); transition: background .2s; flex: none; }
+.g-rond--pts { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+.g-rond--plus { color: var(--t-primary); font-size: 28px; font-weight: 300; }
+.g-rond.is-on { background: #E4E6EE; }
+.g-centre { flex: 1; text-align: center; line-height: 1.25; }
+.g-centre b { display: block; font-size: 17px; font-weight: 600; }
+.g-centre span { font-size: 12px; color: var(--t-text2); }
+.g-corps { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.g-pile { padding: 4px 14px 14px; display: flex; flex-direction: column; gap: 10px; transition: transform .7s; }
+.g-aide { font-size: 12px; color: var(--t-text2); line-height: 1.4; }
+.g-col { background: #fff; border: 1px solid var(--t-border); border-left: 4px solid var(--c); border-radius: 14px; padding: 9px 10px 11px; transition: box-shadow .25s, border-color .3s; }
+.g-col.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.18); }
+.g-col--na { border-style: dashed; border-left-color: #D4D8E1; --c: #9CA3AF; }
+.g-col__t { display: flex; align-items: center; gap: 7px; font-size: 14.5px; font-weight: 600; margin-bottom: 8px; min-height: 22px; }
+.g-col__t > i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+.g-cpt { font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 999px; background: var(--cs, #F3F4F7); color: var(--c); }
+.g-pts { margin-left: auto; color: var(--t-text2); font-size: 13px; font-weight: 700; letter-spacing: 1px; padding: 0 4px; border-radius: 8px; transition: background .2s; }
+.g-pts.is-on { background: #E4E6EE; }
+.g-equil { margin-left: auto; color: var(--t-primary); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 8px; transition: background .2s; }
+.g-equil.is-on { background: var(--t-primary-soft); }
+.g-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.g-puce { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--t-border); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 500; transition: background .3s, border-color .3s, box-shadow .3s; white-space: nowrap; }
+.g-puce > i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); flex: none; }
+.g-puce.is-on { background: #F1F2F6; box-shadow: 0 0 0 2px rgba(79,70,229,.25); }
+.g-puce.g-sel.is-on { border-color: var(--t-primary); background: var(--t-primary-soft); box-shadow: none; }
+.g-case { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid #D4D8E1; display: inline-grid; place-items: center; background: #fff; flex: none; }
+.g-puce.g-sel.is-on .g-case { background: var(--t-primary); border-color: var(--t-primary); }
+.g-puce.g-sel.is-on .g-case::after { content: ''; width: 6px; height: 3px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg) translate(1px,-1px); }
+.g-warn { color: #F59E0B; font-weight: 700; }
+.g-vide { font-size: 12px; color: var(--t-text3); }
+.g-alerte-ambre { background: #FEF1D8; color: #B45309; border-radius: 12px; padding: 9px 11px; font-size: 12px; line-height: 1.4; }
+.g-barre-sel { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--t-border); padding: 10px 14px 16px; z-index: 50; }
+.g-barre-sel .n { font-size: 12px; color: var(--t-text2); margin-bottom: 7px; }
+.g-barre-sel .g-btns { display: flex; gap: 6px; }
+.g-ab { padding: 9px 12px; border-radius: 12px; font-size: 13px; font-weight: 600; border: 1px solid var(--t-border); color: var(--t-primary); display: inline-flex; align-items: center; gap: 4px; transition: transform .15s; white-space: nowrap; }
+.g-ab--plein { background: var(--t-primary); color: #fff; border-color: var(--t-primary); flex: 1; justify-content: center; }
+.g-ab.is-on { transform: scale(.95); }
+.g-feuille__t { font-size: 16.5px; font-weight: 600; margin-bottom: 4px; }
+.g-row { display: flex; align-items: center; gap: 10px; padding: 11px 4px; border-bottom: 1px solid #F1F5F9; font-size: 14px; font-weight: 500; transition: background .2s; border-radius: 8px; }
+.g-row:last-child { border-bottom: 0; }
+.g-row > i { width: 10px; height: 10px; border-radius: 50%; background: var(--c, #9CA3AF); flex: none; }
+.g-row .n { margin-left: auto; font-size: 12.5px; color: var(--t-text3); font-weight: 400; }
+.g-row.is-on { background: var(--t-primary-soft); }
+.g-row--off { color: #9CA3AF; }
+.g-row svg { flex: none; }
+.g-hint { font-size: 12px; color: var(--t-text2); margin: 2px 0 6px; line-height: 1.45; }
+.g-lib { font-size: 12px; color: var(--t-text2); margin: 10px 0 6px; }
+.g-pastilles { display: flex; gap: 8px; flex-wrap: nowrap; }
+.g-pastilles i { width: 30px; height: 30px; border-radius: 50%; background: var(--c); border: 3px solid transparent; background-clip: padding-box; box-shadow: 0 0 0 0 #1F2433; transition: box-shadow .25s; flex: none; }
+.g-pastilles i.is-on { box-shadow: 0 0 0 3px #1F2433; }
+.g-boutons { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.g-sup { background: #FDE8E8; color: #EF4444; font-weight: 600; padding: 9px 14px; border-radius: 12px; font-size: 13.5px; transition: transform .15s; }
+.g-sup.is-on { transform: scale(.95); }
+.g-ok { margin-left: auto; background: var(--t-primary); color: #fff; font-weight: 600; padding: 9px 18px; border-radius: 12px; font-size: 13.5px; transition: transform .15s, opacity .2s; }
+.g-ok.is-on { transform: scale(.95); }
+.g-gchamp { height: 42px; border-radius: 12px; border: 1px solid var(--t-border); padding: 0 12px; display: flex; align-items: center; font-size: 15px; margin-top: 8px; }
+.g-gchamp.is-on { border-color: var(--t-primary); }
+.feuille { border-radius: 20px 20px 0 0; padding: 10px 20px 20px; }
+.voile { background: rgba(15,23,42,.35); }
+.g-vcarte { background: #fff; border: 1px solid var(--t-border); border-radius: 16px; padding: 22px 18px; text-align: center; margin-top: 18px; }
+.g-vcarte svg { display: block; margin: 0 auto 8px; }
+.g-vcarte__t { font-size: 16px; font-weight: 600; }
+.g-vcarte__p { font-size: 12.5px; color: var(--t-text2); margin: 6px 0 14px; line-height: 1.45; }
+.g-gros { background: var(--t-primary); color: #fff; border-radius: 12px; padding: 12px; font-weight: 600; font-size: 14.5px; transition: transform .15s; }
+.g-gros.is-on { transform: scale(.96); }
+.g-texte { color: var(--t-primary); font-weight: 600; font-size: 14px; padding: 10px 0 0; border-radius: 8px; transition: background .2s; }
+.g-texte.is-on { background: var(--t-primary-soft); }
+/* ---------- salles (app/(main)/rooms) */
+.r-h1 { font-size: 27px; font-weight: 700; letter-spacing: -0.5px; }
+.r-cpt { font-size: 13px; color: var(--t-text2); text-transform: uppercase; letter-spacing: .05em; margin: 6px 0 2px; }
+.r-carte { display: flex; align-items: center; gap: 12px; padding: 12px; background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(20,25,40,.06); transition: all .25s; }
+.r-carte.is-on { background: #FAFBFC; transform: scale(.98); }
+.r-ic { width: 50px; height: 50px; border-radius: 16px; display: grid; place-items: center; flex: none; }
+.r-n { font-size: 16px; font-weight: 700; }
+.r-s { font-size: 12px; color: var(--t-text3); }
+.r-chev { margin-left: auto; width: 30px; height: 30px; border-radius: 50%; background: #F3F4F7; display: grid; place-items: center; color: var(--t-text2); font-size: 18px; }
+.r-sec { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; margin: 4px 0 -2px; }
+.r-sec i { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-style: normal; font-weight: 700; font-size: 15px; }
+.a-tab { height: 22px; border-radius: 6px; background: #EDEEF2; color: #6B7280; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; display: grid; place-items: center; font-weight: 600; margin-bottom: 10px; }
+.a-grille { display: grid; grid-template-columns: repeat(7, 30px); gap: 5px; justify-content: center; }
+.a-case { width: 30px; height: 30px; border-radius: 8px; background: #EEF0FF; display: grid; place-items: center; }
+.a-case::after { content: ''; width: 20px; height: 20px; border-radius: 5px; background: rgba(79,70,229,.15); }
+.a-case--allee { background: rgba(229,231,235,.4); }
+.a-case--allee::after { display: none; }
+.a-leg { display: flex; justify-content: center; gap: 16px; font-size: 11.5px; color: var(--t-text2); margin-top: 10px; }
+.a-leg span::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4F46E5; margin-right: 5px; }
+.a-leg span + span::before { background: #D4D8E1; }
+.a-note { display: flex; gap: 10px; align-items: center; background: #FEF1D8; border-radius: 12px; padding: 10px 12px; font-size: 12px; color: #92400E; }
+.a-note i { width: 22px; height: 22px; border-radius: 50%; background: #FCD34D; flex: none; }
+/* ---------- éditeur de plan (app/(main)/plan/[classId]/[roomId].tsx) */
+.m-barre--sys { background: var(--t-bg); border-bottom: 0; height: 46px; }
+.m-barre--sys .m-barre__g { color: var(--t-primary); font-size: 14px; min-width: 76px; }
+.m-barre--sys .m-barre__t { font-weight: 700; font-size: 16px; }
+.m-barre__d.rouge { color: #EF4444; font-size: 13px; font-weight: 500; min-width: 76px; }
+.p-entete { display: flex; align-items: center; gap: 12px; padding: 4px 18px 10px; flex: none; }
+.p-ico { width: 40px; height: 40px; border-radius: 12px; background: var(--t-primary-soft); display: grid; place-items: center; flex: none; }
+.p-classe { font-size: 19px; font-weight: 700; line-height: 1.2; }
+.p-consigne { font-size: 12px; color: var(--t-text3); }
+.p-carte { background: #fff; border-radius: 16px; box-shadow: 0 1px 3px rgba(20,25,40,.06); margin: 0 14px; padding: 12px 8px 10px; }
+.p-grille { display: grid; grid-template-columns: repeat(7, 40px); gap: 4px; justify-content: center; }
+.p-case { width: 40px; height: 40px; border-radius: 8px; background: #F3F4F7; border: 1px solid #E5E7EB; position: relative; transition: background .3s, border-color .3s; }
+.p-case.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.p-grille.is-on .p-case:not(.p-case--allee) { background: #EEF0FF; border: 1px dashed #4F46E5; }
+.p-case--allee { background: rgba(229,231,235,.4); border-color: transparent; }
+.p-occ { position: absolute; inset: -1px; border-radius: 8px; background: #ECFDF5; border: 1px solid #10B981; display: grid; place-items: center; font-size: 8.5px; font-weight: 600; text-align: center; line-height: 1.1; padding: 2px; z-index: 1; }
+.p-occ.is-on { box-shadow: 0 0 0 3px rgba(239,68,68,.3); }
+.p-occ .m-badge { position: absolute; top: 1px; right: 1px; font-size: 5.5px; padding: 0 2px; line-height: 1.4; }
+.p-tab { margin-top: 10px; height: 20px; border-radius: 6px; background: #EDEEF2; color: #6B7280; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; display: grid; place-items: center; font-weight: 600; }
+.p-stats { text-align: center; font-size: 12px; color: var(--t-text2); margin-top: 8px; }
+.p-bas { position: absolute; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--t-border); box-shadow: 0 -1px 3px rgba(20,25,40,.06); padding: 12px 16px 22px; z-index: 20; }
+.p-bas__t { display: flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; margin-bottom: 10px; min-height: 18px; }
+.p-puces { display: flex; gap: 8px; overflow: hidden; white-space: nowrap; transition: transform .7s; }
+.p-puces.is-on { transform: translateX(-120px); }
+.p-puce { flex: none; padding: 7px 14px; border-radius: 16px; background: #F3F4F7; border: 1px solid #E5E7EB; font-size: 13px; font-weight: 500; transition: background .25s, color .25s, border-color .25s; }
+.p-puce.is-on { background: var(--t-primary); border-color: var(--t-primary); color: #fff; font-weight: 600; }
+.p-voile-blanc { position: absolute; inset: 0; background: rgba(255,255,255,.7); z-index: 30; display: grid; place-items: center; color: var(--t-primary); }
+.p-portee { display: flex; gap: 8px; padding: 0 18px 8px; overflow: hidden; flex: none; }
+.p-pc { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--t-border); background: #fff; font-size: 13px; font-weight: 600; min-height: 36px; transition: all .25s; }
+.p-pc i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.p-pc small { font-weight: 400; color: var(--t-text2); font-size: 12px; }
+.p-pc.is-on { background: var(--c); border-color: var(--c); color: #fff; }
+.p-pc.is-on i { background: #fff; }
+.p-pc.is-on small { color: #fff; }
+.p-pasplan { padding: 0 18px 10px; flex: none; }
+.p-pasplan p { margin: 0 0 8px; font-size: 12px; color: var(--t-text2); line-height: 1.4; }
+.p-copier { display: inline-block; background: var(--t-primary-soft); color: var(--t-primary); font-weight: 600; font-size: 13px; padding: 7px 12px; border-radius: 14px; transition: transform .15s; }
+.p-copier.is-on { transform: scale(.95); }
+.p-check { width: 13px; height: 7px; border-left: 2.5px solid #059669; border-bottom: 2.5px solid #059669; transform: rotate(-45deg) translate(1px,-2px); }
+.bulle { max-width: 220px; }
+
+.m-coche-b { width: 12px; height: 7px; border-left: 2.5px solid #fff; border-bottom: 2.5px solid #fff; transform: rotate(-45deg) translate(1px,-2px); flex: none; }
+@keyframes pp-voile { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Application téléphone</a> › Groupes, salles et plans</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#section-groupes">La section Groupes</a></li>
+      <li><a href="#ecran-groupes">L'écran Groupes</a></li>
+      <li><a href="#premiers-groupes">Créer les premiers groupes</a></li>
+      <li><a href="#changer-de-groupe">Changer un élève de groupe</a></li>
+      <li><a href="#deplacer-vers">Déplacer vers…</a></li>
+      <li><a href="#selection">Sélectionner plusieurs élèves</a></li>
+      <li><a href="#echanger">Échanger deux élèves</a></li>
+      <li><a href="#annuler">Annuler un déplacement</a></li>
+      <li><a href="#nouveau-groupe">Nouveau groupe</a></li>
+      <li><a href="#modifier-groupe">Modifier un groupe</a></li>
+      <li><a href="#supprimer-groupe">Supprimer un groupe</a></li>
+      <li><a href="#actions">Les actions de masse</a></li>
+      <li><a href="#repartir">Répartir automatiquement</a></li>
+      <li><a href="#depuis-plan">Depuis un plan de salle</a></li>
+      <li><a href="#equilibrer">Équilibrer les non affectés</a></li>
+      <li><a href="#conflit">Un élève dans deux groupes</a></li>
+      <li><a href="#mes-salles">Mes salles</a></li>
+      <li><a href="#apercu-salle">L'aperçu d'une salle</a></li>
+      <li><a href="#plan-de-la-classe">Ouvrir le plan d'une classe</a></li>
+      <li><a href="#editeur">L'éditeur de plan</a></li>
+      <li><a href="#grille">Lire la grille</a></li>
+      <li><a href="#a-placer">Les élèves à placer</a></li>
+      <li><a href="#placer">Placer un élève</a></li>
+      <li><a href="#retirer-place">Retirer un élève de sa place</a></li>
+      <li><a href="#reinitialiser">Réinitialiser le plan</a></li>
+      <li><a href="#plan-par-groupe">Un plan par groupe (bientôt)</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../telephone/classes-et-eleves.html">◀ Classes et élèves</a><a href="../telephone/tp-en-groupes.html">TP en groupes : lancer le TP ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Application téléphone · Préparer</div>
+      <h1>Groupes, salles et plans</h1>
+      <p>Les groupes durables d'une classe (demi-groupes, latinistes) se répartissent du bout du doigt ; les salles dessinées sur le site se consultent ; le plan de classe se construit en touchant un élève, puis sa place. Tout marche sans réseau.</p>
+      <div class="chap__resume"><span>Classes › une classe › Groupes, Plan de classe</span><span>Téléphone</span><span>Marche sans réseau</span></div>
+    </header>
+
+    <!-- ============================================================ section-groupes -->
+    <section class="fiche fiche--etroite" id="section-groupes">
+      <div class="fiche__texte">
+        <h2>La section Groupes de la fiche de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Groupes</span></p>
+        <p class="fiche__but">Les groupes durables d'une classe (demi-classe une semaine sur deux, latinistes, groupe de besoin) et leurs effectifs. Ce ne sont pas les groupes de TP, éphémères et notés, qui ont leur propre écran en séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#gr-sec">Dans la fiche de la classe, descendre à la section <b>Groupes</b>, entre <b>Eleves</b> et <b>Plan de classe</b>.</li>
+          <li data-cursor="#gr-l1" data-duration="3400">Chaque groupe : une pastille à sa couleur, son nom et son effectif. Une dernière ligne grise compte les élèves non affectés.</li>
+          <li data-cursor="#gr-gerer" data-action="tap">Toucher <span class="btn-nom">Gérer</span>, ou n'importe quelle ligne de groupe, pour ouvrir l'écran <b>Groupes</b>.</li>
+          <li data-cursor="#gr-vide" data-action="tap" data-duration="3400">Une classe sans groupe montre la carte <b>Aucun groupe</b> : la toucher pour en créer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La section se met à jour à chaque retour sur la fiche.</li>
+            <li>Tout est lu dans le téléphone : cela marche sans réseau.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#ecran-groupes">L'écran Groupes</a> · <a href="#premiers-groupes">Créer les premiers groupes</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t"><span class="repli" data-to="3">4B</span><span class="repli" data-from="4">5E</span></span><span class="m-barre__d">PDF</span></div>
+<div class="m-corps"><div class="m-pile" style="padding-left:20px;padding-right:20px">
+  <div class="m-carte m-carte--ombre"><div class="m-ligne"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Lou BE</div><div class="m-pseudo">Lou BE</div></div><span class="m-chev">›</span></div><div class="m-ligne"><span class="m-av">M</span><div class="m-id"><div class="m-nom">Malo RI</div><div class="m-pseudo">Malo RI</div></div><span class="m-chev">›</span></div></div>
+  <div class="m-sec" id="gr-sec"><span class="m-sec__t">Groupes</span><span class="m-pbtn repli" id="gr-gerer" data-to="3" data-on="3">Gérer</span></div>
+  <div class="m-carte m-carte--ombre repli" data-to="3">
+    <div class="m-ligne" id="gr-l1"><span style="width:12px;height:12px;border-radius:50%;background:#4F46E5"></span><span class="m-nom">Groupe 1</span><span class="m-pseudo">9 élèves</span><span class="m-chev">›</span></div>
+    <div class="m-ligne"><span style="width:12px;height:12px;border-radius:50%;background:#059669"></span><span class="m-nom">Groupe 2</span><span class="m-pseudo">8 élèves</span><span class="m-chev">›</span></div>
+    <div class="m-ligne"><span style="width:12px;height:12px;border-radius:50%;background:#9CA3AF"></span><span class="m-pseudo" style="font-size:12px">1 non affecté</span></div>
+  </div>
+  <div class="m-vide repli" id="gr-vide" data-from="4"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg><div class="m-vide__t">Aucun groupe</div><div class="m-vide__s">Demi-classe une semaine sur deux, latinistes… Touchez pour créer des groupes.</div></div>
+  <div class="m-sec"><span class="m-sec__t">Plan de classe</span></div>
+  <div class="m-carte m-carte--ombre"><div class="m-ligne"><div class="m-id"><div class="m-nom">Salle 310</div><div class="m-pseudo">5 x 7 places</div></div><span class="m-chev">›</span></div><div class="m-ligne"><div class="m-id"><div class="m-nom">Labo 2</div><div class="m-pseudo">4 x 6 places</div></div><span class="m-chev">›</span></div></div>
+</div></div>
+<div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ ecran-groupes -->
+    <section class="fiche fiche--etroite" id="ecran-groupes">
+      <div class="fiche__texte">
+        <h2>L'écran Groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Groupes › Gérer</span></p>
+        <p class="fiche__but">Répartir les élèves entre les groupes de la classe par simples touchers : une carte par groupe, et une carte pour les élèves sans groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#ge-tete" data-duration="3400">En haut : le chevron de retour, le titre <b>Groupes</b> et le nom de la classe, puis <b>···</b> (actions de masse) et <b>+</b> (nouveau groupe).</li>
+          <li data-cursor="#ge-aide">La phrase d'aide rappelle les deux gestes : toucher pour déplacer, appui long pour sélectionner plusieurs élèves.</li>
+          <li data-cursor="#ge-c1" data-duration="3400">Une carte par groupe, bordée à gauche de sa couleur : nom, effectif, bouton <b>···</b> de réglage, et les élèves en pastilles.</li>
+          <li data-cursor="#ge-na">En dernier, la carte en pointillés <b>Non affecté</b>, pour les élèves sans groupe.</li>
+          <li data-cursor="#ge-back" data-action="tap">Revenir à la fiche de la classe avec le chevron.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les pastilles montrent le vrai nom si le téléphone le connaît, sinon le pseudonyme. Les pastilles PAP, PPRE, PAI n'apparaissent pas ici.</li>
+            <li>Tout s'enregistre dans le téléphone, puis part au site à la synchronisation : l'écran marche sans réseau.</li>
+            <li>Avec deux groupes exactement, la phrase d'aide dit « le faire changer de groupe » ; sinon « choisir son groupe ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="ge-tete"><span class="g-rond" id="ge-back" data-on="5">‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="ge-pts" >···</span><span class="g-rond g-rond--plus" id="ge-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide" id="ge-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" id="ge-c1" style="--c:#4F46E5;--cs:#EEF0FF" data-on="3"><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" id="ge-na" data-on="4"><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span><span class="g-equil"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span></div></div>
+</div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ premiers-groupes -->
+    <section class="fiche fiche--etroite" id="premiers-groupes">
+      <div class="fiche__texte">
+        <h2>Créer les premiers groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Groupes (sans groupe)</span></p>
+        <p class="fiche__but">Une classe sans groupe se coupe en deux en un geste.</p>
+        <ol class="etapes">
+          <li data-cursor="#gv-carte">L'écran <b>Groupes</b> d'une classe sans groupe montre la carte <b>Aucun groupe</b> et trois boutons.</li>
+          <li data-cursor="#gv-autres" data-duration="3600"><span class="btn-nom">Créer un groupe vide</span> ouvre la feuille <b>Nouveau groupe</b> ; <span class="btn-nom">Créer depuis un plan de salle</span> (s'il existe une salle) part d'un plan de classe.</li>
+          <li data-cursor="#gv-demi" data-action="tap">Toucher <span class="btn-nom">Créer des demi-groupes (G1 / G2)</span>.</li>
+          <li data-cursor="#gv-g1" data-duration="3600">Deux groupes apparaissent : <b>Groupe 1</b> (indigo) reçoit la première moitié de la liste alphabétique, <b>Groupe 2</b> (vert) la seconde.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La liste est triée par pseudonyme, donc par prénom ; s'il y a un nombre impair d'élèves, le groupe 1 prend l'élève de plus.</li>
+            <li>Le bouton des demi-groupes est grisé si la classe n'a aucun élève.</li>
+            <li>La répartition se retouche ensuite élève par élève.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#nouveau-groupe">Nouveau groupe</a> · <a href="#depuis-plan">Depuis un plan de salle</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gv-tete"><span class="g-rond" id="gv-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gv-pts" >···</span><span class="g-rond g-rond--plus" id="gv-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-vcarte repli" id="gv-carte" data-to="3"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg><div class="g-vcarte__t">Aucun groupe</div><div class="g-vcarte__p">Des groupes durables pour cette classe : demi-classe une semaine sur deux, latinistes, groupe de besoin…</div>
+<div class="g-gros" id="gv-demi" data-on="3">Créer des demi-groupes (G1 / G2)</div><div id="gv-autres"><div class="g-texte">Créer un groupe vide</div><div class="g-texte">Créer depuis un plan de salle</div></div></div>
+<div class="g-aide repli" data-from="4">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div id="gv-g1" style="--c:#4F46E5;--cs:#EEF0FF" data-from="4" class="g-col repli zoom"><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Éva RO</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span></div></div>
+<div style="--c:#059669;--cs:#D1FAE5" data-from="4" class="g-col repli zoom"><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Lou BE</span><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div data-from="4" class="g-col g-col--na repli zoom"><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">0</span></div><div class="g-vide">Tous les élèves sont affectés.</div></div>
+</div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ changer-de-groupe -->
+    <section class="fiche fiche--etroite" id="changer-de-groupe">
+      <div class="fiche__texte">
+        <h2>Changer un élève de groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › toucher un élève</span></p>
+        <p class="fiche__but">Faire passer un élève d'un groupe à l'autre d'un seul toucher.</p>
+        <ol class="etapes">
+          <li data-cursor="#gt-lina" data-action="tap">Avec deux groupes exactement : toucher la pastille d'un élève.</li>
+          <li data-cursor="#gt-lina2" data-duration="3200">Il passe aussitôt dans l'autre groupe, avec le point de sa nouvelle couleur ; les effectifs se mettent à jour.</li>
+          <li data-cursor="#gt-band" data-duration="3200">Un bandeau vert confirme « Lina BO → Groupe 2 », avec <span class="btn-nom">Annuler</span> pendant 4 secondes.</li>
+          <li data-cursor="#gt-eva" data-action="tap" data-duration="3400">Pour un élève non affecté, ou quand la classe a un seul groupe ou plus de deux, le toucher ouvre une feuille pour choisir son groupe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un élève n'est que dans un seul groupe à la fois dans une classe : le déplacer le retire de tous les autres.</li>
+            <li>Avec un seul groupe, toucher un élève non affecté l'y envoie directement.</li>
+            <li>Pas de vibration sur cet écran.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#deplacer-vers">Déplacer vers…</a> · <a href="#annuler">Annuler un déplacement</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gt-tete"><span class="g-rond" id="gt-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gt-pts" >···</span><span class="g-rond g-rond--plus" id="gt-plus" >+</span></div><div class="g-corps"><div class="m-bandeau glisse-bas" id="gt-band" data-at="2-3"><span class="m-coche-b"></span>Lina BO → Groupe 2<u style="margin-left:auto">Annuler</u></div><div class="g-pile">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt repli" data-to="1">9</span><span class="g-cpt repli" data-from="2">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce repli" id="gt-lina" data-to="1" data-on="1"><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt repli" data-to="1">8</span><span class="g-cpt repli" data-from="2">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce repli zoom" id="gt-lina2" data-from="2" data-on="2"><i></i>Lina BO</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span><span class="g-equil"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer</span></div><div class="g-wrap"><span class="g-puce " id="gt-eva" data-on="4"><i></i>Éva RO</span></div></div>
+</div>
+<div class="voile" data-at="4"></div>
+<div class="feuille" data-at="4"><div class="g-feuille__t">Éva RO</div>
+<div class="g-row" style="--c:#4F46E5"><i></i>Groupe 1<span class="n">8</span></div><div class="g-row" style="--c:#059669"><i></i>Groupe 2<span class="n">9</span></div><div class="g-row"><i></i>Non affecté</div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ deplacer-vers -->
+    <section class="fiche fiche--etroite" id="deplacer-vers">
+      <div class="fiche__texte">
+        <h2>Choisir le groupe : Déplacer vers…</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › feuille de choix</span></p>
+        <p class="fiche__but">Une feuille qui monte du bas pour choisir le groupe de destination d'un ou plusieurs élèves.</p>
+        <ol class="etapes">
+          <li data-cursor="#gcb-eva" data-action="tap">Toucher un élève (ici dans une classe à trois groupes) : la feuille s'ouvre.</li>
+          <li data-cursor="#gcb-feuille" data-duration="3400">En titre, le nom de l'élève (ou « Déplacer 3 élèves »). Une ligne par groupe avec son effectif, puis <b>Non affecté</b> pour retirer l'élève de tout groupe.</li>
+          <li data-cursor="#gcb-lat" data-action="tap">Toucher le groupe voulu.</li>
+          <li data-cursor="#gcb-eva2" data-duration="3200">L'élève rejoint le groupe et le bandeau vert propose <span class="btn-nom">Annuler</span>. Toucher le fond ferme la feuille sans rien changer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La même feuille sert au bouton <span class="btn-nom">Déplacer vers…</span> de la sélection multiple.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#selection">Sélectionner plusieurs élèves</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gcb-tete"><span class="g-rond" id="gcb-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gcb-pts" >···</span><span class="g-rond g-rond--plus" id="gcb-plus" >+</span></div><div class="g-corps"><div class="m-bandeau glisse-bas" data-at="4"><span class="m-coche-b"></span>Éva RO → Latinistes<u style="margin-left:auto">Annuler</u></div><div class="g-pile">
+<div class="g-aide">Touchez un élève pour choisir son groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">6</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">5</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span></div></div>
+<div class="g-col" style="--c:#D97706;--cs:#FEF3C7" ><div class="g-col__t"><i></i>Latinistes<span class="g-cpt repli" data-to="3">2</span><span class="g-cpt repli" data-from="4">3</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce repli zoom" id="gcb-eva2" data-from="4" data-on="4"><i></i>Éva RO</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt repli" data-to="3">1</span><span class="g-cpt repli" data-from="4">0</span></div><div class="g-wrap"><span class="g-puce repli" id="gcb-eva" data-to="3" data-on="1"><i></i>Éva RO</span></div></div>
+</div>
+<div class="voile" data-at="2-3"></div>
+<div class="feuille" data-at="2-3" id="gcb-feuille"><div class="g-feuille__t">Éva RO</div>
+<div class="g-row" style="--c:#4F46E5"><i></i>Groupe 1<span class="n">6</span></div><div class="g-row" style="--c:#059669"><i></i>Groupe 2<span class="n">5</span></div><div class="g-row" id="gcb-lat" data-on="3" style="--c:#D97706"><i></i>Latinistes<span class="n">2</span></div><div class="g-row"><i></i>Non affecté</div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ selection -->
+    <section class="fiche fiche--etroite" id="selection">
+      <div class="fiche__texte">
+        <h2>Sélectionner plusieurs élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › appui long sur un élève</span></p>
+        <p class="fiche__but">Déplacer d'un coup plusieurs élèves vers le même groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#gs-a" data-action="long">Garder le doigt un tiers de seconde sur un élève : le mode sélection s'active et cet élève est coché.</li>
+          <li data-cursor="#gs-c" data-action="tap">Toucher d'autres élèves, dans n'importe quelle carte, pour les cocher ou les décocher.</li>
+          <li data-cursor="#gs-barre" data-duration="3200">En bas, une barre affiche « 3 sélectionné(s) », <span class="btn-nom">Annuler</span> et <span class="btn-nom">Déplacer vers…</span>.</li>
+          <li data-cursor="#gs-dep" data-action="tap">Toucher <span class="btn-nom">Déplacer vers…</span> : la feuille « Déplacer 3 élèves » s'ouvre.</li>
+          <li data-cursor="#gs-row" data-action="tap" data-duration="3400">Toucher le groupe : les trois élèves y passent, le bandeau confirme « 3 élèves → Groupe 2 » et le mode sélection se ferme.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><span class="btn-nom">Annuler</span> dans la barre quitte le mode sans rien changer.</li>
+            <li>Si l'on décoche tout, le mode reste actif jusqu'à <span class="btn-nom">Annuler</span> ; <span class="btn-nom">Déplacer vers…</span> est alors grisé.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#echanger">Échanger deux élèves</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gs-tete"><span class="g-rond" id="gs-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gs-pts" >···</span><span class="g-rond g-rond--plus" id="gs-plus" >+</span></div><div class="g-corps"><div class="m-bandeau glisse-bas" data-at="5"><span class="m-coche-b"></span>3 élèves → Groupe 2<u style="margin-left:auto">Annuler</u></div>
+<div class="g-pile repli" data-to="4">
+<div class="g-aide">Sélectionnez des élèves puis choisissez une action.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Adam KE</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Hugo PE</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Ilyes HA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Inès DU</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Iris TA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Jade LU</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Léa GA</span><span class="g-puce g-sel" id="gs-a" data-on="1-4"><span class="g-case"></span><i></i>Lina BO</span><span class="g-puce g-sel" id="gs-b" data-on="2-4"><span class="g-case"></span><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Malo RI</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Mia CO</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Naël CH</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Noé MA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Rose VI</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Sacha MO</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Tom SA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span></div><div class="g-wrap"><span class="g-puce g-sel" id="gs-c" data-on="2-4"><span class="g-case"></span><i></i>Éva RO</span></div></div>
+</div>
+<div class="g-pile repli" data-from="5">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">7</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">11</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">0</span></div><div class="g-vide">Tous les élèves sont affectés.</div></div>
+</div>
+<div class="g-barre-sel" id="gs-barre" data-to="4"><div class="n"><span class="repli" data-at="1">1 sélectionné(s)</span><span class="repli" data-from="2">3 sélectionné(s)</span></div><div class="g-btns"><span class="g-ab">Annuler</span><span class="g-ab g-ab--plein" id="gs-dep" data-on="4">Déplacer vers…</span></div></div>
+<div class="voile" data-at="4"></div>
+<div class="feuille" data-at="4"><div class="g-feuille__t">Déplacer 3 élèves</div>
+<div class="g-row" style="--c:#4F46E5"><i></i>Groupe 1<span class="n">9</span></div><div class="g-row" id="gs-row" style="--c:#059669"><i></i>Groupe 2<span class="n">8</span></div><div class="g-row"><i></i>Non affecté</div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ echanger -->
+    <section class="fiche fiche--etroite" id="echanger">
+      <div class="fiche__texte">
+        <h2>Échanger deux élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › sélection › Échanger</span></p>
+        <p class="fiche__but">Intervertir deux élèves de groupes différents en un geste : Lina passe dans le groupe de Noé, et Noé dans celui de Lina.</p>
+        <ol class="etapes">
+          <li data-cursor="#gx-lina" data-action="long">Appui long sur un premier élève.</li>
+          <li data-cursor="#gx-noe" data-action="tap">Toucher un second élève, dans un autre groupe (ou dans <b>Non affecté</b>).</li>
+          <li data-cursor="#gx-ech" data-action="tap" data-duration="3200">Le bouton <span class="btn-nom">Échanger</span> apparaît dans la barre du bas : le toucher.</li>
+          <li data-cursor="#gx-band" data-duration="3400">Les deux élèves changent de groupe ; le bandeau confirme « Lina BO ⇄ Noé MA », avec <span class="btn-nom">Annuler</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le bouton n'apparaît que si exactement deux élèves sont cochés et qu'ils ne sont pas dans le même groupe.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gx-tete"><span class="g-rond" id="gx-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gx-pts" >···</span><span class="g-rond g-rond--plus" id="gx-plus" >+</span></div><div class="g-corps"><div class="m-bandeau glisse-bas" id="gx-band" data-at="4"><span class="m-coche-b"></span>Lina BO ⇄ Noé MA<u style="margin-left:auto">Annuler</u></div>
+<div class="g-pile repli" data-to="3">
+<div class="g-aide">Sélectionnez des élèves puis choisissez une action.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Adam KE</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Hugo PE</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Ilyes HA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Inès DU</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Iris TA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Jade LU</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Léa GA</span><span class="g-puce g-sel" id="gx-lina" data-on="1-3"><span class="g-case"></span><i></i>Lina BO</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Malo RI</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Mia CO</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Naël CH</span><span class="g-puce g-sel" id="gx-noe" data-on="2-3"><span class="g-case"></span><i></i>Noé MA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Rose VI</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Sacha MO</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Tom SA</span><span class="g-puce g-sel" ><span class="g-case"></span><i></i>Zoé FA</span></div></div>
+</div>
+<div class="g-pile repli" data-from="4">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce zoom" ><i></i>Noé MA</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce zoom" ><i></i>Lina BO</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+</div>
+<div class="g-barre-sel" data-to="3"><div class="n"><span class="repli" data-at="1">1 sélectionné(s)</span><span class="repli" data-from="2">2 sélectionné(s)</span></div><div class="g-btns"><span class="g-ab">Annuler</span><span class="g-ab repli zoom" id="gx-ech" data-from="2" data-on="3"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>Échanger</span><span class="g-ab g-ab--plein">Déplacer vers…</span></div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ annuler -->
+    <section class="fiche fiche--etroite" id="annuler">
+      <div class="fiche__texte">
+        <h2>Annuler un déplacement</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › bandeau vert</span></p>
+        <p class="fiche__but">Revenir sur un geste malheureux sans chercher l'élève.</p>
+        <ol class="etapes">
+          <li data-cursor="#ga-x" data-action="tap">Un toucher de trop : Tom passe dans l'autre groupe.</li>
+          <li data-cursor="#ga-band">Le bandeau vert descend en haut de l'écran : « Tom SA → Groupe 1 ».</li>
+          <li data-cursor="#ga-u" data-action="tap">Toucher <span class="btn-nom">Annuler</span> dans les 4 secondes.</li>
+          <li data-cursor="#ga-x" data-duration="3200">L'élève revient dans le groupe où il était. Sans geste, le bandeau remonte seul au bout de 4 secondes.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seul le dernier geste s'annule : un toucher, un déplacement multiple ou un échange.</li>
+            <li>La répartition automatique, l'équilibrage et l'import depuis un plan de salle ne proposent pas d'annulation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="ga-tete"><span class="g-rond" id="ga-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="ga-pts" >···</span><span class="g-rond g-rond--plus" id="ga-plus" >+</span></div><div class="g-corps"><div class="m-bandeau glisse-bas" id="ga-band" data-at="2-3"><span class="m-coche-b"></span>Tom SA → Groupe 1<u id="ga-u" style="margin-left:auto">Annuler</u></div><div class="g-pile">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt repli" data-at="1,4">9</span><span class="g-cpt repli" data-at="2-3">10</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span><span class="g-puce repli zoom" data-at="2-3"><i></i>Tom SA</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt repli" data-at="1,4">8</span><span class="g-cpt repli" data-at="2-3">7</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce repli" id="ga-x" data-at="1,4" data-on="1,4"><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+</div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ nouveau-groupe -->
+    <section class="fiche fiche--etroite" id="nouveau-groupe">
+      <div class="fiche__texte">
+        <h2>Nouveau groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › +</span></p>
+        <p class="fiche__but">Ajouter un groupe : latinistes, groupe de besoin, troisième groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#gn-plus" data-action="tap">Toucher <b>+</b> en haut à droite.</li>
+          <li data-cursor="#gn-champ">La feuille <b>Nouveau groupe</b> monte, le clavier sur le nom déjà proposé : « Groupe 3 ».</li>
+          <li data-cursor="#gn-champ" data-duration="3000">Taper le nom voulu.</li>
+          <li data-cursor="#gn-viol" data-action="tap">Toucher une pastille de couleur : elle s'entoure d'un anneau sombre.</li>
+          <li data-cursor="#gn-creer" data-action="tap">Toucher <span class="btn-nom">Créer</span>. Toucher le fond ferme sans créer.</li>
+          <li data-cursor="#gn-new" data-duration="3200">Le groupe, vide, se place après les autres : y envoyer les élèves par un toucher.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Huit couleurs : indigo, vert, ambre, rose, bleu, violet, turquoise, rouge. La première couleur pas encore prise dans la classe est proposée.</li>
+            <li>Le nom compte 40 caractères au plus ; <span class="btn-nom">Créer</span> est grisé s'il est vide.</li>
+            <li>Le site affiche la même couleur, dans sa propre nuance.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#modifier-groupe">Modifier un groupe</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gn-tete"><span class="g-rond" id="gn-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gn-pts" >···</span><span class="g-rond g-rond--plus" id="gn-plus" data-on="1">+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide">Touchez un élève pour choisir son groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div id="gn-new" style="--c:#7C3AED;--cs:#EDE9FE" data-from="6" data-on="6" class="g-col repli zoom"><div class="g-col__t"><i></i>Latinistes<span class="g-cpt">0</span><span class="g-pts" >···</span></div><div class="g-vide">Aucun élève. Touchez un élève pour l’envoyer ici.</div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span></div></div>
+</div>
+<div class="voile" data-at="2-5"></div>
+<div class="feuille" data-at="2-5" style="bottom:200px;border-radius:20px"><div class="g-feuille__t">Nouveau groupe</div>
+<div class="g-gchamp is-on" id="gn-champ"><span class="repli" data-at="2">Groupe 3</span><span data-type="Latinistes" data-type-at="3"></span></div>
+<div class="g-lib">Couleur</div><div class="g-pastilles"><i style="--c:#4F46E5" ></i><i style="--c:#059669" ></i><i style="--c:#D97706" data-on="2-3"></i><i style="--c:#DB2777" ></i><i style="--c:#2563EB" ></i><i id="gn-viol" style="--c:#7C3AED" data-on="4-5"></i><i style="--c:#0D9488" ></i><i style="--c:#DC2626" ></i></div>
+<div class="g-boutons"><span class="g-ok" id="gn-creer" data-on="5">Créer</span></div></div>
+<div class="m-clavier glisse-haut" data-at="2-5" style="height:200px"><b></b><b></b><b></b><b></b></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ modifier-groupe -->
+    <section class="fiche fiche--etroite" id="modifier-groupe">
+      <div class="fiche__texte">
+        <h2>Modifier un groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › ··· d'un groupe</span></p>
+        <p class="fiche__but">Renommer un groupe, changer sa couleur, le remplir depuis un plan de salle ou le supprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#gm-dots" data-action="tap">Toucher <b>···</b> dans l'en-tête de la carte du groupe.</li>
+          <li data-cursor="#gm-champ">La feuille <b>Modifier le groupe</b> s'ouvre : le nom est rempli, la couleur actuelle cerclée.</li>
+          <li data-cursor="#gm-bleu" data-action="tap">Changer le nom ou toucher une autre couleur.</li>
+          <li data-cursor="#gm-remplir" data-duration="3600">Dans la même feuille : <span class="btn-nom">Remplir depuis un plan de salle…</span> (s'il existe une salle) et <span class="btn-nom">Supprimer</span>, en rouge.</li>
+          <li data-cursor="#gm-ok" data-action="tap">Toucher <span class="btn-nom">Enregistrer</span> : la carte prend la nouvelle couleur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><span class="btn-nom">Enregistrer</span> sans rien changer ferme simplement la feuille.</li>
+            <li>Le clavier ne s'ouvre pas tout seul ici : toucher le champ pour renommer.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#supprimer-groupe">Supprimer un groupe</a> · <a href="#depuis-plan">Depuis un plan de salle</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gm-tete"><span class="g-rond" id="gm-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gm-pts" >···</span><span class="g-rond g-rond--plus" id="gm-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="repli" data-to="4"><div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" id="gm-dots" data-on="1">···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div></div>
+<div class="repli zoom" data-from="5"><div class="g-col" style="--c:#2563EB;--cs:#DBEAFE" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div></div>
+</div>
+<div class="voile" data-at="2-5"></div>
+<div class="feuille" data-at="2-5"><div class="g-feuille__t">Modifier le groupe</div>
+<div class="g-gchamp" id="gm-champ">Groupe 2</div>
+<div class="g-lib">Couleur</div><div class="g-pastilles"><i style="--c:#4F46E5" ></i><i style="--c:#059669" data-on="2"></i><i style="--c:#D97706" ></i><i style="--c:#DB2777" ></i><i id="gm-bleu" style="--c:#2563EB" data-on="3-5"></i><i style="--c:#7C3AED" ></i><i style="--c:#0D9488" ></i><i style="--c:#DC2626" ></i></div>
+<div class="g-row" id="gm-remplir" data-on="4" style="margin-top:8px">Remplir depuis un plan de salle…</div>
+<div class="g-boutons"><span class="g-sup">Supprimer</span><span class="g-ok" id="gm-ok" data-on="5">Enregistrer</span></div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ supprimer-groupe -->
+    <section class="fiche fiche--etroite" id="supprimer-groupe">
+      <div class="fiche__texte">
+        <h2>Supprimer un groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › ··· d'un groupe › Supprimer</span></p>
+        <p class="fiche__but">Retirer un groupe devenu inutile.</p>
+        <ol class="etapes">
+          <li data-cursor="#gd-sup" data-action="tap">Dans la feuille du groupe, toucher <span class="btn-nom">Supprimer</span>.</li>
+          <li data-cursor="#gd-texte" data-duration="3800">L'alerte <b>Supprimer « Latinistes » ?</b> prévient : les élèves redeviendront non affectés, les séances passées de ce groupe redeviendront « classe entière », les plans de ce groupe seront supprimés.</li>
+          <li data-cursor="#gd-ok" data-action="tap">Toucher <span class="btn-nom">Supprimer</span>, ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#gd-na" data-duration="3200">La carte disparaît ; ses élèves rejoignent <b>Non affecté</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les séances déjà faites avec ce groupe sont gardées, rattachées à la classe entière.</li>
+            <li>La suppression part au site à la synchronisation : elle marche sans réseau.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gd-tete"><span class="g-rond" id="gd-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gd-pts" >···</span><span class="g-rond g-rond--plus" id="gd-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide">Touchez un élève pour choisir son groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">6</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">5</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span></div></div>
+<div class="repli" data-to="3"><div class="g-col" style="--c:#D97706;--cs:#FEF3C7" ><div class="g-col__t"><i></i>Latinistes<span class="g-cpt">3</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Tom SA</span></div></div></div>
+<div class="g-col g-col--na" id="gd-na" data-on="4"><div class="g-col__t"><i></i>Non affecté<span class="g-cpt repli" data-to="3">1</span><span class="g-cpt repli" data-from="4">4</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span><span class="g-puce repli zoom" data-from="4"><i></i>Jade LU</span><span class="g-puce repli zoom" data-from="4"><i></i>Rose VI</span><span class="g-puce repli zoom" data-from="4"><i></i>Tom SA</span></div></div>
+</div>
+<div class="voile" data-at="1"></div>
+<div class="feuille" data-at="1"><div class="g-feuille__t">Modifier le groupe</div>
+<div class="g-gchamp">Latinistes</div>
+<div class="g-lib">Couleur</div><div class="g-pastilles"><i style="--c:#4F46E5" ></i><i style="--c:#059669" ></i><i style="--c:#D97706" class="is-on"></i><i style="--c:#DB2777" ></i><i style="--c:#2563EB" ></i><i style="--c:#7C3AED" ></i><i style="--c:#0D9488" ></i><i style="--c:#DC2626" ></i></div>
+<div class="g-row" style="margin-top:8px">Remplir depuis un plan de salle…</div>
+<div class="g-boutons"><span class="g-sup" id="gd-sup" data-on="1">Supprimer</span><span class="g-ok">Enregistrer</span></div></div>
+<div class="m-voile" data-at="2-3" style="background:rgba(0,0,0,.35)"></div><div class="m-alerte zoom" data-at="2-3"><div class="m-alerte__t">Supprimer « Latinistes » ?</div><div class="m-alerte__p"><span id="gd-texte">3 élève(s) redeviendront non affectés. Les séances passées de ce groupe redeviendront « classe entière ». Les plans de ce groupe seront supprimés.</span></div><div class="m-alerte__b"><span >Annuler</span><span id="gd-ok" data-on="3">Supprimer</span></div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ actions -->
+    <section class="fiche fiche--etroite" id="actions">
+      <div class="fiche__texte">
+        <h2>Les actions de masse</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › ··· en haut à droite</span></p>
+        <p class="fiche__but">Réunir en un menu les gestes qui touchent toute la classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#gac-pts" data-action="tap">Toucher <b>···</b> dans l'en-tête de l'écran.</li>
+          <li data-cursor="#gac-feuille" data-duration="3600">La feuille <b>Actions</b> propose : <span class="btn-nom">Répartir automatiquement…</span>, <span class="btn-nom">Créer un groupe depuis un plan de salle…</span>, <span class="btn-nom">Équilibrer les non affectés</span>.</li>
+          <li data-cursor="#gac-off" data-duration="3600">Une ligne qui ne peut pas servir est grisée : sans groupe, pas de répartition ni d'équilibrage ; sans salle, pas d'import depuis un plan.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Aucune de ces actions ne propose d'annulation : la répartition est remplacée.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#repartir">Répartir automatiquement</a> · <a href="#depuis-plan">Depuis un plan de salle</a> · <a href="#equilibrer">Équilibrer</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gac-tete"><span class="g-rond" id="gac-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gac-pts" data-on="1">···</span><span class="g-rond g-rond--plus" id="gac-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span></div></div>
+</div>
+<div class="voile" data-from="2"></div>
+<div class="feuille" data-from="2" id="gac-feuille"><div class="g-feuille__t">Actions</div>
+<div class="g-row repli" data-at="2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h4l10 12h4M3 18h4l3-3.6M14 9.6 17 6h4M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>Répartir automatiquement…</div>
+<div class="g-row repli" data-at="2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Créer un groupe depuis un plan de salle…</div>
+<div class="g-row repli" data-at="2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer les non affectés</div>
+<div class="g-row g-row--off repli" data-at="3"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h4l10 12h4M3 18h4l3-3.6M14 9.6 17 6h4M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>Répartir automatiquement…</div>
+<div class="g-row repli" data-at="3"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Créer un groupe depuis un plan de salle…</div>
+<div class="g-row g-row--off repli" id="gac-off" data-at="3"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer les non affectés</div>
+<div class="bulle bulle--haut repli" data-at="3" style="position:relative;margin-top:8px;max-width:none">Exemple d’une classe sans aucun groupe : seule la création depuis un plan reste possible.</div>
+</div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ repartir -->
+    <section class="fiche fiche--etroite" id="repartir">
+      <div class="fiche__texte">
+        <h2>Répartir automatiquement</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › ··· › Répartir automatiquement…</span></p>
+        <p class="fiche__but">Refaire toute la répartition d'un geste, dans les groupes existants.</p>
+        <ol class="etapes">
+          <li data-cursor="#gra-ligne" data-action="tap">Dans la feuille <b>Actions</b>, toucher <span class="btn-nom">Répartir automatiquement…</span>.</li>
+          <li data-cursor="#gra-hint" data-duration="3400">La feuille prévient : elle remplace la répartition actuelle des groupes avec tous les élèves de la classe.</li>
+          <li data-cursor="#gra-alpha" data-duration="4200">Trois façons : <b>Moitié alphabétique</b> coupe la liste en tranches qui se suivent, <b>Alternée</b> donne un élève sur deux (un sur trois avec trois groupes…), <b>Aléatoire</b> mélange puis coupe.</li>
+          <li data-cursor="#gra-alt" data-action="tap">Toucher la façon voulue, ici <span class="btn-nom">Alternée</span>.</li>
+          <li data-cursor="#gra-g1" data-duration="3400">Toute la classe est redistribuée, à un élève près ; plus personne n'est non affecté.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La liste suit l'ordre des pseudonymes, donc des prénoms.</li>
+            <li>« A–L / M–Z » n'est qu'une indication : avec trois groupes, la liste est coupée en trois tranches.</li>
+            <li class="important">Pas de confirmation supplémentaire ni d'annulation : la répartition précédente est perdue.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gra-tete"><span class="g-rond" id="gra-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gra-pts" >···</span><span class="g-rond g-rond--plus" id="gra-plus" >+</span></div><div class="g-corps"><div class="g-pile repli" data-to="4">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Lou BE</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span></div></div>
+</div>
+<div class="g-pile repli" data-from="5">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" id="gra-g1" style="--c:#4F46E5;--cs:#EEF0FF" data-on="5"><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Lou BE</span><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Tom SA</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">9</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Lina BO</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">0</span></div><div class="g-vide">Tous les élèves sont affectés.</div></div>
+</div>
+<div class="voile" data-at="1-4"></div>
+<div class="feuille repli" data-at="1"><div class="g-feuille__t">Actions</div>
+<div class="g-row" id="gra-ligne" data-on="1"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h4l10 12h4M3 18h4l3-3.6M14 9.6 17 6h4M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>Répartir automatiquement…</div><div class="g-row"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Créer un groupe depuis un plan de salle…</div><div class="g-row"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer les non affectés</div></div>
+<div class="feuille repli" data-at="2-4"><div class="g-feuille__t">Répartir automatiquement</div>
+<div class="g-hint" id="gra-hint">Remplace la répartition actuelle des 2 groupe(s) avec les 18 élèves de la classe.</div>
+<div class="g-row" id="gra-alpha">Moitié alphabétique<span class="n">A–L / M–Z</span></div><div class="g-row" id="gra-alt" data-on="4">Alternée<span class="n">1 sur 2</span></div><div class="g-row">Aléatoire</div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ depuis-plan -->
+    <section class="fiche fiche--etroite" id="depuis-plan">
+      <div class="fiche__texte">
+        <h2>Créer ou remplir un groupe depuis un plan de salle</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › ··· › Créer un groupe depuis un plan de salle…</span></p>
+        <p class="fiche__but">Quand une demi-classe a déjà sa salle et son plan, en tirer le groupe sans retaper la liste.</p>
+        <ol class="etapes">
+          <li data-cursor="#gp-ligne" data-action="tap" data-duration="3400">Trois chemins : <span class="btn-nom">Créer depuis un plan de salle</span> (classe sans groupe), la feuille <b>Actions</b>, ou <span class="btn-nom">Remplir depuis un plan de salle…</span> dans la feuille d'un groupe.</li>
+          <li data-cursor="#gp-hint" data-duration="3600">La feuille <b>Depuis quel plan de salle ?</b> explique : les élèves placés dans le plan de cette classe pour la salle choisie rejoignent le groupe.</li>
+          <li data-cursor="#gp-labo" data-action="tap">Toucher la salle ; chaque ligne rappelle ses rangées × colonnes.</li>
+          <li data-cursor="#gp-alerte" data-duration="3400">L'alerte <b>Import terminé</b> donne le nombre d'élèves qui ont rejoint le groupe.</li>
+          <li data-cursor="#gp-new" data-duration="3200">Créé depuis les actions, le groupe porte le nom de la salle.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les élèves placés quittent leurs autres groupes ; les élèves déjà dans le groupe n'en sont pas retirés.</li>
+            <li>Pas d'annulation.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#editeur">L'éditeur de plan</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gp-tete"><span class="g-rond" id="gp-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gp-pts" >···</span><span class="g-rond g-rond--plus" id="gp-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide">Touchez un élève pour choisir son groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt repli" data-to="4">6</span><span class="g-cpt repli" data-from="5">3</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce repli" data-to="4"><i></i>Adam KE</span><span class="g-puce repli" data-to="4"><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce repli" data-to="4"><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt repli" data-to="4">5</span><span class="g-cpt repli" data-from="5">2</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce repli" data-to="4"><i></i>Malo RI</span><span class="g-puce repli" data-to="4"><i></i>Mia CO</span><span class="g-puce repli" data-to="4"><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span></div></div>
+<div id="gp-new" style="--c:#D97706;--cs:#FEF3C7" data-from="5" data-on="5" class="g-col repli zoom"><div class="g-col__t"><i></i>Labo 2<span class="g-cpt">6</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span></div></div>
+<div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">1</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span></div></div>
+</div>
+<div class="voile" data-at="1-3"></div>
+<div class="feuille repli" data-at="1"><div class="g-feuille__t">Actions</div>
+<div class="g-row"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h4l10 12h4M3 18h4l3-3.6M14 9.6 17 6h4M18 3l3 3-3 3M18 15l3 3-3 3"/></svg>Répartir automatiquement…</div><div class="g-row" id="gp-ligne" data-on="1"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Créer un groupe depuis un plan de salle…</div><div class="g-row"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer les non affectés</div></div>
+<div class="feuille repli" data-at="2-3"><div class="g-feuille__t">Depuis quel plan de salle ?</div>
+<div class="g-hint" id="gp-hint">Les élèves placés dans le plan de cette classe pour la salle choisie rejoignent le groupe (nouveau groupe au nom de la salle).</div>
+<div class="g-row">Salle 310<span class="n">5 × 7</span></div><div class="g-row" id="gp-labo" data-on="3">Labo 2<span class="n">4 × 6</span></div></div>
+<div class="m-voile" data-at="4" style="background:rgba(0,0,0,.35)"></div><div class="m-alerte zoom" id="gp-alerte" data-at="4"><div class="m-alerte__t">Import terminé</div><div class="m-alerte__p">6 élève(s) placés dans « Labo 2 » ont rejoint « Labo 2 ».</div><div class="m-alerte__b"><span >OK</span></div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ equilibrer -->
+    <section class="fiche fiche--etroite" id="equilibrer">
+      <div class="fiche__texte">
+        <h2>Équilibrer les non affectés</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › Non affecté › Équilibrer</span></p>
+        <p class="fiche__but">Placer d'un coup les élèves restés sans groupe, des nouveaux arrivants par exemple, en gardant des groupes de même taille.</p>
+        <ol class="etapes">
+          <li data-cursor="#gq-na">Trois élèves sont arrivés : ils attendent dans <b>Non affecté</b>.</li>
+          <li data-cursor="#gq-btn" data-action="tap">Toucher <span class="btn-nom">Équilibrer</span> (la balance) dans l'en-tête de la carte.</li>
+          <li data-cursor="#gq-g2" data-duration="3400">Chacun part, l'un après l'autre, dans le groupe le moins nombreux : les deux groupes finissent à égalité.</li>
+          <li data-cursor="#gq-alerte" data-duration="3400">La même action existe dans <b>···</b> › <span class="btn-nom">Équilibrer les non affectés</span> ; s'il n'y a personne à placer : « Rien à équilibrer ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les élèves sont pris dans l'ordre des pseudonymes ; à égalité d'effectif, le premier groupe l'emporte.</li>
+            <li>Le bouton n'apparaît que s'il reste des non affectés et qu'il existe au moins un groupe.</li>
+            <li>Pas d'annulation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gq-tete"><span class="g-rond" id="gq-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gq-pts" >···</span><span class="g-rond g-rond--plus" id="gq-plus" >+</span></div><div class="g-corps"><div class="g-pile">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt repli" data-to="2">6</span><span class="g-cpt repli" data-from="3">7</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce repli zoom" data-from="3"><i></i>Hugo PE</span></div></div>
+<div class="g-col" id="gq-g2" style="--c:#059669;--cs:#D1FAE5" data-on="3"><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt repli" data-to="2">5</span><span class="g-cpt repli" data-from="3">7</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Noé MA</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce repli zoom" data-from="3"><i></i>Éva RO</span><span class="g-puce repli zoom" data-from="3"><i></i>Léa GA</span></div></div>
+<div class="repli" data-to="2"><div class="g-col g-col--na" id="gq-na" data-on="1"><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">3</span><span class="g-equil" id="gq-btn" data-on="2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></svg>Équilibrer</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Éva RO</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Léa GA</span></div></div></div>
+<div class="repli" data-from="3"><div class="g-col g-col--na" ><div class="g-col__t"><i></i>Non affecté<span class="g-cpt">0</span></div><div class="g-vide">Tous les élèves sont affectés.</div></div></div>
+</div>
+<div class="m-voile" data-at="4" style="background:rgba(0,0,0,.35)"></div><div class="m-alerte zoom" id="gq-alerte" data-at="4"><div class="m-alerte__t">Rien à équilibrer</div><div class="m-alerte__p">Tous les élèves sont déjà affectés.</div><div class="m-alerte__b"><span >OK</span></div></div>
+</div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ conflit -->
+    <section class="fiche fiche--etroite" id="conflit">
+      <div class="fiche__texte">
+        <h2>Un élève dans deux groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Groupes › élève marqué !</span></p>
+        <p class="fiche__but">Régler le cas rare où un élève se retrouve dans deux groupes : des changements faits sans réseau sur deux appareils, puis réunis par la synchronisation.</p>
+        <ol class="etapes">
+          <li data-cursor="#gk-warn" data-duration="3400">Un encadré ambre l'annonce en haut de l'écran : « Certains élèves (marqués « ! ») sont dans plusieurs groupes après une synchronisation. »</li>
+          <li data-cursor="#gk-a1">L'élève apparaît dans chacune de ses cartes, suivi d'un <b>!</b> ambre.</li>
+          <li data-cursor="#gk-a2" data-action="tap">Le toucher dans la carte à garder.</li>
+          <li data-cursor="#gk-band" data-duration="3200">Il quitte les autres groupes ; le bandeau vert propose <span class="btn-nom">Annuler</span> comme pour un déplacement.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le toucher garde toujours la carte touchée, quel que soit le nombre de groupes.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="g-tete" id="gk-tete"><span class="g-rond" id="gk-back" >‹</span><div class="g-centre"><b>Groupes</b><span>4B</span></div><span class="g-rond g-rond--pts" id="gk-pts" >···</span><span class="g-rond g-rond--plus" id="gk-plus" >+</span></div><div class="g-corps"><div class="m-bandeau glisse-bas" id="gk-band" data-at="4"><span class="m-coche-b"></span>Noé MA → Groupe 2<u style="margin-left:auto">Annuler</u></div><div class="g-pile">
+<div class="g-aide">Touchez un élève pour le faire changer de groupe. Appui long pour en sélectionner plusieurs.</div>
+<div class="g-alerte-ambre repli" id="gk-warn" data-to="3">Certains élèves (marqués « ! ») sont dans plusieurs groupes après une synchronisation. Touchez-les dans la colonne à garder.</div>
+<div class="g-col" style="--c:#4F46E5;--cs:#EEF0FF" ><div class="g-col__t"><i></i>Groupe 1<span class="g-cpt repli" data-to="3">8</span><span class="g-cpt repli" data-from="4">7</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce " ><i></i>Adam KE</span><span class="g-puce " ><i></i>Hugo PE</span><span class="g-puce " ><i></i>Ilyes HA</span><span class="g-puce " ><i></i>Inès DU</span><span class="g-puce " ><i></i>Iris TA</span><span class="g-puce " ><i></i>Jade LU</span><span class="g-puce " ><i></i>Léa GA</span><span class="g-puce repli" id="gk-a1" data-to="3" data-on="2"><i></i>Noé MA<span class="g-warn">!</span></span></div></div>
+<div class="g-col" style="--c:#059669;--cs:#D1FAE5" ><div class="g-col__t"><i></i>Groupe 2<span class="g-cpt">8</span><span class="g-pts" >···</span></div><div class="g-wrap"><span class="g-puce repli" id="gk-a2" data-to="3" data-on="2-3"><i></i>Noé MA<span class="g-warn">!</span></span><span class="g-puce repli" data-from="4"><i></i>Noé MA</span><span class="g-puce " ><i></i>Malo RI</span><span class="g-puce " ><i></i>Mia CO</span><span class="g-puce " ><i></i>Naël CH</span><span class="g-puce " ><i></i>Rose VI</span><span class="g-puce " ><i></i>Sacha MO</span><span class="g-puce " ><i></i>Tom SA</span><span class="g-puce " ><i></i>Zoé FA</span></div></div>
+</div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ mes-salles -->
+    <section class="fiche fiche--etroite" id="mes-salles">
+      <div class="fiche__texte">
+        <h2>Mes salles</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche de classe › Creer une salle (sans salle)</span></p>
+        <p class="fiche__but">Consulter les salles de l'enseignant et la taille de leur grille. Les salles se dessinent sur le site ; le téléphone les lit.</p>
+        <ol class="etapes">
+          <li data-cursor="#sl-lien" data-action="tap">Tant qu'il n'existe aucune salle, la fiche de classe propose <span class="btn-nom">Creer une salle</span> (le démarrage d'une séance propose de même <span class="btn-nom">Configurer une salle</span>).</li>
+          <li data-cursor="#sl-vide" data-duration="3400">L'écran <b>Mes salles</b> renvoie vers le site : « Créez vos salles depuis l'application web, puis synchronisez. »</li>
+          <li data-cursor="#sl-c1" data-duration="3400">Une fois les salles créées et synchronisées : une carte par salle, avec ses rangées × colonnes.</li>
+          <li data-cursor="#sl-c1" data-action="tap">Toucher une salle pour voir son aperçu. On revient par le geste ou le bouton retour du téléphone.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les salles n'ont pas d'onglet. Dès qu'une salle existe, aucun bouton du téléphone ne ramène à cet écran.</li>
+            <li>Créer, modifier, supprimer une salle se fait uniquement sur le site.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html">les salles et plans sur le site</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-bloc repli" data-at="1"><div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">4B</span><span class="m-barre__d">PDF</span></div>
+<div class="m-corps"><div class="m-pile" style="padding-left:20px;padding-right:20px">
+<div class="m-sec"><span class="m-sec__t">Groupes</span></div><div class="m-vide"><div class="m-vide__t">Aucun groupe</div></div>
+<div class="m-sec"><span class="m-sec__t">Plan de classe</span></div>
+<div class="m-vide"><svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5"/><path d="M12 5V2l3 1.2L12 4.4"/></svg><div class="m-vide__t">Aucune salle configuree</div><div id="sl-lien" data-on="1" style="display:inline-block;margin-top:6px;color:var(--t-participation);font-weight:600;font-size:13px">Creer une salle</div></div>
+</div></div><div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div></div>
+<div class="m-bloc repli glisse-gauche" data-from="2"><div class="m-corps"><div class="m-pile" style="padding:20px 20px">
+<div class="r-h1">Mes salles</div>
+<div class="m-carte repli" id="sl-vide" data-at="2" style="border-radius:20px;padding:30px 20px;text-align:center;margin-top:80px"><div style="width:80px;height:80px;border-radius:50%;background:#F5F3FF;display:grid;place-items:center;margin:0 auto 12px"><svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#8B5CF6" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5"/><path d="M12 5V2l3 1.2L12 4.4"/></svg></div><div style="font-size:19px;font-weight:700">Aucune salle</div><div class="m-sous" style="font-size:14px;margin-top:6px">Créez vos salles depuis l'application web, puis synchronisez.</div></div>
+<div class="r-cpt repli" data-from="3">3 salles</div>
+<div class="r-carte repli glisse-haut" id="sl-c1" data-from="3" data-on="4"><span class="r-ic" style="background:#F5F3FF"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#8B5CF6" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5"/><path d="M12 5V2l3 1.2L12 4.4"/></svg></span><div><div class="r-n">Salle 310</div><div class="r-s">5 rangées × 7 colonnes</div></div><span class="r-chev">›</span></div>
+<div class="r-carte repli glisse-haut" data-from="3"><span class="r-ic" style="background:#EEF0FF"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5"/><path d="M12 5V2l3 1.2L12 4.4"/></svg></span><div><div class="r-n">Labo 2</div><div class="r-s">4 rangées × 6 colonnes</div></div><span class="r-chev">›</span></div>
+<div class="r-carte repli glisse-haut" data-from="3"><span class="r-ic" style="background:#ECFDF5"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#059669" stroke-width="1.8" stroke-linejoin="round"><path d="M3 21h18M5 21V10l7-5 7 5v11M9 21v-5h6v5"/><path d="M12 5V2l3 1.2L12 4.4"/></svg></span><div><div class="r-n">Salle 102</div><div class="r-s">5 rangées × 6 colonnes</div></div><span class="r-chev">›</span></div>
+</div></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ apercu-salle -->
+    <section class="fiche fiche--etroite" id="apercu-salle">
+      <div class="fiche__texte">
+        <h2>L'aperçu d'une salle</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Mes salles › une salle</span></p>
+        <p class="fiche__but">Vérifier la disposition d'une salle, places et allées, telle qu'elle a été dessinée sur le site.</p>
+        <ol class="etapes">
+          <li data-cursor="#sa-info"><b>Informations</b> : le nom de la salle et sa disposition, « 5 rangees × 7 colonnes ».</li>
+          <li data-cursor="#sa-grille" data-duration="3400"><b>Apercu du plan</b> : chaque place en indigo pâle ; les cases désactivées sur le site (allées) en gris.</li>
+          <li data-cursor="#sa-leg">La légende compte les places et les allées.</li>
+          <li data-cursor="#sa-note">Un encart rappelle : pour modifier ou supprimer la salle, passer par le site.</li>
+          <li data-cursor="#sa-retour" data-action="tap">Revenir avec <span class="btn-nom">← Retour</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Consultation seule ; la fiche s'affiche sans réseau.</li>
+            <li class="important">Ici le tableau est dessiné en haut de la grille. Dans l'éditeur de plan, en séance et sur l'écran projeté, il est en bas : la dernière rangée est le devant de la salle.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys"><span class="m-barre__g" id="sa-retour" data-on="5">← Retour</span><span class="m-barre__t">Salle 310</span><span class="m-barre__d"></span></div>
+<div class="m-corps"><div class="m-pile" style="padding-top:6px">
+<div class="r-sec"><i style="background:#F5F3FF;color:#8B5CF6">i</i>Informations</div>
+<div class="m-carte m-carte--ombre" id="sa-info"><div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val">Salle 310</span></div><div class="m-ligne"><span class="m-lib">Disposition</span><span class="m-val">5 rangees × 7 colonnes</span></div></div>
+<div class="r-sec"><i style="background:#EEF0FF"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></i>Apercu du plan</div>
+<div class="m-carte m-carte--ombre" style="padding:14px"><div class="a-tab">Tableau</div><div class="a-grille" id="sa-grille"><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case a-case--allee"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case a-case--allee"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case a-case--allee"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case a-case--allee"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case a-case--allee"></span><span class="a-case"></span><span class="a-case"></span><span class="a-case"></span></div><div class="a-leg" id="sa-leg"><span>30 places</span><span>5 allees</span></div></div>
+<div class="a-note" id="sa-note"><i></i>Pour modifier ou supprimer cette salle, utilisez l'application web.</div>
+</div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ plan-de-la-classe -->
+    <section class="fiche fiche--etroite" id="plan-de-la-classe">
+      <div class="fiche__texte">
+        <h2>Ouvrir le plan d'une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Plan de classe</span></p>
+        <p class="fiche__but">Chaque classe a un plan par salle. La section <b>Plan de classe</b> de la fiche les ouvre.</p>
+        <ol class="etapes">
+          <li data-cursor="#pl-sec">Dans la fiche de la classe, descendre à <b>Plan de classe</b> : toutes les salles de l'enseignant y sont listées.</li>
+          <li data-cursor="#pl-l1">Chaque ligne : le nom de la salle et sa taille, « 5 x 7 places ».</li>
+          <li data-cursor="#pl-l1" data-action="tap">Toucher une salle.</li>
+          <li data-cursor="#pl-titre" data-duration="3200">L'éditeur de plan s'ouvre, en plein écran, sur le plan de cette classe dans cette salle.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Toutes les salles sont proposées, qu'un plan existe déjà ou non ; ouvrir une salle crée un plan vide si besoin.</li>
+            <li>Sans aucune salle : « Aucune salle configuree » et le lien <span class="btn-nom">Creer une salle</span>.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-bloc repli" data-to="3"><div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">4B</span><span class="m-barre__d">PDF</span></div>
+<div class="m-corps"><div class="m-pile" style="padding-left:20px;padding-right:20px">
+<div class="m-sec"><span class="m-sec__t">Groupes</span><span class="m-pbtn">Gérer</span></div>
+<div class="m-carte m-carte--ombre"><div class="m-ligne"><span style="width:12px;height:12px;border-radius:50%;background:#4F46E5"></span><span class="m-nom">Groupe 1</span><span class="m-pseudo">9 élèves</span><span class="m-chev">›</span></div><div class="m-ligne"><span style="width:12px;height:12px;border-radius:50%;background:#059669"></span><span class="m-nom">Groupe 2</span><span class="m-pseudo">8 élèves</span><span class="m-chev">›</span></div></div>
+<div class="m-sec" id="pl-sec"><span class="m-sec__t">Plan de classe</span></div>
+<div class="m-carte m-carte--ombre"><div class="m-ligne" id="pl-l1" data-on="2-3"><div class="m-id"><div class="m-nom">Salle 310</div><div class="m-pseudo">5 x 7 places</div></div><span class="m-chev">›</span></div><div class="m-ligne"><div class="m-id"><div class="m-nom">Labo 2</div><div class="m-pseudo">4 x 6 places</div></div><span class="m-chev">›</span></div><div class="m-ligne"><div class="m-id"><div class="m-nom">Salle 102</div><div class="m-pseudo">5 x 6 places</div></div><span class="m-chev">›</span></div></div>
+<div class="m-danger"><div class="m-danger__t">Zone de danger</div><div class="m-rbtn">Supprimer cette classe</div></div>
+</div></div><div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div></div>
+<div class="m-bloc repli glisse-gauche" data-from="4"><div class="m-barre m-barre--sys" id="pl-barre"><span class="m-barre__g" id="pl-retour" >← Retour</span><span class="m-barre__t" id="pl-titre">Plan - Salle 310</span><span class="m-barre__d rouge" id="pl-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pl-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pl-carte"><div class="p-grille" id="pl-g" ><span class="p-case" id="pl-0-0" ><span class="p-occ" >Adam KE</span></span><span class="p-case" id="pl-0-1" ><span class="p-occ" >Inès DU</span></span><span class="p-case" id="pl-0-2" ><span class="p-occ" >Iris TA</span></span><span class="p-case p-case--allee" id="pl-a0"></span><span class="p-case" id="pl-0-4" ><span class="p-occ" >Jade LU</span></span><span class="p-case" id="pl-0-5" ></span><span class="p-case" id="pl-0-6" ><span class="p-occ" >Léa GA</span></span><span class="p-case" id="pl-1-0" ><span class="p-occ" >Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pl-1-1" ><span class="p-occ" >Lou BE</span></span><span class="p-case" id="pl-1-2" ></span><span class="p-case p-case--allee" id="pl-a1"></span><span class="p-case" id="pl-1-4" ><span class="p-occ" >Malo RI</span></span><span class="p-case" id="pl-1-5" ><span class="p-occ" >Mia CO</span></span><span class="p-case" id="pl-1-6" ><span class="p-occ" >Naël CH</span></span><span class="p-case" id="pl-2-0" ><span class="p-occ" >Noé MA</span></span><span class="p-case" id="pl-2-1" ></span><span class="p-case" id="pl-2-2" ><span class="p-occ" >Rose VI</span></span><span class="p-case p-case--allee" id="pl-a2"></span><span class="p-case" id="pl-2-4" ><span class="p-occ" >Sacha MO</span></span><span class="p-case" id="pl-2-5" ><span class="p-occ" >Tom SA</span></span><span class="p-case" id="pl-2-6" ></span><span class="p-case" id="pl-3-0" ><span class="p-occ" >Zoé FA</span></span><span class="p-case" id="pl-3-1" ><span class="p-occ" >Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pl-3-2" ></span><span class="p-case p-case--allee" id="pl-a3"></span><span class="p-case" id="pl-3-4" ><span class="p-occ" >Ilyes HA</span></span><span class="p-case" id="pl-3-5" ></span><span class="p-case" id="pl-3-6" ></span><span class="p-case" id="pl-4-0" ></span><span class="p-case" id="pl-4-1" ></span><span class="p-case" id="pl-4-2" ></span><span class="p-case p-case--allee" id="pl-a4"></span><span class="p-case" id="pl-4-4" ></span><span class="p-case" id="pl-4-5" ></span><span class="p-case" id="pl-4-6" ></span></div><div class="p-tab" id="pl-tab">Tableau</div><div class="p-stats" id="pl-stats">17 / 18 eleves places</div></div>
+  
+</div>
+<div class="p-bas" id="pl-bas"><div class="p-bas__t repli" ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-puces"><span class="p-puce" >Éva RO</span></div></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ editeur -->
+    <section class="fiche fiche--etroite" id="editeur">
+      <div class="fiche__texte">
+        <h2>L'éditeur de plan</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Plan de classe › une salle</span></p>
+        <p class="fiche__but">Placer chaque élève de la classe à sa place dans la salle. Ce plan est celui que montre la séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#pe-barre" data-duration="3200">En haut : <span class="btn-nom">← Retour</span>, le titre « Plan - Salle 310 » et <span class="btn-nom">Reinitialiser</span> en rouge.</li>
+          <li data-cursor="#pe-entete">Le nom de la classe et la consigne : « Appuyez sur un eleve, puis sur une place ».</li>
+          <li data-cursor="#pe-carte">Au milieu, la grille de la salle, qui défile si la salle est grande.</li>
+          <li data-cursor="#pe-bas">En bas, un panneau fixe : les élèves qui n'ont pas encore de place.</li>
+          <li data-cursor="#pe-retour" data-action="tap">Revenir avec <span class="btn-nom">← Retour</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pas de bouton Enregistrer : chaque geste s'enregistre aussitôt dans le téléphone, même sans réseau. Un voile blanc passe un instant à chaque enregistrement.</li>
+            <li class="important">Point connu à ce jour : un plan déjà envoyé au site, puis retouché sur le téléphone, peut être remplacé par la version du site à la synchronisation suivante. Pour un plan durable, le faire ou le vérifier sur le site.</li>
+            <li>Pas de vibration dans cet éditeur.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html">les plans sur le site</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pe-barre"><span class="m-barre__g" id="pe-retour" data-on="5">← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pe-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pe-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pe-carte"><div class="p-grille" id="pe-g" ><span class="p-case" id="pe-0-0" ><span class="p-occ" >Adam KE</span></span><span class="p-case" id="pe-0-1" ><span class="p-occ" >Inès DU</span></span><span class="p-case" id="pe-0-2" ><span class="p-occ" >Iris TA</span></span><span class="p-case p-case--allee" id="pe-a0"></span><span class="p-case" id="pe-0-4" ><span class="p-occ" >Jade LU</span></span><span class="p-case" id="pe-0-5" ></span><span class="p-case" id="pe-0-6" ><span class="p-occ" >Léa GA</span></span><span class="p-case" id="pe-1-0" ><span class="p-occ" >Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pe-1-1" ><span class="p-occ" >Lou BE</span></span><span class="p-case" id="pe-1-2" ></span><span class="p-case p-case--allee" id="pe-a1"></span><span class="p-case" id="pe-1-4" ><span class="p-occ" >Malo RI</span></span><span class="p-case" id="pe-1-5" ><span class="p-occ" >Mia CO</span></span><span class="p-case" id="pe-1-6" ><span class="p-occ" >Naël CH</span></span><span class="p-case" id="pe-2-0" ><span class="p-occ" >Noé MA</span></span><span class="p-case" id="pe-2-1" ></span><span class="p-case" id="pe-2-2" ><span class="p-occ" >Rose VI</span></span><span class="p-case p-case--allee" id="pe-a2"></span><span class="p-case" id="pe-2-4" ><span class="p-occ" >Sacha MO</span></span><span class="p-case" id="pe-2-5" ><span class="p-occ" >Tom SA</span></span><span class="p-case" id="pe-2-6" ></span><span class="p-case" id="pe-3-0" ><span class="p-occ" >Zoé FA</span></span><span class="p-case" id="pe-3-1" ><span class="p-occ" >Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pe-3-2" ></span><span class="p-case p-case--allee" id="pe-a3"></span><span class="p-case" id="pe-3-4" ><span class="p-occ" >Ilyes HA</span></span><span class="p-case" id="pe-3-5" ></span><span class="p-case" id="pe-3-6" ></span><span class="p-case" id="pe-4-0" ></span><span class="p-case" id="pe-4-1" ></span><span class="p-case" id="pe-4-2" ></span><span class="p-case p-case--allee" id="pe-a4"></span><span class="p-case" id="pe-4-4" ></span><span class="p-case" id="pe-4-5" ></span><span class="p-case" id="pe-4-6" ></span></div><div class="p-tab" id="pe-tab">Tableau</div><div class="p-stats" id="pe-stats">17 / 18 eleves places</div></div>
+  
+</div>
+<div class="p-bas" id="pe-bas"><div class="p-bas__t repli" ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-puces"><span class="p-puce" >Éva RO</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ grille -->
+    <section class="fiche fiche--etroite" id="grille">
+      <div class="fiche__texte">
+        <h2>Lire la grille</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Éditeur de plan › grille</span></p>
+        <p class="fiche__but">La salle vue depuis le tableau, avec ses places occupées, libres et ses allées.</p>
+        <ol class="etapes">
+          <li data-cursor="#pg-1-0" data-duration="3400">Place occupée : fond vert pâle, nom de l'élève sur deux lignes au plus, et les pastilles PAP, PPRE, PAI éventuelles dans le coin.</li>
+          <li data-cursor="#pg-0-5">Place libre : case grise.</li>
+          <li data-cursor="#pg-a2" data-duration="3200">Allée, c'est-à-dire case désactivée dans la salle sur le site : plus pâle, elle ne réagit pas au toucher.</li>
+          <li data-cursor="#pg-tab" data-duration="3400">La bande <b>TABLEAU</b> est sous la grille : la dernière rangée est le devant de la salle, comme en séance, sur le site et sur l'écran projeté.</li>
+          <li data-cursor="#pg-stats">Sous la grille : « 17 / 18 eleves places ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le nom affiché est le vrai nom si le téléphone le connaît, sinon le pseudonyme.</li>
+            <li>La taille des cases s'adapte au nombre de colonnes, sans dépasser 50 points.</li>
+            <li class="important">Les pastilles d'aménagement restent sur le téléphone : le plan affiché sur l'écran projeté n'en montre aucune.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pg-barre"><span class="m-barre__g" id="pg-retour" >← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pg-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pg-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pg-carte"><div class="p-grille" id="pg-g" ><span class="p-case" id="pg-0-0" ><span class="p-occ" >Adam KE</span></span><span class="p-case" id="pg-0-1" ><span class="p-occ" >Inès DU</span></span><span class="p-case" id="pg-0-2" ><span class="p-occ" >Iris TA</span></span><span class="p-case p-case--allee" id="pg-a0"></span><span class="p-case" id="pg-0-4" ><span class="p-occ" >Jade LU</span></span><span class="p-case" id="pg-0-5" data-on="2"></span><span class="p-case" id="pg-0-6" ><span class="p-occ" >Léa GA</span></span><span class="p-case" id="pg-1-0" data-on="1"><span class="p-occ" >Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pg-1-1" ><span class="p-occ" >Lou BE</span></span><span class="p-case" id="pg-1-2" ></span><span class="p-case p-case--allee" id="pg-a1"></span><span class="p-case" id="pg-1-4" ><span class="p-occ" >Malo RI</span></span><span class="p-case" id="pg-1-5" ><span class="p-occ" >Mia CO</span></span><span class="p-case" id="pg-1-6" ><span class="p-occ" >Naël CH</span></span><span class="p-case" id="pg-2-0" ><span class="p-occ" >Noé MA</span></span><span class="p-case" id="pg-2-1" ></span><span class="p-case" id="pg-2-2" ><span class="p-occ" >Rose VI</span></span><span class="p-case p-case--allee" id="pg-a2"></span><span class="p-case" id="pg-2-4" ><span class="p-occ" >Sacha MO</span></span><span class="p-case" id="pg-2-5" ><span class="p-occ" >Tom SA</span></span><span class="p-case" id="pg-2-6" ></span><span class="p-case" id="pg-3-0" ><span class="p-occ" >Zoé FA</span></span><span class="p-case" id="pg-3-1" ><span class="p-occ" >Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pg-3-2" ></span><span class="p-case p-case--allee" id="pg-a3"></span><span class="p-case" id="pg-3-4" ><span class="p-occ" >Ilyes HA</span></span><span class="p-case" id="pg-3-5" ></span><span class="p-case" id="pg-3-6" ></span><span class="p-case" id="pg-4-0" ></span><span class="p-case" id="pg-4-1" ></span><span class="p-case" id="pg-4-2" ></span><span class="p-case p-case--allee" id="pg-a4"></span><span class="p-case" id="pg-4-4" ></span><span class="p-case" id="pg-4-5" ></span><span class="p-case" id="pg-4-6" ></span></div><div class="p-tab" id="pg-tab">Tableau</div><div class="p-stats" id="pg-stats">17 / 18 eleves places</div></div>
+  <div class="bulle bulle--haut" data-at="3" style="left:138px;top:236px">Allée : case désactivée sur le site</div>
+</div>
+<div class="p-bas" id="pg-bas"><div class="p-bas__t repli" ><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-puces"><span class="p-puce" >Éva RO</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ a-placer -->
+    <section class="fiche fiche--etroite" id="a-placer">
+      <div class="fiche__texte">
+        <h2>Les élèves à placer</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Éditeur de plan › panneau du bas</span></p>
+        <p class="fiche__but">Voir qui n'a pas encore de place et choisir l'élève à placer.</p>
+        <ol class="etapes">
+          <li data-cursor="#pa-titre">Le titre compte les élèves sans place : « Élèves à placer (4) ».</li>
+          <li data-cursor="#pa-p4" data-action="drag" data-drag-to="#pa-p1">Faire défiler la rangée de pastilles d'un balayage horizontal.</li>
+          <li data-cursor="#pa-p2" data-action="tap" data-duration="3200">Toucher une pastille : elle devient indigo et le titre dit « Appuyez sur une place libre ».</li>
+          <li data-cursor="#pa-p2" data-action="tap">La toucher de nouveau la libère.</li>
+          <li data-cursor="#pa-fin" data-duration="3200">Quand tout le monde est placé, une coche verte : « Tous les élèves sont placés ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seuls les élèves sans place figurent dans la rangée : pour déplacer un élève déjà assis, le retirer d'abord de sa place.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pa-barre"><span class="m-barre__g" id="pa-retour" >← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pa-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pa-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pa-carte"><div class="p-grille" id="pa-g" data-on="3" ><span class="p-case" id="pa-0-0" ><span class="p-occ" >Adam KE</span></span><span class="p-case" id="pa-0-1" ><span class="p-occ" >Inès DU</span></span><span class="p-case" id="pa-0-2" ><span class="p-occ" >Iris TA</span></span><span class="p-case p-case--allee" id="pa-a0"></span><span class="p-case" id="pa-0-4" ><span class="p-occ" >Jade LU</span></span><span class="p-case" id="pa-0-5" ></span><span class="p-case" id="pa-0-6" ><span class="p-occ" >Léa GA</span></span><span class="p-case" id="pa-1-0" ><span class="p-occ" >Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pa-1-1" ><span class="p-occ" >Lou BE</span></span><span class="p-case" id="pa-1-2" ></span><span class="p-case p-case--allee" id="pa-a1"></span><span class="p-case" id="pa-1-4" ><span class="p-occ" >Malo RI</span></span><span class="p-case" id="pa-1-5" ></span><span class="p-case" id="pa-1-6" ><span class="p-occ" >Naël CH</span></span><span class="p-case" id="pa-2-0" ><span class="p-occ" >Noé MA</span></span><span class="p-case" id="pa-2-1" ></span><span class="p-case" id="pa-2-2" ><span class="p-occ" >Rose VI</span></span><span class="p-case p-case--allee" id="pa-a2"></span><span class="p-case" id="pa-2-4" ><span class="p-occ" >Sacha MO</span></span><span class="p-case" id="pa-2-5" ></span><span class="p-case" id="pa-2-6" ></span><span class="p-case" id="pa-3-0" ><span class="p-occ" >Zoé FA</span></span><span class="p-case" id="pa-3-1" ><span class="p-occ" >Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pa-3-2" ></span><span class="p-case p-case--allee" id="pa-a3"></span><span class="p-case" id="pa-3-4" ></span><span class="p-case" id="pa-3-5" ></span><span class="p-case" id="pa-3-6" ></span><span class="p-case" id="pa-4-0" ></span><span class="p-case" id="pa-4-1" ></span><span class="p-case" id="pa-4-2" ></span><span class="p-case p-case--allee" id="pa-a4"></span><span class="p-case" id="pa-4-4" ></span><span class="p-case" id="pa-4-5" ></span><span class="p-case" id="pa-4-6" ></span></div><div class="p-tab" id="pa-tab">Tableau</div><div class="p-stats" id="pa-stats"><span class="repli" data-to="4">14 / 18 eleves places</span><span class="repli" data-from="5">18 / 18 eleves places</span></div></div>
+  
+</div>
+<div class="p-bas" id="pa-bas"><div class="p-bas__t repli" id="pa-titre" data-at="1-2,4"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (4)</div><div class="p-bas__t repli" data-at="3"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5a1.5 1.5 0 0 1 3 0v7c0 4-2.5 8-6.5 8S5 17 5 14l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 13"/></svg>Appuyez sur une place libre</div><div class="p-bas__t repli" id="pa-fin" data-at="5"><span class="p-check"></span>Tous les élèves sont placés</div><div class="p-puces repli" data-to="4" data-on="2"><span class="p-puce" id="pa-p1">Éva RO</span><span class="p-puce" id="pa-p2" data-on="3">Ilyes HA</span><span class="p-puce">Mia CO</span><span class="p-puce" id="pa-p4">Tom SA</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ placer -->
+    <section class="fiche fiche--etroite" id="placer">
+      <div class="fiche__texte">
+        <h2>Placer un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Éditeur de plan › élève puis place</span></p>
+        <p class="fiche__but">Asseoir un élève sur une place libre : toucher l'élève, puis la place.</p>
+        <ol class="etapes">
+          <li data-cursor="#pp-puce" data-action="tap">Toucher la pastille de l'élève dans le panneau du bas : elle devient indigo.</li>
+          <li data-cursor="#pp-g" data-duration="3200">Toutes les places libres s'éclairent, bordées de pointillés indigo.</li>
+          <li data-cursor="#pp-4-2" data-action="tap">Toucher la place voulue.</li>
+          <li data-cursor="#pp-4-2" data-duration="3400">L'élève apparaît dans la case et quitte le panneau ; le compteur passe à « 18 / 18 eleves places ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Toucher une place libre sans élève choisi ne fait rien.</li>
+            <li>Toucher une place occupée propose de retirer l'élève : on ne remplace pas un élève par un autre et on n'échange pas deux places d'un geste.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#retirer-place">Retirer un élève</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pp-barre"><span class="m-barre__g" id="pp-retour" >← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pp-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pp-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pp-carte"><div class="p-grille" id="pp-g" data-on="2-3"><span class="p-case" id="pp-0-0" ><span class="p-occ" >Adam KE</span></span><span class="p-case" id="pp-0-1" ><span class="p-occ" >Inès DU</span></span><span class="p-case" id="pp-0-2" ><span class="p-occ" >Iris TA</span></span><span class="p-case p-case--allee" id="pp-a0"></span><span class="p-case" id="pp-0-4" ><span class="p-occ" >Jade LU</span></span><span class="p-case" id="pp-0-5" ></span><span class="p-case" id="pp-0-6" ><span class="p-occ" >Léa GA</span></span><span class="p-case" id="pp-1-0" ><span class="p-occ" >Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pp-1-1" ><span class="p-occ" >Lou BE</span></span><span class="p-case" id="pp-1-2" ></span><span class="p-case p-case--allee" id="pp-a1"></span><span class="p-case" id="pp-1-4" ><span class="p-occ" >Malo RI</span></span><span class="p-case" id="pp-1-5" ><span class="p-occ" >Mia CO</span></span><span class="p-case" id="pp-1-6" ><span class="p-occ" >Naël CH</span></span><span class="p-case" id="pp-2-0" ><span class="p-occ" >Noé MA</span></span><span class="p-case" id="pp-2-1" ></span><span class="p-case" id="pp-2-2" ><span class="p-occ" >Rose VI</span></span><span class="p-case p-case--allee" id="pp-a2"></span><span class="p-case" id="pp-2-4" ><span class="p-occ" >Sacha MO</span></span><span class="p-case" id="pp-2-5" ><span class="p-occ" >Tom SA</span></span><span class="p-case" id="pp-2-6" ></span><span class="p-case" id="pp-3-0" ><span class="p-occ" >Zoé FA</span></span><span class="p-case" id="pp-3-1" ><span class="p-occ" >Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pp-3-2" ></span><span class="p-case p-case--allee" id="pp-a3"></span><span class="p-case" id="pp-3-4" ><span class="p-occ" >Ilyes HA</span></span><span class="p-case" id="pp-3-5" ></span><span class="p-case" id="pp-3-6" ></span><span class="p-case" id="pp-4-0" ></span><span class="p-case" id="pp-4-1" ></span><span class="p-case" id="pp-4-2" ><span class="p-occ zoom" data-from="4">Éva RO</span></span><span class="p-case p-case--allee" id="pp-a4"></span><span class="p-case" id="pp-4-4" ></span><span class="p-case" id="pp-4-5" ></span><span class="p-case" id="pp-4-6" ></span></div><div class="p-tab" id="pp-tab">Tableau</div><div class="p-stats" id="pp-stats"><span class="repli" data-to="3">17 / 18 eleves places</span><span class="repli" data-from="4">18 / 18 eleves places</span></div></div>
+  <div class="p-voile-blanc repli" data-at="4" style="opacity:0;animation:pp-voile 1.2s forwards"><span class="m-roue"></span></div>
+</div>
+<div class="p-bas" id="pp-bas"><div class="p-bas__t repli" data-at="1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-bas__t repli" data-at="2-3"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#4F46E5" stroke-width="2" stroke-linecap="round"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6M11 10V4a1.5 1.5 0 0 1 3 0v6M14 10V5a1.5 1.5 0 0 1 3 0v7c0 4-2.5 8-6.5 8S5 17 5 14l-1.5-3a1.5 1.5 0 0 1 2.6-1.5L8 13"/></svg>Appuyez sur une place libre</div><div class="p-bas__t repli" data-from="4"><span class="p-check"></span>Tous les élèves sont placés</div><div class="p-puces"><span class="p-puce repli" id="pp-puce" data-to="3" data-on="1-3">Éva RO</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ retirer-place -->
+    <section class="fiche fiche--etroite" id="retirer-place">
+      <div class="fiche__texte">
+        <h2>Retirer un élève de sa place</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Éditeur de plan › place occupée</span></p>
+        <p class="fiche__but">Libérer une place : élève parti, changement de place.</p>
+        <ol class="etapes">
+          <li data-cursor="#pr-1-0" data-action="tap">Toucher la case d'un élève placé.</li>
+          <li data-cursor="#pr-texte" data-duration="3200">L'alerte <b>Place occupee</b> : « Lina BO est a cette place. Que voulez-vous faire ? »</li>
+          <li data-cursor="#pr-ok" data-action="tap">Toucher <span class="btn-nom">Retirer</span>, ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#pr-lina" data-duration="3200">La case redevient libre et l'élève revient dans le panneau du bas, prêt à être replacé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Même avec un élève choisi en bas, toucher une place occupée ouvre cette alerte.</li>
+            <li>Pour changer un élève de place : le retirer, puis le replacer.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pr-barre"><span class="m-barre__g" id="pr-retour" >← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pr-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pr-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pr-carte"><div class="p-grille" id="pr-g" ><span class="p-case" id="pr-0-0" ><span class="p-occ" >Adam KE</span></span><span class="p-case" id="pr-0-1" ><span class="p-occ" >Inès DU</span></span><span class="p-case" id="pr-0-2" ><span class="p-occ" >Iris TA</span></span><span class="p-case p-case--allee" id="pr-a0"></span><span class="p-case" id="pr-0-4" ><span class="p-occ" >Jade LU</span></span><span class="p-case" id="pr-0-5" ></span><span class="p-case" id="pr-0-6" ><span class="p-occ" >Léa GA</span></span><span class="p-case" id="pr-1-0" ><span class="p-occ repli" data-to="3" data-on="1-3">Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pr-1-1" ><span class="p-occ" >Lou BE</span></span><span class="p-case" id="pr-1-2" ></span><span class="p-case p-case--allee" id="pr-a1"></span><span class="p-case" id="pr-1-4" ><span class="p-occ" >Malo RI</span></span><span class="p-case" id="pr-1-5" ><span class="p-occ" >Mia CO</span></span><span class="p-case" id="pr-1-6" ><span class="p-occ" >Naël CH</span></span><span class="p-case" id="pr-2-0" ><span class="p-occ" >Noé MA</span></span><span class="p-case" id="pr-2-1" ></span><span class="p-case" id="pr-2-2" ><span class="p-occ" >Rose VI</span></span><span class="p-case p-case--allee" id="pr-a2"></span><span class="p-case" id="pr-2-4" ><span class="p-occ" >Sacha MO</span></span><span class="p-case" id="pr-2-5" ><span class="p-occ" >Tom SA</span></span><span class="p-case" id="pr-2-6" ></span><span class="p-case" id="pr-3-0" ><span class="p-occ" >Zoé FA</span></span><span class="p-case" id="pr-3-1" ><span class="p-occ" >Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pr-3-2" ></span><span class="p-case p-case--allee" id="pr-a3"></span><span class="p-case" id="pr-3-4" ><span class="p-occ" >Ilyes HA</span></span><span class="p-case" id="pr-3-5" ></span><span class="p-case" id="pr-3-6" ></span><span class="p-case" id="pr-4-0" ></span><span class="p-case" id="pr-4-1" ></span><span class="p-case" id="pr-4-2" ></span><span class="p-case p-case--allee" id="pr-a4"></span><span class="p-case" id="pr-4-4" ></span><span class="p-case" id="pr-4-5" ></span><span class="p-case" id="pr-4-6" ></span></div><div class="p-tab" id="pr-tab">Tableau</div><div class="p-stats" id="pr-stats"><span class="repli" data-to="3">17 / 18 eleves places</span><span class="repli" data-from="4">16 / 18 eleves places</span></div></div>
+  <div class="m-voile" data-at="2-3" style="background:rgba(0,0,0,.35)"></div><div class="m-alerte zoom" data-at="2-3"><div class="m-alerte__t">Place occupee</div><div class="m-alerte__p"><span id="pr-texte">Lina BO est a cette place.<br><br>Que voulez-vous faire ?</span></div><div class="m-alerte__b"><span >Annuler</span><span id="pr-ok" data-on="3">Retirer</span></div></div>
+</div>
+<div class="p-bas" id="pr-bas"><div class="p-bas__t repli" data-to="3"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-bas__t repli" data-from="4"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (2)</div><div class="p-puces"><span class="p-puce">Éva RO</span><span class="p-puce repli zoom" id="pr-lina" data-from="4">Lina BO</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ reinitialiser -->
+    <section class="fiche fiche--etroite" id="reinitialiser">
+      <div class="fiche__texte">
+        <h2>Réinitialiser le plan</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Éditeur de plan › Reinitialiser</span></p>
+        <p class="fiche__but">Vider le plan pour le refaire de zéro.</p>
+        <ol class="etapes">
+          <li data-cursor="#pz-reinit" data-action="tap">Toucher <span class="btn-nom">Reinitialiser</span>, en rouge en haut à droite.</li>
+          <li data-cursor="#pz-texte">L'alerte <b>Reinitialiser le plan</b> demande : « Voulez-vous retirer tous les eleves du plan ? »</li>
+          <li data-cursor="#pz-ok" data-action="tap">Toucher <span class="btn-nom">Reinitialiser</span>, ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#pz-bas" data-duration="3200">Toutes les places redeviennent libres ; tous les élèves reviennent dans le panneau du bas.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Pas d'annulation après coup.</li>
+            <li>La salle elle-même n'est pas touchée, ni les plans de cette classe dans les autres salles.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pz-barre"><span class="m-barre__g" id="pz-retour" >← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pz-reinit" data-on="1">Reinitialiser</span></div>
+<div class="p-entete" id="pz-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+
+<div class="m-corps">
+  <div class="p-carte" id="pz-carte"><div class="p-grille" id="pz-g" ><span class="p-case" id="pz-0-0" ><span class="p-occ repli" data-to="3">Adam KE</span></span><span class="p-case" id="pz-0-1" ><span class="p-occ repli" data-to="3">Inès DU</span></span><span class="p-case" id="pz-0-2" ><span class="p-occ repli" data-to="3">Iris TA</span></span><span class="p-case p-case--allee" id="pz-a0"></span><span class="p-case" id="pz-0-4" ><span class="p-occ repli" data-to="3">Jade LU</span></span><span class="p-case" id="pz-0-5" ></span><span class="p-case" id="pz-0-6" ><span class="p-occ repli" data-to="3">Léa GA</span></span><span class="p-case" id="pz-1-0" ><span class="p-occ repli" data-to="3">Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pz-1-1" ><span class="p-occ repli" data-to="3">Lou BE</span></span><span class="p-case" id="pz-1-2" ></span><span class="p-case p-case--allee" id="pz-a1"></span><span class="p-case" id="pz-1-4" ><span class="p-occ repli" data-to="3">Malo RI</span></span><span class="p-case" id="pz-1-5" ><span class="p-occ repli" data-to="3">Mia CO</span></span><span class="p-case" id="pz-1-6" ><span class="p-occ repli" data-to="3">Naël CH</span></span><span class="p-case" id="pz-2-0" ><span class="p-occ repli" data-to="3">Noé MA</span></span><span class="p-case" id="pz-2-1" ></span><span class="p-case" id="pz-2-2" ><span class="p-occ repli" data-to="3">Rose VI</span></span><span class="p-case p-case--allee" id="pz-a2"></span><span class="p-case" id="pz-2-4" ><span class="p-occ repli" data-to="3">Sacha MO</span></span><span class="p-case" id="pz-2-5" ><span class="p-occ repli" data-to="3">Tom SA</span></span><span class="p-case" id="pz-2-6" ></span><span class="p-case" id="pz-3-0" ><span class="p-occ repli" data-to="3">Zoé FA</span></span><span class="p-case" id="pz-3-1" ><span class="p-occ repli" data-to="3">Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pz-3-2" ></span><span class="p-case p-case--allee" id="pz-a3"></span><span class="p-case" id="pz-3-4" ><span class="p-occ repli" data-to="3">Ilyes HA</span></span><span class="p-case" id="pz-3-5" ></span><span class="p-case" id="pz-3-6" ></span><span class="p-case" id="pz-4-0" ></span><span class="p-case" id="pz-4-1" ></span><span class="p-case" id="pz-4-2" ></span><span class="p-case p-case--allee" id="pz-a4"></span><span class="p-case" id="pz-4-4" ></span><span class="p-case" id="pz-4-5" ></span><span class="p-case" id="pz-4-6" ></span></div><div class="p-tab" id="pz-tab">Tableau</div><div class="p-stats" id="pz-stats"><span class="repli" data-to="3">17 / 18 eleves places</span><span class="repli" data-from="4">0 / 18 eleves places</span></div></div>
+  <div class="m-voile" data-at="2-3" style="background:rgba(0,0,0,.35)"></div><div class="m-alerte zoom" data-at="2-3"><div class="m-alerte__t">Reinitialiser le plan</div><div class="m-alerte__p"><span id="pz-texte">Voulez-vous retirer tous les eleves du plan ?</span></div><div class="m-alerte__b"><span >Annuler</span><span id="pz-ok" data-on="3">Reinitialiser</span></div></div>
+</div>
+<div class="p-bas" id="pz-bas"><div class="p-bas__t repli" data-to="3"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-bas__t repli" data-from="4"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (18)</div><div class="p-puces"><span class="p-puce repli zoom" data-from="4">Adam KE</span><span class="p-puce">Éva RO</span><span class="p-puce repli zoom" data-from="4">Hugo PE</span><span class="p-puce repli zoom" data-from="4">Ilyes HA</span><span class="p-puce repli zoom" data-from="4">Inès DU</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+    <!-- ============================================================ plan-par-groupe -->
+    <section class="fiche fiche--etroite" id="plan-par-groupe">
+      <div class="fiche__texte">
+        <h2>Un plan par groupe de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Éditeur de plan › Groupe 1</span></p>
+        <p class="fiche__but">Donner à chaque demi-groupe son propre plan dans une salle, au lieu d'un plan de classe entière à moitié vide.</p>
+        <ol class="etapes">
+          <li data-cursor="#pgr-portee" data-duration="3400">Pour une classe qui a des groupes, une rangée de pastilles apparaît sous le nom de la classe. L'éditeur s'ouvre toujours sur <b>Classe entière</b>.</li>
+          <li data-cursor="#pgr-g1" data-action="tap" data-duration="3400">Toucher <span class="btn-nom">Groupe 1</span> : la grille et les élèves à placer ne concernent plus que ses membres. Sans plan, un message le dit.</li>
+          <li data-cursor="#pgr-copier" data-action="tap" data-duration="3400"><span class="btn-nom">Partir du plan de la classe entière</span> reprend les places des membres du groupe. On peut aussi placer les élèves un par un.</li>
+          <li data-cursor="#pgr-0-4" data-duration="3200">Placer, retirer, <span class="btn-nom">Reinitialiser</span> : ces gestes ne touchent que le plan du groupe choisi.</li>
+          <li data-cursor="#pgr-4-1" data-duration="3200">Ici, Jade est avancée au premier rang pour le groupe 1 seulement.</li>
+          <li data-cursor="#pgr-ce" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Classe entière</span> : le plan commun n'a pas bougé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">En préparation : arrive avec la prochaine version de l'application. Aujourd'hui, les plans par groupe se font sur le site ; la séance sur le téléphone les utilise déjà.</li>
+            <li>Le plan d'un groupe n'existe qu'à partir du premier élève placé. Il est enregistré dans le téléphone, puis envoyé au site à la synchronisation : cela marche sans réseau.</li>
+            <li>En séance avec un groupe, c'est son plan qui s'affiche s'il a au moins un élève placé ; sinon le plan de la classe entière, réduit aux membres du groupe. Réinitialiser le plan d'un groupe fait donc revenir celui de la classe entière.</li>
+            <li>Un élève qui n'est plus dans le groupe laisse sa place libre. Supprimer un groupe supprime ses plans.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html#plan-groupe">le plan par groupe sur le site</a> · <a href="#premiers-groupes">les groupes de classe</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+<div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+<div class="tel__statut"><span></span><span></span></div>
+<div class="m-barre m-barre--sys" id="pgr-barre"><span class="m-barre__g" id="pgr-retour" >← Retour</span><span class="m-barre__t" >Plan - Salle 310</span><span class="m-barre__d rouge" id="pgr-reinit" >Reinitialiser</span></div>
+<div class="p-entete" id="pgr-entete"><span class="p-ico"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#4F46E5" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span><div><div class="p-classe">4B</div><div class="p-consigne">Appuyez sur un eleve, puis sur une place</div></div></div>
+<div class="p-portee" id="pgr-portee"><span class="p-pc" id="pgr-ce" style="--c:#4F46E5" data-on="1,6">Classe entière <small>18</small></span><span class="p-pc" id="pgr-g1" style="--c:#4F46E5" data-on="2-5"><i></i>Groupe 1 <small>9</small></span><span class="p-pc" style="--c:#059669"><i></i>Groupe 2 <small>8</small></span></div><div class="p-pasplan repli" data-at="2"><p>Pas encore de plan pour ce groupe : en séance, celui de la classe entière s’affiche.</p><span class="p-copier" id="pgr-copier" data-on="2">Partir du plan de la classe entière</span></div>
+<div class="m-corps">
+  <div class="p-carte" id="pgr-carte"><div class="p-grille" id="pgr-g" ><span class="p-case" id="pgr-0-0" ><span data-at="1,3-6" class="p-occ p-occ repli">Adam KE</span></span><span class="p-case" id="pgr-0-1" ><span data-at="1,3-6" class="p-occ p-occ repli">Inès DU</span></span><span class="p-case" id="pgr-0-2" ><span data-at="1,3-6" class="p-occ p-occ repli">Iris TA</span></span><span class="p-case p-case--allee" id="pgr-a0"></span><span class="p-case" id="pgr-0-4" ><span data-at="1,3-4,6" class="p-occ p-occ repli">Jade LU</span></span><span class="p-case" id="pgr-0-5" ></span><span class="p-case" id="pgr-0-6" ><span data-at="1,3-6" class="p-occ p-occ repli">Léa GA</span></span><span class="p-case" id="pgr-1-0" ><span data-at="1,3-6" class="p-occ p-occ repli">Lina BO<span class="m-badge">PPRE</span></span></span><span class="p-case" id="pgr-1-1" ><span data-at="1,3-6" class="p-occ p-occ repli">Lou BE</span></span><span class="p-case" id="pgr-1-2" ></span><span class="p-case p-case--allee" id="pgr-a1"></span><span class="p-case" id="pgr-1-4" ><span data-at="1,6" class="p-occ p-occ repli">Malo RI</span></span><span class="p-case" id="pgr-1-5" ><span data-at="1,6" class="p-occ p-occ repli">Mia CO</span></span><span class="p-case" id="pgr-1-6" ><span data-at="1,6" class="p-occ p-occ repli">Naël CH</span></span><span class="p-case" id="pgr-2-0" ><span data-at="1,6" class="p-occ p-occ repli">Noé MA</span></span><span class="p-case" id="pgr-2-1" ></span><span class="p-case" id="pgr-2-2" ><span data-at="1,6" class="p-occ p-occ repli">Rose VI</span></span><span class="p-case p-case--allee" id="pgr-a2"></span><span class="p-case" id="pgr-2-4" ><span data-at="1,6" class="p-occ p-occ repli">Sacha MO</span></span><span class="p-case" id="pgr-2-5" ><span data-at="1,6" class="p-occ p-occ repli">Tom SA</span></span><span class="p-case" id="pgr-2-6" ></span><span class="p-case" id="pgr-3-0" ><span data-at="1,6" class="p-occ p-occ repli">Zoé FA</span></span><span class="p-case" id="pgr-3-1" ><span data-at="1,3-6" class="p-occ p-occ repli">Hugo PE<span class="m-badge">PAP</span></span></span><span class="p-case" id="pgr-3-2" ></span><span class="p-case p-case--allee" id="pgr-a3"></span><span class="p-case" id="pgr-3-4" ><span data-at="1,3-6" class="p-occ p-occ repli">Ilyes HA</span></span><span class="p-case" id="pgr-3-5" ></span><span class="p-case" id="pgr-3-6" ></span><span class="p-case" id="pgr-4-0" ></span><span class="p-case" id="pgr-4-1" ><span data-at="5" class="p-occ p-occ repli zoom">Jade LU</span></span><span class="p-case" id="pgr-4-2" ></span><span class="p-case p-case--allee" id="pgr-a4"></span><span class="p-case" id="pgr-4-4" ></span><span class="p-case" id="pgr-4-5" ></span><span class="p-case" id="pgr-4-6" ></span></div><div class="p-tab" id="pgr-tab">Tableau</div><div class="p-stats" id="pgr-stats"><span class="repli" data-at="1,6">17 / 18 eleves places</span><span class="repli" data-at="2">0 / 9 eleves places</span><span class="repli" data-at="3-5">9 / 9 eleves places</span></div></div>
+  
+</div>
+<div class="p-bas" id="pgr-bas"><div class="p-bas__t repli" data-at="1,6"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (1)</div><div class="p-bas__t repli" data-at="2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>Élèves à placer (9)</div><div class="p-bas__t repli" data-at="3-5"><span class="p-check"></span>Tous les élèves sont placés</div><div class="p-puces"><span class="p-puce repli" data-at="1,6">Éva RO</span><span class="p-puce repli" data-at="2">Adam KE</span><span class="p-puce repli" data-at="2">Hugo PE</span><span class="p-puce repli" data-at="2">Ilyes HA</span><span class="p-puce repli" data-at="2">Inès DU</span></div></div>
+</div></div></div>
+</div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

@@ -1,0 +1,1222 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TP en groupes : lancer le TP — Guide Gestion Classe</title>
+<meta name="description" content="Sur le téléphone, en pleine séance : choisir le TP, régler son barème, former les groupes et placer les îlots avant de commencer.">
+<meta name="guide-partie" content="telephone">
+<meta name="guide-ordre" content="70">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* --- maquettes « TP en groupes » (téléphone), propres à ces pages --- */
+.tel__ecran { font-size: 13px; }
+.tel__ecran > * { flex: none; }
+/* en-tête de séance */
+.s-ent { display: flex; align-items: center; gap: 6px; padding: 7px 12px; background: #fff; border-bottom: 1px solid var(--t-border); }
+.s-ent__ann { color: #EF4444; font-size: 12.5px; font-weight: 500; min-width: 54px; }
+.s-ent__mil { flex: 1; text-align: center; line-height: 1.25; }
+.s-ent__t { font-weight: 700; font-size: 14px; display: block; }
+.s-ent__chrono { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; color: #059669; }
+.s-ent__chrono::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: #059669; }
+.s-ent__fin { background: #059669; color: #fff; border-radius: 9px; padding: 6px 10px; font-size: 12px; font-weight: 600; transition: transform .15s, box-shadow .2s; }
+.s-ent__fin.is-on { transform: scale(.94); box-shadow: 0 0 0 3px rgba(5,150,105,.25); }
+/* bascule Plan de classe / Groupes */
+.s-bascule-l { display: flex; align-items: center; gap: 6px; margin: 8px 12px 0; }
+.s-bascule { flex: 1; display: flex; background: #EDEEF2; padding: 3px; border-radius: 10px; }
+.s-bascule span { flex: 1; text-align: center; padding: 6px 0; border-radius: 8px; font-size: 12.5px; font-weight: 500; color: var(--t-text2); transition: all .25s; }
+.s-bascule span.is-on, .s-bascule span.is-actif { background: #fff; color: var(--t-text); box-shadow: 0 1px 3px rgba(20,25,40,.1); }
+.s-carre { width: 34px; height: 34px; flex: none; border-radius: 10px; background: #fff; border: 1px solid var(--t-border); display: grid; place-items: center; }
+.s-carre::before { content: ''; width: 15px; height: 11px; border: 1.6px solid var(--t-text2); border-radius: 3px; }
+.s-carre--reg::before { width: 11px; height: 11px; border-radius: 50%; border: 3px dotted var(--t-text2); }
+/* barre d'outils */
+.s-outils { display: flex; gap: 5px; margin: 8px 12px 0; }
+.s-outil { flex: 1; background: #fff; border: 1px solid var(--t-border); border-radius: 10px; padding: 6px 0 5px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 9.5px; font-weight: 600; color: var(--t-text); transition: all .25s; }
+.s-outil i { width: 15px; height: 12px; border: 1.6px solid currentColor; border-radius: 4px; opacity: .85; }
+.s-outil--indigo { color: #4F46E5; }
+.s-outil.is-on { background: #EEF0FF; color: #4F46E5; }
+.s-aide { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 0 12px; margin-top: 6px; font-size: 10.5px; color: var(--t-text3); white-space: nowrap; }
+.s-aide > span:first-child { overflow: hidden; text-overflow: ellipsis; }
+.s-aide b { color: #4F46E5; font-weight: 600; }
+.s-zone { position: relative; flex: 1 1 auto !important; margin: 6px 12px 10px; }
+.s-tableau { width: 130px; margin: 0 auto; text-align: center; font-size: 9.5px; font-weight: 600; letter-spacing: 1px; color: var(--t-text3); border-bottom: 2px solid #D4D8E1; padding-bottom: 1px; }
+/* grille du plan en séance */
+.s-plan { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; margin: 10px 12px 0; }
+.s-plan .t-place { height: 46px; font-size: 10.5px; }
+.s-plan__tab { margin: 8px auto 0; width: 150px; height: 16px; border-radius: 3px; background: #E5E7EB; color: var(--t-text3); font-size: 8.5px; letter-spacing: .1em; display: grid; place-items: center; font-weight: 600; }
+/* îlots */
+.pos { position: absolute; width: 150px; transition: transform .9s cubic-bezier(.45,.05,.25,1); }
+.pos.is-on { transform: translate(var(--dx, 0), var(--dy, 0)); }
+.ilot { border: 1.5px solid; border-radius: 14px; padding: 4px 5px 6px; transition: border-color .25s, box-shadow .25s; }
+.ilot.is-on { border-color: #4F46E5 !important; box-shadow: 0 6px 16px rgba(20,25,40,.18); }
+.ilot--edit { border-style: dashed; }
+.ilot__tete { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 28px; padding: 0 3px; margin-bottom: 3px; border-radius: 8px; transition: box-shadow .25s; }
+.ilot__tete.is-on { box-shadow: 0 0 0 2px #4F46E5; }
+.ilot__nom { font-weight: 700; font-size: 13px; }
+.poignee { font-size: 14px; letter-spacing: -1px; font-weight: 700; }
+.pills { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; }
+.pill { height: 17px; padding: 0 5px; border-radius: 6px; background: rgba(255,255,255,.78); font-size: 9px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap; }
+.puces { display: flex; flex-wrap: wrap; gap: 3px; }
+.puce-e { height: 26px; padding: 0 6px; border-radius: 8px; background: #fff; font-size: 11px; font-weight: 600; color: var(--t-text); display: inline-flex; align-items: center; gap: 3px; border: 2px solid transparent; transition: border-color .25s; }
+.puce-e.is-on { border-color: #4F46E5; }
+.puce-e .p { color: #059669; font-size: 9px; font-weight: 700; }
+.puce-e .m { color: #B45309; font-size: 9px; font-weight: 700; }
+.puce-e--abs { background: #FEF2F2; color: #B91C1C; text-decoration: line-through; }
+.puce-e--sor { background: #F5F3FF; color: #6D28D9; }
+.vide-ilot { font-size: 10.5px; opacity: .8; padding: 2px 4px; }
+.tel .g1 { background: #EEF0FF; border-color: #818CF8; color: #3730A3; }
+.tel .g2 { background: #E6F7F2; border-color: #34B89A; color: #0B5F4C; }
+.tel .g3 { background: #FFF1E8; border-color: #F59A5C; color: #9A3A0E; }
+.tel .g4 { background: #FDEDF4; border-color: #E879A8; color: #8C1D4F; }
+.tel .g5 { background: #E8F4FD; border-color: #5AAEE8; color: #0E4F7E; }
+.tel .g6 { background: #FEF6E0; border-color: #E3B341; color: #7A5300; }
+/* encadré de l'étape 4 */
+.place-bar { margin: 8px 12px 0; padding: 10px; border-radius: 14px; background: #fff; border: 1px solid var(--t-border); display: flex; flex-direction: column; gap: 6px; }
+.place-bar__t { font-size: 12.5px; font-weight: 600; color: #4F46E5; }
+.place-bar__x { font-size: 10.5px; color: var(--t-text2); line-height: 1.4; }
+.place-bar__b { display: flex; gap: 6px; }
+/* feuilles glissantes : contenu */
+.feuille { padding: 10px 14px 16px; }
+.f-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.f-tete > div { flex: 1; }
+.f-lib { font-size: 10.5px; font-weight: 600; color: #4F46E5; }
+.f-titre { font-size: 19px; font-weight: 700; letter-spacing: -.01em; line-height: 1.2; }
+.f-x { width: 36px; height: 36px; flex: none; border-radius: 12px; background: #F3F4F7; display: grid; place-items: center; color: var(--t-text2); font-size: 18px; transition: transform .15s; }
+.f-x.is-on { transform: scale(.9); }
+.f-ret { width: 36px; height: 36px; flex: none; border-radius: 12px; background: #F3F4F7; display: grid; place-items: center; }
+.chev { width: 9px; height: 9px; border-left: 2px solid var(--t-text); border-bottom: 2px solid var(--t-text); transform: rotate(45deg); margin-left: 3px; }
+.f-sec { font-size: 10.5px; font-weight: 600; color: var(--t-text2); margin: 9px 0 5px; }
+.tp-l { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 5px 10px; border: 1px solid var(--t-border); border-radius: 12px; background: #fff; margin-bottom: 6px; transition: all .25s; }
+.tp-l.is-on { border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.tp-l > div { flex: 1; min-width: 0; }
+.tp-l__t { font-size: 12.5px; font-weight: 600; display: block; }
+.tp-l__s { font-size: 10.5px; color: var(--t-text2); display: block; }
+.tp-l > i { font-style: normal; color: var(--t-text3); font-size: 9px; }
+.propose { display: flex; gap: 10px; align-items: center; padding: 10px; border: 2px solid #4F46E5; background: #EEF0FF; border-radius: 16px; transition: box-shadow .25s; }
+.propose.is-on { box-shadow: 0 0 0 4px rgba(79,70,229,.18); }
+.propose__ic { width: 36px; height: 36px; flex: none; border-radius: 12px; background: #4F46E5; display: grid; place-items: center; }
+.propose__t { font-size: 13px; font-weight: 700; display: block; }
+.propose__s { font-size: 10.5px; color: #4338CA; display: block; }
+.cherche { height: 38px; border-radius: 12px; background: #F3F4F7; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 12px; color: var(--t-text3); margin-top: 10px; transition: box-shadow .25s; }
+.cherche.is-on { box-shadow: 0 0 0 2px #4F46E5; }
+.cherche::before { content: ''; width: 10px; height: 10px; border: 1.8px solid var(--t-text3); border-radius: 50%; flex: none; }
+.cherche .tape { color: var(--t-text); }
+.lien { font-size: 12px; font-weight: 600; color: #4F46E5; padding: 8px 0; display: inline-block; }
+.pointille { min-height: 42px; border: 1px dashed #D4D8E1; border-radius: 12px; display: grid; place-items: center; text-align: center; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #4F46E5; background: #fff; transition: transform .15s; }
+.pointille.is-on { transform: scale(.97); background: #F7F7FF; }
+.nom-tp { font-size: 16px; font-weight: 600; margin: 4px 0 6px; }
+.champ-t { height: 38px; border-radius: 12px; background: #F3F4F7; padding: 0 10px; display: flex; align-items: center; font-size: 12.5px; color: var(--t-text3); margin-bottom: 6px; transition: box-shadow .25s; }
+.champ-t.is-on { box-shadow: 0 0 0 2px #4F46E5; }
+.champ-t .tape { color: var(--t-text); }
+.total { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 12px; border-radius: 12px; background: #EEF0FF; color: #4338CA; margin-bottom: 6px; font-size: 12px; font-weight: 600; }
+.total b { font-size: 19px; }
+.crit { display: flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 2px 0 10px; border: 1px solid var(--t-border); border-radius: 12px; margin-bottom: 6px; background: #fff; }
+.crit__l { flex: 1; font-size: 12px; font-weight: 600; }
+.crit__l--vide { color: var(--t-text3); font-weight: 500; }
+.pm { width: 32px; height: 32px; flex: none; border-radius: 11px; background: #F3F4F7; display: grid; place-items: center; font-size: 16px; font-weight: 600; transition: transform .15s, background .2s; }
+.pm.is-on { transform: scale(.88); background: #E0E3FF; }
+.val { min-width: 28px; text-align: center; font-weight: 700; font-size: 13px; }
+.retire { width: 22px; text-align: center; color: var(--t-text3); font-size: 15px; border-radius: 6px; transition: background .2s; }
+.retire.is-on { background: #FDE8E8; color: #B91C1C; }
+.info { padding: 8px 10px; border-radius: 12px; background: #FFFBEB; color: #B45309; font-size: 10.5px; line-height: 1.4; margin-top: 4px; }
+.coche-l { display: flex; align-items: center; gap: 9px; min-height: 38px; font-size: 12px; }
+.coche { width: 20px; height: 20px; flex: none; border-radius: 6px; border: 2px solid #D4D8E1; display: grid; place-items: center; transition: all .25s; }
+.coche.is-on { background: #4F46E5; border-color: #4F46E5; }
+.coche.is-on::after { content: ''; width: 8px; height: 4px; border-left: 2.5px solid #fff; border-bottom: 2.5px solid #fff; transform: rotate(-45deg) translate(1px, -1px); }
+/* boutons */
+.gros { height: 42px; border-radius: 14px; background: #4F46E5; color: #fff; font-weight: 600; font-size: 13.5px; display: grid; place-items: center; transition: transform .15s, background .25s; text-align: center; }
+.gros--vert { background: #059669; }
+.gros--pale { background: #818CF8; }
+.gros.is-on { transform: scale(.97); }
+.bord { height: 42px; border: 1px solid #D4D8E1; border-radius: 12px; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; padding: 0 12px; background: #fff; transition: transform .15s; white-space: nowrap; }
+.bord.is-on { transform: scale(.96); background: #F7F7FA; }
+.bord--rouge { color: #B91C1C; }
+.flex1 { flex: 1; }
+/* écran plein « Former les groupes » */
+.plein { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; z-index: 500; background: var(--t-bg); display: flex; flex-direction: column; }
+.is-hidden.plein { transform: translateY(60px); }
+.plein > * { flex: none; }
+.plein__ent { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #fff; border-bottom: 1px solid var(--t-border); }
+.plein__ret { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 8px; }
+.plein__lib { font-size: 10.5px; font-weight: 600; color: #4F46E5; display: block; }
+.plein__t { font-size: 17px; font-weight: 700; display: block; line-height: 1.2; }
+.plein__corps { flex: 1 1 auto !important; padding: 10px 12px; overflow: hidden; display: flex; flex-direction: column; gap: 9px; position: relative; }
+.seg2 { display: flex; background: #EDEEF2; padding: 3px; border-radius: 12px; }
+.seg2 span { flex: 1; text-align: center; height: 30px; line-height: 30px; border-radius: 9px; font-size: 12px; font-weight: 600; color: var(--t-text2); transition: all .25s; }
+.seg2 span.is-on { background: #fff; color: var(--t-text); box-shadow: 0 1px 3px rgba(20,25,40,.1); }
+.rapides { display: flex; gap: 5px; flex-wrap: wrap; }
+.rapide { height: 32px; border: 1px solid #D4D8E1; border-radius: 10px; padding: 0 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; background: #fff; transition: transform .15s, background .2s; }
+.rapide--c { width: 32px; justify-content: center; padding: 0; font-size: 14px; }
+.rapide.is-on { transform: scale(.94); background: #F3F4F7; }
+.croise { width: 13px; height: 10px; position: relative; }
+.croise::before, .croise::after { content: ''; position: absolute; left: 0; right: 0; top: 4px; height: 1.8px; background: currentColor; transform: rotate(28deg); }
+.croise::after { transform: rotate(-28deg); }
+.gchips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-height: 30px; }
+.gchip { height: 28px; padding: 0 8px; border-radius: 10px; border: 1.5px solid; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; white-space: nowrap; transition: box-shadow .2s; }
+.gchip.is-on { box-shadow: 0 0 0 2px #4F46E5; border-color: #4F46E5 !important; }
+.hint { font-size: 10.5px; color: var(--t-text3); }
+.planf { display: grid; grid-template-columns: repeat(6, 46px); gap: 5px; justify-content: center; }
+.planf__tab { text-align: center; font-size: 9.5px; font-weight: 600; letter-spacing: 1px; color: var(--t-text3); width: 120px; margin: 0 auto 2px; border-bottom: 2px solid #D4D8E1; }
+.cel { position: relative; height: 46px; border-radius: 9px; background: #fff; border: 1px solid var(--t-border); display: grid; place-items: center; align-content: center; font-size: 10.5px; font-weight: 600; text-align: center; line-height: 1.1; color: var(--t-text); }
+.cel--vide { background: transparent; border-color: transparent; }
+.cel--abs { background: #FEF2F2; border: 1px dashed #F09595; color: #B91C1C; }
+.cel small, .c small { display: block; font-size: 8.5px; font-weight: 600; margin-top: 1px; }
+.c { position: absolute; inset: -1px; border-radius: 9px; border: 1.5px solid; display: grid; place-items: center; align-content: center; font-style: normal; font-size: 10.5px; font-weight: 600; line-height: 1.1; transition: opacity .35s, border-color .25s, box-shadow .25s; }
+.c--abs { border-style: dashed; }
+.c--sel { background: #fff; border: 2.5px solid #4F46E5; color: #4F46E5; }
+.c--sel em { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; border-radius: 50%; background: #4F46E5; color: #fff; font-size: 10px; font-style: normal; font-weight: 700; display: grid; place-items: center; }
+.c.is-on { border-color: #4F46E5 !important; border-width: 2.5px; }
+.liste-g { display: flex; flex-direction: column; gap: 9px; }
+.liste-g__t { font-size: 11px; font-weight: 700; color: var(--t-text2); margin-bottom: 4px; }
+.pastilles-f { display: flex; flex-wrap: wrap; gap: 4px; }
+.pf { height: 30px; padding: 0 9px; border-radius: 10px; border: 1px solid var(--t-border); background: #fff; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+.pf small { font-size: 9px; }
+.pf--abs { background: #FEF2F2; border: 1px dashed #F09595; color: #B91C1C; }
+.plein__aide { font-size: 10.5px; color: var(--t-text2); line-height: 1.4; }
+.plein__bas { background: #fff; border-top: 1px solid var(--t-border); padding: 9px 12px 12px; display: flex; flex-direction: column; gap: 7px; position: relative; min-height: 64px; }
+.selrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11.5px; }
+.selrow > span:first-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.selrow .eff { color: var(--t-text2); font-weight: 600; }
+.rowgap { display: flex; gap: 7px; }
+/* bandeau de confirmation */
+.bandeau { position: absolute; left: 10px; right: 10px; top: 38px; z-index: 650; background: #059669; color: #fff; border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; gap: 8px; box-shadow: 0 8px 20px rgba(20,25,40,.18); }
+.bandeau u { font-weight: 700; }
+.bandeau--err { background: #EF4444; }
+.is-hidden.bandeau { transform: translateY(-14px); }
+/* alerte du téléphone */
+.alerte-fond { position: absolute; inset: 0; z-index: 700; background: rgba(14,14,18,.42); display: grid; place-items: center; }
+.alerte { width: 276px; background: #fff; border-radius: 18px; padding: 16px 16px 8px; box-shadow: 0 18px 40px rgba(0,0,0,.25); }
+.alerte__t { font-weight: 700; font-size: 14.5px; margin-bottom: 6px; }
+.alerte__m { font-size: 12px; color: var(--t-text2); line-height: 1.4; }
+.alerte__b { display: flex; justify-content: flex-end; gap: 6px; margin-top: 10px; font-size: 12.5px; font-weight: 700; color: #4F46E5; flex-wrap: wrap; }
+.alerte__b span { padding: 6px 7px; border-radius: 8px; transition: background .2s; }
+.alerte__b span.is-on { background: #EEF0FF; }
+.alerte__b .rouge { color: #EF4444; }
+/* menu radial (sur ces pages) */
+.voile-r { position: absolute; inset: 0; background: rgba(0,0,0,.2); z-index: 680; }
+.tel .radial__centre { background: #fff; color: var(--t-text); width: 64px; height: 64px; margin: -32px 0 0 -32px; font-size: 10.5px; }
+.tel .radial__br { background: rgba(15,23,42,.78); }
+.tel .radial__br.is-on.r-impl { background: #34D399; }
+.tel .radial__br.is-on.r-mal { background: #FBBF24; }
+.tel .radial__br.is-on.r-sor { background: #A78BFA; }
+.tel .radial__br.is-on.r-abs { background: #FB7185; }
+.radial-pil { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 701; background: #1F2433; color: #fff; font-size: 10.5px; padding: 5px 11px; border-radius: 999px; white-space: nowrap; }
+.anneau { position: absolute; z-index: 690; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 4px solid #10B981; background: rgba(255,255,255,.9); }
+/* fiche d'un groupe */
+.gs-tete { display: flex; align-items: center; gap: 6px; padding: 9px 10px; border: 1.5px solid; border-radius: 14px; }
+.gs-tete > div { flex: 1; min-width: 0; }
+.gs-nom { font-size: 16px; font-weight: 700; display: block; }
+.gs-mem { font-size: 10.5px; line-height: 1.3; display: block; }
+.gs-nav { width: 34px; height: 34px; flex: none; border-radius: 10px; background: #fff; display: grid; place-items: center; font-size: 11px; transition: transform .15s; }
+.gs-nav.is-on { transform: scale(.88); }
+.gs-pts { display: flex; gap: 7px; margin-top: 9px; }
+.gs-pt { flex: 1; height: 50px; border-radius: 14px; border: 1px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; transition: transform .15s; }
+.gs-pt small { font-size: 10px; font-weight: 600; opacity: .9; }
+.gs-pt.is-on { transform: scale(.95); }
+.gs-plus { background: #ECFDF5; border-color: #A7E3C9; color: #047857; }
+.gs-moins { background: #FFFBEB; border-color: #FCD9A0; color: #B45309; }
+.gs-petit { font-size: 10.5px; color: var(--t-text2); margin-top: 5px; line-height: 1.35; }
+.gs-sec { display: flex; justify-content: space-between; align-items: baseline; font-size: 10px; font-weight: 600; color: var(--t-text2); letter-spacing: .05em; margin: 10px 0 2px; }
+.gs-sec b { font-size: 15px; color: var(--t-text); letter-spacing: 0; }
+.gs-crit { display: flex; align-items: center; gap: 5px; min-height: 40px; border-bottom: 1px solid #F1F5F9; }
+.gs-crit__l { flex: 1; font-size: 11.5px; font-weight: 500; line-height: 1.2; }
+.gs-val { min-width: 54px; text-align: center; font-weight: 700; font-size: 12px; }
+.gs-val--vide { color: var(--t-text3); }
+.gs-malus { color: #B45309; }
+.gs-com { min-height: 46px; border-radius: 12px; background: #F3F4F7; padding: 8px 10px; font-size: 11.5px; color: var(--t-text3); line-height: 1.35; transition: box-shadow .25s; }
+.gs-com.is-on { box-shadow: 0 0 0 2px #4F46E5; }
+.gs-com .tape { color: var(--t-text); }
+.gs-photos { display: flex; gap: 6px; flex-wrap: wrap; }
+.membres { display: flex; flex-wrap: wrap; gap: 5px; }
+.membre { height: 32px; padding: 0 10px; border: 1px solid var(--t-border); border-radius: 10px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; background: #fff; transition: transform .15s, border-color .2s; }
+.membre.is-on { transform: scale(.94); border-color: #4F46E5; }
+.membre--abs { color: #B91C1C; text-decoration: line-through; }
+/* photos */
+.vign { width: 58px; height: 58px; border-radius: 12px; position: relative; overflow: hidden; flex: none; transition: transform .15s, box-shadow .2s; }
+.vign.is-on { transform: scale(.94); box-shadow: 0 0 0 3px #4F46E5; }
+.vign--g { width: 82px; height: 82px; }
+.ph1 { background: radial-gradient(circle at 38% 42%, #F4EBD2 0 16%, #C9B98F 17% 21%, transparent 22%), radial-gradient(circle at 70% 64%, #E7EEF2 0 11%, transparent 12%), linear-gradient(140deg, #93A89A, #56685F); }
+.ph2 { background: radial-gradient(ellipse at 50% 55%, #F2F0E8 0 22%, #B7C7D3 23% 27%, transparent 28%), linear-gradient(160deg, #7F95A8, #3F5366); }
+.ph3 { background: radial-gradient(circle at 30% 35%, #E9D9B8 0 13%, transparent 14%), radial-gradient(circle at 64% 58%, #D7E4C9 0 18%, transparent 19%), linear-gradient(120deg, #A79B86, #6B6153); }
+.ph4 { background: repeating-linear-gradient(90deg, rgba(255,255,255,.18) 0 2px, transparent 2px 14px), linear-gradient(150deg, #B8C3B2, #6F7F70); }
+.vign__qui { position: absolute; left: 4px; bottom: 4px; background: #fff; border-radius: 5px; font-size: 8.5px; font-weight: 700; padding: 0 4px; color: var(--t-text); }
+.vign__nuage { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: rgba(15,23,42,.75); }
+.vign__nuage::before { content: ''; position: absolute; left: 4px; top: 6px; width: 10px; height: 6px; border-radius: 4px; background: #fff; }
+.vign__nuage::after { content: ''; position: absolute; left: 3px; top: 8px; width: 12px; height: 1.6px; background: rgba(15,23,42,.9); transform: rotate(-40deg); box-shadow: 0 1px 0 #fff; }
+.ajout { width: 58px; height: 58px; flex: none; border-radius: 12px; border: 1.5px dashed #D4D8E1; display: grid; place-items: center; background: #fff; transition: transform .15s; }
+.ajout.is-on { transform: scale(.93); border-color: #4F46E5; }
+.appareil { width: 22px; height: 16px; border: 2px solid #4F46E5; border-radius: 4px; position: relative; }
+.appareil::after { content: ''; position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -5.5px 0 0 -5.5px; border: 2px solid #4F46E5; border-radius: 50%; }
+.apercu { height: 150px; border-radius: 14px; margin-bottom: 8px; }
+/* choix d'un groupe */
+.ch-grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.ch-b { height: 56px; border-radius: 14px; border: 1.5px solid; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: transform .15s; min-width: 0; }
+.ch-b b { font-size: 16px; }
+.ch-b span { font-size: 9.5px; max-width: 92%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ch-b--off { opacity: .45; }
+.ch-b.is-on { transform: scale(.94); border-width: 3px; }
+.ch-titre { font-size: 17px; font-weight: 700; }
+/* camera */
+.camera { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; z-index: 640; background: #111; display: flex; flex-direction: column; }
+.camera__vue { flex: 1; margin: 30px 14px 0; border-radius: 6px; }
+.camera__bas { height: 120px; display: grid; place-items: center; }
+.camera__declic { width: 62px; height: 62px; border-radius: 50%; border: 4px solid #fff; background: rgba(255,255,255,.25); transition: transform .15s; }
+.camera__declic.is-on { transform: scale(.88); background: #fff; }
+/* variantes de texte : une seule à la fois, sans garder la place des autres */
+.tel span.is-hidden { display: none !important; }
+.ed.is-on > .ilot { border-style: dashed; }
+.puce-e, .ilot__tete { position: relative; }
+.anneau { left: 50%; top: 50%; }
+.feuille--haute { overflow: hidden; }
+.accueil-t { padding: 18px 20px 0; display: flex; align-items: center; gap: 8px; }
+.accueil-t > div { flex: 1; }
+.accueil-t small { display: block; font-size: 13px; color: var(--t-text2); }
+.accueil-t b { font-size: 24px; letter-spacing: -.02em; }
+.rond { width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 1px solid var(--t-border); }
+.rond--noir { background: #1F2433; color: #fff; display: grid; place-items: center; font-weight: 700; border: 0; }
+.demarrer { margin: 120px auto 0; width: 178px; height: 178px; border-radius: 50%; background: #ECFDF5; display: grid; place-items: center; }
+.demarrer > span { width: 150px; height: 150px; border-radius: 50%; background: #059669; box-shadow: 0 8px 30px rgba(5,150,105,.3); display: grid; place-items: center; }
+.demarrer > span::after { content: ''; margin-left: 10px; border-left: 44px solid #fff; border-top: 27px solid transparent; border-bottom: 27px solid transparent; }
+.accueil-sous { text-align: center; margin-top: 18px; font-size: 18px; font-weight: 600; }
+.accueil-sous small { display: block; font-size: 12.5px; font-weight: 400; color: var(--t-text2); margin-top: 4px; padding: 0 30px; }
+.derniere { margin: 60px 16px 0; background: #fff; border: 1px solid var(--t-border); border-radius: 12px; padding: 11px 12px; font-size: 12px; color: var(--t-text2); display: flex; justify-content: space-between; }
+.onglets-bas { position: absolute; left: 0; right: 0; bottom: 0; }
+/* espace élève (aperçu) */
+.el-ent { padding: 8px 16px 10px; }
+.el-ret { font-size: 12.5px; color: #4F46E5; font-weight: 600; }
+.el-sur { font-size: 11px; color: var(--t-text2); margin-top: 6px; }
+.el-titre { font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.el-carte { margin: 0 14px; background: #fff; border: 1px solid var(--t-border); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.el-pil { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
+.el-pil--orange { background: #FFF1E2; color: #9A3412; }
+.el-pil--vert { background: #E7F7EE; color: #166534; }
+.el-pil--vert::before { content: ''; width: 6px; height: 6px; border-radius: 3px; background: #15803D; }
+.el-nom { font-size: 19px; font-weight: 700; line-height: 1.2; }
+.el-meta { font-size: 11.5px; color: var(--t-text2); }
+.el-grp { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--t-text2); }
+.el-grp b { height: 20px; padding: 0 7px; border-radius: 6px; font-size: 10.5px; display: inline-grid; place-items: center; border: 1px solid; }
+.el-btns { display: flex; gap: 6px; }
+.el-btns span { flex: 1; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 12.5px; font-weight: 600; border: 1px solid var(--t-border); background: #fff; transition: transform .15s; }
+.el-btns span.plein { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+.el-btns span.is-on { transform: scale(.95); }
+.el-parties { display: flex; gap: 4px; margin: 0 14px; padding: 4px; background: #fff; border: 1px solid var(--t-border); border-radius: 12px; }
+.el-parties span { flex: 1; text-align: center; font-size: 10px; font-weight: 600; padding: 6px 0; border-radius: 8px; color: var(--t-text2); }
+.el-parties span.actif { background: #4F46E5; color: #fff; }
+.el-feuille { margin: 10px 14px 0; height: 210px; border-radius: 6px; background: #fff; border: 1px solid var(--t-border); padding: 14px 16px; display: flex; flex-direction: column; gap: 7px; }
+.el-feuille i { display: block; height: 6px; border-radius: 3px; background: #E5E7EB; }
+.el-mot { margin: 10px 14px 0; border-radius: 12px; background: #EEF0FF; padding: 10px 12px; font-size: 11.5px; line-height: 1.4; color: #3730A3; }
+.el-mot b { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.el-abs { margin: 10px 14px 0; border-radius: 12px; background: #FEF6E0; padding: 10px 12px; font-size: 11.5px; line-height: 1.4; color: #7A5300; }
+.el-pied { margin: 10px 14px 0; font-size: 10.5px; color: var(--t-text2); line-height: 1.4; }
+/* réunion parents (aperçu) */
+.rp-barre { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #fff; border-bottom: 1px solid var(--t-border); }
+.rp-barre span { font-size: 13px; color: #4F46E5; font-weight: 500; }
+.rp-barre b { flex: 1; text-align: center; font-size: 14.5px; margin-right: 50px; }
+.rp-carte { margin: 10px 14px 0; background: #fff; border: 1px solid var(--t-border); border-radius: 14px; padding: 12px; }
+.rp-id { display: flex; align-items: center; gap: 10px; }
+.rp-id .av { width: 40px; height: 40px; border-radius: 50%; background: #EEF0FF; color: #4F46E5; font-weight: 700; display: grid; place-items: center; font-size: 13px; flex: none; }
+.rp-id > div { flex: 1; }
+.rp-id b { display: block; font-size: 15px; }
+.rp-id small { font-size: 11px; color: var(--t-text2); }
+.rp-chiffre { text-align: center; line-height: 1.1; }
+.rp-chiffre b { font-size: 19px; }
+.rp-chiffre small { display: block; font-size: 9.5px; color: var(--t-text2); }
+.rp-cpt { display: flex; justify-content: space-between; margin-top: 10px; padding: 8px 10px; background: #F3F4F7; border-radius: 10px; font-size: 10px; color: var(--t-text2); text-align: center; }
+.rp-cpt b { display: block; font-size: 13px; }
+.rp-sec { margin: 14px 16px 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .05em; color: var(--t-text2); display: flex; gap: 6px; }
+.rp-liste { margin: 0 14px; background: #fff; border: 1px solid var(--t-border); border-radius: 14px; padding: 0 12px; }
+.rp-l { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid #F1F5F9; }
+.rp-l:last-child { border-bottom: 0; }
+.rp-l > div { flex: 1; }
+.rp-l b { display: block; font-size: 12.5px; font-weight: 600; }
+.rp-l small { font-size: 10.5px; color: var(--t-text2); }
+.rp-l .n { font-size: 15px; font-weight: 700; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Application téléphone</a> › TP en groupes : lancer le TP</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#ouvrir-groupes">Passer en mode Groupes</a></li>
+      <li><a href="#choisir-tp">Étape 1 : choisir le TP</a></li>
+      <li><a href="#bareme-sur-place">Un TP qui n'est pas dans Mes TP</a></li>
+      <li><a href="#bareme">Étape 2 : le barème</a></li>
+      <li><a href="#former-ecran">Étape 3 : l'écran Former les groupes</a></li>
+      <li><a href="#former-selection">Mettre des élèves ensemble</a></li>
+      <li><a href="#former-hasard">Tous les groupes au hasard</a></li>
+      <li><a href="#reprendre-dernier">Reprendre le dernier TP</a></li>
+      <li><a href="#retoucher-groupe">Retoucher ou supprimer un groupe</a></li>
+      <li><a href="#absent-groupe">Un absent dans un groupe</a></li>
+      <li><a href="#former-valider">Valider les groupes</a></li>
+      <li><a href="#placer-ilots">Étape 4 : placer les îlots et commencer</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../telephone/groupes-salles-et-plans.html">◀ Groupes, salles et plans</a><a href="../telephone/tp-notation.html">TP en groupes : suivre et noter ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Application téléphone · TP en groupes</div>
+      <h1>TP en groupes : lancer le TP</h1>
+      <p>Le TP en groupes se mène depuis l'écran de séance, sans le quitter. Quatre étapes, affichées comme telles par l'application : choisir le TP, régler son barème, former les groupes, placer les îlots. Ensuite on commence, et le plan de classe laisse place aux îlots.</p>
+      <div class="chap__resume"><span>Séance › Groupes</span><span>Téléphone</span><span>Marche sans réseau</span><span>Les TP viennent de Mes TP, sur le site</span></div>
+    </header>
+
+    <!-- ============================================================ fiche 1 : passer en mode groupes -->
+    <section class="fiche fiche--etroite" id="ouvrir-groupes">
+      <div class="fiche__texte">
+        <h2>Passer en mode Groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Séance en cours › Groupes</span></p>
+        <p class="fiche__but">En haut de la séance, une bascule sépare le plan de classe habituel et le mode TP en groupes. S'il n'y a pas encore de TP pour cette heure, toucher Groupes le lance.</p>
+        <ol class="etapes">
+          <li data-cursor="#og-groupes" data-action="tap">Pendant la séance, toucher <span class="btn-nom">Groupes</span>, à droite de <b>Plan de classe</b>.</li>
+          <li data-cursor="#og-titre" data-duration="3200">Sans TP pour cette heure, la feuille <b>Quel TP aujourd'hui ?</b> monte par-dessus le plan, qui reste visible dessous. C'est l'étape 1 sur 4.</li>
+          <li data-cursor="#og-x" data-action="tap">La croix referme la feuille sans rien créer : on reste sur le plan.</li>
+          <li data-cursor="#og-lancer" data-action="tap" data-duration="3400">Si la vue Groupes s'affiche sans aucun groupe, elle dit <b>Pas encore de groupes</b> : <span class="btn-nom">Lancer un TP</span> ouvre la même feuille.</li>
+          <li data-cursor="#og-plan" data-action="tap">Pendant le TP, <span class="btn-nom">Plan de classe</span> ramène au plan ; le TP continue, et Groupes y revient.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le TP est lié à l'heure de cours. Le téléphone vérifie d'abord si cette heure a déjà son TP : il n'en ouvre jamais un deuxième.</li>
+            <li>Tout se lit sur le téléphone : le mode Groupes marche sans réseau.</li>
+            <li>Si les groupes sont déjà formés mais que le TP n'a pas commencé, Groupes mène directement à l'étape 4, le placement des îlots.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/seance-et-menu-radial.html">La séance en classe</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:05</span><span>4G</span></div>
+              <div class="s-ent"><span class="s-ent__ann">Annuler</span><span class="s-ent__mil"><span class="s-ent__t">3A · Salle 104</span><span class="s-ent__chrono">6 min</span></span><span class="s-ent__fin">Terminer</span></div>
+              <div class="s-bascule-l">
+                <div class="s-bascule"><span id="og-plan" data-on="1-3,5">Plan de classe</span><span id="og-groupes" data-on="4">Groupes</span></div>
+                <span class="s-carre"></span><span class="s-carre s-carre--reg"></span>
+              </div>
+              <div class="repli" data-at="1-3,5">
+                <div class="s-outils">
+                  <span class="s-outil"><i></i>Aléatoire</span><span class="s-outil"><i></i>Oral</span><span class="s-outil"><i></i>Copies</span><span class="s-outil"><i></i>Note</span><span class="s-outil"><i></i>Remarque</span><span class="s-outil"><i></i>Supprimer</span>
+                </div>
+                <div class="s-aide" style="justify-content:center"><span>Maintenir appuyé sur un élève</span></div>
+                <div class="s-plan">
+                  <span class="t-place">Lina</span><span class="t-place">Noé</span><span class="t-place">Iris</span><span class="t-place">Tom</span><span class="t-place">Zoé</span><span class="t-place">Adam</span>
+                  <span class="t-place">Jade</span><span class="t-place">Malo</span><span class="t-place">Inès</span><span class="t-place">Hugo</span><span class="t-place t-place--absent">Sam<br>ABS</span><span class="t-place">Léa</span>
+                  <span class="t-place">Sacha</span><span class="t-place">Rose</span><span class="t-place t-place--vide"></span><span class="t-place">Naël</span><span class="t-place">Mia</span><span class="t-place">Lou</span>
+                  <span class="t-place">Éva</span><span class="t-place">Ilyes</span><span class="t-place">Nina</span><span class="t-place t-place--vide"></span><span class="t-place t-place--vide"></span><span class="t-place t-place--vide"></span>
+                </div>
+                <div class="s-plan__tab">TABLEAU</div>
+              </div>
+              <div class="repli zoom" data-at="4" style="padding:150px 30px 0;text-align:center">
+                <div style="font-size:18px;font-weight:600;margin-bottom:6px">Pas encore de groupes</div>
+                <div style="font-size:12.5px;color:var(--t-text2);margin-bottom:16px">Choisissez le TP, son barème, puis formez les groupes.</div>
+                <div class="gros" id="og-lancer" style="height:46px;margin:0 30px">Lancer un TP</div>
+              </div>
+
+              <div class="voile" data-at="2-3"></div>
+              <div class="feuille" data-at="2-3">
+                <div class="f-tete"><div><div class="f-lib">Étape 1 sur 4</div><div class="f-titre" id="og-titre">Quel TP aujourd'hui ?</div></div><span class="f-x" id="og-x" data-on="3">×</span></div>
+                <div class="f-sec">Proposé (déjà fait dans une autre classe)</div>
+                <div class="propose"><span class="propose__ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M9 3h6M10 3v6L5 19a1.6 1.6 0 0 0 1.4 2h11.2A1.6 1.6 0 0 0 19 19l-5-10V3"/></svg></span><span><span class="propose__t">Observer des levures</span><span class="propose__s">3e · Séquence 2 · barème /10</span></span></div>
+                <div class="cherche">Chercher un TP de 3e</div>
+                <div class="f-sec">TP de 3e</div>
+                <div class="tp-l"><div><span class="tp-l__t">Antibiogramme</span><span class="tp-l__s">Séquence 2 · Activité 3 · /10</span></div><i>▶</i></div>
+                <div class="tp-l"><div><span class="tp-l__t">Extraire l'ADN</span><span class="tp-l__s">Séquence 1 · Activité 4 · /8</span></div><i>▶</i></div>
+                <span class="lien">Voir les TP des autres niveaux (12)</span>
+                <div class="pointille">Un TP qui n'est pas dans Mes TP : barème sur place</div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 2 : choisir le TP -->
+    <section class="fiche fiche--etroite" id="choisir-tp">
+      <div class="fiche__texte">
+        <h2>Étape 1 : choisir le TP</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Séance › Groupes › Quel TP aujourd'hui ?</span></p>
+        <p class="fiche__but">Les TP proposés sont ceux de <b>Mes TP</b>, préparés sur le site. Ceux du niveau de la classe viennent d'abord ; celui qu'on vient de faire avec une autre classe est mis en avant.</p>
+        <ol class="etapes">
+          <li data-cursor="#ct-propose" data-duration="3600">En tête, la carte <b>Proposé</b> : le TP fait ces derniers jours avec une autre classe, que celle-ci n'a pas encore fait. Un appui suffit.</li>
+          <li data-cursor="#ct-l1" data-duration="3200">Dessous, <b>TP de 3e</b> : les TP du niveau de la classe, avec la séquence, le numéro d'activité et le total des points.</li>
+          <li data-cursor="#ct-autres-t" data-action="tap">Les autres niveaux sont repliés : <span class="btn-nom">Voir les TP des autres niveaux (12)</span> les déplie.</li>
+          <li data-cursor="#ct-cherche" data-action="tap" data-duration="3200">Pour aller plus vite, taper une partie du nom dans <b>Chercher un TP de 3e</b> : la liste se resserre.</li>
+          <li data-cursor="#ct-adn" data-action="tap">Toucher la ligne du TP voulu.</li>
+          <li data-cursor="#ct-bareme" data-duration="3200">On passe à l'étape 2 : le barème de ce TP, qu'on peut encore ajuster.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Proposé : le TP utilisé le plus récemment, dans les 15 derniers jours, avec une autre classe, et jamais fait par celle-ci. Il ne figure pas une deuxième fois dans les listes.</li>
+            <li>Le niveau se lit dans le nom de la classe (« 3A » donne « 3e »). Sans niveau reconnu, tout est rangé sous Mes TP.</li>
+            <li>La recherche porte sur le nom seulement et ignore les majuscules ; pendant une recherche, les autres niveaux s'affichent d'office.</li>
+            <li>Les TP sont la copie de Mes TP gardée sur le téléphone : la liste marche sans réseau, mais un TP créé sur le site n'apparaît qu'après une synchronisation. On ne crée pas de modèle de TP sur le téléphone.</li>
+            <li>Rien n'est enregistré à cette étape. La feuille repart toujours de l'étape 1 quand on la rouvre.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:05</span><span>4G</span></div>
+              <div class="s-ent"><span class="s-ent__ann">Annuler</span><span class="s-ent__mil"><span class="s-ent__t">3A · Salle 104</span><span class="s-ent__chrono">6 min</span></span><span class="s-ent__fin">Terminer</span></div>
+              <div class="s-bascule-l"><div class="s-bascule"><span class="is-actif">Plan de classe</span><span>Groupes</span></div><span class="s-carre"></span><span class="s-carre s-carre--reg"></span></div>
+              <div class="voile"></div>
+              <div class="feuille" style="top:96px">
+                <div class="repli" data-to="5">
+                  <div class="f-tete"><div><div class="f-lib">Étape 1 sur 4</div><div class="f-titre">Quel TP aujourd'hui ?</div></div><span class="f-x">×</span></div>
+                  <div class="repli" data-to="3">
+                    <div class="f-sec">Proposé (déjà fait dans une autre classe)</div>
+                    <div class="propose" id="ct-propose" data-on="1"><span class="propose__ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M9 3h6M10 3v6L5 19a1.6 1.6 0 0 0 1.4 2h11.2A1.6 1.6 0 0 0 19 19l-5-10V3"/></svg></span><span><span class="propose__t">Observer des levures</span><span class="propose__s">3e · Séquence 2 · barème /10</span></span></div>
+                  </div>
+                  <div class="cherche" id="ct-cherche" data-on="4"><span class="tape" data-type="adn" data-type-at="4"></span><span data-to="3">Chercher un TP de 3e</span></div>
+                  <div class="f-sec">TP de 3e</div>
+                  <div class="repli" data-to="3"><div class="tp-l" id="ct-l1" data-on="2"><div><span class="tp-l__t">Antibiogramme</span><span class="tp-l__s">Séquence 2 · Activité 3 · /10</span></div><i>▶</i></div></div>
+                  <div class="tp-l" id="ct-adn" data-on="5"><div><span class="tp-l__t">Extraire l'ADN</span><span class="tp-l__s">Séquence 1 · Activité 4 · /8</span></div><i>▶</i></div>
+                  <div class="repli" data-to="3"><div class="tp-l"><div><span class="tp-l__t">Observer des bactéries</span><span class="tp-l__s">Séquence 2 · Activité 1 · /10</span></div><i>▶</i></div></div>
+                  <div class="repli" data-to="2"><span class="lien" id="ct-autres">Voir les TP des autres niveaux (12)</span></div>
+                  <div class="repli glisse-haut" data-at="3">
+                    <div class="f-sec" id="ct-autres-t">Autres niveaux</div>
+                    <div class="tp-l"><div><span class="tp-l__t">Dissection d'une fleur</span><span class="tp-l__s">Séquence 3 · Activité 2 · /10</span></div><i>▶</i></div>
+                    <div class="tp-l"><div><span class="tp-l__t">Germination des graines</span><span class="tp-l__s">Séquence 1 · Activité 5 · /6</span></div><i>▶</i></div>
+                  </div>
+                  <div class="repli" data-to="2"><div class="pointille" style="margin-top:6px">Un TP qui n'est pas dans Mes TP : barème sur place</div></div>
+                </div>
+                <div class="repli glisse-gauche" data-at="6">
+                  <div class="f-tete"><span class="f-ret"><i class="chev"></i></span><div><div class="f-lib">Étape 2 sur 4</div><div class="f-titre" id="ct-bareme">Barème de la manipulation</div></div></div>
+                  <div class="nom-tp">Extraire l'ADN</div>
+                  <div class="total">Total du TP <b>8 pts</b></div>
+                  <div class="crit"><span class="crit__l">Broyer et filtrer</span><span class="pm">−</span><span class="val">3</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="crit"><span class="crit__l">Verser l'alcool sans mélanger</span><span class="pm">−</span><span class="val">3</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="crit"><span class="crit__l">Paillasse rangée</span><span class="pm">−</span><span class="val">2</span><span class="pm">+</span><span class="retire">×</span></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 3 : barème sur place -->
+    <section class="fiche fiche--etroite" id="bareme-sur-place">
+      <div class="fiche__texte">
+        <h2>Un TP qui n'est pas dans Mes TP</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Quel TP aujourd'hui ? › bouton du bas</span></p>
+        <p class="fiche__but">Pour un TP improvisé, sans modèle préparé sur le site : on le nomme et on règle un barème proposé d'office, directement sur le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#bp-bouton" data-action="tap">En bas de l'étape 1, toucher <span class="btn-nom">Un TP qui n'est pas dans Mes TP : barème sur place</span>.</li>
+          <li data-cursor="#bp-c1" data-duration="3600">L'étape 2 s'ouvre avec un barème de cinq critères sur 10 : protocole, gestes, sécurité, rangement, calme du groupe. Le bouton du bas attend un nom.</li>
+          <li data-cursor="#bp-nom" data-action="tap" data-duration="3400">Taper le nom du TP dans <b>Nom du TP</b> : le bouton devient <span class="btn-nom">Former les groupes</span>.</li>
+          <li data-cursor="#bp-info" data-duration="3200">Ajuster les critères comme pour un TP de Mes TP (fiche suivante), puis valider.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ce TP ne crée aucun modèle dans Mes TP : la case <b>Mettre aussi à jour ce barème dans Mes TP</b> n'apparaît pas.</li>
+            <li>Le même barème de cinq critères est proposé pour un TP de Mes TP qui n'a encore aucun critère.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:05</span><span>4G</span></div>
+              <div class="s-ent"><span class="s-ent__ann">Annuler</span><span class="s-ent__mil"><span class="s-ent__t">3A · Salle 104</span><span class="s-ent__chrono">6 min</span></span><span class="s-ent__fin">Terminer</span></div>
+              <div class="s-bascule-l"><div class="s-bascule"><span class="is-actif">Plan de classe</span><span>Groupes</span></div><span class="s-carre"></span><span class="s-carre s-carre--reg"></span></div>
+              <div class="voile"></div>
+              <div class="feuille" style="top:62px">
+                <div class="repli" data-at="1">
+                  <div class="f-tete"><div><div class="f-lib">Étape 1 sur 4</div><div class="f-titre">Quel TP aujourd'hui ?</div></div><span class="f-x">×</span></div>
+                  <div class="cherche">Chercher un TP de 3e</div>
+                  <div class="f-sec">TP de 3e</div>
+                  <div class="tp-l"><div><span class="tp-l__t">Antibiogramme</span><span class="tp-l__s">Séquence 2 · Activité 3 · /10</span></div><i>▶</i></div>
+                  <div class="tp-l"><div><span class="tp-l__t">Extraire l'ADN</span><span class="tp-l__s">Séquence 1 · Activité 4 · /8</span></div><i>▶</i></div>
+                  <div class="tp-l"><div><span class="tp-l__t">Observer des bactéries</span><span class="tp-l__s">Séquence 2 · Activité 1 · /10</span></div><i>▶</i></div>
+                  <div class="tp-l"><div><span class="tp-l__t">Observer des levures</span><span class="tp-l__s">Séquence 2 · Activité 2 · /10</span></div><i>▶</i></div>
+                  <span class="lien">Voir les TP des autres niveaux (12)</span>
+                  <div class="pointille" id="bp-bouton" data-on="1" style="margin-top:150px">Un TP qui n'est pas dans Mes TP : barème sur place</div>
+                </div>
+                <div class="repli glisse-gauche" data-from="2">
+                  <div class="f-tete"><span class="f-ret"><i class="chev"></i></span><div><div class="f-lib">Étape 2 sur 4</div><div class="f-titre">Barème de la manipulation</div></div></div>
+                  <div class="champ-t" id="bp-nom" data-on="3"><span class="tape" data-type="Culture de levures" data-type-at="3"></span><span data-at="2">Nom du TP</span></div>
+                  <div class="total">Total du TP <b>10 pts</b></div>
+                  <div class="crit" id="bp-c1"><span class="crit__l">Respect du protocole</span><span class="pm">−</span><span class="val">3</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="crit"><span class="crit__l">Soin des gestes</span><span class="pm">−</span><span class="val">2</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="crit"><span class="crit__l">Consignes de sécurité</span><span class="pm">−</span><span class="val">2</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="crit"><span class="crit__l">Rangement et nettoyage</span><span class="pm">−</span><span class="val">2</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="crit"><span class="crit__l">Calme du groupe</span><span class="pm">−</span><span class="val">1</span><span class="pm">+</span><span class="retire">×</span></div>
+                  <div class="pointille">+ Ajouter un critère</div>
+                  <div class="info" id="bp-info">Le malus conduite se règle par groupe pendant le TP et se retire de cette note. Les résultats (tableau, schéma) sont notés sur la fiche d'activité.</div>
+                  <div class="gros gros--pale" data-at="2" style="margin-top:10px">Nommez le TP et ses critères</div>
+                  <div class="gros" data-from="3" style="margin-top:-42px">Former les groupes</div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 4 : barème -->
+    <section class="fiche fiche--etroite" id="bareme">
+      <div class="fiche__texte">
+        <h2>Étape 2 : le barème de la manipulation</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Feuille de lancement › Étape 2 sur 4</span></p>
+        <p class="fiche__but">Avant de commencer, on vérifie les critères notés pendant la manipulation et leurs points. On peut les corriger pour aujourd'hui, et, si on le souhaite, reporter la correction dans Mes TP.</p>
+        <ol class="etapes">
+          <li data-cursor="#br-total">Le nom du TP et le <b>Total du TP</b> s'affichent en haut.</li>
+          <li data-cursor="#br-plus" data-action="tap">Sur un critère, <span class="btn-nom">+</span> ou <span class="btn-nom">−</span> ajoute ou retire un demi-point. Le libellé se corrige en le touchant.</li>
+          <li data-cursor="#br-retire" data-action="tap">La petite croix d'une rangée retire le critère, aussitôt et sans confirmation.</li>
+          <li data-cursor="#br-ajout" data-action="tap" data-duration="3200"><span class="btn-nom">+ Ajouter un critère</span> ajoute une rangée vide à 1 point. Tant qu'elle n'a pas de libellé, le bouton du bas reste pâle.</li>
+          <li data-cursor="#br-nouveau" data-action="tap">Taper le libellé du nouveau critère.</li>
+          <li data-cursor="#br-coche" data-action="tap" data-duration="3400">Cocher <b>Mettre aussi à jour ce barème dans Mes TP</b> pour garder ce barème pour les prochaines classes.</li>
+          <li data-cursor="#br-valider" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Former les groupes</span> : le TP est enregistré sur le téléphone et l'écran de formation des groupes s'ouvre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un critère vaut de 0,5 à 40 points, par demi-points. Un critère sans libellé, ou aucun critère, bloque la validation : le bouton affiche <b>Nommez le TP et ses critères</b>.</li>
+            <li>Le barème de la séance est une copie : le modifier ne change pas Mes TP, sauf si la case est cochée. Elle est décochée à chaque ouverture ; le site voit le nouveau barème après synchronisation.</li>
+            <li>La flèche en haut à gauche revient au choix du TP. Rien n'est écrit avant <b>Former les groupes</b>.</li>
+            <li>Si l'heure a déjà des groupes, le barème déjà noté est protégé : rien n'est changé, les îlots s'affichent.</li>
+            <li>Le malus conduite ne fait pas partie du barème : il se règle groupe par groupe pendant le TP et se retire de la note.</li>
+            <li>Rien ne part au serveur tant que le TP n'a pas commencé. En cas d'échec : « Le TP n'a pas pu être créé. Réessayez. ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-notation.html#malus-conduite">Malus conduite</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:06</span><span>4G</span></div>
+              <div class="s-ent"><span class="s-ent__ann">Annuler</span><span class="s-ent__mil"><span class="s-ent__t">3A · Salle 104</span><span class="s-ent__chrono">7 min</span></span><span class="s-ent__fin">Terminer</span></div>
+              <div class="voile"></div>
+              <div class="feuille" style="top:58px">
+                <div class="f-tete"><span class="f-ret"><i class="chev"></i></span><div><div class="f-lib">Étape 2 sur 4</div><div class="f-titre">Barème de la manipulation</div></div></div>
+                <div class="nom-tp">Observer des levures</div>
+                <div class="total" id="br-total">Total du TP <b><span data-at="1">10</span><span data-at="2-3">10,5</span><span data-from="4">9,5</span> pts</b></div>
+                <div class="crit"><span class="crit__l">Préparer la lame</span><span class="pm">−</span><span class="val"><span data-at="1">3</span><span data-from="2">3,5</span></span><span class="pm" id="br-plus" data-on="2">+</span><span class="retire">×</span></div>
+                <div class="crit"><span class="crit__l">Mise au point au microscope</span><span class="pm">−</span><span class="val">3</span><span class="pm">+</span><span class="retire">×</span></div>
+                <div class="crit"><span class="crit__l">Gestes de sécurité</span><span class="pm">−</span><span class="val">2</span><span class="pm">+</span><span class="retire">×</span></div>
+                <div class="repli" data-to="3"><div class="crit"><span class="crit__l">Paillasse rangée</span><span class="pm">−</span><span class="val">2</span><span class="pm">+</span><span class="retire" id="br-retire" data-on="3">×</span></div></div>
+                <div class="repli glisse-haut" data-from="4"><div class="crit" id="br-nouveau"><span class="crit__l crit__l--vide repli" data-at="4">Critère 4</span><span class="crit__l repli" data-from="5"><span data-type="Calme du groupe" data-type-at="5"></span></span><span class="pm">−</span><span class="val">1</span><span class="pm">+</span><span class="retire">×</span></div></div>
+                <div class="pointille" id="br-ajout" data-on="4">+ Ajouter un critère</div>
+                <div class="info">Le malus conduite se règle par groupe pendant le TP et se retire de cette note. Les résultats (tableau, schéma) sont notés sur la fiche d'activité.</div>
+                <div class="coche-l" id="br-coche"><span class="coche" data-on="6-7"></span>Mettre aussi à jour ce barème dans Mes TP</div>
+                <div style="position:relative;margin-top:6px">
+                  <div class="gros" data-to="3">Former les groupes</div>
+                  <div class="gros gros--pale" data-at="4" style="position:absolute;inset:0">Nommez le TP et ses critères</div>
+                  <div class="gros" id="br-valider" data-from="5" data-on="7" style="position:absolute;inset:0">Former les groupes</div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 5 : écran former -->
+    <section class="fiche fiche--etroite" id="former-ecran">
+      <div class="fiche__texte">
+        <h2>Étape 3 : l'écran Former les groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Barème › Former les groupes</span></p>
+        <p class="fiche__but">En début d'heure, les élèves sont encore à leur place : on les touche sur le plan habituel, ou dans une liste, pour composer les groupes.</p>
+        <ol class="etapes">
+          <li data-cursor="#fe-lib" data-duration="3200">L'écran monte du bas. En haut : <b>Étape 3 sur 4</b> et le nom du TP ; dessous, les outils pour former les groupes à la main, au hasard ou comme au dernier TP.</li>
+          <li data-cursor="#fe-sam" data-duration="3600">Vue <b>Sur le plan</b> : la salle de la séance, TABLEAU en haut. Chaque élève est une case ; un absent est en rose, bordure pointillée, marqué « absent ».</li>
+          <li data-cursor="#fe-liste" data-action="tap" data-duration="3200"><span class="btn-nom">En liste</span> range les mêmes élèves en pastilles : d'abord <b>Sans groupe</b>, puis un bloc par groupe formé.</li>
+          <li data-cursor="#fe-surplan" data-action="tap"><span class="btn-nom">Sur le plan</span> revient au plan.</li>
+          <li data-cursor="#fe-vert" data-duration="3400">En bas, le nombre d'élèves présents sans groupe et le bouton vert de validation. Cette barre change selon ce qu'on fait (fiches suivantes).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La bascule n'existe que si la salle de la séance a un plan ; sinon seule la liste s'affiche. L'écran rouvre toujours sur le plan.</li>
+            <li>Les élèves de la classe qui n'ont pas de place apparaissent sous le plan, dans <b>Hors du plan</b>.</li>
+            <li>Les noms affichés sont ceux du plan de séance : le prénom, plus une à trois lettres du nom en cas d'homonyme.</li>
+            <li>Rien n'est enregistré avant la validation. Les groupes se nomment tout seuls G1, G2… (premier numéro libre) et prennent chacun une couleur.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:07</span><span>4G</span></div>
+              <div class="plein glisse-haut">
+                <div class="plein__ent"><span class="plein__ret"><i class="chev"></i></span><div><span class="plein__lib" id="fe-lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span id="fe-surplan" data-on="1-2,4-5">Sur le plan</span><span id="fe-liste" data-on="3">En liste</span></div>
+                  <div class="rapides"><span class="rapide"><i class="croise"></i>Hasard par 4</span><span class="rapide rapide--c">−</span><span class="rapide rapide--c">+</span><span class="rapide">Reprendre le dernier TP</span></div>
+                  <div class="repli" data-at="1-2,4-5">
+                    <div class="planf__tab">TABLEAU</div>
+                    <div class="planf">
+                      <span class="cel">Lina</span><span class="cel">Noé</span><span class="cel">Iris</span><span class="cel">Tom</span><span class="cel">Zoé</span><span class="cel">Adam</span>
+                      <span class="cel">Jade</span><span class="cel">Malo</span><span class="cel">Inès</span><span class="cel">Hugo</span><span class="cel cel--abs" id="fe-sam">Sam<small>absent</small></span><span class="cel">Léa</span>
+                      <span class="cel">Sacha</span><span class="cel">Rose</span><span class="cel cel--vide"></span><span class="cel">Naël</span><span class="cel">Mia</span><span class="cel">Lou</span>
+                      <span class="cel">Éva</span><span class="cel">Ilyes</span><span class="cel">Nina</span><span class="cel cel--vide"></span><span class="cel cel--vide"></span><span class="cel cel--vide"></span>
+                    </div>
+                  </div>
+                  <div class="repli zoom" data-at="3">
+                    <div class="liste-g"><div><div class="liste-g__t">Sans groupe (20)</div><div class="pastilles-f">
+                      <span class="pf">Lina</span><span class="pf">Noé</span><span class="pf">Iris</span><span class="pf">Tom</span><span class="pf">Zoé</span><span class="pf">Adam</span><span class="pf">Jade</span><span class="pf">Malo</span><span class="pf">Inès</span><span class="pf">Hugo</span><span class="pf pf--abs">Sam <small>abs</small></span><span class="pf">Léa</span><span class="pf">Sacha</span><span class="pf">Rose</span><span class="pf">Naël</span><span class="pf">Mia</span><span class="pf">Lou</span><span class="pf">Éva</span><span class="pf">Ilyes</span><span class="pf">Nina</span>
+                    </div></div></div>
+                  </div>
+                  <div class="plein__aide">Toucher les élèves à mettre ensemble. Un absent peut entrer dans un groupe : il aura la note du groupe et verra les documents et les photos, sans les points d'implication.</div>
+                </div>
+                <div class="plein__bas">
+                  <div class="selrow"><span>19 élèves sans groupe</span><span class="rapide">Le reste au hasard</span></div>
+                  <div class="gros gros--vert" id="fe-vert">Placer les groupes (0 groupe)</div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 6 : sélection -->
+    <section class="fiche fiche--etroite" id="former-selection">
+      <div class="fiche__texte">
+        <h2>Mettre des élèves ensemble</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Former les groupes</span></p>
+        <p class="fiche__but">On touche les élèves qui travaillent ensemble, puis on crée leur groupe. Quand quelques groupes sont faits, le reste peut être réparti au hasard.</p>
+        <ol class="etapes">
+          <li data-cursor="#fs-lina" data-action="tap">Toucher un élève : il s'entoure d'indigo et reçoit le numéro 1. Un nouvel appui le retire de la sélection.</li>
+          <li data-cursor="#fs-noe" data-action="tap">Toucher les suivants : ils reçoivent 2, 3… En bas : <b>Sélection : Lina, Noé</b> et le lien <b>Effacer</b>.</li>
+          <li data-cursor="#fs-iris" data-action="tap">Le bouton dit combien d'élèves le groupe comptera : <b>Créer G1 avec 3 élèves</b>.</li>
+          <li data-cursor="#fs-creer" data-action="tap">Toucher <span class="btn-nom">Créer G1 avec 3 élèves</span>.</li>
+          <li data-cursor="#fs-chip" data-duration="3200">Les cases prennent la couleur du groupe et affichent G1 ; sa pastille <b>G1 · 3</b> apparaît en haut.</li>
+          <li data-cursor="#fs-reste" data-action="tap" data-duration="3600"><span class="btn-nom">Le reste au hasard</span> répartit en nouveaux groupes les présents encore sans groupe, à la taille réglée par Hasard par 4.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un élève déjà dans un groupe peut être sélectionné : il quitte son ancien groupe quand le nouveau est créé.</li>
+            <li>Le reste au hasard garde les groupes déjà formés et en crée de nouveaux ; il ne complète pas les groupes existants. Les absents ne sont pas comptés.</li>
+            <li>Toucher la pastille d'un groupe vide la sélection en cours.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:07</span><span>4G</span></div>
+              <div class="plein">
+                <div class="plein__ent"><span class="plein__ret"><i class="chev"></i></span><div><span class="plein__lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span class="is-on">Sur le plan</span><span>En liste</span></div>
+                  <div class="rapides"><span class="rapide"><i class="croise"></i>Hasard par 4</span><span class="rapide rapide--c">−</span><span class="rapide rapide--c">+</span><span class="rapide">Reprendre le dernier TP</span></div>
+                  <div class="gchips repli" data-from="5">
+                    <span class="gchip g1" id="fs-chip">G1 · 3</span>
+                    <span class="gchip g2" data-from="6">G2 · 4</span><span class="gchip g3" data-from="6">G3 · 4</span><span class="gchip g4" data-from="6">G4 · 4</span><span class="gchip g5" data-from="6">G5 · 4</span>
+                    <span class="hint" data-at="5">Toucher un groupe pour le modifier</span>
+                  </div>
+                  <div class="planf__tab">TABLEAU</div>
+                  <div class="planf">
+                    <span class="cel" id="fs-lina">Lina<i class="c c--sel" data-at="1-4"><b>Lina</b><em>1</em></i><i class="c g1" data-from="5">Lina<small>G1</small></i></span>
+                    <span class="cel" id="fs-noe">Noé<i class="c c--sel" data-at="2-4"><b>Noé</b><em>2</em></i><i class="c g1" data-from="5">Noé<small>G1</small></i></span>
+                    <span class="cel" id="fs-iris">Iris<i class="c c--sel" data-at="3-4"><b>Iris</b><em>3</em></i><i class="c g1" data-from="5">Iris<small>G1</small></i></span>
+                    <span class="cel">Tom<i class="c g2" data-from="6">Tom<small>G2</small></i></span>
+                    <span class="cel">Zoé<i class="c g3" data-from="6">Zoé<small>G3</small></i></span>
+                    <span class="cel">Adam<i class="c g4" data-from="6">Adam<small>G4</small></i></span>
+                    <span class="cel">Jade<i class="c g5" data-from="6">Jade<small>G5</small></i></span>
+                    <span class="cel">Malo<i class="c g3" data-from="6">Malo<small>G3</small></i></span>
+                    <span class="cel">Inès<i class="c g4" data-from="6">Inès<small>G4</small></i></span>
+                    <span class="cel">Hugo<i class="c g2" data-from="6">Hugo<small>G2</small></i></span>
+                    <span class="cel cel--abs">Sam<small>absent</small></span>
+                    <span class="cel">Léa<i class="c g5" data-from="6">Léa<small>G5</small></i></span>
+                    <span class="cel">Sacha<i class="c g4" data-from="6">Sacha<small>G4</small></i></span>
+                    <span class="cel">Rose<i class="c g5" data-from="6">Rose<small>G5</small></i></span>
+                    <span class="cel cel--vide"></span>
+                    <span class="cel">Naël<i class="c g5" data-from="6">Naël<small>G5</small></i></span>
+                    <span class="cel">Mia<i class="c g2" data-from="6">Mia<small>G2</small></i></span>
+                    <span class="cel">Lou<i class="c g3" data-from="6">Lou<small>G3</small></i></span>
+                    <span class="cel">Éva<i class="c g2" data-from="6">Éva<small>G2</small></i></span>
+                    <span class="cel">Ilyes<i class="c g4" data-from="6">Ilyes<small>G4</small></i></span>
+                    <span class="cel">Nina<i class="c g3" data-from="6">Nina<small>G3</small></i></span>
+                    <span class="cel cel--vide"></span><span class="cel cel--vide"></span><span class="cel cel--vide"></span>
+                  </div>
+                  <div class="plein__aide">Toucher les élèves à mettre ensemble. Un absent peut entrer dans un groupe : il aura la note du groupe et verra les documents et les photos, sans les points d'implication.</div>
+                </div>
+                <div class="plein__bas">
+                  <div class="repli" data-at="1-4">
+                    <div class="selrow" style="margin-bottom:7px"><span><b>Sélection : </b><span data-at="1">Lina</span><span data-at="2">Lina, Noé</span><span data-at="3-4">Lina, Noé, Iris</span></span><span class="eff">Effacer</span></div>
+                    <div class="gros" id="fs-creer" data-on="4"><span data-at="1">Créer G1 avec 1 élève</span><span data-at="2">Créer G1 avec 2 élèves</span><span data-at="3-4">Créer G1 avec 3 élèves</span></div>
+                  </div>
+                  <div class="repli" data-at="5-6"><div class="selrow" style="margin-bottom:7px" data-at="5"><span>16 élèves sans groupe</span><span class="rapide" id="fs-reste" data-on="6">Le reste au hasard</span></div></div>
+                  <div class="repli" data-from="5"><div class="gros gros--vert"><span data-at="5">Placer les groupes (1 groupe)</span><span data-from="6">Placer les groupes (5 groupes)</span></div></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 7 : hasard -->
+    <section class="fiche fiche--etroite" id="former-hasard">
+      <div class="fiche__texte">
+        <h2>Tous les groupes au hasard</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Former les groupes › Hasard par 4</span></p>
+        <p class="fiche__but">Faire tous les groupes d'un coup, au hasard, à la taille choisie et de tailles équilibrées.</p>
+        <ol class="etapes">
+          <li data-cursor="#fh-plus" data-action="tap">Régler la taille avec <span class="btn-nom">−</span> (groupes plus petits) et <span class="btn-nom">+</span> (groupes plus grands) : le bouton affiche <b>Hasard par 5</b>.</li>
+          <li data-cursor="#fh-hasard" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Hasard par 5</span>. Des groupes existent déjà : le téléphone demande <b>Refaire tous les groupes ?</b></li>
+          <li data-cursor="#fh-remplacer" data-action="tap"><span class="btn-nom">Remplacer</span> refait tous les groupes ; <b>Annuler</b> ne change rien.</li>
+          <li data-cursor="#fh-chips" data-duration="3600">Les présents sont répartis en groupes équilibrés : 19 élèves par 5 donnent 5, 5, 5 et 4. L'absent reste sans groupe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Taille de 2 à 8 élèves, 4 par défaut. Les groupes sont équilibrés : 10 élèves par 4 donnent 4, 3 et 3, jamais 4, 4 et 2.</li>
+            <li>Seuls les présents sont répartis : le hasard ne place jamais un absent.</li>
+            <li>Les noms repartent de G1. Sans groupe existant, il n'y a pas de question.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:07</span><span>4G</span></div>
+              <div class="plein">
+                <div class="plein__ent"><span class="plein__ret"><i class="chev"></i></span><div><span class="plein__lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span class="is-on">Sur le plan</span><span>En liste</span></div>
+                  <div class="rapides"><span class="rapide" id="fh-hasard" data-on="2"><i class="croise"></i><span data-at="1-4" class="repli">Hasard par 5</span></span><span class="rapide rapide--c">−</span><span class="rapide rapide--c" id="fh-plus" data-on="1">+</span><span class="rapide">Reprendre le dernier TP</span></div>
+                  <div class="gchips" id="fh-chips">
+                    <span class="gchip g1" data-to="2">G1 · 3</span><span class="hint" data-to="2">Toucher un groupe pour le modifier</span>
+                    <span class="gchip g1 repli" data-from="3">G1 · 5</span><span class="gchip g2 repli" data-from="3">G2 · 5</span><span class="gchip g3 repli" data-from="3">G3 · 5</span><span class="gchip g4 repli" data-from="3">G4 · 4</span>
+                  </div>
+                  <div class="planf__tab">TABLEAU</div>
+                  <div class="planf">
+                    <span class="cel">Lina<i class="c g1">Lina<small>G1</small></i></span>
+                    <span class="cel">Noé<i class="c g1" data-to="2">Noé<small>G1</small></i><i class="c g2" data-from="3">Noé<small>G2</small></i></span>
+                    <span class="cel">Iris<i class="c g1" data-to="2">Iris<small>G1</small></i><i class="c g3" data-from="3">Iris<small>G3</small></i></span>
+                    <span class="cel">Tom<i class="c g4" data-from="3">Tom<small>G4</small></i></span>
+                    <span class="cel">Zoé<i class="c g2" data-from="3">Zoé<small>G2</small></i></span>
+                    <span class="cel">Adam<i class="c g1" data-from="3">Adam<small>G1</small></i></span>
+                    <span class="cel">Jade<i class="c g3" data-from="3">Jade<small>G3</small></i></span>
+                    <span class="cel">Malo<i class="c g4" data-from="3">Malo<small>G4</small></i></span>
+                    <span class="cel">Inès<i class="c g2" data-from="3">Inès<small>G2</small></i></span>
+                    <span class="cel">Hugo<i class="c g1" data-from="3">Hugo<small>G1</small></i></span>
+                    <span class="cel cel--abs">Sam<small>absent</small></span>
+                    <span class="cel">Léa<i class="c g3" data-from="3">Léa<small>G3</small></i></span>
+                    <span class="cel">Sacha<i class="c g4" data-from="3">Sacha<small>G4</small></i></span>
+                    <span class="cel">Rose<i class="c g1" data-from="3">Rose<small>G1</small></i></span>
+                    <span class="cel cel--vide"></span>
+                    <span class="cel">Naël<i class="c g3" data-from="3">Naël<small>G3</small></i></span>
+                    <span class="cel">Mia<i class="c g2" data-from="3">Mia<small>G2</small></i></span>
+                    <span class="cel">Lou<i class="c g4" data-from="3">Lou<small>G4</small></i></span>
+                    <span class="cel">Éva<i class="c g2" data-from="3">Éva<small>G2</small></i></span>
+                    <span class="cel">Ilyes<i class="c g3" data-from="3">Ilyes<small>G3</small></i></span>
+                    <span class="cel">Nina<i class="c g1" data-from="3">Nina<small>G1</small></i></span>
+                    <span class="cel cel--vide"></span><span class="cel cel--vide"></span><span class="cel cel--vide"></span>
+                  </div>
+                  <div class="plein__aide">Toucher les élèves à mettre ensemble. Un absent peut entrer dans un groupe : il aura la note du groupe et verra les documents et les photos, sans les points d'implication.</div>
+                </div>
+                <div class="plein__bas">
+                  <div class="repli" data-to="2"><div class="selrow" style="margin-bottom:7px"><span>16 élèves sans groupe</span><span class="rapide">Le reste au hasard</span></div></div>
+                  <div class="gros gros--vert"><span data-to="2">Placer les groupes (1 groupe)</span><span data-from="3">Placer les groupes (4 groupes)</span></div>
+                </div>
+              </div>
+              <div class="alerte-fond" data-at="2-3">
+                <div class="alerte zoom" data-at="2-3">
+                  <div class="alerte__t">Refaire tous les groupes ?</div>
+                  <div class="alerte__m">Les groupes déjà formés seront remplacés.</div>
+                  <div class="alerte__b"><span>Annuler</span><span class="rouge" id="fh-remplacer" data-on="3">Remplacer</span></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 8 : reprendre le dernier TP -->
+    <section class="fiche fiche--etroite" id="reprendre-dernier">
+      <div class="fiche__texte">
+        <h2>Reprendre le dernier TP</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Former les groupes › Reprendre le dernier TP</span></p>
+        <p class="fiche__but">Retrouver d'un appui les groupes du TP précédent de la classe, avec leurs noms et la place de leurs îlots.</p>
+        <ol class="etapes">
+          <li data-cursor="#fr-bouton" data-action="tap">Toucher <span class="btn-nom">Reprendre le dernier TP</span> (ici en vue <b>En liste</b>).</li>
+          <li data-cursor="#fr-g1" data-duration="3200">Les groupes du dernier TP remplacent ceux de l'écran, sans confirmation : G1 à G5 avec les mêmes élèves.</li>
+          <li data-cursor="#fr-sam" data-duration="3400">Un élève absent aujourd'hui est repris dans son groupe, marqué « abs ».</li>
+          <li data-cursor="#fr-alerte" data-duration="3400">Si la classe n'a encore aucun groupe enregistré : <b>Aucun TP précédent</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le téléphone prend le TP le plus récent de la classe qui a des groupes, terminé ou non.</li>
+            <li>Les élèves qui ne sont plus dans la classe sont retirés ; la place des îlots est gardée pour l'étape 4.</li>
+            <li>Le bouton n'existe qu'au lancement du TP, pas quand on modifie les groupes en cours de TP.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:07</span><span>4G</span></div>
+              <div class="plein">
+                <div class="plein__ent"><span class="plein__ret"><i class="chev"></i></span><div><span class="plein__lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span>Sur le plan</span><span class="is-on">En liste</span></div>
+                  <div class="rapides"><span class="rapide"><i class="croise"></i>Hasard par 4</span><span class="rapide rapide--c">−</span><span class="rapide rapide--c">+</span><span class="rapide" id="fr-bouton" data-on="1">Reprendre le dernier TP</span></div>
+                  <div class="gchips repli" data-from="2" style="min-height:0">
+                    <span class="gchip g1">G1 · 4</span><span class="gchip g2">G2 · 4</span><span class="gchip g3">G3 · 4</span><span class="gchip g4">G4 · 4</span><span class="gchip g5">G5 · 4</span>
+                  </div>
+                  <div class="repli" data-at="1">
+                    <div class="liste-g__t">Sans groupe (20)</div><div class="pastilles-f">
+                      <span class="pf">Lina</span><span class="pf">Noé</span><span class="pf">Iris</span><span class="pf">Tom</span><span class="pf">Zoé</span><span class="pf">Adam</span><span class="pf">Jade</span><span class="pf">Malo</span><span class="pf">Inès</span><span class="pf">Hugo</span><span class="pf pf--abs">Sam <small>abs</small></span><span class="pf">Léa</span><span class="pf">Sacha</span><span class="pf">Rose</span><span class="pf">Naël</span><span class="pf">Mia</span><span class="pf">Lou</span><span class="pf">Éva</span><span class="pf">Ilyes</span><span class="pf">Nina</span>
+                    </div>
+                  </div>
+                  <div class="liste-g repli glisse-haut" data-from="2">
+                    <div><div class="liste-g__t">Sans groupe (0)</div></div>
+                    <div id="fr-g1"><div class="liste-g__t" style="color:#3730A3">G1 (4)</div><div class="pastilles-f"><span class="pf g1">Lina</span><span class="pf g1">Noé</span><span class="pf g1">Iris</span><span class="pf g1" id="fr-sam" style="border-style:dashed">Sam <small>abs</small></span></div></div>
+                    <div><div class="liste-g__t" style="color:#0B5F4C">G2 (4)</div><div class="pastilles-f"><span class="pf g2">Tom</span><span class="pf g2">Hugo</span><span class="pf g2">Mia</span><span class="pf g2">Éva</span></div></div>
+                    <div><div class="liste-g__t" style="color:#9A3A0E">G3 (4)</div><div class="pastilles-f"><span class="pf g3">Zoé</span><span class="pf g3">Malo</span><span class="pf g3">Lou</span><span class="pf g3">Nina</span></div></div>
+                    <div><div class="liste-g__t" style="color:#8C1D4F">G4 (4)</div><div class="pastilles-f"><span class="pf g4">Adam</span><span class="pf g4">Inès</span><span class="pf g4">Sacha</span><span class="pf g4">Ilyes</span></div></div>
+                    <div><div class="liste-g__t" style="color:#0E4F7E">G5 (4)</div><div class="pastilles-f"><span class="pf g5">Jade</span><span class="pf g5">Léa</span><span class="pf g5">Rose</span><span class="pf g5">Naël</span></div></div>
+                  </div>
+                </div>
+                <div class="plein__bas">
+                  <div class="repli" data-at="1"><div class="selrow" style="margin-bottom:7px"><span>19 élèves sans groupe</span><span class="rapide">Le reste au hasard</span></div></div>
+                  <div class="gros gros--vert"><span data-at="1">Placer les groupes (0 groupe)</span><span data-from="2">Placer les groupes (5 groupes)</span></div>
+                </div>
+              </div>
+              <div class="alerte-fond" data-at="4">
+                <div class="alerte zoom" data-at="4" id="fr-alerte">
+                  <div class="alerte__t">Aucun TP précédent</div>
+                  <div class="alerte__m">Cette classe n'a pas encore de groupes enregistrés.</div>
+                  <div class="alerte__b"><span>OK</span></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 9 : retoucher un groupe -->
+    <section class="fiche fiche--etroite" id="retoucher-groupe">
+      <div class="fiche__texte">
+        <h2>Retoucher ou supprimer un groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Former les groupes › pastille G2 · 4</span></p>
+        <p class="fiche__but">Ajouter ou retirer des élèves d'un groupe précis, ou défaire un groupe entier.</p>
+        <ol class="etapes">
+          <li data-cursor="#rg-chip" data-action="tap" data-duration="3200">Toucher la pastille du groupe : elle s'entoure d'indigo, ses membres aussi. L'aide devient <b>Toucher un élève pour l'ajouter à G2 ou l'en retirer.</b></li>
+          <li data-cursor="#rg-lou" data-action="tap">Toucher un élève d'un autre groupe : il entre dans G2 et quitte son ancien groupe.</li>
+          <li data-cursor="#rg-tom" data-action="tap" data-duration="3400">Toucher un membre de G2 : il sort du groupe. <span class="btn-nom">Terminé</span>, ou un nouvel appui sur la pastille, finit la retouche.</li>
+          <li data-cursor="#rg-suppr" data-action="tap"><span class="btn-nom">Supprimer G2</span> défait le groupe, aussitôt et sans confirmation.</li>
+          <li data-cursor="#rg-reste" data-duration="3200">La pastille disparaît et ses membres redeviennent sans groupe : on les replace à la main ou avec Le reste au hasard.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Rien n'est effacé avant la validation. Le nom libéré (G2) sera repris par le prochain groupe créé.</li>
+            <li>En cours de TP, un groupe supprimé l'est à l'enregistrement, avec ses notes ; ses photos deviennent des photos de la classe.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-notation.html#modifier-groupes">Modifier les groupes pendant le TP</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:08</span><span>4G</span></div>
+              <div class="plein">
+                <div class="plein__ent"><span class="plein__ret"><i class="chev"></i></span><div><span class="plein__lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span class="is-on">Sur le plan</span><span>En liste</span></div>
+                  <div class="rapides"><span class="rapide"><i class="croise"></i>Hasard par 4</span><span class="rapide rapide--c">−</span><span class="rapide rapide--c">+</span><span class="rapide">Reprendre le dernier TP</span></div>
+                  <div class="gchips">
+                    <span class="gchip g1">G1 · 3</span>
+                    <span class="gchip g2 repli" id="rg-chip" data-to="4" data-on="1-4"><span data-at="1" class="repli">G2 · 4</span><span data-at="2" class="repli">G2 · 5</span><span data-at="3-4" class="repli">G2 · 4</span></span>
+                    <span class="gchip g3"><span data-at="1" class="repli">G3 · 4</span><span data-from="2" class="repli">G3 · 3</span></span><span class="gchip g4">G4 · 4</span><span class="gchip g5">G5 · 4</span>
+                  </div>
+                  <div class="planf__tab">TABLEAU</div>
+                  <div class="planf">
+                    <span class="cel">Lina<i class="c g1">Lina<small>G1</small></i></span>
+                    <span class="cel">Noé<i class="c g1">Noé<small>G1</small></i></span>
+                    <span class="cel">Iris<i class="c g1">Iris<small>G1</small></i></span>
+                    <span class="cel" id="rg-tom">Tom<i class="c g2" data-to="2" data-on="1-2">Tom<small>G2</small></i></span>
+                    <span class="cel">Zoé<i class="c g3">Zoé<small>G3</small></i></span>
+                    <span class="cel">Adam<i class="c g4">Adam<small>G4</small></i></span>
+                    <span class="cel">Jade<i class="c g5">Jade<small>G5</small></i></span>
+                    <span class="cel">Malo<i class="c g3">Malo<small>G3</small></i></span>
+                    <span class="cel">Inès<i class="c g4">Inès<small>G4</small></i></span>
+                    <span class="cel">Hugo<i class="c g2" data-to="4" data-on="1-4">Hugo<small>G2</small></i></span>
+                    <span class="cel cel--abs">Sam<small>absent</small></span>
+                    <span class="cel">Léa<i class="c g5">Léa<small>G5</small></i></span>
+                    <span class="cel">Sacha<i class="c g4">Sacha<small>G4</small></i></span>
+                    <span class="cel">Rose<i class="c g5">Rose<small>G5</small></i></span>
+                    <span class="cel cel--vide"></span>
+                    <span class="cel">Naël<i class="c g5">Naël<small>G5</small></i></span>
+                    <span class="cel">Mia<i class="c g2" data-to="4" data-on="1-4">Mia<small>G2</small></i></span>
+                    <span class="cel" id="rg-lou">Lou<i class="c g3" data-at="1">Lou<small>G3</small></i><i class="c g2" data-at="2-4" data-on="2-4">Lou<small>G2</small></i></span>
+                    <span class="cel">Éva<i class="c g2" data-to="4" data-on="1-4">Éva<small>G2</small></i></span>
+                    <span class="cel">Ilyes<i class="c g4">Ilyes<small>G4</small></i></span>
+                    <span class="cel">Nina<i class="c g3">Nina<small>G3</small></i></span>
+                    <span class="cel cel--vide"></span><span class="cel cel--vide"></span><span class="cel cel--vide"></span>
+                  </div>
+                  <div class="plein__aide"><span data-to="4" class="repli">Toucher un élève pour l'ajouter à G2 ou l'en retirer.</span><span data-at="5" class="repli">Toucher les élèves à mettre ensemble. Un absent peut entrer dans un groupe : il aura la note du groupe et verra les documents et les photos, sans les points d'implication.</span></div>
+                </div>
+                <div class="plein__bas">
+                  <div class="rowgap repli" data-to="4"><span class="bord bord--rouge" id="rg-suppr" data-on="4">Supprimer G2</span><span class="gros flex1">Terminé</span></div>
+                  <div class="repli" data-at="5"><div class="selrow" style="margin-bottom:7px"><span>5 élèves sans groupe</span><span class="rapide" id="rg-reste">Le reste au hasard</span></div><div class="gros gros--vert">Placer les groupes (4 groupes)</div></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 10 : absent dans un groupe -->
+    <section class="fiche fiche--etroite" id="absent-groupe">
+      <div class="fiche__texte">
+        <h2>Un absent dans un groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Former les groupes</span></p>
+        <p class="fiche__but">Un élève absent peut être rattaché à son groupe habituel : il ne perd pas le travail commun et rattrape ce que le groupe a fait.</p>
+        <ol class="etapes">
+          <li data-cursor="#ab-sam" data-duration="3200">L'absent est en rose, bordure pointillée. Le hasard ne l'a placé dans aucun groupe.</li>
+          <li data-cursor="#ab-chip" data-action="tap">Toucher la pastille du groupe qui doit l'accueillir, ici <b>G1</b>.</li>
+          <li data-cursor="#ab-sam" data-action="tap" data-duration="3200">Toucher l'absent : il prend la couleur du groupe, garde sa bordure pointillée et affiche <b>G1 · abs</b>.</li>
+          <li data-cursor="#ab-fini" data-action="tap">Toucher <span class="btn-nom">Terminé</span>.</li>
+          <li data-cursor="#ab-bulle" data-duration="4200">Il aura la note du groupe et verra, dans son espace élève, la fiche, les documents et les photos du groupe ; il ne reçoit pas les points d'implication ou de malus donnés au groupe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Dans l'îlot, son prénom est barré en rouge sur fond rose ; dans la fiche du groupe, « (absent) » suit son nom.</li>
+            <li>La validation ne signale pas les absents laissés sans groupe : elle ne compte que les présents.</li>
+            <li>Rattacher un absent est un choix de l'enseignant : rien ne se fait tout seul.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-notation.html#points-fiche">Points pour tout le groupe</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:08</span><span>4G</span></div>
+              <div class="plein">
+                <div class="plein__ent"><span class="plein__ret"><i class="chev"></i></span><div><span class="plein__lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span class="is-on">Sur le plan</span><span>En liste</span></div>
+                  <div class="rapides"><span class="rapide"><i class="croise"></i>Hasard par 4</span><span class="rapide rapide--c">−</span><span class="rapide rapide--c">+</span><span class="rapide">Reprendre le dernier TP</span></div>
+                  <div class="gchips">
+                    <span class="gchip g1" id="ab-chip" data-on="2-4"><span class="repli" data-to="2">G1 · 3</span><span class="repli" data-from="3">G1 · 4</span></span><span class="gchip g2">G2 · 4</span><span class="gchip g3">G3 · 4</span><span class="gchip g4">G4 · 4</span><span class="gchip g5">G5 · 4</span>
+                    <span class="hint repli" data-at="1,5">Toucher un groupe pour le modifier</span>
+                  </div>
+                  <div class="planf__tab">TABLEAU</div>
+                  <div class="planf" style="position:relative">
+                    <span class="cel">Lina<i class="c g1" data-on="2-4">Lina<small>G1</small></i></span>
+                    <span class="cel">Noé<i class="c g1" data-on="2-4">Noé<small>G1</small></i></span>
+                    <span class="cel">Iris<i class="c g1" data-on="2-4">Iris<small>G1</small></i></span>
+                    <span class="cel">Tom<i class="c g2">Tom<small>G2</small></i></span>
+                    <span class="cel">Zoé<i class="c g3">Zoé<small>G3</small></i></span>
+                    <span class="cel">Adam<i class="c g4">Adam<small>G4</small></i></span>
+                    <span class="cel">Jade<i class="c g5">Jade<small>G5</small></i></span>
+                    <span class="cel">Malo<i class="c g3">Malo<small>G3</small></i></span>
+                    <span class="cel">Inès<i class="c g4">Inès<small>G4</small></i></span>
+                    <span class="cel">Hugo<i class="c g2">Hugo<small>G2</small></i></span>
+                    <span class="cel cel--abs" id="ab-sam">Sam<small>absent</small><i class="c g1 c--abs" data-from="3" data-on="3-4">Sam<small>G1 · abs</small></i></span>
+                    <span class="cel">Léa<i class="c g5">Léa<small>G5</small></i></span>
+                    <span class="cel">Sacha<i class="c g4">Sacha<small>G4</small></i></span>
+                    <span class="cel">Rose<i class="c g5">Rose<small>G5</small></i></span>
+                    <span class="cel cel--vide"></span>
+                    <span class="cel">Naël<i class="c g5">Naël<small>G5</small></i></span>
+                    <span class="cel">Mia<i class="c g2">Mia<small>G2</small></i></span>
+                    <span class="cel">Lou<i class="c g3">Lou<small>G3</small></i></span>
+                    <span class="cel">Éva<i class="c g2">Éva<small>G2</small></i></span>
+                    <span class="cel">Ilyes<i class="c g4">Ilyes<small>G4</small></i></span>
+                    <span class="cel">Nina<i class="c g3">Nina<small>G3</small></i></span>
+                    <span class="cel cel--vide"></span><span class="cel cel--vide"></span><span class="cel cel--vide"></span>
+                    <div class="bulle bulle--haut" id="ab-bulle" data-at="5" style="left:150px;top:108px;max-width:180px">Note du groupe, documents et photos : oui. Points d'implication du groupe : non.</div>
+                  </div>
+                  <div class="plein__aide"><span class="repli" data-at="1,5">Toucher les élèves à mettre ensemble. Un absent peut entrer dans un groupe : il aura la note du groupe et verra les documents et les photos, sans les points d'implication.</span><span class="repli" data-at="2-4">Toucher un élève pour l'ajouter à G1 ou l'en retirer.</span></div>
+                </div>
+                <div class="plein__bas">
+                  <div class="rowgap repli" data-at="2-4"><span class="bord bord--rouge">Supprimer G1</span><span class="gros flex1" id="ab-fini" data-on="4">Terminé</span></div>
+                  <div class="repli" data-at="1,5"><div class="gros gros--vert">Placer les groupes (5 groupes)</div></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 11 : valider -->
+    <section class="fiche fiche--etroite" id="former-valider">
+      <div class="fiche__texte">
+        <h2>Valider les groupes, ou revenir</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Former les groupes › bouton vert</span></p>
+        <p class="fiche__but">Le bouton vert enregistre la composition. Le chevron, en haut, ferme l'écran sans rien garder.</p>
+        <ol class="etapes">
+          <li data-cursor="#fv-retour" data-duration="3600">Le chevron <b>Retour</b> (ou la touche retour d'Android) ferme l'écran sans enregistrer : au lancement, la feuille de choix du TP se rouvre à l'étape 1.</li>
+          <li data-cursor="#fv-vert" data-action="tap" data-duration="3400">Toucher <span class="btn-nom">Placer les groupes (5 groupes)</span>. Un présent est resté sans groupe : le téléphone donne son nom.</li>
+          <li data-cursor="#fv-continuer" data-action="tap" data-duration="3400"><span class="btn-nom">Revenir</span> permet de le placer ; <span class="btn-nom">Continuer quand même</span> passe à l'étape 4.</li>
+          <li data-cursor="#fv-bar" data-duration="3200">L'écran redescend : les îlots des groupes sont posés sur la séance, prêts à être placés.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Sans aucun groupe : « Formez au moins un groupe. ». Le nombre du bouton ne compte que les groupes non vides.</li>
+            <li>Au lancement, chaque îlot reçoit une place automatique sur deux colonnes, sauf ceux repris du dernier TP avec leur place.</li>
+            <li>En revenant, la composition en cours est perdue ; le TP déjà créé est réutilisé (renommé et rebarémé) au prochain choix.</li>
+            <li>En modification pendant le TP, le bouton s'appelle <b>Enregistrer (5 groupes)</b>.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:08</span><span>4G</span></div>
+              <div class="s-ent"><span class="s-ent__ann">Annuler</span><span class="s-ent__mil"><span class="s-ent__t">3A · Salle 104</span><span class="s-ent__chrono">9 min</span></span><span class="s-ent__fin">Terminer</span></div>
+              <div class="s-bascule-l"><div class="s-bascule"><span>Plan de classe</span><span class="is-actif">Groupes</span></div><span class="s-carre"></span><span class="s-carre s-carre--reg"></span></div>
+              <div class="place-bar" id="fv-bar">
+                <div class="place-bar__t">Observer des levures</div>
+                <div class="place-bar__x">Étape 4 sur 4 : glissez chaque groupe là où il s'est installé. Vous pourrez les déplacer à tout moment.</div>
+                <div class="place-bar__b"><span class="bord">Modifier les groupes</span><span class="gros gros--vert flex1" style="height:42px;border-radius:12px">Commencer le TP</span></div>
+              </div>
+              <div class="s-zone">
+                <div class="s-tableau">TABLEAU</div>
+                <div class="pos" style="left:0;top:24px"><div class="ilot ilot--edit g1"><div class="ilot__tete"><span class="ilot__nom">G1</span><span class="poignee">⠿</span></div><div class="puces"><span class="puce-e">Lina</span><span class="puce-e">Noé</span><span class="puce-e">Iris</span><span class="puce-e puce-e--abs">Sam</span></div></div></div>
+                <div class="pos" style="left:166px;top:24px"><div class="ilot ilot--edit g2"><div class="ilot__tete"><span class="ilot__nom">G2</span><span class="poignee">⠿</span></div><div class="puces"><span class="puce-e">Hugo</span><span class="puce-e">Mia</span><span class="puce-e">Éva</span><span class="puce-e">Lou</span></div></div></div>
+                <div class="pos" style="left:0;top:170px"><div class="ilot ilot--edit g3"><div class="ilot__tete"><span class="ilot__nom">G3</span><span class="poignee">⠿</span></div><div class="puces"><span class="puce-e">Zoé</span><span class="puce-e">Malo</span><span class="puce-e">Nina</span></div></div></div>
+                <div class="pos" style="left:166px;top:170px"><div class="ilot ilot--edit g4"><div class="ilot__tete"><span class="ilot__nom">G4</span><span class="poignee">⠿</span></div><div class="puces"><span class="puce-e">Adam</span><span class="puce-e">Inès</span><span class="puce-e">Sacha</span><span class="puce-e">Ilyes</span></div></div></div>
+                <div class="pos" style="left:0;top:316px"><div class="ilot ilot--edit g5"><div class="ilot__tete"><span class="ilot__nom">G5</span><span class="poignee">⠿</span></div><div class="puces"><span class="puce-e">Jade</span><span class="puce-e">Léa</span><span class="puce-e">Rose</span><span class="puce-e">Naël</span></div></div></div>
+              </div>
+              <div class="plein" data-to="3">
+                <div class="plein__ent"><span class="plein__ret" id="fv-retour"><i class="chev"></i></span><div><span class="plein__lib">Étape 3 sur 4 · Observer des levures</span><span class="plein__t">Former les groupes</span></div></div>
+                <div class="plein__corps">
+                  <div class="seg2"><span>Sur le plan</span><span class="is-on">En liste</span></div>
+                  <div class="rapides"><span class="rapide"><i class="croise"></i>Hasard par 4</span><span class="rapide rapide--c">−</span><span class="rapide rapide--c">+</span><span class="rapide">Reprendre le dernier TP</span></div>
+                  <div class="gchips"><span class="gchip g1">G1 · 4</span><span class="gchip g2">G2 · 4</span><span class="gchip g3">G3 · 3</span><span class="gchip g4">G4 · 4</span><span class="gchip g5">G5 · 4</span></div>
+                  <div class="liste-g">
+                    <div><div class="liste-g__t">Sans groupe (1)</div><div class="pastilles-f"><span class="pf">Tom</span></div></div>
+                    <div><div class="liste-g__t" style="color:#3730A3">G1 (4)</div><div class="pastilles-f"><span class="pf g1">Lina</span><span class="pf g1">Noé</span><span class="pf g1">Iris</span><span class="pf g1" style="border-style:dashed">Sam <small>abs</small></span></div></div>
+                    <div><div class="liste-g__t" style="color:#0B5F4C">G2 (4)</div><div class="pastilles-f"><span class="pf g2">Hugo</span><span class="pf g2">Mia</span><span class="pf g2">Éva</span><span class="pf g2">Lou</span></div></div>
+                    <div><div class="liste-g__t" style="color:#9A3A0E">G3 (3)</div><div class="pastilles-f"><span class="pf g3">Zoé</span><span class="pf g3">Malo</span><span class="pf g3">Nina</span></div></div>
+                    <div><div class="liste-g__t" style="color:#8C1D4F">G4 (4)</div><div class="pastilles-f"><span class="pf g4">Adam</span><span class="pf g4">Inès</span><span class="pf g4">Sacha</span><span class="pf g4">Ilyes</span></div></div>
+                  </div>
+                </div>
+                <div class="plein__bas">
+                  <div class="selrow" style="margin-bottom:0"><span>1 élève sans groupe</span><span class="rapide">Le reste au hasard</span></div>
+                  <div class="gros gros--vert" id="fv-vert" data-on="2">Placer les groupes (5 groupes)</div>
+                </div>
+              </div>
+              <div class="alerte-fond" data-at="2-3">
+                <div class="alerte zoom" data-at="2-3">
+                  <div class="alerte__t">1 élève sans groupe</div>
+                  <div class="alerte__m">Tom</div>
+                  <div class="alerte__b"><span>Revenir</span><span id="fv-continuer" data-on="3">Continuer quand même</span></div>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche 12 : placer les îlots et commencer -->
+    <section class="fiche fiche--etroite" id="placer-ilots">
+      <div class="fiche__texte">
+        <h2>Étape 4 : placer les îlots et commencer</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Séance › Groupes › Étape 4 sur 4</span></p>
+        <p class="fiche__but">Chaque îlot se pose à l'endroit de la salle où son groupe s'est installé. Puis on ouvre le TP : notation, points de groupe et photos deviennent possibles.</p>
+        <ol class="etapes">
+          <li data-cursor="#pi-texte" data-duration="3200">À la place de la barre d'outils, un encadré : le nom du TP et la consigne de l'étape 4. Les îlots ont une bordure pointillée et une poignée.</li>
+          <li data-cursor="#pi-g1" data-action="drag" data-drag-to="#pi-cible1" data-duration="3200">Glisser du doigt chaque îlot vers sa place, ici G1 vers la fenêtre.</li>
+          <li data-cursor="#pi-g5" data-action="drag" data-drag-to="#pi-cible5" data-duration="3200">Même geste pour les autres. Chaque dépôt est gardé tout de suite sur le téléphone.</li>
+          <li data-cursor="#pi-modif" data-duration="3000"><span class="btn-nom">Modifier les groupes</span> rouvre l'écran Former les groupes pour une dernière retouche.</li>
+          <li data-cursor="#pi-commencer" data-action="tap">Toucher <span class="btn-nom">Commencer le TP</span>.</li>
+          <li data-cursor="#pi-pill" data-duration="3400">La barre d'outils du mode groupe remplace l'encadré, les îlots quittent le mode déplacement et chacun affiche <b>À noter</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pendant l'étape 4, ni geste sur un élève ni fiche de groupe : le TP n'est encore qu'un brouillon, rien ne part au serveur.</li>
+            <li>Une fois commencé, chaque changement part au serveur presque aussitôt : le site enseignant et l'espace élève suivent le TP en direct.</li>
+            <li>Commencer le TP ouvre aussi, pour les élèves membres des groupes, le TP dans leur espace et le dépôt de photos de leur groupe, jusqu'à la fin de la séance.</li>
+            <li>Les îlots se déplacent encore à tout moment avec <b>Déplacer</b>.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-notation.html#ilots">Les îlots pendant le TP</a> · <a href="tp-notation.html#deplacer-ilots">Déplacer les îlots</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:09</span><span>4G</span></div>
+              <div class="s-ent"><span class="s-ent__ann">Annuler</span><span class="s-ent__mil"><span class="s-ent__t">3A · Salle 104</span><span class="s-ent__chrono">10 min</span></span><span class="s-ent__fin">Terminer</span></div>
+              <div class="s-bascule-l"><div class="s-bascule"><span>Plan de classe</span><span class="is-actif">Groupes</span></div><span class="s-carre"></span><span class="s-carre s-carre--reg"></span></div>
+              <div class="repli" data-to="5">
+                <div class="place-bar">
+                  <div class="place-bar__t">Observer des levures</div>
+                  <div class="place-bar__x" id="pi-texte">Étape 4 sur 4 : glissez chaque groupe là où il s'est installé. Vous pourrez les déplacer à tout moment.</div>
+                  <div class="place-bar__b"><span class="bord" id="pi-modif">Modifier les groupes</span><span class="gros gros--vert flex1" id="pi-commencer" data-on="5" style="height:42px;border-radius:12px">Commencer le TP</span></div>
+                </div>
+              </div>
+              <div class="repli" data-from="6">
+                <div class="s-outils">
+                  <span class="s-outil s-outil--indigo"><i></i>Photo</span><span class="s-outil"><i></i>Groupes</span><span class="s-outil"><i></i>Déplacer</span><span class="s-outil"><i></i>Aléatoire</span><span class="s-outil"><i></i>Remarque</span><span class="s-outil"><i></i>Supprimer</span>
+                </div>
+                <div class="s-aide"><span>Observer des levures · appui long : élève ou groupe · tap : fiche</span></div>
+              </div>
+              <div class="s-zone">
+                <div class="s-tableau">TABLEAU</div>
+                <div class="pos" id="pi-g1" style="left:0;top:24px;--dx:0px;--dy:292px" data-on="2-6"><div class="ed" data-on="1-5"><div class="ilot g1" data-on="2"><div class="ilot__tete"><span class="ilot__nom">G1</span><span class="poignee repli" data-to="5">⠿</span><span class="pills repli" data-from="6"><span class="pill" id="pi-pill">À noter</span></span></div><div class="puces"><span class="puce-e">Lina</span><span class="puce-e">Noé</span><span class="puce-e">Iris</span><span class="puce-e puce-e--abs">Sam</span></div></div></div></div>
+                <div class="pos" style="left:166px;top:24px"><div class="ed" data-on="1-5"><div class="ilot g2"><div class="ilot__tete"><span class="ilot__nom">G2</span><span class="poignee repli" data-to="5">⠿</span><span class="pills repli" data-from="6"><span class="pill">À noter</span></span></div><div class="puces"><span class="puce-e">Hugo</span><span class="puce-e">Mia</span><span class="puce-e">Éva</span><span class="puce-e">Lou</span></div></div></div></div>
+                <div class="pos" style="left:0;top:170px"><div class="ed" data-on="1-5"><div class="ilot g3"><div class="ilot__tete"><span class="ilot__nom">G3</span><span class="poignee repli" data-to="5">⠿</span><span class="pills repli" data-from="6"><span class="pill">À noter</span></span></div><div class="puces"><span class="puce-e">Zoé</span><span class="puce-e">Malo</span><span class="puce-e">Nina</span></div></div></div></div>
+                <div class="pos" style="left:166px;top:170px"><div class="ed" data-on="1-5"><div class="ilot g4"><div class="ilot__tete"><span class="ilot__nom">G4</span><span class="poignee repli" data-to="5">⠿</span><span class="pills repli" data-from="6"><span class="pill">À noter</span></span></div><div class="puces"><span class="puce-e">Adam</span><span class="puce-e">Inès</span><span class="puce-e">Sacha</span><span class="puce-e">Ilyes</span></div></div></div></div>
+                <div class="pos" id="pi-g5" style="left:0;top:316px;--dx:166px;--dy:0px" data-on="3-6"><div class="ed" data-on="1-5"><div class="ilot g5" data-on="3"><div class="ilot__tete"><span class="ilot__nom">G5</span><span class="poignee repli" data-to="5">⠿</span><span class="pills repli" data-from="6"><span class="pill">À noter</span></span></div><div class="puces"><span class="puce-e">Jade</span><span class="puce-e">Léa</span><span class="puce-e">Rose</span><span class="puce-e">Naël</span></div></div></div></div>
+                <span id="pi-cible1" style="position:absolute;left:75px;top:356px;width:1px;height:1px"></span>
+                <span id="pi-cible5" style="position:absolute;left:241px;top:350px;width:1px;height:1px"></span>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="tp-notation.html">Suite : suivre et noter les groupes</a> · <a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

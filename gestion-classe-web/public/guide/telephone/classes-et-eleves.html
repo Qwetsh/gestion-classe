@@ -1,0 +1,1501 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Classes et élèves — Guide Gestion Classe</title>
+<meta name="description" content="Sur le téléphone : les classes, la fiche d'une classe, les élèves, leur fiche, les vrais noms qui restent sur le téléphone, les photos et les aménagements.">
+<meta name="guide-partie" content="telephone">
+<meta name="guide-ordre" content="50">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---------- Application téléphone : briques propres à ce chapitre (charte constants/theme.ts) */
+.tel__ecran { font-size: 13px; }
+.tel__onglets .is-on { color: var(--t-primary); font-weight: 600; }
+.m-barre { height: 48px; flex: none; display: flex; align-items: center; gap: 6px; padding: 0 14px; background: var(--t-surface); border-bottom: 1px solid var(--t-border); position: relative; z-index: 2; }
+.m-barre__g { color: var(--t-participation); font-size: 14.5px; font-weight: 500; min-width: 70px; transition: opacity .2s; }
+.m-barre__g.is-on { opacity: .45; }
+.m-barre__t { flex: 1; text-align: center; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-barre__d { min-width: 70px; text-align: right; font-size: 12px; font-weight: 600; color: var(--t-primary); display: flex; justify-content: flex-end; align-items: center; transition: opacity .2s; }
+.m-barre__d.is-on { opacity: .45; }
+.m-barre__d--off { opacity: .5; }
+.m-corps { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+.m-pile { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; transition: transform .7s cubic-bezier(.45,.05,.25,1); }
+.m-h1 { font-size: 25px; font-weight: 700; letter-spacing: -0.3px; line-height: 1.2; }
+.m-sous { font-size: 13px; color: var(--t-text2); margin-top: 2px; }
+.m-carte { background: #fff; border: 1px solid var(--t-border); border-radius: 16px; transition: all .25s; position: relative; }
+.m-carte.is-on { background: #FAFBFC; transform: scale(.98); }
+.m-carte--ombre { border-color: transparent; box-shadow: 0 1px 3px rgba(20,25,40,.06); }
+.m-ligne { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--t-border); transition: background .25s; min-height: 40px; }
+.m-ligne:last-child { border-bottom: 0; }
+.m-ligne.is-on { background: #F1F2F6; }
+.m-lib { color: var(--t-text2); font-size: 13px; }
+.m-val { margin-left: auto; font-weight: 500; font-size: 13px; text-align: right; }
+.m-val i { font-style: normal; color: var(--t-participation); }
+.m-chev { margin-left: auto; color: var(--t-text3); font-size: 20px; line-height: 1; padding-left: 4px; }
+.m-sec { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.m-sec__t { font-size: 17px; font-weight: 600; flex: 1; }
+.m-pbtn { font-size: 11px; font-weight: 600; color: #fff; padding: 4px 10px; border-radius: 12px; background: var(--t-participation); transition: transform .15s, box-shadow .2s; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
+.m-pbtn--bleu { background: var(--t-remarque); }
+.m-pbtn.is-on { transform: scale(.94); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.m-pbtn .m-roue { width: 11px; height: 11px; border-width: 2px; }
+.m-av { width: 32px; height: 32px; border-radius: 50%; background: var(--t-participation); color: #fff; display: grid; place-items: center; font-weight: 600; font-size: 13px; flex: none; }
+.m-id { min-width: 0; }
+.m-nom { font-size: 13px; font-weight: 500; line-height: 1.25; white-space: nowrap; }
+.m-pseudo { font-size: 11px; color: var(--t-text2); line-height: 1.25; }
+.m-badges { display: inline-flex; gap: 3px; margin-left: auto; }
+.m-badge { font-size: 8.5px; font-weight: 700; color: var(--t-primary); background: var(--t-primary-soft); border-radius: 4px; padding: 1px 4px; line-height: 1.3; }
+.m-badges + .m-chev { margin-left: 0; }
+.m-tuile { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-weight: 700; font-size: 13px; flex: none; }
+.m-tuile--1 { background: #EEF0FF; color: #4F46E5; } .m-tuile--2 { background: #ECFDF5; color: #059669; } .m-tuile--3 { background: #FFFBEB; color: #B45309; }
+.m-cl { display: flex; align-items: center; gap: 12px; padding: 12px; }
+.m-cl__n { font-size: 15px; font-weight: 600; }
+.m-cl__s { font-size: 12px; color: var(--t-text2); }
+.m-voile { position: absolute; inset: 0; background: rgba(0,0,0,.5); z-index: 590; }
+.m-fen { position: absolute; left: 7%; right: 7%; top: 50%; translate: 0 -50%; z-index: 600; background: #fff; border-radius: 16px; padding: 18px; box-shadow: 0 18px 50px rgba(0,0,0,.25); }
+.m-fen--haut { top: 64px; translate: none; }
+.m-fen__t { font-size: 18px; font-weight: 600; text-align: center; margin-bottom: 12px; }
+.m-fen__p { font-size: 12.5px; color: var(--t-text2); text-align: center; margin-bottom: 10px; line-height: 1.4; }
+.m-champ { height: 40px; border-radius: 12px; background: var(--t-bg); border: 1px solid var(--t-border); padding: 0 12px; display: flex; align-items: center; font-size: 15px; transition: border-color .25s; }
+.m-champ + .m-champ { margin-top: 8px; }
+.m-champ.is-on { border-color: var(--t-primary); }
+.m-ph { color: var(--t-text3); }
+.m-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-top: 14px; }
+.m-texte-btn { color: var(--t-text2); font-size: 14px; }
+.m-vbtn { background: var(--t-participation); color: #fff; font-weight: 600; border-radius: 12px; padding: 9px 16px; min-width: 96px; text-align: center; font-size: 14px; transition: transform .15s, opacity .25s; }
+.m-vbtn--off { opacity: .5; }
+.m-vbtn.is-on { transform: scale(.95); }
+.m-alerte { position: absolute; left: 8%; right: 8%; top: 50%; translate: 0 -50%; z-index: 600; background: #FBFBFE; border-radius: 22px; padding: 20px 20px 12px; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
+.m-alerte__t { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+.m-alerte__p { font-size: 13px; color: #3F4354; line-height: 1.45; }
+.m-alerte__b { display: flex; justify-content: flex-end; gap: 6px; margin-top: 12px; }
+.m-alerte__b span { font-size: 13.5px; font-weight: 600; color: var(--t-primary); padding: 8px 10px; border-radius: 18px; transition: background .2s; }
+.m-alerte__b span.is-on { background: var(--t-primary-soft); }
+.m-danger { border: 1px solid #EF4444; border-radius: 16px; background: #fff; padding: 12px; }
+.m-danger__t { color: #EF4444; font-weight: 600; font-size: 13.5px; margin-bottom: 8px; }
+.m-rbtn { background: #EF4444; color: #fff; text-align: center; border-radius: 12px; padding: 11px; font-weight: 600; font-size: 14.5px; transition: transform .15s; }
+.m-rbtn.is-on { transform: scale(.96); }
+.m-danger__p { font-size: 11px; color: var(--t-text2); text-align: center; margin-top: 8px; line-height: 1.4; }
+.m-decompte { background: var(--t-bg); border-radius: 10px; padding: 9px 12px; font-size: 12.5px; line-height: 1.65; margin: 10px 0 14px; }
+.m-2btn { display: flex; gap: 10px; }
+.m-2btn > span { flex: 1; text-align: center; padding: 10px; border-radius: 12px; font-weight: 600; font-size: 14px; transition: transform .15s; }
+.m-2btn .gris { border: 1px solid var(--t-border); color: var(--t-text2); }
+.m-2btn .rouge { background: #EF4444; color: #fff; }
+.m-2btn .is-on { transform: scale(.95); }
+.m-triangle { width: 50px; height: 44px; margin: 0 auto 10px; background: #F59E0B; clip-path: polygon(50% 0, 100% 100%, 0 100%); display: flex; align-items: flex-end; justify-content: center; color: #fff; font-weight: 800; font-size: 22px; line-height: 1.4; }
+.m-roue { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-right-color: transparent; display: inline-block; animation: m-tourne .8s linear infinite; }
+@keyframes m-tourne { to { transform: rotate(360deg); } }
+.m-bandeau { position: absolute; left: 12px; right: 12px; top: 10px; z-index: 650; background: #059669; color: #fff; border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; box-shadow: 0 6px 18px rgba(0,0,0,.15); }
+.m-clavier { position: absolute; left: 0; right: 0; bottom: 0; z-index: 605; background: #E3E5EA; padding: 10px 5px 18px; display: grid; gap: 8px; }
+.m-clavier b { height: 36px; border-radius: 6px; background: repeating-linear-gradient(90deg, #fff 0 27px, transparent 27px 33px); background-position: 3px 0; }
+.m-clavier b:nth-child(2) { margin: 0 16px; } .m-clavier b:nth-child(3) { margin: 0 44px; }
+.m-clavier b:nth-child(4) { background: linear-gradient(90deg, transparent 0 24%, #fff 24% 76%, transparent 76%); }
+.m-appli { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center; font-size: 10.5px; color: var(--t-text2); margin-top: 14px; }
+.m-appli i { display: block; width: 44px; height: 44px; border-radius: 14px; margin: 0 auto 5px; background: var(--t-surface2); border: 1px solid var(--t-border); }
+.m-fichier { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; }
+.m-fichier i { width: 30px; height: 36px; border-radius: 4px; background: #FDE8E8; border: 1px solid #F3C4C4; flex: none; position: relative; }
+.m-fichier i::after { content: 'PDF'; position: absolute; bottom: 3px; left: 0; right: 0; text-align: center; font-size: 7px; font-weight: 800; color: #B91C1C; font-style: normal; }
+.m-fichier i.xls { background: #E7F5EC; border-color: #B7DFC5; }
+.m-fichier i.xls::after { content: 'XLSX'; color: #15803D; }
+.m-doc { position: absolute; left: 14px; right: 14px; top: 20px; bottom: 24px; z-index: 620; background: #fff; border-radius: 3px; box-shadow: 0 12px 40px rgba(0,0,0,.35); padding: 18px 14px; font-size: 10px; color: #333; }
+.m-doc h4 { margin: 0 0 2px; font-size: 18px; color: #1F2433; }
+.m-doc .m-doc__s { font-size: 11px; color: #6B7280; margin-bottom: 8px; }
+.m-doc .m-doc__blocs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-bottom: 6px; }
+.m-doc .m-doc__blocs span { background: #F3F4F7; border-radius: 3px; padding: 5px; font-size: 9px; }
+.m-doc .m-doc__blocs b { display: block; font-size: 12px; color: #1F2433; }
+.m-doc table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.m-doc th, .m-doc td { border-bottom: 1px solid #E5E7EB; padding: 5px 3px; text-align: left; font-size: 10px; vertical-align: top; }
+.m-doc th { background: #F3F4F7; }
+.m-doc td small { display: block; color: #9CA3AF; font-size: 8.5px; }
+.m-doc .pos { color: #059669; font-weight: 700; } .m-doc .neg { color: #D97706; font-weight: 700; }
+.m-pied { position: absolute; bottom: 12px; left: 14px; right: 14px; font-size: 9px; color: #9CA3AF; text-align: center; }
+.m-vide { border: 1.5px dashed var(--t-border); border-radius: 16px; background: #fff; padding: 16px; text-align: center; }
+.m-vide svg { display: block; margin: 0 auto 6px; }
+.m-vide__t { font-size: 13px; font-weight: 500; color: var(--t-text2); }
+.m-vide__s { font-size: 11px; color: var(--t-text3); margin-top: 2px; }
+.m-mono { font-family: var(--mono); font-size: 12px; color: var(--t-text2); }
+.bulle { max-width: 210px; }
+.toc__nav a::before { content: none; }
+.m-defile { transition: transform .8s cubic-bezier(.45,.05,.25,1); }
+.m-bloc { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.m-defile.is-on { transform: translateY(var(--y)); }
+.tel__statut { background: var(--t-bg); }
+.tel__statut, .m-barre, .s-tete, .tel__onglets { transition: filter .3s; }
+.tel__ecran:has(.m-voile:not(.is-hidden)) :is(.tel__statut, .m-barre, .s-tete, .tel__onglets) { filter: brightness(.5); }
+.tel__ecran:has(.voile:not(.is-hidden)) :is(.tel__statut, .m-barre, .s-tete, .tel__onglets) { filter: brightness(.65); }
+.m-feuille { padding-bottom: 22px; }
+.m-feuille__t { font-size: 17px; font-weight: 600; text-align: center; margin-bottom: 12px; }
+.m-opt { display: flex; align-items: center; gap: 12px; background: var(--t-bg); border-radius: 12px; padding: 12px 14px; font-size: 14.5px; font-weight: 500; margin-bottom: 8px; transition: transform .15s, background .2s; }
+.m-opt.is-on { background: #E9EAF0; transform: scale(.98); }
+.m-opt svg { flex: none; }
+/* accueil */
+.a-tete { display: flex; align-items: center; gap: 6px; padding: 14px 16px 0; }
+.a-rond { width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 1px solid var(--t-border); flex: none; }
+.a-rond--noir { background: #1F2433; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; border: 0; }
+.a-halo { width: 150px; height: 150px; border-radius: 50%; background: #ECFDF5; display: grid; place-items: center; margin: 70px auto 16px; }
+.a-disque { width: 126px; height: 126px; border-radius: 50%; background: #059669; box-shadow: 0 8px 30px rgba(5,150,105,.3); display: grid; place-items: center; }
+.a-disque::after { content: ''; border-left: 40px solid #fff; border-top: 24px solid transparent; border-bottom: 24px solid transparent; margin-left: 8px; }
+/* fiche élève */
+.f-id { display: flex; align-items: center; gap: 12px; padding: 14px; }
+.f-photo { width: 56px; height: 56px; border-radius: 50%; background: var(--t-participation); color: #fff; display: grid; place-items: center; font-size: 22px; font-weight: 600; position: relative; flex: none; }
+.f-photo .plus { position: absolute; right: -3px; bottom: -3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 2px solid var(--t-bg); color: var(--t-participation); font-size: 15px; font-weight: 700; display: grid; place-items: center; line-height: 1; }
+.f-photo .visage { position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: radial-gradient(circle at 50% 38%, #C9B8A6 0 17%, transparent 17.5%), radial-gradient(ellipse at 50% 100%, #8C9AB3 0 42%, transparent 42.5%), #DCE3EE; }
+.f-qr { width: 40px; height: 40px; border-radius: 10px; background: #F5F6FF; border: 1px solid #C7CBF8; color: var(--t-primary); font-weight: 700; font-size: 12px; display: grid; place-items: center; margin-left: auto; flex: none; transition: transform .15s; }
+.f-qr.is-on { transform: scale(.92); }
+.f-titre { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.f-pastilles { display: grid; grid-template-columns: repeat(6, 1fr); text-align: center; gap: 2px; }
+.f-pastilles b { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: 13px; margin: 0 auto 3px; }
+.f-pastilles span { font-size: 9px; color: var(--t-text2); }
+.f-ev { display: flex; align-items: center; gap: 9px; background: #fff; border-radius: 12px; padding: 8px 10px; border: 1px solid #EEEEF2; transition: box-shadow .25s; }
+.f-ev.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.18); }
+.f-ev b { width: 26px; height: 26px; border-radius: 50%; color: #fff; display: grid; place-items: center; font-size: 12px; flex: none; }
+.f-ev .t { font-size: 12.5px; font-weight: 500; }
+.f-ev .n { font-size: 11px; color: var(--t-text2); font-style: italic; }
+.f-ev .d { margin-left: auto; text-align: right; font-size: 10.5px; color: var(--t-text2); line-height: 1.3; }
+/* carte à tampons */
+.f-tampons { border: 2px solid #8B7355; border-radius: 16px; background: #FBF7F2; padding: 12px; }
+.f-tampons__l { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6B5A43; margin-bottom: 6px; }
+.f-medaille { width: 14px; height: 14px; border-radius: 50%; background: #8B7355; box-shadow: inset 0 0 0 3px #C2A983; flex: none; }
+.f-cpt { margin-left: auto; background: #8B7355; color: #fff; font-weight: 700; font-size: 11px; padding: 1px 8px; border-radius: 999px; }
+.f-cpt--plein { background: #22C55E; }
+.f-barre { height: 6px; border-radius: 3px; background: #E9DFD2; overflow: hidden; margin-bottom: 10px; }
+.f-barre span { display: block; height: 100%; background: #8B7355; border-radius: 3px; transition: width .6s; }
+.f-cases { display: grid; grid-template-columns: repeat(5, 40px); gap: 7px; justify-content: center; }
+.f-case { width: 40px; height: 40px; border-radius: 12px; border: 1.5px dashed #C9B79E; background: #fff; display: grid; place-items: center; position: relative; transition: all .3s; }
+.f-case.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.f-case i { width: 16px; height: 16px; border-radius: 50%; background: var(--c); }
+.f-case--pleine { background: color-mix(in srgb, var(--c) 12%, #fff); border: 1.5px solid color-mix(in srgb, var(--c) 38%, #fff); }
+.f-tamp { position: absolute; inset: -1.5px; border-radius: 12px; background: color-mix(in srgb, var(--c) 12%, #fff); border: 1.5px solid color-mix(in srgb, var(--c) 38%, #fff); display: grid; place-items: center; }
+.f-tamp i { width: 16px; height: 16px; border-radius: 50%; background: var(--c); }
+.f-bonus { margin-top: 10px; background: var(--t-primary); color: #fff; text-align: center; font-weight: 600; font-size: 13px; border-radius: 12px; padding: 9px; transition: transform .15s; }
+.f-bonus.is-on { transform: scale(.96); }
+.f-cat { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--t-border); font-size: 13.5px; transition: background .2s; border-radius: 8px; }
+.f-cat:last-child { border-bottom: 0; }
+.f-cat i { width: 22px; height: 22px; border-radius: 50%; background: var(--c); flex: none; }
+.f-cat.is-on { background: var(--t-primary-soft); }
+/* séance (étiquettes) */
+.s-tete { display: flex; align-items: center; padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--t-border); flex: none; }
+.s-annuler { color: #EF4444; font-size: 12.5px; font-weight: 500; width: 58px; }
+.s-centre { flex: 1; text-align: center; line-height: 1.25; }
+.s-centre b { display: block; font-size: 14px; }
+.s-centre span { font-size: 11px; color: #059669; font-weight: 600; }
+.s-centre b span { color: inherit; font-size: inherit; font-weight: inherit; }
+.s-terminer { background: #059669; color: #fff; font-size: 11.5px; font-weight: 600; padding: 6px 10px; border-radius: 9px; }
+.s-seg { display: flex; gap: 6px; padding: 8px 12px 0; }
+.s-seg__piste { flex: 1; display: flex; background: #EDEEF2; border-radius: 10px; padding: 3px; }
+.s-seg__piste span { flex: 1; text-align: center; font-size: 12px; padding: 6px; border-radius: 8px; color: #6B7280; }
+.s-seg__piste .actif { background: #fff; color: var(--t-text); font-weight: 600; box-shadow: 0 1px 3px rgba(20,25,40,.08); }
+.s-carre { width: 34px; border-radius: 10px; background: #fff; border: 1px solid var(--t-border); }
+.s-outils { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; padding: 8px 12px 0; }
+.s-outils span { background: #fff; border: 1px solid var(--t-border); border-radius: 9px; font-size: 8.5px; text-align: center; padding: 5px 0 4px; color: var(--t-text2); }
+.s-outils span::before { content: ''; display: block; width: 13px; height: 13px; margin: 0 auto 2px; border-radius: 4px; border: 1.6px solid currentColor; opacity: .7; }
+.s-tags { display: flex; gap: 5px; padding: 8px 12px 0; overflow: hidden; white-space: nowrap; }
+.s-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; padding: 4px 8px; border-radius: 999px; border: 1px solid var(--c); background: color-mix(in srgb, var(--c) 12%, #fff); flex: none; transition: transform .2s; }
+.s-tag.is-on { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.s-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.s-aide { text-align: center; font-size: 11px; color: var(--t-text3); padding: 8px 0 6px; height: 30px; }
+.s-aide .toast { position: static; translate: none; display: inline-block; background: none; color: var(--t-primary); box-shadow: none; padding: 0; font-weight: 600; font-size: 11px; }
+.s-grille { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; padding: 0 12px; }
+.s-grille .t-place { height: 44px; font-size: 10px; }
+.t-place.s-tagge.is-on { border: 2px solid #3B82F6; background: #E4EEFE; box-shadow: none; }
+.s-point { position: absolute; top: 3px; left: 3px; width: 7px; height: 7px; border-radius: 50%; background: #3B82F6; box-shadow: 0 0 0 1.5px #fff; }
+.s-tableau { margin: 8px 12px; height: 20px; background: #EDEEF2; border-radius: 8px; font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: #6B7280; display: grid; place-items: center; font-weight: 600; }
+/* qr */
+.m-qr { width: 170px; height: 170px; margin: 4px auto 10px; padding: 12px; background: #fff; border: 1px solid var(--t-border); border-radius: 16px; }
+.m-qr svg { width: 100%; height: 100%; display: block; }
+.m-recadre { position: absolute; inset: 0; z-index: 640; background: #111; display: grid; place-items: center; }
+.m-recadre__img { width: 240px; height: 320px; background: radial-gradient(circle at 50% 36%, #C9B8A6 0 13%, transparent 13.5%), radial-gradient(ellipse at 50% 92%, #8C9AB3 0 36%, transparent 36.5%), #DCE3EE; position: relative; }
+.m-recadre__cadre { position: absolute; left: 0; right: 0; top: 40px; height: 240px; border: 2px solid #fff; box-shadow: 0 0 0 999px rgba(0,0,0,.55); }
+.m-recadre__ok { position: absolute; bottom: 30px; right: 30px; color: #fff; font-weight: 600; font-size: 14px; }
+.m-fleche { text-align: center; font-size: 22px; color: var(--t-primary); line-height: 1; }
+.m-deux { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.m-deux > div { border-radius: 12px; padding: 10px; font-size: 12px; }
+.m-deux .tel-cote { background: #ECFDF5; border: 1px solid #A7E3C9; }
+.m-deux .serv-cote { background: #EEF0FF; border: 1px solid #C7CBF8; }
+.m-deux h5 { margin: 0 0 6px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--t-text2); }
+.m-barre-k { text-decoration: line-through; color: var(--t-text3); }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Application téléphone</a> › Classes et élèves</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#acces">L'onglet Classes</a></li>
+      <li><a href="#mes-classes">Mes classes</a></li>
+      <li><a href="#aucune-classe">Aucune classe sur le téléphone</a></li>
+      <li><a href="#fiche-classe">La fiche d'une classe</a></li>
+      <li><a href="#renommer">Renommer une classe</a></li>
+      <li><a href="#pdf-classe">Bilan de classe en PDF</a></li>
+      <li><a href="#supprimer-classe">Supprimer une classe</a></li>
+      <li><a href="#vrais-noms">Vrais noms et pseudonymes</a></li>
+      <li><a href="#amenagements">Pastilles PAP, PPRE, PAI</a></li>
+      <li><a href="#liste-eleves">La liste des élèves</a></li>
+      <li><a href="#classe-sans-eleve">Une classe sans élève</a></li>
+      <li><a href="#ajouter">Ajouter un élève</a></li>
+      <li><a href="#importer">Importer un fichier Excel</a></li>
+      <li><a href="#retirer">Retirer un élève de la liste</a></li>
+      <li><a href="#fiche-eleve">La fiche élève</a></li>
+      <li><a href="#photo">Photo de l'élève</a></li>
+      <li><a href="#qr">Accès élève par QR code</a></li>
+      <li><a href="#resume">Le résumé</a></li>
+      <li><a href="#historique">L'historique</a></li>
+      <li><a href="#pdf-eleve">Historique en PDF</a></li>
+      <li><a href="#tampons">La carte à tampons</a></li>
+      <li><a href="#supprimer-eleve">Supprimer un élève</a></li>
+      <li><a href="#etiquettes">Étiquettes de surlignage</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../telephone/pendant-la-seance.html">◀ Pendant la séance</a><a href="../telephone/groupes-salles-et-plans.html">Groupes, salles et plans ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Application téléphone · Préparer</div>
+      <h1>Classes et élèves</h1>
+      <p>L'onglet Classes du téléphone réunit les classes, la liste et la fiche de chaque élève. Les vrais noms saisis ici ne quittent jamais le téléphone : le site et le serveur ne connaissent que le prénom suivi de deux lettres.</p>
+      <div class="chap__resume"><span>Onglet Classes</span><span>Téléphone</span><span>Marche sans réseau</span></div>
+    </header>
+
+    <!-- ============================================================ classe-acces -->
+    <section class="fiche fiche--etroite" id="acces">
+      <div class="fiche__texte">
+        <h2>L'onglet Classes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Barre du bas › Classes</span></p>
+        <p class="fiche__but">C'est la seule porte vers les classes, les élèves, les groupes de classe et les plans. Aucun bouton de l'accueil n'y mène : on passe par la barre du bas.</p>
+        <ol class="etapes">
+          <li data-cursor="#ca-tab" data-action="tap">Depuis l'accueil, toucher l'onglet <span class="btn-nom">Classes</span> (le livre ouvert), deuxième de la barre du bas.</li>
+          <li data-cursor="#ca-titre">L'écran <b>Mes classes</b> s'ouvre et l'onglet passe en indigo.</li>
+          <li data-cursor="#ca-barre" data-duration="3400">La barre a quatre onglets : <b>Accueil</b>, <b>Classes</b>, <b>Historique</b>, <b>Réunions</b>. Elle disparaît sur la fiche d'un élève, l'éditeur de plan et les salles, qui s'ouvrent en plein écran.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les salles n'ont pas d'onglet : on n'y arrive que par un lien, quand aucune salle n'existe encore.</li>
+            <li>La fiche d'un élève ne s'ouvre que depuis la fiche de sa classe.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-corps">
+            <div data-at="1" class="repli">
+              <div class="a-tete">
+                <div style="flex:1"><div class="m-sous" style="font-size:14px">Bonjour,</div><div class="m-h1">Martin</div></div>
+                <span class="a-rond"></span><span class="a-rond"></span><span class="a-rond a-rond--noir">M</span>
+              </div>
+              <div class="a-halo"><div class="a-disque"></div></div>
+              <div style="text-align:center;font-size:18px;font-weight:600">Démarrer une séance</div>
+              <div class="m-sous" style="text-align:center;padding:4px 30px 0">Suivre la participation en classe en moins de 2 secondes</div>
+            </div>
+            <div class="m-pile glisse-gauche repli" data-from="2">
+              <div><div class="m-h1" id="ca-titre" style="display:inline-block">Mes classes</div><div class="m-sous">5 classes · 128 élèves</div></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--1">3A</span><div><div class="m-cl__n">3A</div><div class="m-cl__s">24 élèves · 18 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--2">3B</span><div><div class="m-cl__n">3B</div><div class="m-cl__s">27 élèves · 17 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--3">4A</span><div><div class="m-cl__n">4A</div><div class="m-cl__s">25 élèves · 15 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--1">4B</span><div><div class="m-cl__n">4B</div><div class="m-cl__s">26 élèves · 16 séances</div></div><span class="m-chev">›</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets" id="ca-barre">
+            <span data-on="1">Accueil</span>
+            <span id="ca-tab" data-on="2-3">Classes</span>
+            <span>Historique</span>
+            <span>Réunions</span>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ classe-liste -->
+    <section class="fiche fiche--etroite" id="mes-classes">
+      <div class="fiche__texte">
+        <h2>Mes classes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes</span></p>
+        <p class="fiche__but">Toutes les classes d'un coup d'œil, avec pour chacune le nombre d'élèves et de séances déjà faites.</p>
+        <ol class="etapes">
+          <li data-cursor="#cl-sous">En haut, le titre <b>Mes classes</b> et le décompte : « 5 classes · 128 élèves ».</li>
+          <li data-cursor="#cl-c1" data-duration="3400">Chaque carte : une tuile au nom court de la classe (ses trois premiers caractères si le nom est long), le nom, puis « 24 élèves · 18 séances ».</li>
+          <li data-cursor="#cl-c4" data-action="drag" data-drag-to="#cl-c2">Faire défiler la liste du doigt si elle dépasse l'écran.</li>
+          <li data-cursor="#cl-c5" data-action="tap">Toucher une carte pour ouvrir la fiche de la classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La liste est lue dans le téléphone : elle s'affiche sans réseau.</li>
+            <li>Seules les séances terminées sont comptées.</li>
+            <li>On ne crée pas de classe sur le téléphone : elles se créent sur le site, puis descendent à la synchronisation, lancée d'elle-même depuis l'accueil.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-corps">
+            <div class="m-pile m-defile" data-on="3-4" style="--y:-150px" id="cl-pile">
+              <div><div class="m-h1">Mes classes</div><div class="m-sous" id="cl-sous">5 classes · 128 élèves</div></div>
+              <div class="m-carte m-cl" id="cl-c1"><span class="m-tuile m-tuile--1">3A</span><div><div class="m-cl__n">3A</div><div class="m-cl__s">24 élèves · 18 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl" id="cl-c2"><span class="m-tuile m-tuile--2">3B</span><div><div class="m-cl__n">3B</div><div class="m-cl__s">27 élèves · 17 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--3">4A</span><div><div class="m-cl__n">4A</div><div class="m-cl__s">25 élèves · 15 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl" id="cl-c4"><span class="m-tuile m-tuile--1">4B</span><div><div class="m-cl__n">4B</div><div class="m-cl__s">26 élèves · 16 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl" id="cl-c5" data-on="4"><span class="m-tuile m-tuile--2">5E</span><div><div class="m-cl__n">5E</div><div class="m-cl__s">26 élèves · 19 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--3">AP</span><div><div class="m-cl__n">AP</div><div class="m-cl__s">0 élève · 0 séance</div></div><span class="m-chev">›</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ classe-liste-vide -->
+    <section class="fiche fiche--etroite" id="aucune-classe">
+      <div class="fiche__texte">
+        <h2>Aucune classe sur le téléphone</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes</span></p>
+        <p class="fiche__but">Au tout premier lancement, ou sur un compte neuf, l'écran dit où créer les classes.</p>
+        <ol class="etapes">
+          <li data-cursor="#cv-roue">Pendant le premier chargement : une roue indigo et « Chargement des classes... ».</li>
+          <li data-cursor="#cv-carte" data-duration="3200">Sans classe : la carte <b>Aucune classe</b> et le texte « Créez vos classes depuis l'application web, puis synchronisez. »</li>
+          <li data-cursor="#cv-carte">Créer les classes sur le site, puis revenir à l'accueil du téléphone : la synchronisation les fait descendre.</li>
+          <li data-cursor="#cv-l1">Les classes apparaissent dans <b>Mes classes</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Rien n'est cliquable dans cet état ; le décompte « classes · élèves » est masqué.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html">les classes sur le site</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-corps">
+            <div class="m-pile">
+              <div><div class="m-h1">Mes classes</div><div class="m-sous" data-from="4">5 classes · 128 élèves</div></div>
+              <div data-at="1" class="repli" style="text-align:center;padding-top:150px;color:var(--t-primary)"><span class="m-roue" id="cv-roue"></span><div class="m-sous" style="margin-top:8px">Chargement des classes...</div></div>
+              <div class="m-carte zoom repli" id="cv-carte" data-at="2-3" style="margin-top:110px;padding:26px 20px;text-align:center">
+                <div style="width:72px;height:72px;border-radius:50%;background:#EEF0FF;display:grid;place-items:center;margin:0 auto 12px"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#4F46E5" stroke-width="1.8" stroke-linejoin="round"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></svg></div>
+                <div style="font-size:19px;font-weight:700">Aucune classe</div>
+                <div class="m-sous" style="font-size:14px;margin-top:6px">Créez vos classes depuis l'application web, puis synchronisez.</div>
+              </div>
+              <div class="m-carte m-cl glisse-haut repli" id="cv-l1" data-from="4"><span class="m-tuile m-tuile--1">3A</span><div><div class="m-cl__n">3A</div><div class="m-cl__s">24 élèves · 0 séance</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl glisse-haut" data-from="4"><span class="m-tuile m-tuile--2">3B</span><div><div class="m-cl__n">3B</div><div class="m-cl__s">27 élèves · 0 séance</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl glisse-haut" data-from="4"><span class="m-tuile m-tuile--3">4A</span><div><div class="m-cl__n">4A</div><div class="m-cl__s">25 élèves · 0 séance</div></div><span class="m-chev">›</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ classe-fiche -->
+    <section class="fiche fiche--etroite" id="fiche-classe">
+      <div class="fiche__texte">
+        <h2>La fiche d'une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe</span></p>
+        <p class="fiche__but">Tout ce qui concerne une classe tient sur un seul écran qui défile : informations, élèves, groupes, plans par salle, export et suppression.</p>
+        <ol class="etapes">
+          <li data-cursor="#cf-titre">En haut : <span class="btn-nom">‹ Retour</span> en vert, le nom de la classe, et <span class="btn-nom">PDF</span> à droite.</li>
+          <li data-cursor="#cf-info" data-duration="3200">La première carte : <b>Nom</b> (suivi de <span class="ic ic-crayon" aria-hidden="true"></span> pour le modifier), <b>Creee le</b> et le nombre d'<b>Eleves</b>.</li>
+          <li data-cursor="#cf-l3" data-action="drag" data-drag-to="#cf-info" data-duration="3200">Faire défiler : sections <b>Eleves</b>, <b>Groupes</b> et <b>Plan de classe</b>.</li>
+          <li data-cursor="#cf-danger">Tout en bas, l'encadré rouge <b>Zone de danger</b>.</li>
+          <li data-cursor="#cf-retour" data-action="tap">Revenir à la liste avec <span class="btn-nom">‹ Retour</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les libellés de cet écran sont écrits sans accents dans l'application (« Creee le », « Eleves »).</li>
+            <li>Tout est lu dans le téléphone : la fiche s'ouvre sans réseau.</li>
+            <li>Si la classe a été supprimée entre-temps, l'écran affiche « Classe non trouvee ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" id="cf-titre"><span class="m-barre__g" id="cf-retour" data-on="5">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-defile" data-on="3-5" style="--y:-300px">
+            <div class="m-defile" data-on="4-5" style="--y:-170px">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre" id="cf-info">
+                <div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val">3A <i><span class="ic ic-crayon" aria-hidden="true"></span></i></span></div>
+                <div class="m-ligne"><span class="m-lib">Creee le</span><span class="m-val">2 septembre 2026</span></div>
+                <div class="m-ligne"><span class="m-lib">Eleves</span><span class="m-val">24</span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-av">A</span><div class="m-id"><div class="m-nom">Adam KE</div><div class="m-pseudo">Adam KE</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Inès Dupré</div><div class="m-pseudo">Inès DU</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne" id="cf-l3"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Iris TA</div><div class="m-pseudo">Iris TA</div></div><span class="m-badges"><span class="m-badge">PAP</span></span><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">J</span><div class="m-id"><div class="m-nom">Jade LU</div><div class="m-pseudo">Jade LU</div></div><span class="m-chev">›</span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Groupes</span><span class="m-pbtn">Gérer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span style="width:12px;height:12px;border-radius:50%;background:#4F46E5"></span><span class="m-nom">Groupe 1</span><span class="m-pseudo">12 élèves</span><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span style="width:12px;height:12px;border-radius:50%;background:#059669"></span><span class="m-nom">Groupe 2</span><span class="m-pseudo">12 élèves</span><span class="m-chev">›</span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Plan de classe</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><div class="m-id"><div class="m-nom">Salle 310</div><div class="m-pseudo">5 x 7 places</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><div class="m-id"><div class="m-nom">Labo 2</div><div class="m-pseudo">4 x 6 places</div></div><span class="m-chev">›</span></div>
+              </div>
+              <div class="m-danger" id="cf-danger" style="margin-top:10px"><div class="m-danger__t">Zone de danger</div><div class="m-rbtn">Supprimer cette classe</div><div class="m-danger__p">Cette action supprimera definitivement toutes les donnees de la classe (RGPD).</div></div>
+            </div>
+            </div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ classe-renommer -->
+    <section class="fiche fiche--etroite" id="renommer">
+      <div class="fiche__texte">
+        <h2>Renommer une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Nom</span></p>
+        <p class="fiche__but">Corriger le nom d'une classe depuis le téléphone, sans passer par le site.</p>
+        <ol class="etapes">
+          <li data-cursor="#cr-nom" data-action="tap">Dans la première carte, toucher le nom suivi de <span class="ic ic-crayon" aria-hidden="true"></span>.</li>
+          <li data-cursor="#cr-champ">La fenêtre <b>Modifier la classe</b> s'ouvre ; le clavier sort sur le champ, déjà rempli.</li>
+          <li data-cursor="#cr-champ" data-duration="3000">Taper le nouveau nom.</li>
+          <li data-cursor="#cr-ok" data-action="tap">Toucher <span class="btn-nom">Enregistrer</span>. <span class="btn-nom">Annuler</span>, ou un appui sur le fond assombri, ferme sans rien changer.</li>
+          <li data-cursor="#cr-nom">Le nouveau nom s'affiche aussitôt, en haut et dans la carte.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le nom est enregistré dans le téléphone, puis envoyé au site à la prochaine synchronisation : cela marche sans réseau.</li>
+            <li><span class="btn-nom">Enregistrer</span> reste grisé tant que le champ est vide ; les espaces au début et à la fin sont retirés.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t"><span data-to="4" class="repli">3A</span><span data-from="5" class="repli">3e A</span></span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val" id="cr-nom"><span data-to="4" class="repli">3A</span><span data-from="5" class="repli">3e A</span> <i><span class="ic ic-crayon" aria-hidden="true"></span></i></span></div>
+                <div class="m-ligne"><span class="m-lib">Creee le</span><span class="m-val">2 septembre 2026</span></div>
+                <div class="m-ligne"><span class="m-lib">Eleves</span><span class="m-val">24</span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-av">A</span><div class="m-id"><div class="m-nom">Adam KE</div><div class="m-pseudo">Adam KE</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Inès Dupré</div><div class="m-pseudo">Inès DU</div></div><span class="m-chev">›</span></div>
+              </div>
+            </div>
+            <div class="m-voile" data-at="2-4"></div>
+            <div class="m-fen m-fen--haut zoom" data-at="2-4" style="top:40px">
+              <div class="m-fen__t">Modifier la classe</div>
+              <div class="m-champ is-on" id="cr-champ"><span data-at="2" class="repli">3A</span><span data-type="3e A" data-type-at="3"></span></div>
+              <div class="m-actions"><span class="m-texte-btn">Annuler</span><span class="m-vbtn" id="cr-ok" data-on="4">Enregistrer</span></div>
+            </div>
+            <div class="m-clavier glisse-haut" data-at="2-4"><b></b><b></b><b></b><b></b></div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ classe-export-pdf -->
+    <section class="fiche fiche--etroite" id="pdf-classe">
+      <div class="fiche__texte">
+        <h2>Bilan de classe en PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › PDF</span></p>
+        <p class="fiche__but">Fabriquer un « Bilan de Classe » (les compteurs de chaque élève) et l'envoyer par courriel, le ranger ou l'imprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#cp-pdf" data-action="tap">Toucher <span class="btn-nom">PDF</span> en haut à droite de la fiche de classe.</li>
+          <li data-cursor="#cp-pdf">Une roue remplace le mot le temps de la fabrication.</li>
+          <li data-cursor="#cp-fichier" data-duration="3200">La feuille de partage du téléphone s'ouvre, au nom du fichier : choisir l'application de destination.</li>
+          <li data-cursor="#cp-table" data-duration="3800">Le document : période, totaux, puis une ligne par élève avec ses implications (+), malus (-), absences, remarques, sorties et le bilan, en vert s'il est positif, en orange s'il est négatif.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le PDF est fabriqué dans le téléphone, sans réseau. Le bouton est grisé si la classe n'a aucun élève.</li>
+            <li class="important">Le document contient les vrais noms connus de ce téléphone, en gras au-dessus du pseudonyme : le partager fait sortir ces noms du téléphone.</li>
+            <li>Le fichier s'appelle par exemple « bilan_3A_2026-11-26.pdf ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#pdf-eleve">historique d'un élève en PDF</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d" id="cp-pdf" data-on="1"><span data-at="1,3-4" class="repli">PDF</span><span data-at="2" class="m-roue repli" style="width:14px;height:14px;border-width:2px"></span></span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val">3A <i><span class="ic ic-crayon" aria-hidden="true"></span></i></span></div>
+                <div class="m-ligne"><span class="m-lib">Creee le</span><span class="m-val">2 septembre 2026</span></div>
+                <div class="m-ligne"><span class="m-lib">Eleves</span><span class="m-val">24</span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-av">A</span><div class="m-id"><div class="m-nom">Adam KE</div><div class="m-pseudo">Adam KE</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Inès Dupré</div><div class="m-pseudo">Inès DU</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Lina Bonnet</div><div class="m-pseudo">Lina BO</div></div><span class="m-chev">›</span></div>
+              </div>
+            </div>
+            <div class="voile" data-at="3"></div>
+            <div class="feuille" data-at="3">
+              <div class="m-fichier" id="cp-fichier"><i></i>bilan_3A_2026-11-26.pdf</div>
+              <div class="m-appli"><span><i></i>Courriel</span><span><i></i>Fichiers</span><span><i></i>Imprimer</span><span><i></i>Partage proche</span></div>
+            </div>
+            <div class="m-voile" data-at="4"></div>
+            <div class="m-doc zoom" data-at="4">
+              <h4>Bilan de Classe</h4>
+              <div class="m-doc__s">3A</div>
+              <div class="m-doc__blocs"><span>Eleves<b>24</b></span><span>Seances<b>18</b></span><span>Periode<b>2 sept. › 24 nov.</b></span></div>
+              <div class="m-doc__blocs"><span>Participations<b>312</b></span><span>Malus<b>96</b></span><span>Absences<b>21</b></span></div>
+              <table id="cp-table">
+                <tr><th>Eleve</th><th>+</th><th>-</th><th>Abs</th><th>Rem</th><th>Sort</th><th>Bilan</th></tr>
+                <tr><td><b>Adam KE</b></td><td>14</td><td>3</td><td>1</td><td>0</td><td>2</td><td class="pos">+11</td></tr>
+                <tr><td><b>Inès Dupré</b><small>Inès DU</small></td><td>18</td><td>2</td><td>0</td><td>1</td><td>1</td><td class="pos">+16</td></tr>
+                <tr><td><b>Iris TA</b></td><td>6</td><td>8</td><td>2</td><td>2</td><td>3</td><td class="neg">-2</td></tr>
+                <tr><td><b>Lina Bonnet</b><small>Lina BO</small></td><td>12</td><td>4</td><td>0</td><td>0</td><td>1</td><td class="pos">+8</td></tr>
+                <tr><td><b>Malo RI</b></td><td>9</td><td>5</td><td>1</td><td>0</td><td>2</td><td class="pos">+4</td></tr>
+                <tr><td><b>Naël CH</b></td><td>4</td><td>7</td><td>0</td><td>1</td><td>2</td><td class="neg">-3</td></tr>
+                <tr><td><b>Noé MA</b></td><td>16</td><td>1</td><td>0</td><td>0</td><td>0</td><td class="pos">+15</td></tr>
+              </table>
+              <div class="m-pied">Genere par Gestion Classe le 26/11/2026 a 17:05</div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ classe-supprimer -->
+    <section class="fiche fiche--etroite" id="supprimer-classe">
+      <div class="fiche__texte">
+        <h2>Supprimer une classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Zone de danger</span></p>
+        <p class="fiche__but">Effacer pour de bon une classe et tout ce qui s'y rattache (droit à l'effacement).</p>
+        <ol class="etapes">
+          <li data-cursor="#cs-zone">Descendre tout en bas de la fiche : encadré <b>Zone de danger</b>.</li>
+          <li data-cursor="#cs-btn" data-action="tap">Toucher <span class="btn-nom">Supprimer cette classe</span>.</li>
+          <li data-cursor="#cs-liste" data-duration="3400">La fenêtre <b>Supprimer la classe ?</b> dit ce qui sera effacé : élèves, séances, événements, plans de classe.</li>
+          <li data-cursor="#cs-ok" data-action="tap">Toucher <span class="btn-nom">Supprimer</span> pour confirmer, ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#cs-liste2">Retour à <b>Mes classes</b> : la classe a disparu.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">C'est irréversible : les vrais noms gardés sur le téléphone sont effacés avec la classe, et les groupes de classe partent aussi.</li>
+            <li>L'effacement se fait d'abord sur le téléphone, puis aussitôt sur le serveur. Sans réseau, la partie serveur n'est pas refaite plus tard : la classe peut redescendre à la synchronisation suivante, sous les seuls pseudonymes. Supprimer de préférence avec du réseau.</li>
+            <li>En cas d'échec, une alerte « Erreur » s'affiche.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">4B</span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" data-to="4" style="padding-left:20px;padding-right:20px">
+              <div class="m-sec"><span class="m-sec__t">Plan de classe</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><div class="m-id"><div class="m-nom">Salle 310</div><div class="m-pseudo">5 x 7 places</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><div class="m-id"><div class="m-nom">Labo 2</div><div class="m-pseudo">4 x 6 places</div></div><span class="m-chev">›</span></div>
+              </div>
+              <div class="m-danger" id="cs-zone" style="margin-top:10px"><div class="m-danger__t">Zone de danger</div><div class="m-rbtn" id="cs-btn" data-on="2">Supprimer cette classe</div><div class="m-danger__p">Cette action supprimera definitivement toutes les donnees de la classe (RGPD).</div></div>
+            </div>
+            <div class="m-voile" data-at="3-4"></div>
+            <div class="m-fen zoom" data-at="3-4" style="left:9%;right:9%">
+              <div class="m-triangle">!</div>
+              <div class="m-fen__t" style="margin-bottom:6px">Supprimer la classe ?</div>
+              <div class="m-fen__p">Cette action est irreversible. Toutes les donnees seront definitivement supprimees :</div>
+              <div class="m-decompte" id="cs-liste">• 26 eleve(s)<br>• 16 seance(s)<br>• 412 evenement(s)<br>• Plans de classe associes</div>
+              <div class="m-2btn"><span class="gris">Annuler</span><span class="rouge" id="cs-ok" data-on="4">Supprimer</span></div>
+            </div>
+          </div>
+          <div class="m-corps glisse-gauche" data-from="5" style="position:absolute;inset:30px 0 58px 0;background:var(--t-bg)">
+            <div class="m-pile" id="cs-liste2">
+              <div><div class="m-h1">Mes classes</div><div class="m-sous">4 classes · 102 élèves</div></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--1">3A</span><div><div class="m-cl__n">3A</div><div class="m-cl__s">24 élèves · 18 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--2">3B</span><div><div class="m-cl__n">3B</div><div class="m-cl__s">27 élèves · 17 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--3">4A</span><div><div class="m-cl__n">4A</div><div class="m-cl__s">25 élèves · 15 séances</div></div><span class="m-chev">›</span></div>
+              <div class="m-carte m-cl"><span class="m-tuile m-tuile--1">5E</span><div><div class="m-cl__n">5E</div><div class="m-cl__s">26 élèves · 19 séances</div></div><span class="m-chev">›</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-pseudonymisation -->
+    <section class="fiche fiche--etroite" id="vrais-noms">
+      <div class="fiche__texte">
+        <h2>Vrais noms et pseudonymes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Partout où un élève apparaît</span></p>
+        <p class="fiche__but">Le serveur et le site ne connaissent qu'un pseudonyme : le prénom suivi des deux premières lettres du nom. Le vrai nom ne quitte jamais le téléphone de l'enseignant.</p>
+        <ol class="etapes">
+          <li data-cursor="#ps-champs" data-duration="3200">À l'ajout d'un élève, à la main ou par un fichier Excel, on saisit son prénom et son nom.</li>
+          <li data-cursor="#ps-calcul" data-duration="3400">Le téléphone fabrique le pseudonyme : le prénom, une espace et les deux premières lettres du nom en capitales, sans point.</li>
+          <li data-cursor="#ps-serv" data-duration="3800">Seul le pseudonyme part au serveur. Le prénom et le nom restent rangés dans le téléphone et ne sont jamais synchronisés.</li>
+          <li data-cursor="#ps-l2" data-duration="3800">Dans les listes du téléphone, le vrai nom s'affiche, avec le pseudonyme en petit dessous. Un élève créé sur le site n'apparaît que sous son pseudonyme.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Changer de téléphone ou réinstaller l'application fait perdre les vrais noms : ils n'existent nulle part ailleurs.</li>
+            <li>Il n'y a pas d'écran pour ajouter ou corriger le vrai nom d'un élève qui existe déjà : seuls l'ajout et l'import le saisissent.</li>
+            <li>Les noms sont mis en forme : une majuscule au début de chaque mot.</li>
+            <li class="important">Exception : les PDF fabriqués par le téléphone contiennent les vrais noms connus ; les partager les fait sortir.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#ajouter">Ajouter un élève</a> · <a href="#importer">Importer un fichier Excel</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-av">A</span><div class="m-id"><div class="m-nom">Adam KE</div><div class="m-pseudo">Adam KE</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne" id="ps-l2" data-on="4"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Lina Bonnet</div><div class="m-pseudo">Lina BO</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">N</span><div class="m-id"><div class="m-nom">Noé MA</div><div class="m-pseudo">Noé MA</div></div><span class="m-chev">›</span></div>
+              </div>
+              <div class="bulle bulle--haut" data-at="4" style="position:relative;max-width:none;margin-top:4px">Lina : saisie sur ce téléphone, vrai nom connu. Adam et Noé : créés sur le site, pseudonyme seul.</div>
+            </div>
+            <div class="m-voile" data-at="1-3"></div>
+            <div class="m-fen m-fen--haut" data-at="1-3" style="top:30px">
+              <div class="m-fen__t">Ajouter un eleve</div>
+              <div id="ps-champs"><div class="m-champ">Lina</div><div class="m-champ">Bonnet</div></div>
+              <div data-from="2" class="zoom" id="ps-calcul" style="margin-top:14px;text-align:center">
+                <div style="font-size:14px"><b>Lina</b> <span style="color:var(--t-text3)">+</span> <b style="color:var(--t-primary)">BO</b>nnet</div>
+                <div class="m-fleche">↓</div>
+                <div style="display:inline-block;font-size:17px;font-weight:700;background:var(--t-primary-soft);color:var(--t-primary);border-radius:10px;padding:4px 14px">Lina BO</div>
+              </div>
+              <div data-from="3" class="m-deux glisse-haut" id="ps-serv" style="margin-top:14px">
+                <div class="tel-cote"><h5>Ce téléphone</h5><b>Lina Bonnet</b><br>Lina BO</div>
+                <div class="serv-cote"><h5>Serveur et site</h5><span class="m-barre-k">Lina Bonnet</span><br><b>Lina BO</b></div>
+              </div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-amenagements -->
+    <section class="fiche fiche--etroite" id="amenagements">
+      <div class="fiche__texte">
+        <h2>Pastilles PAP, PPRE, PAI</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Liste des élèves · plan de classe · séance</span></p>
+        <p class="fiche__but">Rappeler discrètement à l'enseignant qu'un élève bénéficie d'un dispositif d'accompagnement, sans jamais en montrer le contenu.</p>
+        <ol class="etapes">
+          <li data-cursor="#am-l1" data-duration="3200">Les dispositifs se cochent sur le site enseignant et descendent à la synchronisation : rien à faire sur le téléphone.</li>
+          <li data-cursor="#am-b1">Dans la liste des élèves, de petites pastilles indigo s'affichent juste avant le chevron, dans l'ordre PAP, PPRE, PAI.</li>
+          <li data-cursor="#am-case" data-duration="3200">Sur le plan de classe et en séance, les mêmes pastilles, en tout petit, dans le coin haut droit de la case.</li>
+          <li data-cursor="#am-case" data-duration="3600">Elles ne disent que l'existence du dispositif. Elles ne sont jamais envoyées vers l'écran projeté en classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seul le fait d'en bénéficier (oui ou non) est enregistré, jamais le contenu du dispositif.</li>
+            <li>On ne les modifie pas sur le téléphone. Elles n'apparaissent ni dans l'écran des groupes, ni dans la fiche élève.</li>
+            <li class="important">Règle du produit : aucun aménagement sur un écran projeté.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div data-at="1-2" class="repli m-bloc">
+            <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">5E</span><span class="m-barre__d">PDF</span></div>
+            <div class="m-corps">
+              <div class="m-pile" style="padding-left:20px;padding-right:20px">
+                <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+                <div class="m-carte m-carte--ombre">
+                  <div class="m-ligne"><span class="m-av">E</span><div class="m-id"><div class="m-nom">Éva RO</div><div class="m-pseudo">Éva RO</div></div><span class="m-chev">›</span></div>
+                  <div class="m-ligne" id="am-l1" data-on="2"><span class="m-av">H</span><div class="m-id"><div class="m-nom">Hugo PE</div><div class="m-pseudo">Hugo PE</div></div><span class="m-badges" id="am-b1"><span class="m-badge">PAP</span><span class="m-badge">PAI</span></span><span class="m-chev">›</span></div>
+                  <div class="m-ligne"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Léa GA</div><div class="m-pseudo">Léa GA</div></div><span class="m-chev">›</span></div>
+                  <div class="m-ligne"><span class="m-av">M</span><div class="m-id"><div class="m-nom">Malo RI</div><div class="m-pseudo">Malo RI</div></div><span class="m-badges"><span class="m-badge">PPRE</span></span><span class="m-chev">›</span></div>
+                  <div class="m-ligne"><span class="m-av">M</span><div class="m-id"><div class="m-nom">Mia CO</div><div class="m-pseudo">Mia CO</div></div><span class="m-chev">›</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div data-from="3" class="zoom repli m-bloc">
+            <div class="s-tete"><span class="s-annuler">Annuler</span><div class="s-centre"><b>5E · Salle 310</b><span>12 min</span></div><span class="s-terminer">Terminer</span></div>
+            <div class="s-aide" style="padding-top:14px">Maintenir appuyé sur un élève</div>
+            <div class="s-grille">
+              <div class="t-place">Éva</div><div class="t-place" id="am-case" data-on="3-4">Hugo<span style="position:absolute;top:2px;right:2px;display:flex;gap:1px"><span class="m-badge" style="font-size:6px;padding:0 2px">PAP</span><span class="m-badge" style="font-size:6px;padding:0 2px">PAI</span></span></div><div class="t-place t-place--vide"></div><div class="t-place">Léa</div><div class="t-place">Malo<span class="m-badge" style="position:absolute;top:2px;right:2px;font-size:6px;padding:0 2px">PPRE</span></div><div class="t-place">Mia</div>
+              <div class="t-place">Noé</div><div class="t-place">Rose</div><div class="t-place t-place--vide"></div><div class="t-place">Sacha</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div>
+            </div>
+            <div class="s-tableau">Tableau</div>
+            <div class="bulle bulle--haut" data-at="4" style="position:relative;margin:6px 18px 0;max-width:none">Sur le téléphone seulement. L'écran projeté en classe ne reçoit jamais ces pastilles.</div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-liste-classe -->
+    <section class="fiche fiche--etroite" id="liste-eleves">
+      <div class="fiche__texte">
+        <h2>La liste des élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Eleves</span></p>
+        <p class="fiche__but">Voir les élèves de la classe, ouvrir la fiche de l'un d'eux, en ajouter ou en importer.</p>
+        <ol class="etapes">
+          <li data-cursor="#el-sec">Sous la carte d'informations, la section <b>Eleves</b>, avec deux boutons : <span class="btn-nom">+ Ajouter</span> (vert) et <span class="btn-nom">Importer</span> (bleu).</li>
+          <li data-cursor="#el-l2" data-duration="3400">Chaque ligne : un rond vert à l'initiale, le vrai nom s'il est connu (sinon le pseudonyme), le pseudonyme en petit dessous, les pastilles éventuelles.</li>
+          <li data-cursor="#el-l3" data-action="tap">Toucher un élève ouvre sa fiche.</li>
+          <li data-cursor="#el-l4" data-action="long">Un appui long d'une demi-seconde propose de le retirer de la classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La liste est triée par pseudonyme, donc par prénom.</li>
+            <li>Elle est lue dans le téléphone : elle s'affiche sans réseau.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#fiche-eleve">La fiche élève</a> · <a href="#retirer">Retirer un élève</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val">3A <i><span class="ic ic-crayon" aria-hidden="true"></span></i></span></div>
+                <div class="m-ligne"><span class="m-lib">Creee le</span><span class="m-val">2 septembre 2026</span></div>
+                <div class="m-ligne"><span class="m-lib">Eleves</span><span class="m-val">24</span></div>
+              </div>
+              <div class="m-sec" id="el-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-av">A</span><div class="m-id"><div class="m-nom">Adam KE</div><div class="m-pseudo">Adam KE</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne" id="el-l2"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Inès Dupré</div><div class="m-pseudo">Inès DU</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne" id="el-l3" data-on="3"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Iris TA</div><div class="m-pseudo">Iris TA</div></div><span class="m-badges"><span class="m-badge">PAP</span></span><span class="m-chev">›</span></div>
+                <div class="m-ligne" id="el-l4" data-on="4"><span class="m-av">J</span><div class="m-id"><div class="m-nom">Jade LU</div><div class="m-pseudo">Jade LU</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Lina Bonnet</div><div class="m-pseudo">Lina BO</div></div><span class="m-badges"><span class="m-badge">PPRE</span></span><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">M</span><div class="m-id"><div class="m-nom">Malo RI</div><div class="m-pseudo">Malo RI</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">N</span><div class="m-id"><div class="m-nom">Naël CH</div><div class="m-pseudo">Naël CH</div></div><span class="m-chev">›</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-liste-vide -->
+    <section class="fiche fiche--etroite" id="classe-sans-eleve">
+      <div class="fiche__texte">
+        <h2>Une classe sans élève</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Eleves</span></p>
+        <p class="fiche__but">Une classe vide invite à la remplir.</p>
+        <ol class="etapes">
+          <li data-cursor="#ev-carte">À la place de la liste : la carte en pointillés « Aucun eleve dans cette classe ».</li>
+          <li data-cursor="#ev-pdf">Le bouton <span class="btn-nom">PDF</span> du haut reste grisé tant qu'il n'y a pas d'élève.</li>
+          <li data-cursor="#ev-imp" data-action="tap">Remplir la classe avec <span class="btn-nom">+ Ajouter</span> ou <span class="btn-nom">Importer</span>, en tête de section.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul><li>La carte elle-même n'est pas cliquable.</li></ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">AP</span><span class="m-barre__d m-barre__d--off" id="ev-pdf">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val">AP <i><span class="ic ic-crayon" aria-hidden="true"></span></i></span></div>
+                <div class="m-ligne"><span class="m-lib">Creee le</span><span class="m-val">5 septembre 2026</span></div>
+                <div class="m-ligne"><span class="m-lib">Eleves</span><span class="m-val">0</span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu" id="ev-imp" data-on="3">Importer</span></div>
+              <div class="m-vide" id="ev-carte">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>
+                <div class="m-vide__t">Aucun eleve dans cette classe</div>
+                <div class="m-vide__s">Importez des eleves depuis un fichier Excel (.xlsx)</div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Groupes</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-ajouter -->
+    <section class="fiche fiche--etroite" id="ajouter">
+      <div class="fiche__texte">
+        <h2>Ajouter un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › + Ajouter</span></p>
+        <p class="fiche__but">Inscrire un élève arrivé en cours d'année, directement sur le téléphone, même sans réseau.</p>
+        <ol class="etapes">
+          <li data-cursor="#ea-btn" data-action="tap">Toucher <span class="btn-nom">+ Ajouter</span>.</li>
+          <li data-cursor="#ea-prenom" data-duration="3000">La fenêtre <b>Ajouter un eleve</b> s'ouvre, le clavier sur <b>Prenom</b> : taper le prénom.</li>
+          <li data-cursor="#ea-nomc" data-duration="3000">Passer au champ <b>Nom</b> et taper le nom. <span class="btn-nom">Ajouter</span> n'est actif que si les deux champs sont remplis.</li>
+          <li data-cursor="#ea-ok" data-action="tap">Toucher <span class="btn-nom">Ajouter</span>, ou la touche Entrée du clavier.</li>
+          <li data-cursor="#ea-new" data-duration="3200">L'élève prend sa place alphabétique dans la liste, avec son pseudonyme dessous : « Noé MA ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le pseudonyme est calculé sur place ; seul lui partira au serveur, à la prochaine synchronisation. Le vrai nom reste sur ce téléphone.</li>
+            <li>Il n'y a pas de contrôle de doublon : vérifier que l'élève n'existe pas déjà.</li>
+            <li>Messages possibles : « Le prénom est requis », « Le nom est requis ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#vrais-noms">Vrais noms et pseudonymes</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn" id="ea-btn" data-on="1">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Lina Bonnet</div><div class="m-pseudo">Lina BO</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">M</span><div class="m-id"><div class="m-nom">Malo RI</div><div class="m-pseudo">Malo RI</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">N</span><div class="m-id"><div class="m-nom">Naël CH</div><div class="m-pseudo">Naël CH</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne repli glisse-droite" id="ea-new" data-from="5" data-on="5"><span class="m-av">N</span><div class="m-id"><div class="m-nom">Noé Martin</div><div class="m-pseudo">Noé MA</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">R</span><div class="m-id"><div class="m-nom">Rose VI</div><div class="m-pseudo">Rose VI</div></div><span class="m-chev">›</span></div>
+              </div>
+            </div>
+            <div class="m-voile" data-at="2-4"></div>
+            <div class="m-fen m-fen--haut zoom" data-at="2-4" style="top:30px">
+              <div class="m-fen__t">Ajouter un eleve</div>
+              <div class="m-champ" id="ea-prenom" data-on="2"><span class="m-ph repli" data-at="1">Prenom</span><span data-type="Noé" data-type-at="2"></span></div>
+              <div class="m-champ" id="ea-nomc" data-on="3"><span class="m-ph repli" data-to="2">Nom</span><span data-type="Martin" data-type-at="3"></span></div>
+              <div class="m-actions"><span class="m-texte-btn">Annuler</span><span class="m-vbtn m-vbtn--off repli" data-to="2">Ajouter</span><span class="m-vbtn repli" id="ea-ok" data-from="3" data-on="4">Ajouter</span></div>
+            </div>
+            <div class="m-clavier glisse-haut" data-at="2-4"><b></b><b></b><b></b><b></b></div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-import-excel -->
+    <section class="fiche fiche--etroite" id="importer">
+      <div class="fiche__texte">
+        <h2>Importer un fichier Excel</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › Importer</span></p>
+        <p class="fiche__but">Remplir une classe d'un coup à partir d'une liste Excel (export Pronote, liste du secrétariat).</p>
+        <ol class="etapes">
+          <li data-cursor="#ei-btn" data-action="tap">Toucher <span class="btn-nom">Importer</span> (bouton bleu).</li>
+          <li data-cursor="#ei-f1" data-action="tap" data-duration="3000">Le sélecteur de fichiers du téléphone s'ouvre : choisir un fichier .xlsx ou .xls.</li>
+          <li data-cursor="#ei-btn">Le bouton tourne pendant la lecture du fichier.</li>
+          <li data-cursor="#ei-ok" data-action="tap" data-duration="3200">L'alerte <b>Import reussi</b> donne le nombre d'élèves importés. Toucher <span class="btn-nom">OK</span> : la liste se recharge.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seule la première feuille est lue. La première ligne doit porter les titres de colonnes : le téléphone cherche « Nom » et « Prénom » (avec ou sans accent ou majuscule). À défaut, il prend la colonne 1 pour le nom et la colonne 2 pour le prénom.</li>
+            <li>Les lignes vides sont sautées ; une ligne sans nom ou sans prénom est ignorée sans message.</li>
+            <li class="important">Pas de contrôle de doublon : réimporter le même fichier crée les élèves une seconde fois.</li>
+            <li>Comme pour l'ajout à la main, les vrais noms restent sur ce téléphone ; seuls les pseudonymes partent au serveur. Cela marche sans réseau.</li>
+            <li>En cas de problème : « Erreur d'import » et la raison (fichier vide, colonnes absentes, aucun élève valide).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">4A</span><span class="m-barre__d repli" data-from="4">PDF</span><span class="m-barre__d m-barre__d--off repli" data-to="3">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre">
+                <div class="m-ligne"><span class="m-lib">Nom</span><span class="m-val">4A <i><span class="ic ic-crayon" aria-hidden="true"></span></i></span></div>
+                <div class="m-ligne"><span class="m-lib">Eleves</span><span class="m-val"><span data-to="3" class="repli">0</span><span data-from="4" class="repli">25</span></span></div>
+              </div>
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu" id="ei-btn" data-on="1"><span data-at="3" class="m-roue repli"></span><span data-at="1-2,4" class="repli">Importer</span></span></div>
+              <div class="m-vide" data-to="3">
+                <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#9CA3AF" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.6"/><path d="M15.5 14.3c3 .2 5.5 2.6 5.5 5.7"/></svg>
+                <div class="m-vide__t">Aucun eleve dans cette classe</div>
+                <div class="m-vide__s">Importez des eleves depuis un fichier Excel (.xlsx)</div>
+              </div>
+            </div>
+            <div class="voile" data-at="2"></div>
+            <div class="feuille" data-at="2">
+              <div style="font-size:15px;font-weight:600;margin-bottom:10px">Récents</div>
+              <div class="m-ligne" id="ei-f1" data-on="2" style="border-radius:10px"><div class="m-fichier"><i class="xls"></i><div>liste_4A.xlsx<div class="m-pseudo" style="font-weight:400">Téléchargements · 9 Ko</div></div></div></div>
+              <div class="m-ligne"><div class="m-fichier"><i class="xls"></i><div>liste_3B.xlsx<div class="m-pseudo" style="font-weight:400">Téléchargements · 10 Ko</div></div></div></div>
+              <div class="m-ligne"><div class="m-fichier"><i></i><div>progression.pdf<div class="m-pseudo" style="font-weight:400">Documents · 220 Ko</div></div></div></div>
+            </div>
+            <div class="m-voile" data-at="4" style="background:rgba(0,0,0,.35)"></div>
+            <div class="m-alerte zoom" data-at="4">
+              <div class="m-alerte__t">Import reussi</div>
+              <div class="m-alerte__p">25 eleve(s) importe(s)</div>
+              <div class="m-alerte__b"><span id="ei-ok" data-on="4">OK</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-retirer -->
+    <section class="fiche fiche--etroite" id="retirer">
+      <div class="fiche__texte">
+        <h2>Retirer un élève de la liste</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › appui long sur un élève</span></p>
+        <p class="fiche__but">Faire sortir un élève de la liste de la classe en gardant son historique.</p>
+        <ol class="etapes">
+          <li data-cursor="#er-l" data-action="long">Garder le doigt une demi-seconde sur la ligne de l'élève.</li>
+          <li data-cursor="#er-texte" data-duration="3400">L'alerte <b>Retirer l'eleve</b> demande confirmation et rappelle que les données historiques sont conservées.</li>
+          <li data-cursor="#er-ok" data-action="tap">Toucher <span class="btn-nom">Retirer</span>, ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#er-liste">L'élève disparaît aussitôt de la liste.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>C'est un retrait léger : l'élève est seulement masqué sur ce téléphone, ses événements restent.</li>
+            <li class="important">La synchronisation suivante peut remettre l'élève dans la liste. Pour faire disparaître un élève pour de bon, utiliser <span class="btn-nom">Supprimer l'eleve</span> dans sa fiche.</li>
+            <li>Pas de vibration sur ce geste.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#supprimer-eleve">Supprimer un élève</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+              <div class="m-carte m-carte--ombre" id="er-liste">
+                <div class="m-ligne"><span class="m-av">A</span><div class="m-id"><div class="m-nom">Adam KE</div><div class="m-pseudo">Adam KE</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">I</span><div class="m-id"><div class="m-nom">Inès Dupré</div><div class="m-pseudo">Inès DU</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne repli" id="er-l" data-to="3" data-on="1-3"><span class="m-av">J</span><div class="m-id"><div class="m-nom">Jade LU</div><div class="m-pseudo">Jade LU</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">L</span><div class="m-id"><div class="m-nom">Lina Bonnet</div><div class="m-pseudo">Lina BO</div></div><span class="m-chev">›</span></div>
+                <div class="m-ligne"><span class="m-av">M</span><div class="m-id"><div class="m-nom">Malo RI</div><div class="m-pseudo">Malo RI</div></div><span class="m-chev">›</span></div>
+              </div>
+            </div>
+            <div class="m-voile" data-at="2-3" style="background:rgba(0,0,0,.35)"></div>
+            <div class="m-alerte zoom" data-at="2-3">
+              <div class="m-alerte__t">Retirer l'eleve</div>
+              <div class="m-alerte__p" id="er-texte">Voulez-vous vraiment retirer "Jade LU" de cette classe ?<br><br>Les donnees historiques seront conservees.</div>
+              <div class="m-alerte__b"><span>Annuler</span><span id="er-ok" data-on="3">Retirer</span></div>
+            </div>
+          </div>
+          <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-fiche -->
+    <section class="fiche fiche--etroite" id="fiche-eleve">
+      <div class="fiche__texte">
+        <h2>La fiche élève</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › une classe › un élève</span></p>
+        <p class="fiche__but">Tout savoir d'un élève : photo, code de l'espace élève, totaux, carte à tampons, historique détaillé, export et suppression.</p>
+        <ol class="etapes">
+          <li data-cursor="#ef-tete">La fiche s'ouvre en plein écran, sans barre du bas : chevron ‹ à gauche, nom au centre, <span class="btn-nom">PDF</span> à droite.</li>
+          <li data-cursor="#ef-id" data-duration="3600">La carte d'identité : la photo (ou l'initiale) avec sa pastille +, le vrai nom ou le pseudonyme, le code de l'espace élève, et le bouton <span class="btn-nom">QR</span>.</li>
+          <li data-cursor="#ef-hist" data-action="drag" data-drag-to="#ef-res" data-duration="3400">Faire défiler : <b>Resume</b>, <b>Carte a tampons</b>, <b>Historique</b>, puis <b>Zone de danger</b>.</li>
+          <li data-cursor="#ef-back" data-action="tap">Revenir à la classe avec le chevron ‹.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le code de l'espace élève est lu sur le serveur : sans réseau, la carte montre le pseudonyme à sa place.</li>
+            <li>Le résumé et l'historique viennent du téléphone et s'affichent sans réseau.</li>
+            <li>Les tampons donnés depuis le site sont récupérés à chaque ouverture de la fiche.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" id="ef-tete" style="background:var(--t-bg);border:0"><span class="m-barre__g" id="ef-back" data-on="4" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Lina Bonnet</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-defile" data-on="3-4" style="--y:-330px">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre f-id" id="ef-id">
+                <span class="f-photo">L<span class="plus">+</span></span>
+                <div class="m-id"><div style="font-size:16px;font-weight:600">Lina Bonnet</div><div class="m-mono">K7P-2QX</div></div>
+                <span class="f-qr">QR</span>
+              </div>
+              <div class="m-carte m-carte--ombre" style="padding:12px" id="ef-res">
+                <div class="f-titre">Resume</div>
+                <div class="f-pastilles">
+                  <div><b class="c-part">12</b><span>Implication</span></div><div><b class="c-bav">4</b><span>Malus</span></div><div><b class="c-abs">1</b><span>Absence</span></div><div><b class="c-rem">2</b><span>Remarque</span></div><div><b class="c-sor">3</b><span>Sortie</span></div><div><b class="c-part">3</b><span>Retour</span></div>
+                </div>
+              </div>
+              <div class="f-tampons">
+                <div class="f-titre" style="margin-bottom:4px">Carte a tampons</div>
+                <div class="f-tampons__l"><span class="f-medaille"></span>Carte n°1 — Bois<span class="f-cpt">3/10</span></div>
+                <div class="f-barre"><span style="width:30%"></span></div>
+                <div class="f-cases">
+                  <span class="f-case f-case--pleine" style="--c:#FF9800"><i></i></span><span class="f-case f-case--pleine" style="--c:#4CAF50"><i></i></span><span class="f-case f-case--pleine" style="--c:#FF9800"><i></i></span><span class="f-case"></span><span class="f-case"></span>
+                  <span class="f-case"></span><span class="f-case"></span><span class="f-case"></span><span class="f-case"></span><span class="f-case"></span>
+                </div>
+              </div>
+              <div class="f-titre" id="ef-hist" style="margin:4px 0 0">Historique (25)</div>
+              <div class="f-ev"><b class="c-part">+</b><div><div class="t">Implication</div></div><div class="d">lun. 24 nov.<br>10:42</div></div>
+              <div class="f-ev"><b class="c-sor">S</b><div><div class="t">Sortie - Infirmerie</div></div><div class="d">jeu. 20 nov.<br>14:15</div></div>
+              <div class="f-ev"><b class="c-rem">!</b><div><div class="t">Remarque</div><div class="n">Matériel oublié</div></div><div class="d">mar. 18 nov.<br>09:05</div></div>
+              <div class="m-danger"><div class="m-danger__t">Zone de danger</div><div class="m-rbtn">Supprimer l'eleve</div></div>
+            </div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-photo -->
+    <section class="fiche fiche--etroite" id="photo">
+      <div class="fiche__texte">
+        <h2>Photo de l'élève</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › rond photo</span></p>
+        <p class="fiche__but">Mettre un visage sur un nom : photographier l'élève ou prendre une image de la galerie.</p>
+        <ol class="etapes">
+          <li data-cursor="#ep-rond" data-action="tap">Toucher le rond photo, avec sa pastille +.</li>
+          <li data-cursor="#ep-feuille">Le panneau <b>Ajouter une photo</b> monte du bas.</li>
+          <li data-cursor="#ep-cam" data-action="tap" data-duration="3000">Toucher <span class="btn-nom">Prendre une photo</span> ou <span class="btn-nom">Choisir dans la galerie</span>. La première fois, le téléphone demande l'autorisation.</li>
+          <li data-cursor="#ep-cadre" data-duration="3000">Recadrer en carré dans l'outil du téléphone, puis valider.</li>
+          <li data-cursor="#ep-rond" data-duration="3200">Une roue tourne dans le rond pendant l'envoi, puis la photo s'affiche.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La photo est réduite (300 × 300 points) et rangée sur le serveur, dans un espace privé du compte de l'enseignant. Contrairement au vrai nom, c'est donc une donnée personnelle qui quitte le téléphone.</li>
+            <li>Il faut du réseau pour l'envoyer et pour l'afficher ; sans réseau, l'initiale reste et un envoi raté ne donne pas de message.</li>
+            <li>Une nouvelle photo remplace l'ancienne ; il n'y a pas de bouton pour supprimer une photo sur le téléphone.</li>
+            <li>La photo ne s'affiche que dans la fiche élève, ni sur le plan ni en séance.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Lina Bonnet</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre f-id">
+                <span class="f-photo" id="ep-rond">L<span class="visage" data-at="5"></span><span data-at="5" style="position:absolute;inset:0;display:grid;place-items:center;color:#fff"><span class="m-roue" style="width:20px;height:20px"></span></span><span class="plus">+</span></span>
+                <div class="m-id"><div style="font-size:16px;font-weight:600">Lina Bonnet</div><div class="m-mono">K7P-2QX</div></div>
+                <span class="f-qr">QR</span>
+              </div>
+              <div class="m-carte m-carte--ombre" style="padding:12px">
+                <div class="f-titre">Resume</div>
+                <div class="f-pastilles">
+                  <div><b class="c-part">12</b><span>Implication</span></div><div><b class="c-bav">4</b><span>Malus</span></div><div><b class="c-abs">1</b><span>Absence</span></div><div><b class="c-rem">2</b><span>Remarque</span></div><div><b class="c-sor">3</b><span>Sortie</span></div><div><b class="c-part">3</b><span>Retour</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="m-voile" data-at="2-3"></div>
+            <div class="feuille" data-at="2-3" id="ep-feuille" style="border-radius:16px 16px 0 0">
+              <div class="m-feuille__t">Ajouter une photo</div>
+              <div class="m-opt" id="ep-cam" data-on="3"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1F2433" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Prendre une photo</div>
+              <div class="m-opt"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#1F2433" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M4 18l5-5 4 4 3-3 4 4"/></svg>Choisir dans la galerie</div>
+              <div style="text-align:center;color:var(--t-text2);font-size:14px;padding-top:6px">Annuler</div>
+            </div>
+            <div class="m-recadre" data-at="4"><div class="m-recadre__img"><div class="m-recadre__cadre" id="ep-cadre"></div></div><span class="m-recadre__ok">Valider</span></div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-qr-acces -->
+    <section class="fiche fiche--etroite" id="qr">
+      <div class="fiche__texte">
+        <h2>Accès élève par QR code</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › QR</span></p>
+        <p class="fiche__but">Montrer à l'élève, sur l'écran du téléphone, de quoi se connecter à son espace : le QR code de la page élève et son code personnel.</p>
+        <ol class="etapes">
+          <li data-cursor="#eq-btn" data-action="tap">Toucher le bouton <span class="btn-nom">QR</span> de la carte d'identité.</li>
+          <li data-cursor="#eq-qr" data-duration="3200">La fenêtre <b>Acces eleve</b> s'ouvre. L'élève scanne le QR code : il arrive sur la page d'accueil de l'espace élève du site.</li>
+          <li data-cursor="#eq-code" data-duration="3000">Il tape ensuite le code affiché dessous.</li>
+          <li data-cursor="#eq-fermer" data-action="tap">Toucher <span class="btn-nom">Fermer</span>, ou le fond.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le QR code est le même pour tous les élèves : il ne contient pas le code personnel. C'est le code tapé qui ouvre le bon espace.</li>
+            <li>La ligne « Code : … » n'apparaît que si le code a pu être lu sur le serveur : il faut du réseau.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Noé MA</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre f-id">
+                <span class="f-photo">N<span class="plus">+</span></span>
+                <div class="m-id"><div style="font-size:16px;font-weight:600">Noé MA</div><div class="m-mono">K7P-2QX</div></div>
+                <span class="f-qr" id="eq-btn" data-on="1">QR</span>
+              </div>
+            </div>
+            <div class="m-voile" data-at="2-4"></div>
+            <div class="m-fen zoom" data-at="2-4" style="left:8%;right:8%">
+              <div class="m-fen__t" style="margin-bottom:4px">Acces eleve</div>
+              <div class="m-fen__p">Scannez ce QR code pour acceder a l'interface eleve</div>
+              <div class="m-qr" id="eq-qr"><svg viewBox="0 0 25 25" shape-rendering="crispEdges"><path fill="#111" d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM19 16h6v1h-6zM11 17h1v1h-1zM14 17h1v1h-1zM17 17h1v1h-1zM19 17h2v1h-2zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h3v1h-3zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h2v1h-2zM21 19h2v1h-2zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h2v1h-2zM20 20h2v1h-2zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z"/></svg></div>
+              <div id="eq-code" style="text-align:center;font-family:var(--mono);font-size:16px;font-weight:600">Code : K7P-2QX</div>
+              <div id="eq-fermer" data-on="4" style="margin-top:14px;border:1px solid var(--t-border);border-radius:12px;text-align:center;padding:9px;color:var(--t-text2);font-weight:600;transition:transform .15s">Fermer</div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-resume -->
+    <section class="fiche fiche--etroite" id="resume">
+      <div class="fiche__texte">
+        <h2>Le résumé</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › Resume</span></p>
+        <p class="fiche__but">Voir d'un coup d'œil combien d'événements de chaque sorte l'élève a reçus, toutes séances confondues.</p>
+        <ol class="etapes">
+          <li data-cursor="#es-carte">Sous la carte d'identité, la carte <b>Resume</b> se lit sans geste.</li>
+          <li data-cursor="#es-p1" data-duration="3400">Six pastilles : <b>Implication</b> (vert), <b>Malus</b> (ambre), <b>Absence</b> (rouge), <b>Remarque</b> (bleu), <b>Sortie</b> (violet), <b>Retour</b> (vert).</li>
+          <li data-cursor="#es-p3">Une pastille à zéro affiche « 0 ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul><li>Les totaux sont calculés sur l'historique gardé dans le téléphone : ils s'affichent sans réseau.</li></ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Adam KE</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre f-id">
+                <span class="f-photo">A<span class="plus">+</span></span>
+                <div class="m-id"><div style="font-size:16px;font-weight:600">Adam KE</div><div class="m-mono">R4M-8TZ</div></div>
+                <span class="f-qr">QR</span>
+              </div>
+              <div class="m-carte m-carte--ombre" style="padding:12px" id="es-carte">
+                <div class="f-titre">Resume</div>
+                <div class="f-pastilles">
+                  <div id="es-p1"><b class="c-part zoom" data-from="2">14</b><span>Implication</span></div><div><b class="c-bav zoom" data-from="2">3</b><span>Malus</span></div><div id="es-p3"><b class="c-abs zoom" data-from="2">0</b><span>Absence</span></div><div><b class="c-rem zoom" data-from="2">1</b><span>Remarque</span></div><div><b class="c-sor zoom" data-from="2">2</b><span>Sortie</span></div><div><b class="c-part zoom" data-from="2">2</b><span>Retour</span></div>
+                </div>
+              </div>
+              <div class="f-tampons">
+                <div class="f-titre" style="margin-bottom:4px">Carte a tampons</div>
+                <div class="f-tampons__l"><span class="f-medaille"></span>Carte n°1 — Bois<span class="f-cpt">5/10</span></div>
+                <div class="f-barre"><span style="width:50%"></span></div>
+              </div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-historique -->
+    <section class="fiche fiche--etroite" id="historique">
+      <div class="fiche__texte">
+        <h2>L'historique</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › Historique</span></p>
+        <p class="fiche__but">Relire chaque événement enregistré pour l'élève, avec sa date, son heure et sa note éventuelle.</p>
+        <ol class="etapes">
+          <li data-cursor="#eh-titre">Descendre jusqu'à <b>Historique</b> : le nombre d'événements est entre parenthèses.</li>
+          <li data-cursor="#eh-e2" data-duration="3600">Chaque ligne : une pastille colorée avec un signe (+ implication, - malus, A absence, ! remarque, S sortie, ↩ retour), le type et sa précision (« Sortie - Infirmerie »), la note en italique, la date et l'heure.</li>
+          <li data-cursor="#eh-e3">Les lignes se lisent seulement : on ne modifie ni ne supprime un événement ici.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'historique est gardé dans le téléphone : il s'affiche sans réseau.</li>
+            <li>Sans aucun événement : « Aucun evenement enregistre ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Lina Bonnet</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px;gap:8px">
+              <div class="f-tampons" style="opacity:.6">
+                <div class="f-tampons__l"><span class="f-medaille"></span>Carte n°1 — Bois<span class="f-cpt">3/10</span></div>
+                <div class="f-barre" style="margin:0"><span style="width:30%"></span></div>
+              </div>
+              <div class="f-titre" id="eh-titre" style="margin:6px 0 0">Historique (25)</div>
+              <div class="f-ev"><b class="c-part">+</b><div><div class="t">Implication</div></div><div class="d">lun. 24 nov.<br>10:42</div></div>
+              <div class="f-ev" id="eh-e2" data-on="2"><b class="c-sor">S</b><div><div class="t">Sortie - Infirmerie</div><div class="n">Mal de tête</div></div><div class="d">jeu. 20 nov.<br>14:15</div></div>
+              <div class="f-ev" id="eh-e3" data-on="3"><b class="c-part">↩</b><div><div class="t">Retour</div></div><div class="d">jeu. 20 nov.<br>14:31</div></div>
+              <div class="f-ev"><b class="c-rem">!</b><div><div class="t">Remarque</div><div class="n">Matériel oublié</div></div><div class="d">mar. 18 nov.<br>09:05</div></div>
+              <div class="f-ev"><b class="c-bav">-</b><div><div class="t">Malus</div></div><div class="d">mar. 18 nov.<br>08:47</div></div>
+              <div class="f-ev"><b class="c-abs">A</b><div><div class="t">Absence</div></div><div class="d">ven. 14 nov.<br>13:30</div></div>
+              <div class="f-ev"><b class="c-part">+</b><div><div class="t">Implication</div></div><div class="d">jeu. 13 nov.<br>10:12</div></div>
+              <div class="f-ev"><b class="c-sor">S</b><div><div class="t">Sortie - Toilettes</div></div><div class="d">lun. 10 nov.<br>15:02</div></div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-export-pdf -->
+    <section class="fiche fiche--etroite" id="pdf-eleve">
+      <div class="fiche__texte">
+        <h2>Historique en PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › PDF</span></p>
+        <p class="fiche__but">Exporter l'historique d'un élève pour une réunion avec les parents ou un conseil de classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#ex-pdf" data-action="tap">Toucher <span class="btn-nom">PDF</span> en haut à droite de la fiche élève.</li>
+          <li data-cursor="#ex-fichier" data-duration="3000">Après une courte roue, la feuille de partage du téléphone s'ouvre : choisir la destination.</li>
+          <li data-cursor="#ex-table" data-duration="3600">Le document : <b>Historique Eleve</b>, le vrai nom et le pseudonyme, la classe, la période, les totaux, puis chaque événement avec sa date et son heure.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Fabriqué dans le téléphone, sans réseau. Bouton grisé si l'élève n'a aucun événement.</li>
+            <li class="important">Le document contient le vrai nom s'il est connu de ce téléphone. Le nom du fichier, lui, ne porte que le pseudonyme (« historique_Lina BO_2026-11-26.pdf »).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#pdf-classe">Bilan de classe en PDF</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Lina Bonnet</span><span class="m-barre__d" style="min-width:40px" id="ex-pdf" data-on="1">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre f-id">
+                <span class="f-photo">L<span class="plus">+</span></span>
+                <div class="m-id"><div style="font-size:16px;font-weight:600">Lina Bonnet</div><div class="m-mono">K7P-2QX</div></div>
+                <span class="f-qr">QR</span>
+              </div>
+              <div class="m-carte m-carte--ombre" style="padding:12px">
+                <div class="f-titre">Resume</div>
+                <div class="f-pastilles">
+                  <div><b class="c-part">12</b><span>Implication</span></div><div><b class="c-bav">4</b><span>Malus</span></div><div><b class="c-abs">1</b><span>Absence</span></div><div><b class="c-rem">2</b><span>Remarque</span></div><div><b class="c-sor">3</b><span>Sortie</span></div><div><b class="c-part">3</b><span>Retour</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="voile" data-at="2"></div>
+            <div class="feuille" data-at="2">
+              <div class="m-fichier" id="ex-fichier"><i></i>historique_Lina BO_2026-11-26.pdf</div>
+              <div class="m-appli"><span><i></i>Courriel</span><span><i></i>Fichiers</span><span><i></i>Imprimer</span><span><i></i>Partage proche</span></div>
+            </div>
+            <div class="m-voile" data-at="3"></div>
+            <div class="m-doc zoom" data-at="3">
+              <h4>Historique Eleve</h4>
+              <div class="m-doc__s">Lina Bonnet (Lina BO)</div>
+              <div class="m-doc__blocs"><span>Classe<b>3A</b></span><span>Total evenements<b>25</b></span><span>Periode<b>8 sept. › 24 nov.</b></span></div>
+              <table id="ex-table">
+                <tr><th>Date</th><th>Heure</th><th>Type</th><th>Details</th></tr>
+                <tr><td>24/11/2026</td><td>10:42</td><td>Implication</td><td></td></tr>
+                <tr><td>20/11/2026</td><td>14:15</td><td>Sortie</td><td>Infirmerie · Mal de tête</td></tr>
+                <tr><td>20/11/2026</td><td>14:31</td><td>Retour</td><td></td></tr>
+                <tr><td>18/11/2026</td><td>09:05</td><td>Remarque</td><td>Matériel oublié</td></tr>
+                <tr><td>18/11/2026</td><td>08:47</td><td>Malus</td><td></td></tr>
+                <tr><td>14/11/2026</td><td>13:30</td><td>Absence</td><td></td></tr>
+                <tr><td>13/11/2026</td><td>10:12</td><td>Implication</td><td></td></tr>
+                <tr><td>10/11/2026</td><td>15:02</td><td>Sortie</td><td>Toilettes</td></tr>
+              </table>
+              <div class="m-pied">Genere par Gestion Classe le 26/11/2026 a 17:12</div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-tampons -->
+    <section class="fiche fiche--etroite" id="tampons">
+      <div class="fiche__texte">
+        <h2>La carte à tampons</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › Carte a tampons</span></p>
+        <p class="fiche__but">Voir et tenir la carte à tampons de l'élève depuis sa fiche : poser un tampon, en retirer un, choisir le bonus quand la carte est pleine.</p>
+        <ol class="etapes">
+          <li data-cursor="#et-c8" data-action="tap">Toucher une case vide de la grille.</li>
+          <li data-cursor="#et-cat" data-action="tap" data-duration="3200">La fenêtre <b>Attribuer un tampon</b> propose les catégories réglées sur le site : en toucher une.</li>
+          <li data-cursor="#et-c8" data-duration="3000">Le tampon se pose à la couleur de sa catégorie ; le compteur passe à 8/10.</li>
+          <li data-cursor="#et-supp" data-duration="3200">Toucher une case déjà tamponnée propose <b>Supprimer ce tampon ?</b>, avec <span class="btn-nom">Annuler</span> et <span class="btn-nom">Supprimer</span>.</li>
+          <li data-cursor="#et-bonus" data-action="tap" data-duration="3600">Carte pleine (10/10) : <span class="btn-nom">Choisir le bonus avec l'eleve</span> ouvre la liste des bonus. Le bonus termine la carte et en ouvre une nouvelle.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le cadre change de teinte avec le rang de la carte : Bois (carte 1), Bronze, Argent, puis Or à partir de la carte 4.</li>
+            <li>Un tampon posé sans réseau reste sur le téléphone et part à la prochaine synchronisation ; une alerte le dit.</li>
+            <li>Le choix du bonus se fait en ligne : sans réseau, « Connexion requise ». Les bonus se règlent sur le site.</li>
+            <li>Sous la grille, « Cartes terminees » rappelle le bonus choisi pour chaque carte finie.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seance-et-menu-radial.html">donner un tampon en séance (double appui)</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Lina Bonnet</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+          <div class="m-corps">
+            <div class="m-pile" style="padding-left:20px;padding-right:20px">
+              <div class="m-carte m-carte--ombre" style="padding:12px">
+                <div class="f-titre">Resume</div>
+                <div class="f-pastilles">
+                  <div><b class="c-part">12</b><span>Implication</span></div><div><b class="c-bav">4</b><span>Malus</span></div><div><b class="c-abs">1</b><span>Absence</span></div><div><b class="c-rem">2</b><span>Remarque</span></div><div><b class="c-sor">3</b><span>Sortie</span></div><div><b class="c-part">3</b><span>Retour</span></div>
+                </div>
+              </div>
+              <div class="f-tampons">
+                <div class="f-titre" style="margin-bottom:4px">Carte a tampons</div>
+                <div class="f-tampons__l"><span class="f-medaille"></span>Carte n°1 — Bois
+                  <span class="f-cpt repli" data-to="2" style="margin-left:auto">7/10</span><span class="f-cpt repli" data-at="3-4" style="margin-left:auto">8/10</span><span class="f-cpt f-cpt--plein repli" data-at="5" style="margin-left:auto">10/10</span></div>
+                <div class="f-barre"><span data-to="2" style="width:70%"></span><span data-at="3-4" style="width:80%;margin-top:-6px"></span><span data-at="5" style="width:100%;margin-top:-6px;background:#22C55E"></span></div>
+                <div class="f-cases">
+                  <span class="f-case f-case--pleine" style="--c:#FF9800"><i></i></span><span class="f-case f-case--pleine" style="--c:#4CAF50"><i></i></span><span class="f-case f-case--pleine" id="et-c3" data-on="4" style="--c:#FF9800"><i></i></span><span class="f-case f-case--pleine" style="--c:#FF6F00"><i></i></span><span class="f-case f-case--pleine" style="--c:#F44336"><i></i></span>
+                  <span class="f-case f-case--pleine" style="--c:#4CAF50"><i></i></span><span class="f-case f-case--pleine" style="--c:#FF9800"><i></i></span><span class="f-case" id="et-c8" data-on="1"><span class="f-tamp zoom" data-from="3" style="--c:#FF9800"><i></i></span></span><span class="f-case"><span class="f-tamp zoom" data-at="5" style="--c:#4CAF50"><i></i></span></span><span class="f-case"><span class="f-tamp zoom" data-at="5" style="--c:#FF6F00"><i></i></span></span>
+                </div>
+                <div class="f-bonus zoom" id="et-bonus" data-at="5" data-on="5">Choisir le bonus avec l'eleve</div>
+              </div>
+            </div>
+            <div class="m-voile" data-at="2"></div>
+            <div class="m-fen zoom" data-at="2">
+              <div class="m-fen__t" style="margin-bottom:4px">Attribuer un tampon</div>
+              <div class="m-fen__p">Choisissez la categorie :</div>
+              <div class="f-cat" style="--c:#4CAF50"><i></i>Aider/Encourager un camarade</div>
+              <div class="f-cat" id="et-cat" data-on="2" style="--c:#FF9800"><i></i>Participation remarquable</div>
+              <div class="f-cat" style="--c:#FF6F00"><i></i>Autonomie</div>
+              <div class="f-cat" style="--c:#F44336"><i></i>Oral remarquable</div>
+              <div style="text-align:center;color:var(--t-text2);font-size:14px;padding-top:10px">Annuler</div>
+            </div>
+            <div class="m-voile" data-at="4" style="background:rgba(0,0,0,.35)"></div>
+            <div class="m-alerte zoom" data-at="4" id="et-supp">
+              <div class="m-alerte__t">Supprimer ce tampon ?</div>
+              <div class="m-alerte__p">Participation remarquable (slot 3)</div>
+              <div class="m-alerte__b"><span>Annuler</span><span>Supprimer</span></div>
+            </div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-supprimer -->
+    <section class="fiche fiche--etroite" id="supprimer-eleve">
+      <div class="fiche__texte">
+        <h2>Supprimer un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Fiche élève › Zone de danger</span></p>
+        <p class="fiche__but">Effacer définitivement un élève et toutes ses données, y compris la correspondance avec son vrai nom.</p>
+        <ol class="etapes">
+          <li data-cursor="#ed-zone">Descendre tout en bas de la fiche élève : <b>Zone de danger</b>.</li>
+          <li data-cursor="#ed-btn" data-action="tap">Toucher <span class="btn-nom">Supprimer l'eleve</span>.</li>
+          <li data-cursor="#ed-liste" data-duration="3400">La fenêtre <b>Supprimer l'eleve ?</b> détaille ce qui part : les événements, la correspondance nom et prénom, les données du téléphone et du serveur.</li>
+          <li data-cursor="#ed-ok" data-action="tap">Toucher <span class="btn-nom">Supprimer</span>, ou <span class="btn-nom">Annuler</span>.</li>
+          <li data-cursor="#ed-liste2">Retour à la fiche de la classe : l'élève n'est plus dans la liste.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">C'est irréversible : événements, tampons, bonus, place dans les groupes de TP et vrai nom sont effacés.</li>
+            <li>L'effacement se fait sur le téléphone, puis aussitôt sur le serveur. Sans réseau, la partie serveur n'est pas refaite : l'élève peut redescendre à la synchronisation suivante, sous son seul pseudonyme. Supprimer de préférence avec du réseau.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#retirer">Retirer un élève de la liste</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div data-to="4" class="repli m-bloc">
+            <div class="m-barre" style="background:var(--t-bg);border:0"><span class="m-barre__g" style="color:var(--t-text);font-size:28px;font-weight:300;min-width:40px;line-height:1">‹</span><span class="m-barre__t" style="font-size:17px">Tom SA</span><span class="m-barre__d" style="min-width:40px">PDF</span></div>
+            <div class="m-corps">
+              <div class="m-pile" style="padding-left:20px;padding-right:20px;gap:8px">
+                <div class="f-titre" style="margin:0">Historique (12)</div>
+                <div class="f-ev"><b class="c-part">+</b><div><div class="t">Implication</div></div><div class="d">lun. 24 nov.<br>10:40</div></div>
+                <div class="f-ev"><b class="c-bav">-</b><div><div class="t">Malus</div></div><div class="d">jeu. 20 nov.<br>14:22</div></div>
+                <div class="f-ev"><b class="c-part">+</b><div><div class="t">Implication</div></div><div class="d">mar. 18 nov.<br>09:12</div></div>
+                <div class="m-danger" id="ed-zone" style="margin-top:10px"><div class="m-danger__t">Zone de danger</div><div class="m-rbtn" id="ed-btn" data-on="2">Supprimer l'eleve</div><div class="m-danger__p">Cette action supprimera definitivement toutes les donnees de cet eleve (RGPD).</div></div>
+              </div>
+              <div class="m-voile" data-at="3-4"></div>
+              <div class="m-fen zoom" data-at="3-4" style="left:9%;right:9%">
+                <div class="m-triangle">!</div>
+                <div class="m-fen__t" style="margin-bottom:6px">Supprimer l'eleve ?</div>
+                <div class="m-fen__p">Cette action est irreversible. Toutes les donnees seront definitivement supprimees :</div>
+                <div class="m-decompte" id="ed-liste">• 12 evenement(s)<br>• Correspondance nom/prenom<br>• Donnees locales et serveur</div>
+                <div class="m-2btn"><span class="gris">Annuler</span><span class="rouge" id="ed-ok" data-on="4">Supprimer</span></div>
+              </div>
+            </div>
+          </div>
+          <div data-from="5" class="glisse-gauche repli m-bloc">
+            <div class="m-barre"><span class="m-barre__g">‹ Retour</span><span class="m-barre__t">3A</span><span class="m-barre__d">PDF</span></div>
+            <div class="m-corps">
+              <div class="m-pile" style="padding-left:20px;padding-right:20px">
+                <div class="m-sec"><span class="m-sec__t">Eleves</span><span class="m-pbtn">+ Ajouter</span><span class="m-pbtn m-pbtn--bleu">Importer</span></div>
+                <div class="m-carte m-carte--ombre" id="ed-liste2">
+                  <div class="m-ligne"><span class="m-av">R</span><div class="m-id"><div class="m-nom">Rose VI</div><div class="m-pseudo">Rose VI</div></div><span class="m-chev">›</span></div>
+                  <div class="m-ligne"><span class="m-av">S</span><div class="m-id"><div class="m-nom">Sacha MO</div><div class="m-pseudo">Sacha MO</div></div><span class="m-chev">›</span></div>
+                  <div class="m-ligne"><span class="m-av">Z</span><div class="m-id"><div class="m-nom">Zoé FA</div><div class="m-pseudo">Zoé FA</div></div><span class="m-chev">›</span></div>
+                </div>
+              </div>
+            </div>
+            <div class="tel__onglets"><span>Accueil</span><span class="is-actif">Classes</span><span>Historique</span><span>Réunions</span></div>
+          </div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+
+    <!-- ============================================================ eleve-etiquettes -->
+    <section class="fiche fiche--etroite" id="etiquettes">
+      <div class="fiche__texte">
+        <h2>Étiquettes de surlignage</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Séance › rangée d'étiquettes</span></p>
+        <p class="fiche__but">Marquer un élève d'une couleur durable (« Punition en cours », « À interroger », « À surveiller », « Aide / soutien ») qui teinte sa case du plan jusqu'à ce qu'on l'enlève.</p>
+        <ol class="etapes">
+          <li data-cursor="#eg-tag" data-action="drag" data-drag-to="#eg-p" data-duration="3200">En séance, glisser une étiquette de la rangée vers le bas, sur la case de l'élève.</li>
+          <li data-cursor="#eg-p" data-duration="3200">La case prend la couleur de l'étiquette et le téléphone vibre. Le message « Lina BO : À interroger » remplace un instant l'indication.</li>
+          <li data-cursor="#eg-p2" data-duration="3400">À la séance suivante, même dans une autre classe, l'étiquette est toujours là : elle suit l'élève jusqu'à son retrait.</li>
+          <li data-cursor="#eg-tag" data-action="drag" data-drag-to="#eg-p2" data-duration="3400">Glisser de nouveau la même étiquette la retire ; la gomme <b>Effacer</b> retire toutes celles de l'élève.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Les étiquettes restent sur ce téléphone : jamais synchronisées, jamais sur le site, jamais sur l'écran projeté.</li>
+            <li>Les quatre étiquettes de départ sont créées au premier lancement ; leur libellé et leur couleur se modifient, et on peut en ajouter ou en supprimer, par le crayon au bout de la rangée.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seance-et-menu-radial.html">la séance en classe</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond">
+        <div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran">
+          <div class="tel__statut"><span></span><span></span></div>
+          <div class="s-tete"><span class="s-annuler">Annuler</span><div class="s-centre"><b><span data-to="2" class="repli">3A · Salle 310</span><span data-from="3" class="repli">3A · Labo 2</span></b><span><span data-to="2" class="repli">12 min</span><span data-from="3" class="repli">3 min</span></span></div><span class="s-terminer">Terminer</span></div>
+          <div class="s-seg"><div class="s-seg__piste"><span class="actif">Plan de classe</span><span>Groupes</span></div><span class="s-carre"></span><span class="s-carre"></span></div>
+          <div class="s-outils"><span>Aléatoire</span><span>Oral</span><span>Copies</span><span>Note</span><span>Remarque</span><span>Supprimer</span></div>
+          <div class="s-tags">
+            <span class="s-tag" style="--c:#EF4444"><i></i>Punition en cours</span>
+            <span class="s-tag" id="eg-tag" data-on="1,4" style="--c:#3B82F6"><i></i>À interroger</span>
+            <span class="s-tag" style="--c:#F97316"><i></i>À surveiller</span>
+            <span class="s-tag" style="--c:#8B5CF6"><i></i>Aide / soutien</span>
+          </div>
+          <div class="s-aide"><span data-at="1,3" class="repli">Maintenir appuyé sur un élève</span><span class="toast repli" data-at="2">Lina BO : À interroger</span><span class="toast repli" data-at="4">Lina BO : « À interroger » retirée</span></div>
+          <div data-to="2" class="repli">
+            <div class="s-grille">
+              <div class="t-place">Adam</div><div class="t-place">Inès</div><div class="t-place t-place--vide"></div><div class="t-place">Iris</div><div class="t-place">Jade</div><div class="t-place t-place--vide"></div>
+              <div class="t-place s-tagge" id="eg-p" data-on="2">Lina<span class="s-point" data-at="2"></span></div><div class="t-place">Malo</div><div class="t-place t-place--vide"></div><div class="t-place">Naël</div><div class="t-place">Noé</div><div class="t-place">Rose</div>
+              <div class="t-place">Sacha</div><div class="t-place">Tom</div><div class="t-place t-place--vide"></div><div class="t-place">Zoé</div><div class="t-place t-place--vide"></div><div class="t-place">Éva</div>
+            </div>
+          </div>
+          <div data-from="3" class="repli">
+            <div class="s-grille">
+              <div class="t-place">Adam</div><div class="t-place t-place--vide"></div><div class="t-place">Inès</div><div class="t-place">Iris</div><div class="t-place t-place--vide"></div><div class="t-place">Jade</div>
+              <div class="t-place">Malo</div><div class="t-place t-place--vide"></div><div class="t-place">Naël</div><div class="t-place s-tagge" id="eg-p2" data-on="3">Lina<span class="s-point" data-at="3"></span></div><div class="t-place t-place--vide"></div><div class="t-place">Noé</div>
+              <div class="t-place">Rose</div><div class="t-place">Sacha</div><div class="t-place t-place--vide"></div><div class="t-place">Tom</div><div class="t-place">Zoé</div><div class="t-place">Éva</div>
+            </div>
+          </div>
+          <div class="s-tableau">Tableau</div>
+        </div></div></div>
+      </div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

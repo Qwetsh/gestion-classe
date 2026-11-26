@@ -1,0 +1,877 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Séances — Guide Gestion Classe</title>
+<meta name="description" content="Relire l'historique des séances, corriger une séance après coup, retrouver les pages du tableau et ouvrir l'écran de classe depuis l'ordinateur.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="60">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* page Séances (styles/refonte-seances.css) et page de détail (pages/SessionDetail.tsx) */
+.ecran .is-hidden:not(.bulle):not(.modale-fond):not(.toast):not(.vol):not(.vfond):not(.lb):not(.infob):not(.attente):not(.cours-proj):not(.pop):not(.fev){display:none}
+.app__corps.sc{padding:14px 18px}
+.rf-head{display:flex;align-items:flex-end;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.rf-bc{font-size:11px;color:var(--text-muted);margin-bottom:2px}
+.rf-h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.rf-meta{font-size:12px;color:var(--text-dim);font-weight:400;margin-left:8px}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:6px;padding:2px;gap:2px;background:#fff}
+.seg span{padding:3px 9px;border-radius:4px;font-size:12px;color:var(--text-muted);transition:all .25s}
+.seg span.on,.seg span.is-on{background:var(--indigo-soft);color:var(--indigo);font-weight:560}
+.fl{display:flex;gap:6px;padding:9px 0;border-bottom:1px solid var(--border)}
+.fc{height:24px;padding:0 9px;border-radius:5px;font-size:11.5px;font-weight:650;display:inline-flex;align-items:center;border:1.5px solid transparent;transition:all .25s}
+.fc--3{background:var(--n3-soft);color:var(--n3-ink)}.fc--3.is-on{border-color:var(--n3)}
+.fc--4{background:var(--n4-soft);color:var(--n4-ink)}.fc--4.is-on{border-color:var(--n4)}
+.fc--5{background:var(--n5-soft);color:var(--n5-ink)}.fc--5.is-on{border-color:var(--n5)}
+.fc--6{background:var(--n6-soft);color:var(--n6-ink)}.fc--6.is-on{border-color:var(--n6)}
+.fc--all{background:#fff;border:1px solid var(--border-strong);color:var(--text-muted)}
+.fc--all.on,.fc--all.is-on{background:var(--indigo-soft);border-color:var(--indigo-soft);color:var(--indigo)}
+.day{height:26px;background:var(--bg-alt);display:flex;align-items:center;justify-content:space-between;padding:0 10px;font-size:11.5px;font-weight:600}
+.day i{font-style:normal;color:var(--text-dim);font-weight:400}
+.row{display:grid;grid-template-columns:42px 24px 1fr auto;gap:10px;align-items:center;height:36px;padding:0 10px;border-bottom:1px solid var(--border);font-size:12.5px;transition:background .25s}
+.row.is-on{background:var(--bg-alt)}
+.tm{font-variant-numeric:tabular-nums;color:var(--text-muted)}
+.cc{width:24px;height:24px;border-radius:30%;color:#fff;font-size:9.5px;font-weight:700;display:inline-grid;place-items:center;text-decoration:none;flex:none}
+.cc--3{background:var(--n3)}.cc--4{background:var(--n4)}.cc--5{background:var(--n5)}.cc--6{background:var(--n6)}
+.brks{display:flex;gap:4px}
+.brk{height:18px;padding:0 6px;border-radius:5px;font-size:10.5px;font-weight:700;display:inline-flex;align-items:center}
+.brk--pos{background:var(--pos-soft);color:var(--pos)}.brk--neg{background:var(--neg-soft);color:var(--neg)}.brk--abs{background:var(--surface-3);color:var(--text-muted)}
+.ic{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
+.ic-note{color:var(--text-dim);margin-left:6px}
+.infob{position:absolute;z-index:700;background:#18181B;color:#fff;font-size:11.5px;padding:5px 9px;border-radius:6px;white-space:nowrap;box-shadow:var(--shadow-lg)}
+/* semaine */
+.nav{display:flex;align-items:center;gap:8px;padding:9px 0;font-size:12.5px}
+.chev{width:26px;height:26px;border:1px solid var(--border-strong);border-radius:6px;display:grid;place-items:center;color:var(--text-muted);background:#fff;transition:all .25s}
+.chev.is-on{border-color:var(--indigo);color:var(--indigo)}
+.wk{position:relative;border:1px solid var(--border);border-radius:6px;display:grid;grid-template-columns:48px repeat(5,1fr);overflow:hidden}
+.wk__h{height:28px;border-bottom:1px solid var(--border);border-left:1px solid var(--border);display:flex;align-items:center;justify-content:center;gap:4px;font-size:11px;color:var(--text-muted)}
+.wk__h b{color:var(--text)}
+.wk__h.auj{background:var(--indigo-soft);color:var(--indigo)}.wk__h.auj b{color:var(--indigo)}
+.wk__rail{grid-row:2;font-size:10px;color:var(--text-dim)}
+.wk__rail span{display:block;height:44px;padding:2px 6px 0 0;text-align:right}
+.wk__col{grid-row:2;border-left:1px solid var(--border);position:relative;background:repeating-linear-gradient(#fff 0 43px,var(--border) 43px 44px)}
+.wk__col.auj{background:repeating-linear-gradient(#F8F8FF 0 43px,var(--border) 43px 44px)}
+.blk{position:absolute;left:3px;right:3px;background:#fff;border:1px solid var(--border-strong);border-radius:6px;padding:3px 5px;font-size:10.5px;line-height:1.25;overflow:hidden;transition:all .25s}
+.blk .cc{width:16px;height:16px;font-size:7.5px;border-radius:4px;margin-right:4px}
+.blk .t{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-muted)}
+.blk.is-on{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+/* mois */
+.mo{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.mo b{font-size:10.5px;color:var(--text-dim);font-weight:600;padding:5px 7px;border-bottom:1px solid var(--border)}
+.mo i{font-style:normal;height:62px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:3px 5px;display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;position:relative}
+.mo i:nth-child(7n){border-right:0}
+.mo i em{font-style:normal;font-size:10.5px;color:var(--text-muted);width:100%;text-align:right;line-height:16px}
+.mo i.hors{background:var(--bg-alt)}.mo i.hors em{color:var(--border-strong)}
+.mo i.auj em{text-align:right}.mo i.auj em::after{content:''}
+.mo i.auj em{color:#fff}
+.mo i.auj em{display:flex;justify-content:flex-end}
+.mo .cc{width:18px;height:18px;font-size:7.5px;border-radius:5px}
+.mo .rond{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--indigo);color:#fff;font-size:10px}
+/* volet */
+.vfond{position:absolute;left:0;right:0;top:34px;bottom:0;background:rgba(20,25,40,.45);z-index:500}
+.vol{position:absolute;top:34px;right:0;bottom:0;width:400px;background:#fff;z-index:510;box-shadow:var(--shadow-lg);display:flex;flex-direction:column;font-size:12.5px}
+.vol.is-hidden{transform:translateX(60px)}
+.vol__tete{padding:12px 16px 10px;position:relative}
+.vol__x{position:absolute;right:12px;top:10px;width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:17px;color:var(--text-muted)}
+.vol__x.is-on{background:var(--surface-3)}
+.vol__cl{display:flex;align-items:center;gap:9px}
+.vol__cl .cc{width:28px;height:28px;font-size:10px}
+.vol__th{font-size:15px;font-weight:600;margin-top:8px}
+.vol__nt{margin-top:6px;font-size:11px;color:var(--text-dim)}
+.vol__nt p{margin:2px 0 0;padding-left:8px;border-left:2px solid var(--border-strong);color:var(--text-muted);font-size:11.5px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border);border-bottom:1px solid var(--border);transition:background .25s}
+.stats div{padding:7px 12px;border-left:1px solid var(--border)}.stats div:first-child{border-left:0}
+.stats b{display:block;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.stats span{font-size:10.5px;color:var(--text-dim)}
+.stats.is-on,.tl.is-on,.vol__pied.is-on{background:#FAFAFF;box-shadow:inset 0 0 0 2px rgba(79,70,229,.35)}
+.tl__t{font-size:10.5px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);padding:8px 16px 2px}
+.tl{flex:1;min-height:0;overflow:hidden;padding:0 10px 0 6px;position:relative}
+.ev{display:grid;grid-template-columns:40px 14px 1fr auto;gap:6px;align-items:start;padding:4px 0;transition:all .3s}
+.ev>.h{text-align:right;color:var(--text-dim);font-size:11px;font-variant-numeric:tabular-nums;padding-top:1px}
+.ev>.p{position:relative;height:100%}
+.ev>.p::before{content:'';position:absolute;left:2px;top:4px;width:10px;height:10px;border-radius:50%;background:var(--ptc,var(--indigo))}
+.ev>.p::after{content:'';position:absolute;left:6px;top:15px;bottom:-6px;width:2px;background:var(--border)}
+.ev:last-child>.p::after{display:none}
+.ev .n{font-weight:600;font-size:12px}.ev .k{font-size:10.5px;color:var(--text-dim)}.ev .q{font-size:10.5px;font-style:italic;color:var(--text-muted)}
+.ev .ac{display:flex;gap:3px}
+.ev .ac span{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--text-dim);transition:all .25s}
+.ev .ac span.is-on{background:var(--surface-3);color:var(--text)}
+.ev.is-on{background:var(--surface-3);border-radius:6px}
+.p-pos{--ptc:var(--pos)}.p-neg{--ptc:var(--neg)}.p-abs{--ptc:#A1A1AA}.p-aut{--ptc:var(--indigo)}
+.vol__pied{padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.vol__pied .corb{width:32px;height:32px;border:1px solid #F3C4C4;border-radius:6px;display:grid;place-items:center;color:var(--neg);transition:all .25s}
+.vol__pied .corb.is-on{background:var(--neg-soft)}
+/* formulaire d'événement */
+.fev{position:absolute;left:10px;right:10px;bottom:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;z-index:5;box-shadow:0 -6px 16px rgba(20,25,40,.06)}
+.fev__t{font-size:12.5px;font-weight:650;margin-bottom:7px}
+.tys{display:flex;gap:5px;margin:7px 0}
+.ty{flex:none;padding:0 7px;height:26px;border:1.5px solid var(--border-strong);border-radius:6px;font-size:11px;font-weight:600;display:grid;place-items:center;background:#fff;color:var(--text-muted);transition:all .25s}
+.ty.is-on.ty--sor{border-color:var(--sortie);background:#EEF0FF;color:var(--sortie)}
+.mot{display:flex;gap:5px;margin-bottom:7px}
+.mot span{padding:3px 9px;border-radius:999px;font-size:11px;border:1px solid var(--border);background:#fff;transition:all .25s}
+.mot span.is-on{background:var(--indigo);border-color:var(--indigo);color:#fff}
+/* page de détail (style plus ancien : cartes ombrées, libellés sans accents) */
+.dt{background:var(--bg-alt);padding:14px 18px}
+.dcard{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(20,25,40,.08),0 1px 2px rgba(20,25,40,.04);padding:12px 14px;margin-bottom:10px;transition:box-shadow .25s}
+.dcard.is-on{box-shadow:0 0 0 2px rgba(79,70,229,.45)}
+.dbc{font-size:11.5px;color:var(--text-muted);margin-bottom:8px}.dbc a{color:var(--indigo);text-decoration:none}
+.dhead{display:flex;gap:12px;align-items:center}
+.dlogo{width:48px;height:48px;border-radius:10px;background:var(--indigo);color:#fff;display:grid;place-items:center;font-weight:700;font-size:16px;flex:none}
+.dt h3{margin:0;font-size:17px}
+.dl{font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:5px}
+.pic{width:10px;height:10px;border-radius:3px;border:1.5px solid var(--text-dim);display:inline-block}
+.encours{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:999px;background:var(--pos-soft);color:var(--pos);font-size:11px;font-weight:600}
+.encours::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--pos)}
+.dsec{border-top:1px solid var(--border);margin-top:10px;padding-top:8px}
+.dsec__t{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--text-muted)}
+.dsec__t .lien{margin-left:auto;color:var(--indigo);font-weight:600;font-size:11.5px;padding:2px 6px;border-radius:5px;transition:background .25s}
+.dsec__t .lien.is-on{background:var(--indigo-soft)}
+.dboite{margin-top:5px;background:var(--surface-2);border-radius:6px;padding:7px 9px;font-size:12px;color:var(--text-muted)}
+.dta{margin-top:5px;border:1.5px solid var(--indigo);border-radius:6px;padding:7px 9px;font-size:12px;min-height:34px;background:#fff}
+.dtot{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.dtot div{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(20,25,40,.08);padding:9px;display:flex;align-items:center;gap:8px;transition:transform .25s}
+.dtot.is-on div{transform:scale(1.03)}
+.sq{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:15px;flex:none}
+.sq--part{background:#EAF6EE;color:var(--participation)}.sq--bav{background:#FBEAEA;color:var(--bavardage)}.sq--abs{background:#F0F0F2;color:var(--absence)}.sq--rem{background:#FDF1E3;color:var(--remarque)}.sq--sor{background:#EEF0FF;color:var(--sortie)}
+.dtot b{display:block;font-size:17px}.dtot span{font-size:10.5px;color:var(--text-muted)}
+.vign{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.vign div{border:1px solid var(--border);border-radius:6px;overflow:hidden;transition:border-color .25s}
+.vign div.is-on{border-color:var(--indigo)}
+.vign svg{display:block;width:100%;height:auto;background:#fff}
+.vign span{display:block;font-size:10.5px;color:var(--text-muted);padding:3px 6px;border-top:1px solid var(--border)}
+.lb{position:absolute;inset:34px 0 0 0;background:rgba(0,0,0,.88);z-index:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+.lb svg{width:620px;background:#fff;border-radius:4px}
+.lb__nav{display:flex;gap:18px;align-items:center;color:#fff;font-size:12.5px}
+.lb__nav span{padding:5px 10px;border-radius:6px;background:rgba(255,255,255,.12);transition:background .25s}
+.lb__nav span.is-on{background:rgba(255,255,255,.3)}
+.evl{display:flex;align-items:center;gap:9px;padding:6px 2px;border-top:1px solid var(--border);font-size:12px;transition:all .3s}
+.evl .sq{width:28px;height:28px;font-size:12px;border-radius:7px}
+.pill{padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:600}
+.evl .q{color:var(--text-dim);font-style:italic;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.evl .hr{color:var(--text-dim);font-size:11px;font-variant-numeric:tabular-nums}
+.evl .ch{color:var(--text-dim);width:10px}
+.evl .tr{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;color:var(--text-dim);transition:all .25s}
+.evl .tr.is-on{background:var(--neg-soft);color:var(--neg)}
+.evl.is-on{background:var(--surface-2)}
+.photo{width:100%;height:150px;border-radius:6px;display:block}
+.grt{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.grt span{display:flex;align-items:center;gap:7px;border:1.5px solid var(--border);border-radius:8px;padding:5px 7px;font-size:12px;transition:all .25s}
+.grt span .sq{width:22px;height:22px;font-size:11px;border-radius:5px}
+.grt span.is-on{border-color:var(--indigo);background:var(--indigo-soft)}
+/* accueil : emploi du temps et bulle */
+.edt{display:grid;grid-template-columns:40px repeat(5,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:11px}
+.edt__h{height:26px;display:grid;place-items:center;border-left:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--text-muted)}
+.edt__h.auj{background:var(--indigo-soft);color:var(--indigo);font-weight:600}
+.edt__c{grid-row:2;border-left:1px solid var(--border);position:relative;height:330px;background:repeating-linear-gradient(#fff 0 54px,var(--border) 54px 55px)}
+.edt__r{grid-row:2;font-size:10px;color:var(--text-dim)}.edt__r span{display:block;height:55px;text-align:right;padding-right:5px}
+.cours{position:absolute;left:3px;right:3px;border-radius:6px;padding:4px 6px;font-size:10.5px;line-height:1.25;border-left:3px solid;transition:all .25s}
+.cours b{display:block}
+.cours--3{background:var(--n3-soft);border-color:var(--n3);color:var(--n3-ink)}.cours--4{background:var(--n4-soft);border-color:var(--n4);color:var(--n4-ink)}
+.cours--5{background:var(--n5-soft);border-color:var(--n5);color:var(--n5-ink)}.cours--6{background:var(--n6-soft);border-color:var(--n6);color:var(--n6-ink)}
+.cours.is-on{box-shadow:0 0 0 3px rgba(79,70,229,.3)}
+.pop{position:absolute;z-index:620;width:290px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:12px 14px;font-size:12px}
+.pop__t{font-size:14px;font-weight:650}
+.pop__s{color:var(--text-dim);font-size:11.5px;margin-bottom:8px}
+.attente{position:absolute;inset:34px 0 0 0;background:#14151A;color:#F4F4F5;z-index:640;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center}
+.attente h4{margin:0;font-size:24px;font-weight:650}
+.attente p{margin:0;color:#A1A1AA;font-size:13px}
+.direct{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:#86EFAC}
+.direct::before{content:'';width:8px;height:8px;border-radius:50%;background:#22C55E}
+.cours-proj{position:absolute;inset:34px 0 0 0;background:#fff;z-index:650;padding:36px 60px}
+.cours-proj h4{margin:0 0 6px;font-size:28px;color:var(--text)}
+.cours-proj .ss{color:var(--text-muted);font-size:14px;margin-bottom:18px}
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Séances</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#liste">La page Séances</a></li>
+    <li><a href="#vue-liste">Lire la vue Liste</a></li>
+    <li><a href="#semaine">La vue Semaine</a></li>
+    <li><a href="#mois">La vue Mois</a></li>
+    <li><a href="#volet">Le volet d'une séance</a></li>
+    <li><a href="#evenement">Ajouter ou corriger un événement</a></li>
+    <li><a href="#supprimer">Supprimer un événement, ou toute la séance</a></li>
+    <li><a href="#detail">La page de détail d'une séance</a></li>
+    <li><a href="#tableau">Les pages du tableau de la séance</a></li>
+    <li><a href="#evenements">Événements, remarques et photos</a></li>
+    <li><a href="#ajout">Ajouter un événement depuis la page de détail</a></li>
+    <li><a href="#ecran-classe">Lancer la séance sur l'écran de classe</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/fiche-eleve.html">◀ Fiche élève</a><a href="../enseignant/seance-sur-tablette.html">Séance sur tablette ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Séances</h1>
+      <p>La séance se tient sur le téléphone ; le site en garde l'historique. On y relit chaque heure, on rattrape un oubli, on retrouve ce qui a été écrit au tableau, et l'ordinateur relié au vidéoprojecteur ouvre l'écran de classe.</p>
+      <div class="chap__resume"><span>Menu Classes › Séances</span><span>Ordinateur</span><span>La séance elle-même : sur le téléphone</span></div>
+    </header>
+
+
+    <!-- ============================================================ la page Séances -->
+    <section class="fiche" id="liste">
+      <div class="fiche__texte">
+        <h2>La page Séances</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Séances</span></p>
+        <p class="fiche__but">Toutes les séances enregistrées, sur le téléphone ou sur le site, de la plus récente à la plus ancienne, avec le bilan de chacune.</p>
+        <ol class="etapes">
+          <li data-cursor="#li-menu" data-action="click">Dans le menu, ouvrir <b>Classes</b> puis <span class="btn-nom">Séances</span>.</li>
+          <li data-cursor="#li-seg" data-duration="3200">Le titre compte les séances. À droite, <span class="btn-nom">Liste</span>, <span class="btn-nom">Semaine</span> ou <span class="btn-nom">Mois</span> change la présentation.</li>
+          <li data-cursor="#li-5b" data-action="click" data-duration="3400">Cliquer la puce d'une classe : seules ses séances restent, et les puces des autres classes s'effacent.</li>
+          <li data-cursor="#li-toutes" data-action="click">Cliquer <span class="btn-nom">Toutes</span> pour revenir à toutes les classes.</li>
+          <li data-cursor="#li-row" data-action="click">Cliquer une séance : son volet s'ouvre à droite.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seules les classes qui ont au moins une séance ont une puce. Une fois une classe choisie, il faut repasser par <b>Toutes</b> pour en choisir une autre.</li>
+            <li>Le nombre « cette année » compte en fait toutes les séances du compte, sans limite d'année.</li>
+            <li>La présentation choisie n'est pas gardée : la page rouvre toujours sur <b>Liste</b>.</li>
+            <li>Limite actuelle : le bouton <b>Nouvelle séance</b> ramène sur cette même page et ne démarre rien. Une séance se démarre sur le téléphone, ou sur le site depuis une tablette.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/demarrer-une-seance.html">Démarrer une séance au téléphone</a> · <a href="seance-sur-tablette.html">Séance sur tablette</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous" id="li-menu" data-on="1">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="rf-head">
+            <div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span><span class="rf-meta" data-at="1-2,4-5">38 cette année</span><span class="rf-meta" data-at="3">9 cette année</span></div>
+            <span class="esp"></span>
+            <span class="seg" id="li-seg" data-on="2"><span class="on">Liste</span><span>Semaine</span><span>Mois</span></span>
+            <span class="b b--petit">+ Nouvelle séance</span>
+          </div>
+          <div class="fl">
+            <span class="fc fc--all" id="li-toutes" data-on="1-2,4-5">Toutes</span>
+            <span class="fc fc--3" data-at="1-2,4-5">3A</span>
+            <span class="fc fc--4" data-at="1-2,4-5">4B</span>
+            <span class="fc fc--5" id="li-5b" data-on="3">5B</span>
+            <span class="fc fc--6" data-at="1-2,4-5">6A</span>
+          </div>
+          <div class="day">Lundi 23 novembre<i data-at="1-2,4-5">3 séances</i><i data-at="3">1 séance</i></div>
+          <div class="row repli" data-at="1-2,4-5"><span class="tm">15:10</span><span class="cc cc--4">4B</span><span>Séismes et tsunamis</span><span class="brks"><span class="brk brk--pos">+3</span></span></div>
+          <div class="row" id="li-row" data-on="5"><span class="tm">10:15</span><span class="cc cc--5">5B</span><span>Météo et climat · Groupe 1<svg class="ic ic-note" viewBox="0 0 16 16"><path d="M4 2h6l3 3v9H4z M10 2v3h3"/></svg></span><span class="brks"><span class="brk brk--pos">+4</span><span class="brk brk--neg">−2</span><span class="brk brk--abs">1 abs</span></span></div>
+          <div class="row repli" data-at="1-2,4-5"><span class="tm">08:05</span><span class="cc cc--3">3A</span><span>Les bactéries et les antibiotiques</span><span class="brks"><span class="brk brk--pos">+2</span><span class="brk brk--neg">−1</span></span></div>
+          <div class="day">Vendredi 20 novembre<i data-at="1-2,4-5">2 séances</i><i data-at="3">1 séance</i></div>
+          <div class="row"><span class="tm">14:00</span><span class="cc cc--5">5B</span><span>Météo et climat</span><span class="brks"><span class="brk brk--pos">+5</span></span></div>
+          <div class="row repli" data-at="1-2,4-5"><span class="tm">09:00</span><span class="cc cc--6">6A</span><span>6A</span><span class="brks"><span class="brk brk--neg">−1</span><span class="brk brk--abs">2 abs</span></span></div>
+          <div class="day repli" data-at="1-2,4-5">Jeudi 19 novembre<i>2 séances</i></div>
+          <div class="row repli" data-at="1-2,4-5"><span class="tm">13:30</span><span class="cc cc--6">6A</span><span>Le vivant et son environnement</span><span class="brks"><span class="brk brk--pos">+6</span></span></div>
+          <div class="row repli" data-at="1-2,4-5"><span class="tm">11:15</span><span class="cc cc--4">4B</span><span>Séismes et tsunamis</span><span class="brks"><span class="brk brk--pos">+2</span><span class="brk brk--neg">−3</span></span></div>
+          <div class="day" data-at="3">Vendredi 13 novembre<i>1 séance</i></div>
+          <div class="row" data-at="3"><span class="tm">14:00</span><span class="cc cc--5">5B</span><span>Météo et climat · Groupe 2</span><span class="brks"><span class="brk brk--pos">+3</span><span class="brk brk--neg">−1</span></span></div>
+          <div class="bulle bulle--haut" data-at="5" style="left:240px;top:200px">Le volet de la séance s'ouvre : voir la fiche « Le volet d'une séance »</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ lire une ligne -->
+    <section class="fiche" id="vue-liste">
+      <div class="fiche__texte">
+        <h2>Lire la vue Liste</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Séances › Liste</span></p>
+        <p class="fiche__but">Une ligne par séance, jour par jour : de quoi retrouver une heure de cours et voir tout de suite comment elle s'est passée.</p>
+        <ol class="etapes">
+          <li data-cursor="#vl-jour">Chaque jour a son bandeau : la date, et à droite le nombre de séances.</li>
+          <li data-cursor="#vl-heure">L'heure de début, puis la pastille de la classe, à la couleur de son niveau.</li>
+          <li data-cursor="#vl-titre" data-duration="3600">Le titre est le thème de la séance, ou à défaut le nom de la classe. « · Groupe 1 » signale un demi-groupe ; la petite feuille dit qu'une note de séance a été écrite.</li>
+          <li data-cursor="#vl-badges" data-duration="3400">À droite, seulement ce qui n'est pas nul : implications en vert, malus en rouge, absents en gris.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La durée n'est pas affichée dans la liste : elle n'aide pas à retrouver une séance. Elle est dans le volet.</li>
+            <li>Pas de « 0 » : une séance sans malus n'a simplement pas de badge rouge.</li>
+            <li>Sans aucune séance, la page affiche « Aucune séance » et « Démarrez une séance depuis l'application mobile ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc" style="font-size:15px">
+          <div class="rf-head"><div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span><span class="rf-meta">38 cette année</span></div><span class="esp"></span><span class="seg"><span class="on">Liste</span><span>Semaine</span><span>Mois</span></span></div>
+          <div style="margin-top:16px;border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative">
+            <div class="day" id="vl-jour" style="height:34px;font-size:13.5px" data-on="1">Lundi 23 novembre<i>3 séances</i></div>
+            <div class="row" style="height:50px;font-size:14px;grid-template-columns:52px 32px 1fr auto"><span class="tm">15:10</span><span class="cc cc--4" style="width:30px;height:30px;font-size:11px">4B</span><span>Séismes et tsunamis</span><span class="brks"><span class="brk brk--pos">+3</span></span></div>
+            <div class="row" style="height:50px;font-size:14px;grid-template-columns:52px 32px 1fr auto"><span class="tm" id="vl-heure">10:15</span><span class="cc cc--5" style="width:30px;height:30px;font-size:11px">5B</span><span id="vl-titre">Météo et climat · Groupe 1<svg class="ic ic-note" viewBox="0 0 16 16"><path d="M4 2h6l3 3v9H4z M10 2v3h3"/></svg></span><span class="brks" id="vl-badges"><span class="brk brk--pos">+4</span><span class="brk brk--neg">−2</span><span class="brk brk--abs">1 abs</span></span></div>
+            <div class="row" style="height:50px;font-size:14px;grid-template-columns:52px 32px 1fr auto"><span class="tm">08:05</span><span class="cc cc--3" style="width:30px;height:30px;font-size:11px">3A</span><span>Les bactéries et les antibiotiques</span><span class="brks"><span class="brk brk--pos">+2</span><span class="brk brk--neg">−1</span></span></div>
+            <div class="day" style="height:34px;font-size:13.5px">Vendredi 20 novembre<i>2 séances</i></div>
+            <div class="row" style="height:50px;font-size:14px;grid-template-columns:52px 32px 1fr auto"><span class="tm">14:00</span><span class="cc cc--5" style="width:30px;height:30px;font-size:11px">5B</span><span>Météo et climat</span><span class="brks"><span class="brk brk--pos">+5</span></span></div>
+            <div class="row" style="height:50px;font-size:14px;grid-template-columns:52px 32px 1fr auto"><span class="tm">09:00</span><span class="cc cc--6" style="width:30px;height:30px;font-size:11px">6A</span><span>6A</span><span class="brks"><span class="brk brk--neg">−1</span><span class="brk brk--abs">2 abs</span></span></div>
+            <div class="bulle bulle--haut" data-at="1" style="left:30px;top:44px">Date longue, et nombre de séances du jour</div>
+            <div class="bulle bulle--haut" data-at="2" style="left:12px;top:142px">Heure de début et pastille de la classe</div>
+            <div class="bulle bulle--haut" data-at="3" style="left:110px;top:142px">Thème, demi-groupe, et feuille : « Cette séance a une note »</div>
+            <div class="bulle bulle--haut" data-at="4" style="left:500px;top:142px">+4 implications, −2 malus, 1 absent</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ vue semaine -->
+    <section class="fiche" id="semaine">
+      <div class="fiche__texte">
+        <h2>La vue Semaine</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Séances › Semaine</span></p>
+        <p class="fiche__but">Les séances d'une semaine de cours placées dans un agenda, à leur heure, comme un emploi du temps.</p>
+        <ol class="etapes">
+          <li data-cursor="#se-seg" data-action="click">Cliquer <span class="btn-nom">Semaine</span>. La colonne du jour est teintée d'indigo.</li>
+          <li data-cursor="#se-prev" data-action="click">La flèche de gauche montre la semaine précédente, celle de droite la suivante.</li>
+          <li data-cursor="#se-auj" data-action="click"><span class="btn-nom">Cette semaine</span> ramène à la semaine en cours.</li>
+          <li data-cursor="#se-bloc" data-duration="3400">Survoler un bloc : une bulle donne la classe, le thème et le bilan (implications, malus, absents).</li>
+          <li data-cursor="#se-bloc" data-action="click">Cliquer un bloc ouvre le volet de la séance.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Du lundi au vendredi, de 8 h à 18 h. La hauteur d'un bloc suit la durée de la séance ; une séance pas encore terminée compte pour une heure.</li>
+            <li>Une séance à venir (pas encore commencée) a un contour en pointillé.</li>
+            <li>Les chiffres ne sont pas dans les blocs, seulement dans la bulle de survol.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="rf-head"><div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span><span class="rf-meta">38 cette année</span></div><span class="esp"></span><span class="seg"><span>Liste</span><span class="on" id="se-seg" data-on="1">Semaine</span><span>Mois</span></span><span class="b b--petit">+ Nouvelle séance</span></div>
+          <div class="nav"><span class="chev" id="se-prev" data-on="2">‹</span><span class="chev">›</span><span class="b b--fantome b--petit" id="se-auj" data-on="3">Cette semaine</span><b data-at="1,3-5">23 nov – 27 nov</b><b data-at="2">16 nov – 20 nov</b></div>
+          <div class="wk">
+            <div class="wk__h" style="border-left:0"></div>
+            <div class="wk__h"><span>Lun</span><b data-at="1,3-5">23</b><b data-at="2">16</b></div>
+            <div class="wk__h"><span>Mar</span><b data-at="1,3-5">24</b><b data-at="2">17</b></div>
+            <div class="wk__h"><span>Mer</span><b data-at="1,3-5">25</b><b data-at="2">18</b></div>
+            <div class="wk__h auj"><span>Jeu</span><b data-at="1,3-5">26</b><b data-at="2">19</b></div>
+            <div class="wk__h"><span>Ven</span><b data-at="1,3-5">27</b><b data-at="2">20</b></div>
+            <div class="wk__rail"><span>08:00</span><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span></div>
+            <div class="wk__col">
+              <div class="blk" data-at="1,3-5" style="top:4px;height:40px"><span class="cc cc--3">3A</span>08:05<span class="t">Les bactéries…</span></div>
+              <div class="blk" id="se-bloc" data-on="4-5" data-at="1,3-5" style="top:99px;height:40px"><span class="cc cc--5">5B</span>10:15<svg class="ic ic-note" viewBox="0 0 16 16"><path d="M4 2h6l3 3v9H4z M10 2v3h3"/></svg><span class="t">Météo et climat</span></div>
+              <div class="blk" data-at="1,3-5" style="top:315px;height:40px"><span class="cc cc--4">4B</span>15:10<span class="t">Séismes et tsunamis</span></div>
+              <div class="blk" data-at="2" style="top:4px;height:40px"><span class="cc cc--3">3A</span>08:05<span class="t">Les bactéries…</span></div>
+              <div class="blk" data-at="2" style="top:99px;height:40px"><span class="cc cc--5">5B</span>10:15<span class="t">Météo et climat</span></div>
+            </div>
+            <div class="wk__col">
+              <div class="blk" data-at="1,3-5" style="top:44px;height:40px"><span class="cc cc--4">4B</span>09:00<span class="t">Séismes et tsunamis</span></div>
+              <div class="blk" data-at="2" style="top:44px;height:40px"><span class="cc cc--4">4B</span>09:00<span class="t">La dérive des continents</span></div>
+            </div>
+            <div class="wk__col"></div>
+            <div class="wk__col auj">
+              <div class="blk" data-at="1,3-5" style="top:242px;height:40px"><span class="cc cc--6">6A</span>13:30<span class="t">Le vivant et son…</span></div>
+              <div class="blk" data-at="2" style="top:143px;height:40px"><span class="cc cc--4">4B</span>11:15<span class="t">Séismes et tsunamis</span></div>
+              <div class="blk" data-at="2" style="top:242px;height:40px"><span class="cc cc--6">6A</span>13:30<span class="t">Le vivant et son…</span></div>
+            </div>
+            <div class="wk__col">
+              <div class="blk" data-at="2" style="top:44px;height:40px"><span class="cc cc--6">6A</span>09:00<span class="t">6A</span></div>
+              <div class="blk" data-at="2" style="top:264px;height:40px"><span class="cc cc--5">5B</span>14:00<span class="t">Météo et climat</span></div>
+            </div>
+          </div>
+          <div class="infob" data-at="4" style="left:150px;top:252px">5B — Météo et climat — +4 · −2 · 1 abs</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ vue mois -->
+    <section class="fiche" id="mois">
+      <div class="fiche__texte">
+        <h2>La vue Mois</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Séances › Mois</span></p>
+        <p class="fiche__but">Un calendrier du mois : on voit d'un coup d'œil les jours où chaque classe a eu cours.</p>
+        <ol class="etapes">
+          <li data-cursor="#mo-seg" data-action="click">Cliquer <span class="btn-nom">Mois</span>. Chaque séance est une pastille de sa classe, dans la case du jour.</li>
+          <li data-cursor="#mo-auj">Le numéro du jour est dans un rond indigo. Les jours hors du mois sont grisés.</li>
+          <li data-cursor="#mo-pt">Survoler une pastille donne la classe et le thème de la séance.</li>
+          <li data-cursor="#mo-prev" data-action="click">Les flèches changent de mois : ici, octobre et ses vacances.</li>
+          <li data-cursor="#mo-retour" data-action="click"><span class="btn-nom">Aujourd'hui</span> revient au mois en cours.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les pastilles du mois ne s'ouvrent pas d'un clic : pour ouvrir une séance, passer en <b>Liste</b> ou en <b>Semaine</b>.</li>
+            <li>Le filtre par classe s'applique aussi au calendrier.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="rf-head"><div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span><span class="rf-meta">38 cette année</span></div><span class="esp"></span><span class="seg"><span>Liste</span><span>Semaine</span><span class="on" id="mo-seg" data-on="1">Mois</span></span><span class="b b--petit">+ Nouvelle séance</span></div>
+          <div class="nav"><span class="chev" id="mo-prev" data-on="4">‹</span><span class="chev">›</span><span class="b b--fantome b--petit" id="mo-retour" data-on="5">Aujourd'hui</span><b data-at="1-3,5">Novembre 2026</b><b data-at="4">Octobre 2026</b></div>
+          <div style="position:relative">
+          <div class="mo" data-at="1-3,5"><b>Lun</b><b>Mar</b><b>Mer</b><b>Jeu</b><b>Ven</b><b>Sam</b><b>Dim</b><i class="hors"><em>26</em></i><i class="hors"><em>27</em></i><i class="hors"><em>28</em></i><i class="hors"><em>29</em></i><i class="hors"><em>30</em></i><i class="hors"><em>31</em></i><i><em>1</em></i><i><em>2</em><s class="cc cc--3">3A</s><s class="cc cc--5">5B</s></i><i><em>3</em><s class="cc cc--4">4B</s></i><i><em>4</em></i><i><em>5</em><s class="cc cc--6">6A</s></i><i><em>6</em><s class="cc cc--5">5B</s></i><i><em>7</em></i><i><em>8</em></i><i><em>9</em><s class="cc cc--3">3A</s><s class="cc cc--5">5B</s></i><i><em>10</em><s class="cc cc--4">4B</s></i><i><em>11</em></i><i><em>12</em><s class="cc cc--6">6A</s></i><i><em>13</em><s class="cc cc--5">5B</s></i><i><em>14</em></i><i><em>15</em></i><i><em>16</em><s class="cc cc--3">3A</s><s class="cc cc--5">5B</s></i><i><em>17</em><s class="cc cc--4">4B</s></i><i><em>18</em></i><i><em>19</em><s class="cc cc--4">4B</s><s class="cc cc--6">6A</s></i><i><em>20</em><s class="cc cc--5">5B</s><s class="cc cc--6">6A</s></i><i><em>21</em></i><i><em>22</em></i><i><em>23</em><s class="cc cc--3">3A</s><s class="cc cc--5" id="mo-pt">5B</s><s class="cc cc--4">4B</s></i><i><em>24</em><s class="cc cc--4">4B</s></i><i><em>25</em></i><i id="mo-auj"><em><span class="rond">26</span></em><s class="cc cc--6">6A</s></i><i><em>27</em></i><i><em>28</em></i><i><em>29</em></i><i><em>30</em></i><i class="hors"><em>1</em></i><i class="hors"><em>2</em></i><i class="hors"><em>3</em></i><i class="hors"><em>4</em></i><i class="hors"><em>5</em></i><i class="hors"><em>6</em></i></div>
+          <div class="mo repli" data-at="4"><b>Lun</b><b>Mar</b><b>Mer</b><b>Jeu</b><b>Ven</b><b>Sam</b><b>Dim</b><i class="hors"><em>28</em></i><i class="hors"><em>29</em></i><i class="hors"><em>30</em></i><i><em>1</em><s class="cc cc--4">4B</s></i><i><em>2</em><s class="cc cc--5">5B</s></i><i><em>3</em></i><i><em>4</em></i><i><em>5</em><s class="cc cc--3">3A</s><s class="cc cc--5">5B</s></i><i><em>6</em><s class="cc cc--4">4B</s></i><i><em>7</em></i><i><em>8</em><s class="cc cc--6">6A</s></i><i><em>9</em><s class="cc cc--5">5B</s></i><i><em>10</em></i><i><em>11</em></i><i><em>12</em><s class="cc cc--3">3A</s><s class="cc cc--5">5B</s></i><i><em>13</em><s class="cc cc--4">4B</s></i><i><em>14</em></i><i><em>15</em><s class="cc cc--6">6A</s></i><i><em>16</em><s class="cc cc--5">5B</s></i><i><em>17</em></i><i><em>18</em></i><i><em>19</em></i><i><em>20</em></i><i><em>21</em></i><i><em>22</em></i><i><em>23</em></i><i><em>24</em></i><i><em>25</em></i><i><em>26</em></i><i><em>27</em></i><i><em>28</em></i><i><em>29</em></i><i><em>30</em></i><i><em>31</em></i><i class="hors"><em>1</em></i></div>
+          <div class="infob" data-at="3" style="left:150px;top:350px">5B — Météo et climat</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ volet -->
+    <section class="fiche" id="volet">
+      <div class="fiche__texte">
+        <h2>Le volet d'une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Séances › clic sur une séance</span></p>
+        <p class="fiche__but">Relire une heure de cours sans quitter la liste : le bilan chiffré, puis tout le déroulé, minute par minute.</p>
+        <ol class="etapes">
+          <li data-cursor="#vo-row" data-action="click">Cliquer une séance dans la liste ou dans la semaine.</li>
+          <li data-cursor="#vo-tete" data-duration="3400">Le volet glisse depuis la droite : classe et groupe, date, heure et durée, thème, puis la note de séance écrite au téléphone.</li>
+          <li data-cursor="#vo-stats" data-duration="3400">Quatre chiffres : <b>Événements</b>, <b>Positifs</b>, <b>Malus</b>, <b>Absents</b>. Une valeur nulle s'écrit « — ».</li>
+          <li data-cursor="#vo-tl" data-duration="3600">Le <b>Déroulé</b> suit l'heure : point vert pour une implication, rouge pour un malus, gris pour une absence, indigo pour une remarque ou une sortie.</li>
+          <li data-cursor="#vo-pied" data-duration="3200">En bas : la corbeille de la séance, <span class="btn-nom">Détail / Export</span> et <span class="btn-nom">Ajouter un événement</span>.</li>
+          <li data-cursor="#vo-x" data-action="click">Fermer avec <b>×</b>, ou en cliquant à côté du volet.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Chaque élève apparaît sous son pseudonyme, prénom et deux lettres : les vrais noms ne quittent pas le téléphone de l'enseignant.</li>
+            <li>Les types sont ceux du menu radial : Implication, Malus, Absence, Remarque, Sortie (avec son motif).</li>
+            <li>Ces événements sont aussi ceux de l'historique de chaque élève.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/seance-et-menu-radial.html">Le menu radial au téléphone</a> · <a href="fiche-eleve.html">Fiche d'un élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="rf-head"><div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span><span class="rf-meta">38 cette année</span></div><span class="esp"></span><span class="seg"><span class="on">Liste</span><span>Semaine</span><span>Mois</span></span></div>
+          <div class="day" style="margin-top:10px">Lundi 23 novembre<i>3 séances</i></div>
+          <div class="row"><span class="tm">15:10</span><span class="cc cc--4">4B</span><span>Séismes et tsunamis</span><span class="brks"><span class="brk brk--pos">+3</span></span></div>
+          <div class="row" id="vo-row" data-on="1"><span class="tm">10:15</span><span class="cc cc--5">5B</span><span>Météo et climat · Groupe 1</span><span class="brks"><span class="brk brk--pos">+4</span><span class="brk brk--neg">−2</span><span class="brk brk--abs">1 abs</span></span></div>
+          <div class="row"><span class="tm">08:05</span><span class="cc cc--3">3A</span><span>Les bactéries et les antibiotiques</span><span class="brks"><span class="brk brk--pos">+2</span><span class="brk brk--neg">−1</span></span></div>
+        </div>
+        <div class="vfond" data-from="2"></div>
+        <div class="vol" data-from="2">
+          <div class="vol__tete" id="vo-tete">
+            <span class="vol__x" id="vo-x" data-on="6">×</span>
+            <div class="vol__cl"><span class="cc cc--5">5B</span><div><b>5B · Groupe 1</b><div class="muet">lundi 23 novembre 2026 · 10:15 (55 min)</div></div></div>
+            <div class="vol__th">Météo et climat</div>
+            <div class="vol__nt">Notes de séance<p>Revoir la différence entre météo et climat : beaucoup de confusions.</p></div>
+          </div>
+          <div class="stats" id="vo-stats" data-on="3"><div><b>9</b><span>Événements</span></div><div><b style="color:var(--pos)">+4</b><span>Positifs</span></div><div><b style="color:var(--neg)">−2</b><span>Malus</span></div><div><b>1</b><span>Absents</span></div></div>
+          <div class="tl__t">Déroulé</div>
+          <div class="tl" id="vo-tl" data-on="4">
+            <div class="ev"><span class="h">10:16</span><span class="p p-abs"></span><span><span class="n">Adam KE</span><br><span class="k">Absence</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:22</span><span class="p p-pos"></span><span><span class="n">Lina BO</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:32</span><span class="p p-neg"></span><span><span class="n">Noé MA</span><br><span class="k">Malus</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:35</span><span class="p p-pos"></span><span><span class="n">Jade LU</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:40</span><span class="p p-aut"></span><span><span class="n">Zoé FA</span><br><span class="k">Remarque</span> <span class="q">« Cahier oublié »</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:44</span><span class="p p-neg"></span><span><span class="n">Noé MA</span><br><span class="k">Malus</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:47</span><span class="p p-aut"></span><span><span class="n">Tom SA</span><br><span class="k">Sortie (toilettes)</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:52</span><span class="p p-pos"></span><span><span class="n">Inès DU</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+          </div>
+          <div class="vol__pied" id="vo-pied" data-on="5"><span class="corb"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span><span class="esp"></span><span class="b b--fantome b--petit">Détail / Export</span><span class="b b--petit">Ajouter un événement</span></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ ajouter / modifier un événement -->
+    <section class="fiche" id="evenement">
+      <div class="fiche__texte">
+        <h2>Ajouter ou corriger un événement</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Volet d'une séance › Ajouter un événement</span></p>
+        <p class="fiche__but">Rattraper un oubli (une implication non notée, une sortie) ou corriger une erreur faite au téléphone, une fois l'heure finie.</p>
+        <ol class="etapes">
+          <li data-cursor="#ev-ajout" data-action="click">En bas du volet, cliquer <span class="btn-nom">Ajouter un événement</span> : le bloc <b>Nouvel événement</b> s'ouvre.</li>
+          <li data-cursor="#ev-eleve" data-action="click">Choisir l'élève dans la liste <b>Sélectionner un élève...</b></li>
+          <li data-cursor="#ev-sortie" data-action="click" data-duration="3200">Choisir le type : <b>+ Implication</b>, <b>- Malus</b>, <b>A Absence</b>, <b>! Remarque</b> ou <b>S Sortie</b>.</li>
+          <li data-cursor="#ev-motif" data-action="click">Pour une sortie, choisir le motif : toilettes, infirmerie, bureau ou autre.</li>
+          <li data-cursor="#ev-ok" data-action="click" data-duration="3200">Cliquer <span class="btn-nom">Ajouter</span>. « Événement ajouté » : la ligne arrive à la fin du déroulé et les chiffres se mettent à jour.</li>
+          <li data-cursor="#ev-crayon" data-action="click" data-duration="3400">Pour corriger, le crayon d'une ligne rouvre le même bloc, prérempli : <b>Modifier l'événement</b>, puis <span class="btn-nom">Enregistrer</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Impossible de valider sans élève, sans type, ou sans motif pour une sortie. Une note est possible (« Remarque... » pour une remarque, « Note (facultatif)... » sinon).</li>
+            <li>Un événement ajouté après coup porte l'heure de l'ajout, pas celle du cours : il se range à la fin du déroulé.</li>
+            <li>Pour une séance en demi-groupe, la liste ne propose que les élèves du groupe.</li>
+            <li>Les motifs de sortie de ce volet (bureau, autre) ne sont pas ceux du menu radial et de la page de détail (convocation, exclusion).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="rf-head"><div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span></div></div>
+        </div>
+        <div class="vfond"></div>
+        <div class="vol">
+          <div class="vol__tete">
+            <span class="vol__x">×</span>
+            <div class="vol__cl"><span class="cc cc--5">5B</span><div><b>5B · Groupe 1</b><div class="muet">lundi 23 novembre 2026 · 10:15 (55 min)</div></div></div>
+            <div class="vol__th">Météo et climat</div>
+          </div>
+          <div class="stats"><div><b data-to="4">9</b><b data-from="5">10</b><span>Événements</span></div><div><b style="color:var(--pos)">+4</b><span>Positifs</span></div><div><b style="color:var(--neg)">−2</b><span>Malus</span></div><div><b>1</b><span>Absents</span></div></div>
+          <div class="tl__t">Déroulé</div>
+          <div class="tl">
+            <div class="ev"><span class="h">10:40</span><span class="p p-aut"></span><span><span class="n">Zoé FA</span><br><span class="k">Remarque</span> <span class="q">« Cahier oublié »</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev" data-on="6"><span class="h">10:44</span><span class="p p-neg"></span><span><span class="n">Noé MA</span><br><span class="k">Malus</span></span><span class="ac"><span id="ev-crayon" data-on="6"><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:47</span><span class="p p-aut"></span><span><span class="n">Tom SA</span><br><span class="k">Sortie (toilettes)</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:52</span><span class="p p-pos"></span><span><span class="n">Inès DU</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:55</span><span class="p p-pos"></span><span><span class="n">Malo RI</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev glisse-haut" data-from="5"><span class="h">11:42</span><span class="p p-aut"></span><span><span class="n">Iris TA</span><br><span class="k">Sortie (infirmerie)</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="fev glisse-haut" data-at="1-4">
+              <div class="fev__t">Nouvel événement</div>
+              <div class="champ champ--vide" id="ev-eleve" data-on="2"><span data-at="1">Sélectionner un élève...</span><span data-from="2" style="color:var(--text)">Iris TA</span><span class="esp"></span>▾</div>
+              <div class="tys"><span class="ty">+ Implication</span><span class="ty">- Malus</span><span class="ty">A Absence</span><span class="ty">! Remarque</span><span class="ty ty--sor" id="ev-sortie" data-on="3-4">S Sortie</span></div>
+              <div class="mot" data-from="3"><span>toilettes</span><span id="ev-motif" data-on="4">infirmerie</span><span>bureau</span><span>autre</span></div>
+              <div class="champ champ--vide" style="height:28px">Note (facultatif)...</div>
+              <div class="ligne" style="margin-top:7px;justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="ev-ok">Ajouter</span></div>
+            </div>
+            <div class="fev glisse-haut" data-at="6">
+              <div class="fev__t">Modifier l'événement</div>
+              <div class="champ" style="color:var(--text)">Noé MA<span class="esp"></span>▾</div>
+              <div class="tys"><span class="ty">+ Implication</span><span class="ty" style="border-color:var(--bavardage);color:var(--bavardage);background:#FBEAEA">- Malus</span><span class="ty">A Absence</span><span class="ty">! Remarque</span><span class="ty">S Sortie</span></div>
+              <div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit">Enregistrer</span></div>
+            </div>
+          </div>
+          <div class="vol__pied"><span class="corb"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span><span class="esp"></span><span class="b b--fantome b--petit">Détail / Export</span><span class="b b--petit" id="ev-ajout" data-on="1">Ajouter un événement</span></div>
+        </div>
+        <div class="toast" data-at="5" style="left:780px">Événement ajouté</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ supprimer -->
+    <section class="fiche" id="supprimer">
+      <div class="fiche__texte">
+        <h2>Supprimer un événement, ou toute la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Volet d'une séance › corbeilles</span></p>
+        <p class="fiche__but">Retirer un événement saisi par erreur, ou effacer une séance lancée par erreur (mauvaise classe, séance d'essai) avec tous ses événements.</p>
+        <ol class="etapes">
+          <li data-cursor="#sp-corb" data-action="click" data-duration="3200">Cliquer la corbeille d'une ligne du déroulé : <b>Supprimer cet événement ?</b> rappelle le type, l'élève et l'heure.</li>
+          <li data-cursor="#sp-ok" data-action="click">Confirmer avec <span class="btn-nom">Supprimer</span> : « Événement supprimé », la ligne disparaît.</li>
+          <li data-cursor="#sp-seance" data-action="click" data-duration="3400">Pour toute la séance : la corbeille rouge en bas du volet. La fenêtre dit combien d'événements partiront avec elle.</li>
+          <li data-cursor="#sp-ok2" data-action="click">Confirmer avec <span class="btn-nom">Supprimer</span>, ou <span class="btn-nom">Annuler</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Les deux suppressions sont définitives : il n'y a pas de corbeille pour les séances.</li>
+            <li>La fenêtre de la séance est écrite sans accents (« Supprimer la seance »), telle qu'elle est dans l'application.</li>
+            <li>La liste se recharge aussitôt ; fermer ensuite le volet avec ×.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="rf-head"><div><div class="rf-bc">Accueil › Séances</div><span class="rf-h1">Séances</span></div></div>
+        </div>
+        <div class="vfond"></div>
+        <div class="vol">
+          <div class="vol__tete">
+            <span class="vol__x">×</span>
+            <div class="vol__cl"><span class="cc cc--5">5B</span><div><b>5B · Groupe 1</b><div class="muet">lundi 23 novembre 2026 · 10:15 (55 min)</div></div></div>
+            <div class="vol__th">Météo et climat</div>
+          </div>
+          <div class="stats"><div><b data-to="1">9</b><b data-from="2">8</b><span>Événements</span></div><div><b style="color:var(--pos)">+4</b><span>Positifs</span></div><div><b style="color:var(--neg)" data-to="1">−2</b><b style="color:var(--neg)" data-from="2">−1</b><span>Malus</span></div><div><b>1</b><span>Absents</span></div></div>
+          <div class="tl__t">Déroulé</div>
+          <div class="tl">
+            <div class="ev"><span class="h">10:22</span><span class="p p-pos"></span><span><span class="n">Lina BO</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev repli" data-at="1" data-on="1"><span class="h">10:32</span><span class="p p-neg"></span><span><span class="n">Noé MA</span><br><span class="k">Malus</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span id="sp-corb" data-on="1"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:35</span><span class="p p-pos"></span><span><span class="n">Jade LU</span><br><span class="k">Implication</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:40</span><span class="p p-aut"></span><span><span class="n">Zoé FA</span><br><span class="k">Remarque</span> <span class="q">« Cahier oublié »</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:44</span><span class="p p-neg"></span><span><span class="n">Noé MA</span><br><span class="k">Malus</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+            <div class="ev"><span class="h">10:47</span><span class="p p-aut"></span><span><span class="n">Tom SA</span><br><span class="k">Sortie (toilettes)</span></span><span class="ac"><span><svg class="ic" viewBox="0 0 16 16"><path d="M3 13l.8-3L11 2.8l2.2 2.2L6 12.2z"/></svg></span><span><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></span></div>
+          </div>
+          <div class="vol__pied"><span class="corb" id="sp-seance" data-on="3-4"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span><span class="esp"></span><span class="b b--fantome b--petit">Détail / Export</span><span class="b b--petit">Ajouter un événement</span></div>
+        </div>
+        <div class="modale-fond zoom" data-at="1">
+          <div class="modale" style="width:340px">
+            <div class="modale__t">Supprimer cet événement ?</div>
+            <p style="margin:0 0 4px;font-size:13px">Malus — Noé MA à 10:32.</p>
+            <p style="margin:0 0 14px;font-size:13px;color:var(--text-muted)">Cette action est irréversible.</p>
+            <div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="sp-ok" style="background:var(--neg);border-color:var(--neg)">Supprimer</span></div>
+          </div>
+        </div>
+        <div class="toast" data-at="2" style="left:780px">Événement supprimé</div>
+        <div class="modale-fond zoom" data-at="3-4">
+          <div class="modale" style="width:400px">
+            <div class="ligne" style="margin-bottom:10px"><span style="width:38px;height:38px;border-radius:50%;background:var(--neg-soft);color:var(--neg);display:grid;place-items:center"><svg class="ic" viewBox="0 0 16 16" style="width:18px;height:18px"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span><span class="modale__t" style="margin:0">Supprimer la seance</span></div>
+            <p style="margin:0 0 8px;font-size:13px">Voulez-vous vraiment supprimer cette seance du lundi 23 novembre 2026 ?</p>
+            <div style="background:var(--surface-2);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--text-muted);margin-bottom:14px">8 evenements seront supprimes.</div>
+            <div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="sp-ok2" data-on="4" style="background:linear-gradient(135deg,#DC2626,#B91C1C);border-color:#B91C1C">Supprimer</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ page de détail -->
+    <section class="fiche" id="detail">
+      <div class="fiche__texte">
+        <h2>La page de détail d'une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Volet › Détail / Export</span></p>
+        <p class="fiche__but">La fiche complète d'une heure de cours : salle, horaires, thème à corriger, note de séance et totaux par type d'événement.</p>
+        <ol class="etapes">
+          <li data-cursor="#dt-lien" data-action="click">Dans le volet d'une séance, cliquer <span class="btn-nom">Détail / Export</span>.</li>
+          <li data-cursor="#dt-tete" data-duration="3600">L'en-tête : classe, salle, date et horaires, durée. « Préparé depuis… » quand la séance est partie d'un tableau préparé ; une pastille verte « En cours » si elle n'est pas terminée.</li>
+          <li data-cursor="#dt-modif" data-action="click">Dans <b>Theme de la seance</b>, cliquer <span class="btn-nom">Modifier</span> et écrire le titre (200 caractères au plus).</li>
+          <li data-cursor="#dt-enr" data-action="click">Cliquer <span class="btn-nom">Enregistrer</span> : ce titre devient le nom de la séance dans la liste.</li>
+          <li data-cursor="#dt-totaux" data-duration="3400">Dessous, la note de séance (en lecture) et cinq cartes : implications, malus, absences, remarques, sorties.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Cette page est d'un style plus ancien : beaucoup de libellés y sont sans accents, et les cartes à zéro affichent « 0 ».</li>
+            <li>On y arrive aussi par « Voir la séance → » dans la bulle d'un cours de l'emploi du temps, sur l'accueil, et par les dernières séances de l'accueil. Le fil « Seances / 5B » ramène à la liste.</li>
+            <li>Malgré son nom, « Détail / Export » n'exporte pas les événements : le seul export est celui des pages du tableau.</li>
+            <li>Un thème vidé est enregistré comme « pas de thème ». La note de séance s'écrit pendant l'heure, au téléphone.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tableaux-de-seance.html">Tableaux de séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps dt">
+          <div class="dbc"><a>Seances</a> / 5B</div>
+          <div class="dcard" id="dt-tete" data-on="2">
+            <div class="dhead"><span class="dlogo">5B</span><div><h3>5B</h3><div class="dl"><span class="pic"></span>Salle 12</div><div class="dl">lundi 23 novembre 2026 de 10:15 a 11:10 · 55 min</div><div class="dl"><span class="pic"></span>Préparé depuis <b style="color:var(--text)">Météo et climat (écrans)</b> · 5e · Séquence 2</div></div></div>
+            <div class="dsec"><div class="dsec__t"><span class="pic"></span>Theme de la seance<span class="lien" id="dt-modif" data-on="3">Modifier</span></div>
+              <div class="dboite" data-at="1-2" style="font-style:italic">Météo et climat</div>
+              <div class="dta" data-at="3-4"><span data-type="Météo et climat : lire un relevé de températures" data-type-at="3">Météo et climat : lire un relevé de températures</span></div>
+              <div class="ligne" data-at="3-4" style="margin-top:5px"><span class="muet">47/200</span><span class="esp"></span><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="dt-enr" data-on="4">Enregistrer</span></div>
+              <div class="dboite" data-at="5" style="font-style:italic">Météo et climat : lire un relevé de températures</div>
+            </div>
+            <div class="dsec"><div class="dsec__t"><span class="pic"></span>Notes de seance</div><div class="dboite">Revoir la différence entre météo et climat : beaucoup de confusions.</div></div>
+          </div>
+          <div class="dtot" id="dt-totaux" data-on="5">
+            <div><span class="sq sq--part">+</span><span><b>4</b><span>Implication</span></span></div>
+            <div><span class="sq sq--bav">-</span><span><b>2</b><span>Malus</span></span></div>
+            <div><span class="sq sq--abs">A</span><span><b>1</b><span>Absence</span></span></div>
+            <div><span class="sq sq--rem">!</span><span><b>1</b><span>Remarque</span></span></div>
+            <div><span class="sq sq--sor">S</span><span><b>1</b><span>Sortie</span></span></div>
+          </div>
+        </div>
+        <div class="vfond" data-at="1"></div>
+        <div class="vol" data-at="1" style="width:360px">
+          <div class="vol__tete"><span class="vol__x">×</span><div class="vol__cl"><span class="cc cc--5">5B</span><div><b>5B · Groupe 1</b><div class="muet">lundi 23 novembre 2026 · 10:15 (55 min)</div></div></div><div class="vol__th">Météo et climat</div></div>
+          <div class="stats"><div><b>9</b><span>Événements</span></div><div><b style="color:var(--pos)">+4</b><span>Positifs</span></div><div><b style="color:var(--neg)">−2</b><span>Malus</span></div><div><b>1</b><span>Absents</span></div></div>
+          <div class="tl"></div>
+          <div class="vol__pied"><span class="corb"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span><span class="esp"></span><span class="b b--fantome b--petit" id="dt-lien" data-on="1">Détail / Export</span><span class="b b--petit">Ajouter un événement</span></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ pages du tableau -->
+    <section class="fiche" id="tableau">
+      <div class="fiche__texte">
+        <h2>Les pages du tableau de la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Détail d'une séance › Tableau</span></p>
+        <p class="fiche__but">Relire ce qui a été écrit au tableau pendant l'heure, l'envoyer aux absents en PDF, ou rouvrir ce tableau pour le compléter.</p>
+        <ol class="etapes">
+          <li data-cursor="#tb-carte" data-duration="3200">La carte <b>Tableau</b> montre en vignettes les pages écrites sur l'écran de classe pendant la séance.</li>
+          <li data-cursor="#tb-v2" data-action="click">Cliquer une vignette : la page s'affiche en grand sur fond noir.</li>
+          <li data-cursor="#tb-suiv" data-action="click"><span class="btn-nom">Suivante →</span> et <span class="btn-nom">← Précédente</span> feuillettent ; cliquer à côté referme.</li>
+          <li data-cursor="#tb-pdf" data-action="click" data-duration="3400"><span class="btn-nom">PDF</span> ouvre la fenêtre <b>Exporter</b> : PDF ou page web pour les élèves, pages à garder.</li>
+          <li data-cursor="#tb-ouvrir" data-action="click" data-duration="3600"><span class="btn-nom">Ouvrir</span> rouvre le tableau dans l'éditeur, sur l'onglet de cette séance : corriger, compléter, l'enregistrer dans Mes cours.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seules les pages qui ont de l'encre, une image ou des objets sont montrées. Une séance sans tableau n'a pas de carte.</li>
+            <li>Les pages viennent de l'écran projeté : il faut que la séance ait été ouverte sur l'écran de classe.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tableau-blanc.html">Tableau blanc</a> · <a href="../classe/seance-au-tableau.html">La séance au tableau</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps dt">
+          <div class="dbc"><a>Seances</a> / 5B</div>
+          <div class="dtot" style="margin-bottom:10px">
+            <div><span class="sq sq--part">+</span><span><b>4</b><span>Implication</span></span></div><div><span class="sq sq--bav">-</span><span><b>2</b><span>Malus</span></span></div><div><span class="sq sq--abs">A</span><span><b>1</b><span>Absence</span></span></div><div><span class="sq sq--rem">!</span><span><b>1</b><span>Remarque</span></span></div><div><span class="sq sq--sor">S</span><span><b>1</b><span>Sortie</span></span></div>
+          </div>
+          <div class="dcard" id="tb-carte" data-on="1">
+            <div class="ligne"><span class="pic"></span><b style="font-size:13px">Tableau (3 pages)</b><span class="esp"></span><span class="b b--fantome b--petit" id="tb-pdf" data-on="4">PDF</span><span class="b b--fantome b--petit" id="tb-ouvrir" data-on="5">Ouvrir</span></div>
+            <div class="vign">
+              <div><svg viewBox="0 0 160 90"><text x="10" y="18" font-size="10" font-weight="700" fill="#18181B">Météo ou climat ?</text><path d="M12 30h70M12 42h56M12 54h64" stroke="#1D4ED8" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="125" cy="50" r="18" fill="none" stroke="#DC2626" stroke-width="2"/></svg><span>Page 1</span></div>
+              <div id="tb-v2" data-on="2"><svg viewBox="0 0 160 90"><path d="M15 70 L45 40 L75 55 L105 25 L140 35" stroke="#DC2626" stroke-width="2.5" fill="none"/><path d="M15 75h130M15 15v60" stroke="#52525B" stroke-width="1.2"/><text x="20" y="14" font-size="8" fill="#52525B">°C</text></svg><span>Page 2</span></div>
+              <div><svg viewBox="0 0 160 90"><text x="10" y="18" font-size="10" font-weight="700" fill="#C00000">Bilan</text><path d="M12 32h120M12 44h104M12 56h112" stroke="#C00000" stroke-width="2" fill="none" stroke-linecap="round"/></svg><span>Page 3</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="lb zoom" data-at="2-3">
+          <svg viewBox="0 0 160 90" data-at="2"><path d="M15 70 L45 40 L75 55 L105 25 L140 35" stroke="#DC2626" stroke-width="2.5" fill="none"/><path d="M15 75h130M15 15v60" stroke="#52525B" stroke-width="1.2"/><text x="20" y="14" font-size="8" fill="#52525B">°C</text></svg>
+          <svg viewBox="0 0 160 90" data-at="3" style="position:absolute;top:96px"><text x="10" y="18" font-size="10" font-weight="700" fill="#C00000">Bilan</text><path d="M12 32h120M12 44h104M12 56h112" stroke="#C00000" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          <div class="lb__nav" style="position:absolute;bottom:40px"><span>← Précédente</span><b data-at="2">Page 2 / 3</b><b data-at="3">Page 3 / 3</b><span id="tb-suiv" data-on="3">Suivante →</span></div>
+        </div>
+        <div class="modale-fond zoom" data-at="4">
+          <div class="modale" style="width:380px">
+            <div class="ligne"><span class="modale__t" style="margin:0">Exporter</span><span class="esp"></span><span class="muet" style="font-size:15px">×</span></div>
+            <div class="grille2" style="margin:12px 0 8px;font-size:12px"><div class="carte is-on"><b>PDF</b><div class="muet">à imprimer ou à projeter</div></div><div class="carte"><b>Page web pour les élèves</b><div class="muet">corrigé, animations jouables, bouton Imprimer</div></div></div>
+            <div class="muet" style="margin-bottom:12px">3 / 3 pages · Toutes · Aucune</div>
+            <div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit">Exporter</span></div>
+          </div>
+        </div>
+        <div class="bulle bulle--droite" data-at="5" style="left:440px;top:200px">L'espace du tableau blanc s'ouvre par-dessus la page, sur l'onglet de cette séance</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ événements et remarques -->
+    <section class="fiche" id="evenements">
+      <div class="fiche__texte">
+        <h2>Événements, remarques et photos</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Détail d'une séance › Evenements</span></p>
+        <p class="fiche__but">Tout le déroulé de l'heure, avec le texte complet des remarques et les photos prises en séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#er-liste" data-duration="3200">Chaque ligne : le type, l'élève, la pastille du type, la note, l'heure. Une petite image signale une photo jointe.</li>
+          <li data-cursor="#er-rem" data-action="click">Cliquer une remarque marquée <b>›</b> : la fenêtre montre la note et la photo.</li>
+          <li data-cursor="#er-x" data-action="click">Fermer avec <b>×</b> ou en cliquant à côté.</li>
+          <li data-cursor="#er-tr" data-action="click">La corbeille d'une ligne demande <b>Supprimer l'evenement</b> ; confirmer avec <span class="btn-nom">Supprimer</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seules les remarques qui ont un texte ou une photo s'ouvrent.</li>
+            <li>La photo n'est accessible qu'au compte de l'enseignant, par un lien valable une heure.</li>
+            <li>Une carte « Groupes » peut apparaître au-dessus pour une séance menée avec l'ancien mode groupe du téléphone ; les TP en groupes actuels ont leur propre fiche.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-en-groupes.html">TP en groupes</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps dt">
+          <div class="dbc"><a>Seances</a> / 5B</div>
+          <div class="dcard" id="er-liste" data-on="1">
+            <div class="ligne" style="margin-bottom:6px"><span class="pic"></span><b style="font-size:13px">Evenements (9)</b></div>
+            <div class="evl"><span class="sq sq--abs">A</span><b>Adam KE</b><span class="pill" style="background:#F0F0F2;color:var(--absence)">Absence</span><span class="q"></span><span class="hr">10:16</span><span class="ch"></span><span class="tr"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl"><span class="sq sq--part">+</span><b>Lina BO</b><span class="pill" style="background:#EAF6EE;color:var(--participation)">Implication</span><span class="q"></span><span class="hr">10:22</span><span class="ch"></span><span class="tr"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl repli" data-to="3"><span class="sq sq--bav">-</span><b>Noé MA</b><span class="pill" style="background:#FBEAEA;color:var(--bavardage)">Malus</span><span class="q"></span><span class="hr">10:32</span><span class="ch"></span><span class="tr" id="er-tr" data-on="4"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl" data-at="4" style="background:var(--neg-soft)"><span class="sq sq--bav">-</span><b>Noé MA</b><span class="pill" style="background:#FBEAEA;color:var(--bavardage)">Malus</span><span class="q"></span><span class="hr">10:32</span><span class="ch"></span><span class="tr is-on"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl" id="er-rem" data-on="2"><span class="sq sq--rem">!</span><b>Zoé FA</b><span class="pill" style="background:#FDF1E3;color:var(--remarque)">Remarque</span><span class="pic" title="photo"></span><span class="q">« Cahier oublié, troisième fois »</span><span class="hr">10:40</span><span class="ch">›</span><span class="tr"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl"><span class="sq sq--sor">S</span><b>Tom SA</b><span class="pill" style="background:#EEF0FF;color:var(--sortie)">Sortie - toilettes</span><span class="q"></span><span class="hr">10:47</span><span class="ch"></span><span class="tr"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl"><span class="sq sq--part">+</span><b>Inès DU</b><span class="pill" style="background:#EAF6EE;color:var(--participation)">Implication</span><span class="q"></span><span class="hr">10:52</span><span class="ch"></span><span class="tr"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+            <div class="evl"><span class="sq sq--part">+</span><b>Malo RI</b><span class="pill" style="background:#EAF6EE;color:var(--participation)">Implication</span><span class="q"></span><span class="hr">10:55</span><span class="ch"></span><span class="tr"><svg class="ic" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6 4.5V3h4v1.5M4 4.5l.7 9h6.6l.7-9"/></svg></span></div>
+          </div>
+        </div>
+        <div class="modale-fond zoom" data-at="2">
+          <div class="modale" style="width:440px">
+            <div class="ligne" style="margin-bottom:10px"><span class="sq sq--rem" style="width:32px;height:32px">!</span><div><b>Zoé FA</b><div class="muet">Remarque · 10:40</div></div><span class="esp"></span><span id="er-x" style="font-size:18px;color:var(--text-muted);padding:0 4px">×</span></div>
+            <div class="etiq">Note</div><div class="dboite" style="margin:0 0 10px">Cahier oublié, troisième fois</div>
+            <div class="etiq">Photo</div>
+            <svg class="photo" viewBox="0 0 400 150"><rect width="400" height="150" fill="#E7E5E4"/><rect x="110" y="20" width="180" height="115" rx="4" fill="#fff" stroke="#A8A29E"/><path d="M130 45h140M130 62h120M130 79h135M130 96h90" stroke="#93C5FD" stroke-width="2"/><path d="M200 20v115" stroke="#E7E5E4" stroke-width="3"/></svg>
+          </div>
+        </div>
+        <div class="modale-fond zoom" data-at="4">
+          <div class="modale" style="width:340px">
+            <div class="modale__t">Supprimer l'evenement</div>
+            <p style="margin:0 0 14px;font-size:13px">Voulez-vous vraiment supprimer cet evenement ?</p>
+            <div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" style="background:var(--neg);border-color:var(--neg)">Supprimer</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ ajout après coup -->
+    <section class="fiche" id="ajout">
+      <div class="fiche__texte">
+        <h2>Ajouter un événement depuis la page de détail</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Détail d'une séance › + Ajouter un evenement</span></p>
+        <p class="fiche__but">Compléter une séance terminée, par exemple une remarque oubliée sur un élève.</p>
+        <ol class="etapes">
+          <li data-cursor="#aj-btn" data-action="click">Sous les totaux, cliquer <span class="btn-nom">+ Ajouter un evenement</span>.</li>
+          <li data-cursor="#aj-eleve" data-action="click">Choisir l'<b>Eleve</b> dans <b>Selectionner un eleve...</b></li>
+          <li data-cursor="#aj-rem" data-action="click" data-duration="3200">Choisir le <b>Type</b>. Pour une sortie, le <b>Type de sortie</b> : toilettes, infirmerie, convocation ou exclusion.</li>
+          <li data-cursor="#aj-note" data-duration="3200">Pour une remarque, écrire la note (500 caractères au plus).</li>
+          <li data-cursor="#aj-ok" data-action="click">Cliquer <span class="btn-nom">Ajouter</span> : l'événement arrive dans la liste et dans les totaux.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le bouton n'apparaît que si la séance est terminée.</li>
+            <li>La liste propose toute la classe, même pour une séance en demi-groupe (le volet, lui, se limite au groupe).</li>
+            <li>L'événement porte l'heure de l'ajout.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions/…</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous is-actif">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps dt">
+          <div class="dbc"><a>Seances</a> / 5B</div>
+          <div class="dcard"><div class="dhead"><span class="dlogo">5B</span><div><h3>5B</h3><div class="dl"><span class="pic"></span>Salle 12</div><div class="dl">lundi 23 novembre 2026 de 10:15 a 11:10 · 55 min</div></div></div></div>
+          <div class="dtot">
+            <div><span class="sq sq--part">+</span><span><b>4</b><span>Implication</span></span></div><div><span class="sq sq--bav">-</span><span><b>2</b><span>Malus</span></span></div><div><span class="sq sq--abs">A</span><span><b>1</b><span>Absence</span></span></div><div><span class="sq sq--rem">!</span><span><b data-to="4">1</b><b data-from="5">2</b><span>Remarque</span></span></div><div><span class="sq sq--sor">S</span><span><b>1</b><span>Sortie</span></span></div>
+          </div>
+          <div style="text-align:center;margin-bottom:10px"><span class="b b--fantome b--petit" id="aj-btn" data-on="1">+ Ajouter un evenement</span></div>
+          <div class="dcard">
+            <div class="ligne" style="margin-bottom:6px"><span class="pic"></span><b style="font-size:13px" data-to="4">Evenements (9)</b><b style="font-size:13px" data-from="5">Evenements (10)</b></div>
+            <div class="evl"><span class="sq sq--part">+</span><b>Inès DU</b><span class="pill" style="background:#EAF6EE;color:var(--participation)">Implication</span><span class="q"></span><span class="hr">10:52</span></div>
+            <div class="evl"><span class="sq sq--part">+</span><b>Malo RI</b><span class="pill" style="background:#EAF6EE;color:var(--participation)">Implication</span><span class="q"></span><span class="hr">10:55</span></div>
+            <div class="evl glisse-haut" data-from="5"><span class="sq sq--rem">!</span><b>Rose VI</b><span class="pill" style="background:#FDF1E3;color:var(--remarque)">Remarque</span><span class="q">« Très bon schéma du cycle de l'eau »</span><span class="hr">17:05</span><span class="ch">›</span></div>
+          </div>
+        </div>
+        <div class="modale-fond zoom" data-at="1-4">
+          <div class="modale" style="width:420px">
+            <div class="modale__t">Ajouter un evenement</div>
+            <div class="etiq">Eleve</div>
+            <div class="champ" id="aj-eleve" data-on="2" style="margin-bottom:10px"><span data-at="1" class="muet" style="font-size:13px">Selectionner un eleve...</span><span data-from="2">Rose VI</span><span class="esp"></span>▾</div>
+            <div class="etiq">Type</div>
+            <div class="grt" style="margin-bottom:10px"><span><i class="sq sq--part" style="font-style:normal">+</i>Implication</span><span><i class="sq sq--bav" style="font-style:normal">-</i>Malus</span><span><i class="sq sq--abs" style="font-style:normal">A</i>Absence</span><span id="aj-rem" data-on="3-4"><i class="sq sq--rem" style="font-style:normal">!</i>Remarque</span><span><i class="sq sq--sor" style="font-style:normal">S</i>Sortie</span></div>
+            <div data-from="3"><div class="etiq">Note (optionnel)</div><div class="champ" id="aj-note" style="height:46px;align-items:flex-start;padding-top:6px;margin-bottom:12px"><span data-type="Très bon schéma du cycle de l'eau" data-type-at="4"></span></div></div>
+            <div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="aj-ok">Ajouter</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ écran de classe -->
+    <section class="fiche" id="ecran-classe">
+      <div class="fiche__texte">
+        <h2>Lancer la séance sur l'écran de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--classe">Écran de classe</span><span class="chemin">Accueil › emploi du temps › un cours</span></p>
+        <p class="fiche__but">Sur l'ordinateur relié au vidéoprojecteur, ouvrir l'écran de classe : il affichera le tableau préparé dès que la séance démarrera sur le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#lc-cours" data-action="click">Sur l'accueil, cliquer le cours dans l'emploi du temps de la semaine.</li>
+          <li data-cursor="#lc-btn" data-action="click" data-duration="3400">Dans la bulle, cliquer <span class="btn-nom">Lancer la séance</span> (ou <span class="btn-nom">Mode classe</span> si aucun tableau n'est préparé pour ce cours).</li>
+          <li data-cursor="#lc-att" data-duration="3400">L'écran de classe attend : « En attente d'une séance », avec le nom du tableau prêt.</li>
+          <li data-cursor="#lc-proj" data-duration="3600">Démarrer la séance sur le téléphone : le tableau s'ouvre tout seul, et le téléphone le fait avancer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seul l'écran de classe écoute le téléphone. « Essayer » un cours montre le cours sans séance : ni télécommande, ni plan de classe, et rien n'est gardé.</li>
+            <li>Si une séance tourne déjà pendant un essai, un bandeau ambré le signale, avec <b>Ouvrir l'écran de classe</b>.</li>
+            <li>Une séance compte comme « en cours » si elle n'est pas terminée et a démarré il y a moins de 6 heures.</li>
+            <li class="important">Les aménagements PAP, PPRE et PAI ne s'affichent jamais sur l'écran projeté.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../classe/seance-au-tableau.html">La séance au tableau</a> · <a href="../telephone/demarrer-une-seance.html">Démarrer une séance au téléphone</a> · <a href="accueil.html">Accueil</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it is-actif"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps sc">
+          <div class="ligne" style="margin-bottom:10px"><span class="rf-h1" style="font-size:18px">Semaine du 23 novembre</span></div>
+          <div class="edt">
+            <div class="edt__h" style="border-left:0"></div><div class="edt__h">Lun 23</div><div class="edt__h">Mar 24</div><div class="edt__h">Mer 25</div><div class="edt__h auj">Jeu 26</div><div class="edt__h">Ven 27</div>
+            <div class="edt__r"><span>08:00</span><span>09:00</span><span>10:00</span><span>11:00</span><span>13:00</span><span>14:00</span></div>
+            <div class="edt__c"><div class="cours cours--3" style="top:3px;height:48px"><b>3A</b>SVT · Salle 12</div><div class="cours cours--5" style="top:113px;height:48px"><b>5B · G1</b>SVT · Salle 12</div></div>
+            <div class="edt__c"><div class="cours cours--4" style="top:58px;height:48px"><b>4B</b>SVT · Salle 12</div></div>
+            <div class="edt__c"><div class="cours cours--3" style="top:3px;height:48px"><b>3A</b>SVT · Salle 12</div></div>
+            <div class="edt__c"><div class="cours cours--6" id="lc-cours" data-on="1-2" style="top:223px;height:48px"><b>6A</b>SVT · Salle 12</div></div>
+            <div class="edt__c"><div class="cours cours--5" style="top:278px;height:48px"><b>5B</b>SVT · Salle 12</div></div>
+          </div>
+          <div class="pop glisse-haut" data-at="1-2" style="left:290px;top:120px">
+            <div class="pop__t">6A · SVT</div>
+            <div class="pop__s">Jeudi 26 novembre · 13:30 – 14:25 · Salle 12</div>
+            <div class="muet" style="margin-bottom:4px">Tableau préparé</div>
+            <div class="carte" style="padding:7px 10px;margin-bottom:10px"><b style="font-size:12.5px">Le vivant et son environnement</b><div class="muet">Séquence 2 · 4 écrans</div></div>
+            <div class="ligne"><span class="b b--fantome b--petit">Essayer</span><span class="esp"></span><span class="b b--petit" id="lc-btn" data-on="2">Lancer la séance</span></div>
+          </div>
+          <div class="bulle bulle--droite" data-at="2" style="left:20px;top:300px">Ouvre l'écran de classe ; le cours s'affiche quand la séance démarre sur le téléphone, qui le fait avancer</div>
+        </div>
+        <div class="attente zoom" data-at="3" id="lc-att"><span class="direct">Connecté en direct</span><h4>En attente d'une séance</h4><p>Tableau prêt : Le vivant et son environnement</p><p>Démarre la séance sur ton téléphone : le tableau s'ouvrira tout seul.</p></div>
+        <div class="cours-proj zoom" data-at="4" id="lc-proj"><h4>Le vivant et son environnement</h4><div class="ss">Écran 1 / 4 · Où vivent les êtres vivants ?</div>
+          <svg viewBox="0 0 600 260" style="width:100%"><rect x="0" y="0" width="600" height="260" rx="10" fill="#F0F9FF"/><path d="M0 200 Q150 160 300 190 T600 180 V260 H0Z" fill="#BBF7D0"/><circle cx="520" cy="60" r="30" fill="#FDE68A"/><path d="M110 200 v-60 M110 140 l-25 25 M110 150 l25 -25" stroke="#166534" stroke-width="6" stroke-linecap="round"/><ellipse cx="300" cy="215" rx="70" ry="18" fill="#7DD3FC"/></svg>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+

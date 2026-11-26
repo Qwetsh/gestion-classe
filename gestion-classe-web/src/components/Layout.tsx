@@ -490,6 +490,21 @@ export function Layout({ children, fluid, fullBleed }: LayoutProps) {
             </div>
           )}
 
+          {/* Guide animé de l'application (public/guide/, page statique publiée avec le site) */}
+          <a
+            className="gc-rail-toggle"
+            href={`${import.meta.env.BASE_URL}guide/`}
+            target="_blank"
+            rel="noopener"
+            title="Guide de l'application : chaque fonction expliquée pas à pas"
+            style={{ textDecoration: 'none' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z" /><path d="M8 7h7M8 11h5" />
+            </svg>
+            <span>Guide</span>
+          </a>
+
           <button
             type="button"
             className="gc-rail-toggle"

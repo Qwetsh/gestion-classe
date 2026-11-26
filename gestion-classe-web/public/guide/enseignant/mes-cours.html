@@ -1,0 +1,1547 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mes cours — Guide Gestion Classe</title>
+<meta name="description" content="La bibliothèque de ses cours rangée par niveau, séquence et activité : chercher, créer, ranger, placer sur l'emploi du temps et partager.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="20">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/*CHROME-DEBUT*/
+/* ---- maquette de l'éditeur de cours (charte : course.css, accent #4F46E5, onglets contextuels #EA580C) ---- */
+.ce { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #F3F4F6; color: #1F2937; font-size: 12px; position: relative; }
+.ce__titre { height: 36px; flex: none; background: #fff; border-bottom: 1px solid #E2E4E9; display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+.ce__gc { width: 22px; height: 22px; border-radius: 5px; background: #4F46E5; color: #fff; font-size: 9.5px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.ce__ic { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: #6B7280; font-size: 13px; flex: none; transition: background .25s; }
+.ce__ic.is-off { color: #C7CBD3; }
+.ce__ic.is-on { background: #E0E7FF; color: #3730A3; }
+.ce__nom { font-weight: 650; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; padding: 2px 6px; border-radius: 5px; border: 1.5px solid transparent; transition: all .25s; }
+.ce__nom.is-on { border-color: #4F46E5; background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.ce__past { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; background: #FEF3C7; color: #92400E; white-space: nowrap; transition: all .25s; }
+.ce__past--mob { background: transparent; color: #6B7280; padding: 2px 4px; }
+.ce__past--mesure { background: #EEF0FF; color: #3730A3; }
+.ce__past.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.2); }
+.ce__etat { display: flex; align-items: center; gap: 5px; color: #6B7280; font-size: 11px; white-space: nowrap; }
+.ce__etat i { width: 7px; height: 7px; border-radius: 50%; background: #10B981; flex: none; }
+.ce__etat--mod i { background: #F59E0B; }
+.ce__etat--off i { background: #DC2626; }
+.ce__etat--off { color: #B45309; }
+.ce__fermer { height: 24px; padding: 0 11px; border-radius: 5px; background: #4F46E5; color: #fff; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; transition: transform .15s, box-shadow .2s; }
+.ce__fermer.is-on { transform: scale(.96); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.ce__onglets { height: 28px; flex: none; background: #fff; display: flex; align-items: flex-end; gap: 2px; padding: 0 10px; }
+.ce__og { padding: 5px 11px 4px; font-size: 12.5px; color: #374151; border-bottom: 3px solid transparent; white-space: nowrap; transition: all .25s; }
+.ce__og.is-actif, .ce__og.is-on { color: #3730A3; border-bottom-color: #4F46E5; font-weight: 600; }
+.ce__og--fichier { background: #4F46E5; color: #fff !important; border-radius: 6px 6px 0 0; border-bottom-color: #4F46E5; }
+.ce__og--ctx { color: #EA580C !important; font-weight: 700; }
+.ce__og--ctx.is-actif, .ce__og--ctx.is-on { border-bottom-color: #EA580C; }
+.ce__ruban { height: 90px; flex: none; background: #fff; border-bottom: 1px solid #D1D5DB; position: relative; overflow: hidden; }
+.ce__rang { position: absolute; inset: 0; display: flex; padding: 4px 4px 0; }
+.ce__grp { display: flex; flex-direction: column; padding: 0 7px; border-right: 1px solid #E2E4E9; flex: none; }
+.ce__grp:last-child { border-right: 0; }
+.ce__grp-c { flex: 1; display: flex; gap: 2px; align-items: flex-start; }
+.ce__grp-c.col { flex-direction: column; gap: 2px; }
+.ce__grp-t { font-size: 10px; color: #6B7280; text-align: center; padding: 1px 0 3px; white-space: nowrap; }
+.ce__gb { width: 54px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px 3px; border-radius: 5px; font-size: 10.5px; line-height: 1.1; text-align: center; color: #1F2937; transition: background .2s, box-shadow .2s; }
+.ce__gb .pic { width: 24px; height: 24px; border-radius: 5px; border: 1.6px solid #4B5563; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #4B5563; background: #fff; }
+.ce__pb { height: 21px; min-width: 21px; padding: 0 4px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; gap: 3px; color: #1F2937; white-space: nowrap; transition: background .2s, box-shadow .2s; }
+.ce__gb.is-on, .ce__pb.is-on, .ce__gb.is-actif, .ce__pb.is-actif { background: #E0E7FF; box-shadow: inset 0 0 0 1px #A5B4FC; }
+.ce__liste { height: 20px; border: 1px solid #D1D5DB; border-radius: 4px; padding: 0 5px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; background: #fff; white-space: nowrap; }
+.ce__liste::after { content: '▾'; font-size: 8px; color: #6B7280; margin-left: auto; padding-left: 4px; }
+.ce__coul { width: 13px; height: 13px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.1); }
+.ce__vign { width: 62px; height: 52px; border: 1px solid #E2E4E9; border-radius: 5px; padding: 4px; font-size: 10px; line-height: 1.15; background: #fff; display: flex; flex-direction: column; justify-content: center; gap: 2px; transition: all .2s; }
+.ce__vign.is-on, .ce__vign.is-actif { border-color: #4F46E5; box-shadow: 0 0 0 2px rgba(79,70,229,.2); }
+.ce__regle { height: 16px; flex: none; background: #F3F4F6; border-bottom: 1px solid #E2E4E9; position: relative; font-size: 8px; color: #9CA3AF; }
+.ce__regle b { position: absolute; top: 0; bottom: 0; left: 50%; width: 520px; translate: -50% 0; background: #fff; border-left: 38px solid #E5E7EB; border-right: 38px solid #E5E7EB; font-weight: 400; display: flex; justify-content: space-around; align-items: center; }
+.ce__milieu { flex: 1; min-height: 0; display: flex; position: relative; }
+.ce__bureau { flex: 1; min-width: 0; background: #E7E9EE; overflow: hidden; position: relative; display: flex; justify-content: center; padding-top: 14px; }
+.ce__feuille { width: 520px; height: 735px; flex: none; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 4px 14px rgba(0,0,0,.06); padding: 34px 38px; font-size: 13px; line-height: 1.5; position: relative; font-family: var(--font); }
+.ce__etatbar { height: 26px; flex: none; background: #F3F4F6; border-top: 1px solid #E2E4E9; display: flex; align-items: center; gap: 12px; padding: 0 10px; font-size: 11.5px; color: #4B5563; white-space: nowrap; }
+.ce__modes { display: flex; border: 1px solid #D1D5DB; border-radius: 5px; overflow: hidden; background: #fff; }
+.ce__modes span { padding: 1px 7px; transition: all .2s; }
+.ce__modes span + span { border-left: 1px solid #E2E4E9; }
+.ce__modes .is-actif { background: #4F46E5; color: #fff; }
+.ce__modes .is-on { background: #E0E7FF; color: #3730A3; }
+.ce__zoom { display: flex; align-items: center; gap: 5px; }
+.ce__zoom i { width: 60px; height: 3px; background: #D1D5DB; border-radius: 2px; position: relative; }
+.ce__zoom i::after { content: ''; position: absolute; left: 50%; top: -3px; width: 3px; height: 9px; background: #4B5563; border-radius: 1px; }
+.ce__volet { width: 170px; flex: none; background: #fff; border-right: 1px solid #E2E4E9; padding: 10px; font-size: 11px; }
+.ce__volet--d { border-right: 0; border-left: 1px solid #E2E4E9; width: 200px; }
+.ce__volet-t { font-weight: 650; font-size: 11.5px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.ce__menu { position: absolute; z-index: 650; background: #fff; border: 1px solid #E2E4E9; border-radius: 8px; box-shadow: var(--shadow-lg); padding: 4px; font-size: 12px; }
+.ce__menu-it { padding: 5px 8px; border-radius: 5px; transition: background .2s; }
+.ce__menu-it b { display: block; font-size: 12px; }
+.ce__menu-it span { color: #6B7280; font-size: 11px; }
+.ce__menu-it.is-on { background: #EEF0FF; }
+/* contenu de la feuille */
+.fe-h1 { font-size: 21px; font-weight: 700; color: #1E3A8A; margin: 0 0 6px; line-height: 1.25; min-height: 21px; transition: all .35s; }
+.fe-h1.brut { font-size: 13px; font-weight: 400; color: #1F2937; }
+.fe-h2 { font-size: 15.5px; font-weight: 650; color: #3730A3; margin: 8px 0 3px; min-height: 17px; transition: all .35s; }
+.fe-h2.brut { font-size: 13px; font-weight: 400; color: #1F2937; }
+.fe-h3 { font-size: 14px; font-weight: 650; color: #4338CA; margin: 6px 0 2px; }
+.fe-p { margin: 0 0 5px; min-height: 16px; }
+.fe-gris { color: #9CA3AF; }
+.fe-cur::after { content: ''; display: inline-block; width: 1.5px; height: 15px; background: #1F2937; vertical-align: -2px; margin-left: 1px; animation: fe-cli 1s steps(1) infinite; }
+@keyframes fe-cli { 50% { opacity: 0; } }
+.fe-sel { background: #C7D2FE; }
+.fe-cal { margin: 6px 0; padding: 5px 8px; border-left: 3px solid #10B981; background: #ECFDF5; border-radius: 3px; transition: all .35s; }
+.fe-cal i { display: block; font-style: normal; font-size: 9.5px; letter-spacing: .08em; font-weight: 700; color: #047857; }
+.fe-cal--retenir { border: 1.5px solid #F59E0B; background: #FEF3C7; }
+.fe-cal--retenir i { color: #B45309; }
+.fe-cal--consigne { border-left: 0; background: #EFF6FF; font-style: italic; color: #1E3A8A; }
+.fe-cal--consigne i { color: #2563EB; font-style: normal; }
+.fe-cal--exemple { border-left-color: #8B5CF6; background: #F5F3FF; }
+.fe-cal--exemple i { color: #6D28D9; }
+.fe-cal.brut { border-color: transparent; background: transparent; padding-left: 0; }
+.fe-cal.brut i { display: none; }
+.fe-img { display: block; margin: 6px auto; border-radius: 2px; transition: all .4s; position: relative; }
+.fe-img.is-on { outline: 2px solid #4F46E5; outline-offset: 1px; }
+.fe-img .poignee { position: absolute; right: -4px; bottom: -4px; width: 8px; height: 8px; background: #fff; border: 1.5px solid #4F46E5; border-radius: 2px; }
+.fe-leg { text-align: center; font-style: italic; color: #334155; font-size: 11.5px; margin: 0 0 6px; }
+.fe-tab { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.fe-tab th, .fe-tab td { border: 1px solid #94A3B8; padding: 3px 5px; text-align: left; height: 22px; }
+.fe-tab th { background: #E0E7FF; color: #1E3A8A; font-weight: 650; }
+.fe-pied { position: absolute; left: 38px; right: 38px; bottom: 12px; display: flex; justify-content: space-between; color: #6B7280; font-size: 10.5px; }
+.fe-entete { position: absolute; left: 38px; right: 38px; top: 10px; display: flex; justify-content: space-between; color: #6B7280; font-size: 10.5px; }
+.ce--sur { position: absolute; inset: 0; z-index: 20; }
+.ce__charge { position: absolute; inset: 0; z-index: 30; background: #F3F4F6; display: grid; place-items: center; color: #6B7280; font-size: 15px; }
+/* mini bibliothèque de Mes cours (styles/mes-cours.css) */
+.mc-carte { border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; }
+.mc-niv { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 650; font-size: 14px; }
+.mc-chev { color: var(--text-dim); font-size: 11px; }
+.mc-seq { font-size: 10.5px; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; padding: 8px 12px 4px; border-top: 1px solid var(--border); }
+.mc-ligne { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; }
+.mc-ico { width: 13px; height: 16px; border: 1.5px solid #9CA3AF; border-radius: 2px; flex: none; }
+.mc-t { font-size: 13px; font-weight: 500; margin-right: 6px; white-space: nowrap; }
+.mc-doc { height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; transition: all .25s; }
+.mc-doc--gris { color: var(--text-dim); }
+.mc-doc.is-on { background: var(--indigo-soft); border-color: #A5B4FC; }
+.mc-plus { color: var(--text-dim); font-size: 16px; padding: 0 6px; }
+.ce__feuille.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35), 0 4px 14px rgba(0,0,0,.06); }
+.ce__modes.is-on, .ce__onglets.is-on, .ce__etat.is-on { border-radius: 5px; box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.ce__modal-fond { position: absolute; inset: 0; z-index: 600; background: rgba(20,25,40,.45); display: grid; place-items: center; }
+.ce__modal { background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 16px 18px; width: 440px; font-size: 12.5px; }
+.ce__modal-t { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.ce__choix { border: 1px solid #E2E4E9; border-radius: 7px; padding: 7px 9px; font-size: 11px; color: #6B7280; transition: all .25s; }
+.ce__choix b { display: block; color: #1F2937; font-size: 12px; }
+.ce__choix.is-on, .ce__choix.is-actif { border-color: #4F46E5; background: #EEF0FF; }
+/*CHROME-FIN*/
+/* ---- page Mes cours ---- */
+.app { position: relative; }
+.vues { display: inline-flex; background: var(--surface-3); border-radius: 7px; padding: 2px; gap: 2px; margin-bottom: 12px; }
+.vue { padding: 4px 12px; border-radius: 5px; font-size: 12.5px; color: var(--text-muted); transition: all .25s; white-space: nowrap; }
+.vue.is-actif, .vue.is-on { background: #fff; color: var(--text); box-shadow: 0 0 0 1px var(--border); font-weight: 560; }
+.rech { display: flex; align-items: center; gap: 8px; width: 400px; height: 32px; border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 10px; font-size: 12.5px; color: var(--text); background: #fff; margin-bottom: 12px; transition: all .25s; }
+.rech::before { content: ''; width: 9px; height: 9px; border: 1.7px solid var(--text-dim); border-radius: 50%; flex: none; }
+.rech .ph { color: var(--text-dim); }
+.rech.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.mc-carte + .mc-carte { margin-top: 10px; }
+.mc-doc .puce { height: 18px; min-width: 24px; font-size: 10px; padding: 0 4px; border-radius: 5px; transition: box-shadow .25s; }
+.mc-doc .puce.is-on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--n4); }
+.lect-b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; transition: background .25s; flex: none; }
+.lect-b i { width: 0; height: 0; border-left: 7px solid var(--text-dim); border-top: 4.5px solid transparent; border-bottom: 4.5px solid transparent; margin-left: 2px; }
+.lect-b.is-on { background: var(--indigo-soft); }
+.lect-b.is-on i { border-left-color: var(--indigo); }
+.mc-eval { font-size: 10.5px; font-weight: 600; background: var(--indigo-soft); color: var(--indigo-dark); padding: 2px 7px; border-radius: 5px; flex: none; }
+.mc-sep { border-top: 1.5px dashed var(--border-strong); margin: 2px 12px; }
+.mc-lien { height: 28px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--indigo); white-space: nowrap; }
+.mc-lien::before { content: '↗'; font-size: 11px; }
+.mc-tp { height: 28px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
+.mc-tp::before { content: ''; width: 7px; height: 11px; border: 1.5px solid var(--text-muted); border-radius: 1px 1px 4px 4px; }
+.mc-ico--tab { width: 17px; height: 12px; border-radius: 2px; }
+.mc-ico--eval { border-color: var(--indigo); background: var(--indigo-soft); }
+.mc-chev { display: inline-block; transition: transform .3s; }
+.mc-chev.is-on { transform: rotate(-90deg); }
+.mc-niv .muet { font-weight: 400; }
+.mc-ligne { transition: background .25s; }
+.mc-ligne.is-on { background: var(--surface-2); }
+.mc-seq { display: flex; align-items: center; gap: 6px; transition: all .25s; }
+.mc-seq.is-on { background: var(--indigo-soft); box-shadow: inset 0 0 0 2px var(--indigo); }
+.mc-seq .mc-plus { margin-left: auto; font-size: 14px; padding: 0 4px; }
+.mc-fichier { display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 30px; font-size: 12.5px; color: var(--text-muted); }
+.mc-fichier .taille { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text-dim); font-size: 11.5px; }
+.mc-fichier .clip { width: 7px; height: 12px; border: 1.5px solid var(--text-dim); border-radius: 4px; flex: none; }
+.jauge { display: inline-flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--text-dim); margin-top: 14px; padding: 2px 4px; border-radius: 5px; transition: box-shadow .25s; }
+.jauge i { width: 140px; height: 4px; border-radius: 3px; background: var(--surface-3); position: relative; overflow: hidden; }
+.jauge i::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 31%; background: #A1A1AA; border-radius: 3px; }
+.jauge.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.menu__sec { font-size: 10px; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; padding: 6px 10px 3px; border-top: 1px solid var(--border); margin-top: 3px; text-transform: uppercase; }
+.menu__sec:first-child { border-top: 0; margin-top: 0; }
+.menu .menu__it { padding: 4px 10px; font-size: 12px; }
+.menu__it--danger { color: var(--neg); }
+.menu__it--gris { color: #A1A1AA; }
+.menu__tete { font-size: 11px; color: var(--text-dim); padding: 5px 10px 4px; }
+.menu__filet { border-top: 1px solid var(--border); margin: 3px 0; }
+.modale { position: relative; }
+.modale .etiq { margin-top: 10px; }
+.modale__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; align-items: center; }
+.modale__note { font-size: 11.5px; color: var(--text-dim); }
+.typec { flex: 1; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 11.5px; color: var(--text-dim); display: flex; gap: 8px; align-items: flex-start; transition: all .25s; }
+.typec b { display: block; font-size: 12.5px; color: var(--text); }
+.typec.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.typec .ic { width: 16px; height: 20px; border: 1.6px solid var(--text-muted); border-radius: 2px; flex: none; margin-top: 2px; }
+.typec .ic--tab { width: 20px; height: 15px; }
+.modeles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.modele { border: 1px solid var(--border); border-radius: 7px; padding: 6px 4px; text-align: center; font-size: 10.5px; line-height: 1.2; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 52px; transition: all .25s; position: relative; }
+.modele .pg { width: 16px; height: 20px; border-radius: 2px; border: 1.5px solid #9CA3AF; display: grid; place-items: center; font-size: 8px; font-weight: 700; color: var(--text-muted); }
+.modele .pg--etoile { border-radius: 50%; border-color: var(--warn); color: var(--warn); }
+.modele.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.modele .x { position: absolute; top: 2px; right: 4px; font-size: 9px; color: var(--text-dim); }
+.champ .tape { white-space: nowrap; }
+.ligne-champs { display: flex; gap: 8px; }
+.ligne-champs > div { flex: 1; min-width: 0; }
+.pl-classes { display: flex; gap: 6px; margin: 10px 0 8px; }
+.pl-cl { height: 30px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--border-strong); font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; background: #fff; position: relative; transition: all .25s; }
+.pl-cl.is-on, .pl-cl.is-actif { background: var(--n4-soft); color: var(--n4-ink); border-color: var(--n4); }
+.pl-cl--5.is-on, .pl-cl--5.is-actif { background: var(--n5-soft); color: var(--n5-ink); border-color: var(--n5); }
+.pl-cl--3.is-on, .pl-cl--3.is-actif { background: var(--n3-soft); color: var(--n3-ink); border-color: var(--n3); }
+.pl-cpt { position: absolute; top: -7px; right: -7px; min-width: 17px; height: 17px; border-radius: 9px; background: var(--n4); color: #fff; font-size: 10px; display: grid; place-items: center; padding: 0 4px; }
+.pl-liste { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.pl-cr { display: flex; align-items: center; gap: 9px; height: 36px; padding: 0 12px; font-size: 12.5px; border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+.pl-cr:first-child { border-top: 0; }
+.pl-cr--pris { color: #A1A1AA; background: var(--surface-2); }
+.pl-cr--pris .case { opacity: .5; }
+.pl-cr .muet { margin-left: auto; }
+.cal { display: grid; grid-template-columns: 44px repeat(5, 1fr); gap: 4px; font-size: 11px; }
+.cal__j { text-align: center; color: var(--text-dim); font-weight: 600; padding-bottom: 2px; }
+.cal__h { color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: 10.5px; padding-top: 4px; }
+.cal__c { height: 50px; border-radius: 6px; padding: 4px 6px; font-size: 11px; line-height: 1.25; border-left: 3px solid; transition: box-shadow .25s; }
+.cal__c b { display: block; font-size: 11.5px; }
+.cal__c--4 { background: var(--n4-soft); border-color: var(--n4); color: var(--n4-ink); }
+.cal__c--5 { background: var(--n5-soft); border-color: var(--n5); color: var(--n5-ink); }
+.cal__c--3 { background: var(--n3-soft); border-color: var(--n3); color: var(--n3-ink); }
+.cal__c.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.cal__v { height: 50px; }
+.pop { position: absolute; right: 16px; top: 14px; width: 300px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); z-index: 50; font-size: 12px; border-top: 4px solid var(--n4); }
+.pop__tete { padding: 10px 12px 8px; display: flex; justify-content: space-between; }
+.pop__tete b { font-size: 15px; display: block; }
+.pop__sec { border-top: 1px solid var(--border); padding: 9px 12px; }
+.pop__lab { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; text-transform: uppercase; }
+.pop__lab span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-dim); }
+.pop__btn { height: 30px; border: 1px solid var(--border-strong); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 550; background: #fff; transition: all .25s; }
+.pop__btn.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.pop__btn--plein { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+.pop__btn--off { color: #A1A1AA; background: var(--surface-2); }
+.pop__carte { border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px; margin-bottom: 5px; transition: all .25s; }
+.pop__carte b { display: block; font-size: 12px; }
+.pop__carte span { color: var(--text-dim); font-size: 11px; }
+.pop__carte.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.pc-lignes .mc-ligne { gap: 10px; }
+.pc-date { width: 168px; flex: none; font-variant-numeric: tabular-nums; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+.pc-fin { height: 26px; padding: 0 9px; border: 1px solid var(--border); border-radius: 6px; font-size: 11.5px; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; transition: all .25s; }
+.pc-fin.is-on { border-color: var(--indigo); color: var(--indigo); }
+.pc-gal { display: flex; gap: 8px; padding: 8px 12px 10px 190px; align-items: center; }
+.pc-gal .vg { width: 92px; height: 52px; border: 1px solid var(--border); border-radius: 4px; background: #fff; padding: 5px; display: flex; flex-direction: column; gap: 3px; }
+.pc-gal .vg i { height: 3px; border-radius: 2px; background: #D4D4D8; }
+.pc-gal .vg i.r { background: #F87171; width: 60%; }
+.pc-tsec { font-size: 10.5px; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; padding: 8px 12px 2px; text-transform: uppercase; }
+.ev-blocs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ev-bloc { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: #fff; min-height: 130px; }
+.ev-bloc__t { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.ev-note { font-size: 11px; color: var(--text-dim); margin-top: 8px; line-height: 1.5; }
+.bareme { margin-top: 14px; background: var(--surface-3); border-radius: 8px; padding: 9px 12px; font-size: 12px; color: var(--text-muted); }
+.bareme .l { color: var(--indigo); margin-right: 10px; }
+.puce-pick { padding: 4px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); background: #fff; transition: all .25s; }
+.puce-pick--pref { background: #3730A3; border-color: #3730A3; color: #fff; }
+.puce-pick.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.pick-seq { font-size: 12px; font-weight: 700; color: var(--text-muted); margin: 8px 0 4px; }
+.pick-l { display: flex; align-items: center; gap: 6px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+.pick-l > span:first-child { flex: 1; }
+.part-champ { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.part-champ .champ { flex: 1; font-family: var(--mono); font-size: 11.5px; background: var(--surface-2); }
+.ok-vert { color: var(--pos); font-size: 12px; margin-top: 8px; }
+.conf { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--neg); }
+.peek { position: absolute; z-index: 60; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 8px; }
+.peek__a4 { width: 190px; height: 268px; border: 1px solid var(--border); padding: 14px 13px; position: relative; font-size: 7px; line-height: 1.4; color: #374151; }
+.peek__a4 b { display: block; color: #1E3A8A; font-size: 10px; margin-bottom: 6px; }
+.peek__a4 i { display: block; height: 3.5px; border-radius: 2px; background: #E5E7EB; margin: 0 0 5px; }
+.peek__a4 .cons { height: 18px; background: #EFF6FF; border-radius: 2px; margin-bottom: 7px; }
+.peek__a4 .img { height: 60px; background: #E0F2FE; border-radius: 2px; margin: 6px 0; }
+.peek__a4 .num { position: absolute; bottom: 6px; left: 0; right: 0; text-align: center; color: #9CA3AF; font-size: 7px; }
+.peek__169 { width: 260px; height: 146px; border: 1px solid var(--border); border-radius: 3px; position: relative; background: #fff; padding: 12px; }
+.peek__169 b { font-size: 12px; color: var(--text); }
+.livre { width: 13px; height: 10px; border: 1.5px solid currentColor; border-radius: 2px; position: relative; }
+.livre::after { content: ''; position: absolute; left: 4.5px; top: -1px; bottom: -1px; border-left: 1.5px solid currentColor; }
+.fichier-pc { position: absolute; right: 22px; top: 70px; z-index: 60; display: flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--border-strong); border-radius: 7px; padding: 6px 10px; font-size: 11.5px; box-shadow: var(--shadow); }
+.fichier-pc::before { content: 'PDF'; font-size: 8px; font-weight: 700; color: #fff; background: #DC2626; border-radius: 3px; padding: 2px 3px; }
+.renomme { display: inline-flex; align-items: center; height: 22px; padding: 0 6px; border: 1.5px solid var(--indigo); border-radius: 5px; background: #fff; color: var(--text); letter-spacing: .06em; font-size: 10.5px; min-width: 240px; }
+/* fiche QR : feuille imprimée et téléphone */
+.papier { position: absolute; z-index: 40; left: 210px; top: 22px; width: 400px; height: 566px; background: #fff; box-shadow: 0 12px 40px rgba(0,0,0,.28); padding: 30px 34px; font-size: 11px; line-height: 1.5; color: #1F2937; transform: rotate(-1.2deg); }
+.papier .qr { position: absolute; right: 9px; top: 8px; display: flex; align-items: center; gap: 5px; }
+.papier .qr span { font: 700 7.5px/1.1 Arial, sans-serif; text-align: right; color: #111; }
+.papier .qr svg { width: 36px; height: 36px; display: block; }
+.voile-gris { position: absolute; inset: 0; z-index: 35; background: rgba(40,44,52,.55); }
+.tel-boite { position: absolute; z-index: 45; right: 70px; top: 40px; width: 230px; height: 470px; }
+.tel-boite .tel { border-radius: 30px; padding: 8px; }
+.tel-boite .tel__ecran { border-radius: 23px; }
+.tel-doc { padding: 4px 14px 14px; font-size: 11px; line-height: 1.45; overflow: hidden; }
+.tel-doc h4 { margin: 4px 0 6px; font-size: 16px; color: #1E3A8A; line-height: 1.2; }
+.tel-doc h5 { margin: 8px 0 3px; font-size: 12.5px; color: #3730A3; }
+.tel-doc .cons { background: #EFF6FF; color: #1E3A8A; font-style: italic; padding: 6px 8px; border-radius: 4px; }
+.tel-doc .cons i { display: block; font-style: normal; font-size: 8px; font-weight: 700; letter-spacing: .08em; color: #2563EB; }
+.tel-doc svg { width: 100%; height: auto; display: block; margin: 6px 0 2px; }
+.mob-pop { position: absolute; z-index: 60; top: 40px; right: 120px; width: 290px; background: #fff; border: 1px solid #E2E4E9; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 11px 13px; font-size: 12.5px; }
+.mob-pop .bts { display: flex; gap: 6px; margin-top: 10px; }
+.mob-pop .bt { height: 26px; padding: 0 10px; border: 1px solid #D1D5DB; border-radius: 5px; display: inline-flex; align-items: center; font-size: 11.5px; background: #fff; }
+.halo-qr { position: absolute; z-index: 46; }
+@media (max-width: 640px) { .fiche__texte h2 { font-size: 21px; } }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Mes cours</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#bibliotheque">La bibliothèque</a></li>
+      <li><a href="#recherche">Chercher un cours</a></li>
+      <li><a href="#apercu">Aperçu au survol</a></li>
+      <li><a href="#nouveau-cours">Créer un cours</a></li>
+      <li><a href="#menu-actions">Le menu ⋯ d'un cours</a></li>
+      <li><a href="#fiches-methode">Fiches méthode</a></li>
+      <li><a href="#sequence-fichiers">Séquences et fichiers joints</a></li>
+      <li><a href="#liens-site">Liens vers un site ou une app</a></li>
+      <li><a href="#placer">Placer sur un cours</a></li>
+      <li><a href="#lier-activite">Lier une activité à une heure</a></li>
+      <li><a href="#par-classe">Onglet Par classe</a></li>
+      <li><a href="#choisir-dans-mes-cours">Sujet et corrigé d'une évaluation</a></li>
+      <li><a href="#lien-lecture-seule">Lien lecture seule</a></li>
+      <li><a href="#qr-version-couleur">QR code « Version couleur »</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/cadre-general-suite.html">◀ Réglages et éléments communs</a><a href="../enseignant/editeur-de-cours.html">Éditeur de cours ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Mes cours</div>
+      <h1>Mes cours</h1>
+      <p>La bibliothèque de tous ses originaux, cours rédigés et tableaux blancs, rangés comme un classeur de préparation : niveau, séquence, activité. On y crée, range, place sur les heures de l'emploi du temps et partage ses documents.</p>
+      <div class="chap__resume"><span>Menu Mes cours › Bibliothèque et classes</span><span>Ordinateur</span><span>Onglets Bibliothèque, Fiches méthode, Par classe</span></div>
+    </header>
+
+    <!-- ============================================================ 1. bibliothèque -->
+    <section class="fiche fiche--large" id="bibliotheque">
+      <div class="fiche__texte">
+        <h2>La bibliothèque</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Bibliothèque et classes</span></p>
+        <p class="fiche__but">Tous ses cours, rangés par niveau puis par séquence. Une activité et tous ses compagnons (fiche, documents, correction…) tiennent sur une seule ligne.</p>
+        <ol class="etapes">
+          <li data-cursor="#bi-v-bib">Ouvrir <b>Mes cours</b> : la page s'ouvre sur l'onglet <span class="btn-nom">Bibliothèque</span>.</li>
+          <li data-cursor="#bi-niv5" data-action="click">Cliquer l'en-tête d'un niveau pour le replier ou le déplier. Le choix est gardé sur l'ordinateur.</li>
+          <li data-cursor="#bi-titre" data-duration="3800">Une ligne par activité : son titre, puis un bouton par document. Cliquer le titre ouvre la fiche, cliquer un bouton ouvre ce document précis dans l'<a href="editeur-de-cours.html">éditeur</a>.</li>
+          <li data-cursor="#bi-pc" data-action="click" data-duration="3400">Une pastille de classe (<b>4A</b>) dit que ce document est posé sur une heure de cette classe ; un clic ouvre la copie de cette classe.</li>
+          <li data-cursor="#bi-play" data-action="click">Le petit triangle à côté d'un cours rédigé : <b>Essayer en classe</b>. Rien n'est gardé en quittant.</li>
+          <li data-cursor="#bi-eval" data-duration="3400">Les évaluations ferment la séquence, après un trait pointillé, avec la pastille <b>Évaluation</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le rangement se lit dans les titres : « Activité 2 — Les volcans », puis ses compagnons avec le même titre suivi de « (documents) », « (correction) », « (protocole) », « (adaptée) », « (extraits) » ou « (copie modèle) ». Une évaluation commence par « Évaluation — ».</li>
+            <li>Ordre des boutons : Fiche, Adaptée, Protocole, Documents, Extraits, Copie modèle, Correction (toujours en dernier). « Documents » et « Correction » sont écrits en gris.</li>
+            <li>Tri : 6e, 5e, 4e, 3e, Autre, Sans niveau ; « Activité 2 » vient avant « Activité 10 ». Retoucher un cours ne le déplace pas.</li>
+            <li>Seuls les originaux sont listés. Les copies posées sur l'emploi du temps se retrouvent par les pastilles, le calendrier et l'onglet <a href="#par-classe">Par classe</a>.</li>
+            <li>La version « Adaptée » est la fiche des élèves à PAP : elle n'entre jamais dans le classeur de la classe.</li>
+            <li>Après les documents viennent les liens vers un site (texte indigo) et le bouton <b>TP</b> s'il existe un TP relié dans Mes TP.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="editeur-de-cours.html#ouvrir-editeur">Ouvrir un cours dans l'éditeur</a> · <a href="classeur-virtuel-et-tp.html">Classeur virtuel et Mes TP</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="bi-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="bi-v-bib">Bibliothèque</span><span class="vue" id="bi-v-meth">Fiches méthode</span><span class="vue" id="bi-v-cls">Par classe</span><span class="vue" id="bi-v-clr">Classeur des classes</span></div>
+                    <div class="rech"><span class="ph">Chercher un cours, une séquence, un mot du texte</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv" id="bi-niv5"><span class="mc-chev" data-on="2-6">▾</span>5e<span class="muet">7</span></div>
+                      <div class="repli" data-at="1">
+                        <div class="mc-seq">SÉQUENCE 1 — MÉTÉO ET CLIMAT</div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Le temps qu'il fait</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                    </div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                      <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                      <div class="mc-ligne" data-on="3"><span class="mc-ico"></span><span class="mc-t" id="bi-titre">Activité 1 — Les séismes</span>
+                        <span class="mc-doc">Fiche<span class="puce puce--4" id="bi-pc" data-on="4">4A</span><span class="puce puce--4">4B</span><span class="lect-b" id="bi-play" data-on="5"><i></i></span></span>
+                        <span class="mc-doc mc-doc--gris">Documents</span>
+                        <span class="mc-doc mc-doc--gris">Correction<span class="puce puce--4">4A</span></span>
+                        <span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc">Adaptée</span><span class="mc-doc">Protocole</span><span class="mc-doc mc-doc--gris">Correction</span><span class="mc-tp">TP</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico mc-ico--tab"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche<span class="lect-b"><i></i></span></span><span class="mc-lien">Carte des séismes</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-sep"></div>
+                      <div class="mc-ligne" id="bi-eval" data-on="6"><span class="mc-ico mc-ico--eval"></span><span class="mc-eval">Évaluation</span><span class="mc-t">Séismes et volcans</span><span class="mc-doc">Sujet</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                    </div>
+                    <div class="bulle bulle--bas" data-at="4" style="left:228px;top:172px;max-width:320px;white-space:nowrap">Ouvrir la copie de 4A · mer. 18 nov. à 08:15</div>
+                    <div class="bulle bulle--bas" data-at="5" style="left:272px;top:172px;max-width:340px;white-space:nowrap">Essayer en classe : rien n'est gardé en quittant</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 2. recherche -->
+    <section class="fiche fiche--large" id="recherche">
+      <div class="fiche__texte">
+        <h2>Chercher un cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Bibliothèque › champ de recherche</span></p>
+        <p class="fiche__but">Retrouver un cours par son titre, sa séquence, son niveau, ou par un mot écrit dans son texte.</p>
+        <ol class="etapes">
+          <li data-cursor="#re-champ" data-action="click" data-duration="3000">Taper un ou plusieurs mots dans <b>Chercher un cours, une séquence, un mot du texte</b>.</li>
+          <li data-cursor="#re-res" data-duration="3400">La liste se resserre aussitôt aux cours dont le titre, la séquence ou le niveau contiennent tous les mots. Tous les niveaux se déplient.</li>
+          <li data-cursor="#re-texte" data-duration="3800">Après une courte pause, la section <b>Dans le texte</b> s'ajoute en bas : les cours rédigés qui contiennent ces mots, avec un extrait où ils sont surlignés.</li>
+          <li data-cursor="#re-champ">La touche Échap vide le champ : toute la bibliothèque revient.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les accents, les majuscules et les apostrophes ne comptent pas ; tous les mots doivent être présents.</li>
+            <li>La recherche dans le texte ne prend que les mots de deux lettres ou plus, et seulement les cours de l'onglet affiché (pas les copies posées sur l'emploi du temps).</li>
+            <li>Aucun résultat : « Aucun cours ne correspond à « … ». ».</li>
+            <li>La recherche générale de l'application, elle, ne fouille pas le texte des cours.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="re-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="re-v-bib">Bibliothèque</span><span class="vue" id="re-v-meth">Fiches méthode</span><span class="vue" id="re-v-cls">Par classe</span><span class="vue" id="re-v-clr">Classeur des classes</span></div>
+                    <div class="rech" id="re-champ" data-on="1-3"><span class="repli" data-at="1-3" data-type="volcan" data-type-at="1"></span><span class="ph repli" data-at="4">Chercher un cours, une séquence, un mot du texte</span></div>
+                    <div class="repli" data-at="1,4">
+                      <div class="mc-carte"><div class="mc-niv"><span class="mc-chev is-on">▾</span>6e<span class="muet">5</span></div></div>
+                      <div class="mc-carte"><div class="mc-niv"><span class="mc-chev is-on">▾</span>5e<span class="muet">7</span></div></div>
+                      <div class="mc-carte">
+                        <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                        <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Documents</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                    </div>
+                    <div class="repli" data-at="2-3" id="re-res">
+                      <div class="mc-carte">
+                        <div class="mc-niv"><span class="mc-chev">▾</span>6e<span class="muet">1</span></div>
+                        <div class="mc-seq">SÉQUENCE 1 — VOLCANS ET PAYSAGES</div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Le relief autour de nous</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                      <div class="mc-carte">
+                        <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">2</span></div>
+                        <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="mc-ico mc-ico--eval"></span><span class="mc-eval">Évaluation</span><span class="mc-t">Séismes et volcans</span><span class="mc-doc">Sujet</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                      <div class="mc-carte repli glisse-haut" data-at="3" id="re-texte" style="padding:10px 12px">
+                        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Dans le texte</div>
+                        <div class="ligne" style="align-items:flex-start;gap:8px"><span class="mc-ico" style="margin-top:2px"></span><div><b style="font-size:12.5px">Activité 4 — L'eau dans le paysage</b><div class="muet" style="font-size:12px">… la lave d'un <mark style="background:var(--indigo-soft);color:inherit">volcan</mark> refroidit et forme une roche sombre …</div></div></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 3. aperçu -->
+    <section class="fiche fiche--large" id="apercu">
+      <div class="fiche__texte">
+        <h2>Aperçu au survol</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › survol d'un bouton</span></p>
+        <p class="fiche__but">Reconnaître un document d'un coup d'œil, sans l'ouvrir.</p>
+        <ol class="etapes">
+          <li data-cursor="#ap-fiche" data-duration="3200">Poser la souris sur un bouton, par exemple <span class="btn-nom">Fiche</span> : après un court arrêt, la première page apparaît en vignette sous le bouton.</li>
+          <li data-cursor="#ap-docs" data-duration="3000">Passer au bouton voisin <span class="btn-nom">Documents</span> : la vignette change presque aussitôt.</li>
+          <li data-cursor="#ap-tab" data-duration="3200">Pour un tableau blanc, la vignette montre sa première page au format de l'écran (16:9).</li>
+          <li data-cursor="#ap-titre">Sur le titre de l'activité, pas d'aperçu : il gênerait quand on parcourt la liste. La vignette disparaît dès que la souris s'en va.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'aperçu est en lecture seule et ne se déclenche pas au doigt.</li>
+            <li>Il disparaît aussi au défilement, au clic et quand on change la taille de la fenêtre.</li>
+            <li>Messages possibles : « Chargement… », « Aperçu indisponible », « Tableau vide ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="ap-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="ap-v-bib">Bibliothèque</span><span class="vue" id="ap-v-meth">Fiches méthode</span><span class="vue" id="ap-v-cls">Par classe</span><span class="vue" id="ap-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                      <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t" id="ap-titre">Activité 1 — Les séismes</span><span class="mc-doc" id="ap-fiche" data-on="1">Fiche</span><span class="mc-doc mc-doc--gris" id="ap-docs" data-on="2">Documents</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico mc-ico--tab"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc" id="ap-tab" data-on="3">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 4 — Les tsunamis</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                    </div>
+                    <div class="peek zoom" data-at="1" style="left:150px;top:172px"><div class="peek__a4"><b>Les séismes</b><div class="cons"></div><i style="width:70%"></i><i></i><i style="width:85%"></i><i style="width:60%"></i><div class="img"></div><i></i><i style="width:75%"></i><span class="num">1</span></div></div>
+                    <div class="peek zoom" data-at="2" style="left:216px;top:172px"><div class="peek__a4"><b>Documents</b><div class="img" style="height:80px"></div><i style="width:55%"></i><div class="img" style="height:70px;background:#FEF3C7"></div><i style="width:65%"></i><span class="num">1</span></div></div>
+                    <div class="peek zoom" data-at="3" style="left:150px;top:212px"><div class="peek__169"><b>Les risques</b><svg viewBox="0 0 236 100" width="236" height="100" aria-hidden="true" style="margin-top:6px"><path d="M10 80 L60 30 L95 62 L130 20 L180 70 L226 40" fill="none" stroke="#DC2626" stroke-width="3"/><rect x="10" y="86" width="90" height="6" rx="3" fill="#E5E7EB"/></svg></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 4. nouveau cours -->
+    <section class="fiche fiche--large" id="nouveau-cours">
+      <div class="fiche__texte">
+        <h2>Créer un cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › + Nouveau</span></p>
+        <p class="fiche__but">Créer un cours rédigé (comme dans Word, imprimable en A4) ou un tableau blanc, à partir d'un modèle ou d'un fichier Word, et le ranger d'emblée.</p>
+        <ol class="etapes">
+          <li data-cursor="#nc-nouveau" data-action="click">Cliquer <span class="btn-nom">+ Nouveau</span> : la fenêtre « Nouveau cours » s'ouvre.</li>
+          <li data-cursor="#nc-redige" data-action="click">Choisir le type : <b>Cours rédigé</b> ou <b>Tableau blanc</b> (pages 16:9 à dessiner).</li>
+          <li data-cursor="#nc-fiche" data-action="click" data-duration="3600">Pour un cours rédigé, <b>Partir de</b> : un modèle fourni, un de ses propres modèles (étoile), ou <span class="btn-nom">Fichier Word…</span> pour reprendre un .docx.</li>
+          <li data-cursor="#nc-titre" data-duration="3600">Remplir <b>Titre</b>, <b>Niveau</b> et <b>Séquence</b>. Les séquences déjà utilisées dans le niveau sont proposées pendant la frappe.</li>
+          <li data-cursor="#nc-creer" data-action="click"><span class="btn-nom">Créer et ouvrir</span> : le cours est créé, rangé, et s'ouvre dans l'éditeur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Modèles fournis : Document vierge, Cours, Fiche d'activité, Fiche à cartouche, Évaluation, Fiche méthode, Compte rendu de TP. Ce sont des contenus ordinaires, modifiables ensuite.</li>
+            <li>Un modèle personnel se supprime par sa petite croix ; les cours déjà créés à partir de lui ne changent pas.</li>
+            <li>Fichier Word : le titre se remplit avec le nom du fichier ; titres, listes, tableaux, images et gras sont gardés, à relire ensuite. Un ancien .doc est refusé : l'enregistrer en .docx depuis Word ou LibreOffice.</li>
+            <li>Créé depuis l'onglet Fiches méthode, le cours y est rangé d'office.</li>
+            <li>La même fenêtre, titrée « Renommer, ranger », sert à changer titre, niveau et séquence d'un cours existant (menu ⋯).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="editeur-de-cours-avance.html">Modèles et import dans l'éditeur</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="nc-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="nc-v-bib">Bibliothèque</span><span class="vue" id="nc-v-meth">Fiches méthode</span><span class="vue" id="nc-v-cls">Par classe</span><span class="vue" id="nc-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte"><div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div><div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div><div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span></div></div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-from="2">
+                  <div class="modale zoom" data-from="2" style="width:560px">
+                    <div class="modale__t">Nouveau cours</div>
+                    <div class="ligne" style="gap:8px;align-items:stretch">
+                      <div class="typec" id="nc-redige" data-on="2-5"><span class="ic"></span><div><b>Cours rédigé</b>Rédigé comme dans Word, imprimable en A4</div></div>
+                      <div class="typec"><span class="ic ic--tab"></span><div><b>Tableau blanc</b>Pages 16:9 à dessiner, comme avant</div></div>
+                    </div>
+                    <div class="etiq">Partir de</div>
+                    <div class="modeles">
+                      <div class="modele"><span class="pg"></span>Document vierge</div>
+                      <div class="modele"><span class="pg">I.</span>Cours</div>
+                      <div class="modele" id="nc-fiche" data-on="3-5"><span class="pg">?</span>Fiche d'activité</div>
+                      <div class="modele"><span class="pg">▤</span>Fiche à cartouche</div>
+                      <div class="modele"><span class="pg">/20</span>Évaluation</div>
+                      <div class="modele"><span class="pg">1.</span>Fiche méthode</div>
+                      <div class="modele"><span class="pg">TP</span>Compte rendu de TP</div>
+                      <div class="modele"><span class="pg pg--etoile"><span class="ic ic-etoile" aria-hidden="true"></span></span>Fiche à trous<span class="x">×</span></div>
+                      <div class="modele"><span class="pg">W</span>Fichier Word…</div>
+                    </div>
+                    <div class="etiq">Titre</div>
+                    <div class="champ" id="nc-titre" data-on="4"><span class="tape" data-type="Activité 4 — Les tsunamis" data-type-at="4"></span></div>
+                    <div class="ligne-champs">
+                      <div><div class="etiq">Niveau</div><div class="champ">4e<span class="esp"></span>▾</div></div>
+                      <div style="flex:2"><div class="etiq">Séquence</div><div class="champ"><span class="tape" data-type="Séquence 2 — La Terre en mouvement" data-type-at="4"></span></div></div>
+                    </div>
+                    <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="nc-creer" data-on="5">Créer et ouvrir</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 5. menu ⋯ -->
+    <section class="fiche fiche--large" id="menu-actions">
+      <div class="fiche__texte">
+        <h2>Le menu ⋯ d'un cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › ⋯ au bout d'une ligne</span></p>
+        <p class="fiche__but">Les actions plus rares, rangées hors de vue : placer, dupliquer, garder comme modèle, renommer, ranger, supprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#ma-plus" data-action="click">Cliquer <b>⋯</b> au bout de la ligne de l'activité.</li>
+          <li data-cursor="#ma-sec2" data-duration="3600">Pour une activité à plusieurs documents, le menu a une section par document (<b>FICHE</b>, <b>CORRECTION</b>…), chacune avec ses propres actions.</li>
+          <li data-cursor="#ma-dup" data-action="click"><span class="btn-nom">Dupliquer</span> crée « Titre (copie) » au même rangement.</li>
+          <li data-cursor="#ma-copie" data-duration="2800">La copie apparaît dans la liste ; un message le confirme.</li>
+          <li data-cursor="#ma-supp" data-action="click">Plus bas, <span class="btn-nom">Supprimer</span> (en rouge)…</li>
+          <li data-cursor="#ma-ok" data-duration="3600">…demande confirmation. Les séances déjà jouées à partir de ce cours gardent leurs propres pages.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Ajouter un lien vers un site ou une app…</b> : cours rédigé seulement, sur le premier document de l'activité (voir <a href="#liens-site">Liens</a>).</li>
+            <li><b>Placer sur un cours…</b> : voir <a href="#placer">Placer sur un cours</a>.</li>
+            <li><b>Enregistrer comme modèle</b> (cours rédigé) : il sera proposé dans « Partir de » à la création d'un cours.</li>
+            <li><b>Renommer, ranger</b> : titre, niveau, séquence. <b>Ranger dans les fiches méthode</b> : voir <a href="#fiches-methode">Fiches méthode</a>.</li>
+            <li>Un tableau blanc dupliqué recopie ses pages ; les images ne sont pas dupliquées, elles sont partagées.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="ma-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="ma-v-bib">Bibliothèque</span><span class="vue" id="ma-v-meth">Fiches méthode</span><span class="vue" id="ma-v-cls">Par classe</span><span class="vue" id="ma-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                      <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                      <div class="mc-ligne" data-on="1-3,5"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus" id="ma-plus">⋯</span></div>
+                      <div class="mc-ligne repli glisse-haut" data-from="4" id="ma-copie" data-on="4"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes (copie)</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                    </div>
+                    <div class="menu zoom" data-at="2-3,5" style="right:22px;top:132px;width:290px">
+                      <div class="menu__sec">Fiche</div>
+                      <div class="menu__it">Ajouter un lien vers un site ou une app…</div>
+                      <div class="menu__it">Placer sur un cours…</div>
+                      <div class="menu__it" id="ma-dup" data-on="3">Dupliquer</div>
+                      <div class="menu__it">Enregistrer comme modèle</div>
+                      <div class="menu__it">Renommer, ranger</div>
+                      <div class="menu__it">Ranger dans les fiches méthode</div>
+                      <div class="menu__it menu__it--danger">Supprimer</div>
+                      <div class="menu__sec" id="ma-sec2">Correction</div>
+                      <div class="menu__it">Placer sur un cours…</div>
+                      <div class="menu__it">Dupliquer</div>
+                      <div class="menu__it">Enregistrer comme modèle</div>
+                      <div class="menu__it">Renommer, ranger</div>
+                      <div class="menu__it">Ranger dans les fiches méthode</div>
+                      <div class="menu__it menu__it--danger" id="ma-supp" data-on="5">Supprimer</div>
+                    </div>
+                    <div class="toast" data-at="4">Copie créée : « Activité 1 — Les séismes (copie) ».</div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-at="6">
+                  <div class="modale zoom" data-at="6">
+                    <div class="modale__t">Supprimer ce cours ?</div>
+                    <p style="margin:0 0 6px;font-size:13px">« Activité 1 — Les séismes (correction) » et toutes ses pages seront supprimés.</p>
+                    <p class="muet" style="margin:0;font-size:12.5px">La séance qui en est partie garde ses propres pages.</p>
+                    <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="ma-ok" style="background:var(--neg);border-color:var(--neg)">Supprimer</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 6. fiches méthode -->
+    <section class="fiche fiche--large" id="fiches-methode">
+      <div class="fiche__texte">
+        <h2>Fiches méthode</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Fiches méthode</span></p>
+        <p class="fiche__but">Ranger à part les fiches méthode (FM1 à FM9 : dessin d'observation, graphique…) qui servent toute l'année, hors des séquences. Elles forment l'intercalaire « Fiches méthodes » du classeur virtuel.</p>
+        <ol class="etapes">
+          <li data-cursor="#fm-v-meth" data-action="click">Cliquer l'onglet <span class="btn-nom">Fiches méthode</span>.</li>
+          <li data-cursor="#fm-fiche" data-duration="3400">Même présentation que la bibliothèque. Les fiches sans niveau sont réunies sous <b>Tous niveaux</b> ; chacune a son bouton <b>Fiche</b>.</li>
+          <li data-cursor="#fm-nouveau" data-action="click"><span class="btn-nom">+ Nouveau</span> depuis cet onglet crée une fiche méthode, rangée d'office ici.</li>
+          <li data-cursor="#fm-remettre" data-action="click" data-duration="3400">Pour en sortir une : <b>⋯</b> › <span class="btn-nom">Remettre dans la bibliothèque</span>.</li>
+          <li data-cursor="#fm-retour" data-duration="3800">La fiche revient dans la bibliothèque, sous son niveau. Dans l'autre sens, depuis la bibliothèque : <b>⋯</b> d'un cours › <b>Ranger dans les fiches méthode</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une fiche méthode s'intitule « FM1 — … » à « FM9 — … ».</li>
+            <li>Le pliage des niveaux est gardé à part pour cet onglet. Ni fichiers joints ni jauge de stockage ici.</li>
+            <li>Recherche : « Chercher une fiche méthode, un mot du texte ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="classeur-virtuel-et-tp.html#classeur">Le classeur virtuel</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours?vue=methodes</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="fm-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue" id="fm-v-bib" data-on="1,5">Bibliothèque</span><span class="vue" id="fm-v-meth" data-on="2-4">Fiches méthode</span><span class="vue" id="fm-v-cls">Par classe</span><span class="vue" id="fm-v-clr">Classeur des classes</span></div>
+                    <div class="repli" data-at="1,5">
+                      <div class="rech"><span class="ph">Chercher un cours, une séquence, un mot du texte</span></div>
+                      <div class="mc-carte"><div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div><div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                      <div class="mc-carte repli glisse-haut" data-at="5"><div class="mc-niv"><span class="mc-chev">▾</span>Sans niveau<span class="muet">1</span></div>
+                        <div class="mc-ligne" id="fm-retour" data-on="5"><span class="mc-ico"></span><span class="mc-t">FM4 — Lire une carte</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                    </div>
+                    <div class="repli" data-at="2-4">
+                      <div class="rech"><span class="ph">Chercher une fiche méthode, un mot du texte</span></div>
+                      <div class="mc-carte">
+                        <div class="mc-niv"><span class="mc-chev">▾</span>Tous niveaux<span class="muet">4</span></div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">FM1 — Réaliser un dessin d'observation</span><span class="mc-doc" id="fm-fiche" data-on="2">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">FM2 — Construire un graphique</span><span class="mc-doc">Fiche<span class="puce puce--4">4A</span></span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">FM3 — Utiliser le microscope</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne" data-on="4"><span class="mc-ico"></span><span class="mc-t">FM4 — Lire une carte</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                    </div>
+                    <div class="menu zoom" data-at="4" style="right:22px;top:262px;width:250px">
+                      <div class="menu__it">Placer sur un cours…</div>
+                      <div class="menu__it">Dupliquer</div>
+                      <div class="menu__it">Enregistrer comme modèle</div>
+                      <div class="menu__it">Renommer, ranger</div>
+                      <div class="menu__it" id="fm-remettre" data-on="4">Remettre dans la bibliothèque</div>
+                      <div class="menu__it menu__it--danger">Supprimer</div>
+                    </div>
+                    <div class="bulle bulle--haut" data-at="3" style="right:6px;top:4px">Nouvelle fiche méthode</div>
+                    <div class="toast" data-at="5">« FM4 — Lire une carte » est revenu dans la bibliothèque.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 7. séquence et fichiers -->
+    <section class="fiche fiche--large" id="sequence-fichiers">
+      <div class="fiche__texte">
+        <h2>Séquences et fichiers joints</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Bibliothèque › en-tête de séquence</span></p>
+        <p class="fiche__but">Renommer une séquence d'un coup pour tous ses cours, et garder avec elle les fichiers qui ne sont pas des cours : PDF, images, sons, documents Office.</p>
+        <ol class="etapes">
+          <li data-cursor="#sf-plus" data-action="click">Survoler le nom de la séquence : un <b>⋯</b> apparaît. Le cliquer.</li>
+          <li data-cursor="#sf-ren" data-action="click"><span class="btn-nom">Renommer la séquence</span> : le nom devient un champ bordé d'indigo.</li>
+          <li data-cursor="#sf-champ" data-duration="3400">Taper le nouveau nom puis Entrée (Échap annule). Tous les cours de ce niveau qui portent ce nom suivent.</li>
+          <li data-cursor="#sf-pdf" data-action="drag" data-drag-to="#sf-seq" data-duration="3200">Glisser un fichier de l'ordinateur sur la séquence : elle se signale en indigo. Lâcher. (Ou <b>⋯</b> › <b>Ajouter un fichier…</b>)</li>
+          <li data-cursor="#sf-fic" data-duration="3000">Après « Envoi en cours… », le fichier se range sous les cours de la séquence. Un clic l'ouvre en grand dans la visionneuse.</li>
+          <li data-cursor="#sf-plusf" data-action="click">Son <b>⋯</b> : <b>Télécharger</b>, <b>Renommer</b>, <b>Supprimer</b>.</li>
+          <li data-cursor="#sf-jauge" data-duration="3400">En bas de la page, la jauge dit la place occupée dans le stockage commun de l'application.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Acceptés : PDF, images (jpg, png, webp, gif), sons (mp3, m4a, wav, ogg…), documents Word, PowerPoint, Excel, LibreOffice, texte. 20 Mo au plus par fichier.</li>
+            <li>Les vidéos sont refusées : coller plutôt leur lien dans le cours ou le tableau.</li>
+            <li>Le renommage d'une séquence touche aussi les copies posées sur l'emploi du temps, les modèles et les fichiers joints ; la date de modification des cours ne change pas.</li>
+            <li>Jauge : grise jusqu'à 80 %, orange jusqu'à 95 %, rouge au-delà. Le plafond (1 Go) vaut pour toute l'application : copies d'évaluation, annales, images des cours, fichiers des séquences. Un fichier qui ne tiendrait plus est refusé.</li>
+            <li>Pas de fichiers joints sous « Sans séquence » ni dans l'onglet Fiches méthode.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="sf-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="sf-v-bib">Bibliothèque</span><span class="vue" id="sf-v-meth">Fiches méthode</span><span class="vue" id="sf-v-cls">Par classe</span><span class="vue" id="sf-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-seq" id="sf-seq" data-on="4">
+                        <span class="repli" data-at="1-2">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</span>
+                        <span class="renomme repli" id="sf-champ" data-at="3"><span data-type="SÉQUENCE 2 — SÉISMES ET VOLCANS" data-type-at="3"></span></span>
+                        <span class="repli" data-from="4">SÉQUENCE 2 — SÉISMES ET VOLCANS</span>
+                        <span class="mc-plus" id="sf-plus">⋯</span>
+                      </div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-fichier"><span style="font-size:12px;color:var(--text-dim)"><span class="ic ic-note" aria-hidden="true"></span></span>Bruit d'un séisme.mp3<span class="taille">320 Ko</span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-fichier repli glisse-haut" data-from="5" id="sf-fic"><span class="clip"></span>Carte des plaques.pdf<span class="taille">1,4 Mo</span><span class="mc-plus" id="sf-plusf">⋯</span></div>
+                    </div>
+                    <div class="mc-carte"><div class="mc-niv"><span class="mc-chev is-on">▾</span>3e<span class="muet">6</span></div></div>
+                    <div class="jauge" id="sf-jauge" data-on="7">Stockage : 312 Mo sur 1,00 Go<i></i></div>
+                    <div class="menu zoom" data-at="2" style="left:300px;top:140px;width:200px">
+                      <div class="menu__it">Ajouter un fichier…</div>
+                      <div class="menu__it" id="sf-ren" data-on="2">Renommer la séquence</div>
+                    </div>
+                    <div class="menu zoom" data-at="6" style="right:22px;top:322px;width:170px">
+                      <div class="menu__it">Télécharger</div>
+                      <div class="menu__it">Renommer</div>
+                      <div class="menu__it menu__it--danger">Supprimer</div>
+                    </div>
+                    <div class="fichier-pc" id="sf-pdf" data-at="4">Carte des plaques.pdf</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 8. liens vers un site -->
+    <section class="fiche fiche--large" id="liens-site">
+      <div class="fiche__texte">
+        <h2>Liens vers un site ou une app</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › ⋯ › Ajouter un lien vers un site ou une app…</span></p>
+        <p class="fiche__but">Poser sur la ligne de l'activité un bouton qui ouvre directement le site ou l'application utilisé en classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#ls-item" data-action="click">Dans le menu <b>⋯</b> d'un cours rédigé, choisir <span class="btn-nom">Ajouter un lien vers un site ou une app…</span></li>
+          <li data-cursor="#ls-nom" data-duration="3600">La fenêtre rappelle le titre du cours. Écrire le <b>Nom</b> du bouton et l'<b>Adresse</b> du site.</li>
+          <li data-cursor="#ls-ajout" data-action="click"><span class="btn-nom">+ Ajouter un lien</span> ajoute une ligne (quatre liens au plus) ; la croix en retire une.</li>
+          <li data-cursor="#ls-enr" data-action="click"><span class="btn-nom">Enregistrer</span>.</li>
+          <li data-cursor="#ls-bouton" data-duration="3200">Le lien devient un bouton sur la ligne de l'activité : il s'ouvre dans un nouvel onglet.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une ligne sans adresse est ignorée ; un nom vide prend le nom du site ; une adresse illisible bloque l'enregistrement.</li>
+            <li>Les liens sont rangés dans le cours lui-même. Ils ne partent jamais vers la page des élèves (QR code, lien lecture seule).</li>
+            <li>Si le cours a été modifié ailleurs entre-temps : fermer la fenêtre et recommencer.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="ls-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="ls-v-bib">Bibliothèque</span><span class="vue" id="ls-v-meth">Fiches méthode</span><span class="vue" id="ls-v-cls">Par classe</span><span class="vue" id="ls-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne" data-on="1"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche</span><span class="mc-lien repli zoom" id="ls-bouton" data-at="5">Carte des séismes</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                    </div>
+                    <div class="menu zoom" data-at="1" style="right:22px;top:172px;width:290px">
+                      <div class="menu__it" id="ls-item" data-on="1">Ajouter un lien vers un site ou une app…</div>
+                      <div class="menu__it">Placer sur un cours…</div>
+                      <div class="menu__it">Dupliquer</div>
+                      <div class="menu__it">Enregistrer comme modèle</div>
+                      <div class="menu__it">Renommer, ranger</div>
+                      <div class="menu__it menu__it--danger">Supprimer</div>
+                    </div>
+                    <div class="toast" data-at="5">Liens enregistrés.</div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-at="2-4">
+                  <div class="modale zoom" data-at="2-4" style="width:540px">
+                    <div class="modale__t" style="margin-bottom:2px">Liens vers un site ou une app</div>
+                    <div class="muet" style="font-size:12.5px;margin-bottom:10px">Activité 3 — Les risques</div>
+                    <div class="ligne-champs" style="align-items:center">
+                      <div><div class="champ" id="ls-nom" data-on="2"><span class="tape" data-type="Carte des séismes" data-type-at="2"></span></div></div>
+                      <div style="flex:1.4"><div class="champ"><span class="tape" data-type="carte-seismes.exemple.org" data-type-at="2"></span></div></div>
+                      <span class="muet" style="flex:none;font-size:14px">×</span>
+                    </div>
+                    <div class="ligne-champs repli glisse-haut" data-from="3" style="align-items:center;margin-top:8px">
+                      <div><div class="champ champ--vide">Nom</div></div>
+                      <div style="flex:1.4"><div class="champ champ--vide">Adresse</div></div>
+                      <span class="muet" style="flex:none;font-size:14px">×</span>
+                    </div>
+                    <div style="margin-top:10px"><span class="b b--fantome b--petit" id="ls-ajout" data-on="3">+ Ajouter un lien</span></div>
+                    <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="ls-enr" data-on="4">Enregistrer</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 9. placer -->
+    <section class="fiche fiche--large" id="placer">
+      <div class="fiche__texte">
+        <h2>Placer sur un cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › ⋯ › Placer sur un cours…</span></p>
+        <p class="fiche__but">Préparer les prochaines heures de ses classes en y posant une copie d'un document de la bibliothèque. La copie s'ouvre ensuite depuis le calendrier de l'accueil et sert de tableau préparé en séance. L'original ne bouge pas.</p>
+        <ol class="etapes">
+          <li data-cursor="#pl-item" data-action="click">Dans le menu <b>⋯</b> du document, choisir <span class="btn-nom">Placer sur un cours…</span></li>
+          <li data-cursor="#pl-4a" data-duration="3400">La fenêtre lit l'emploi du temps. La classe montrée d'abord est la première du niveau du document.</li>
+          <li data-cursor="#pl-c2" data-action="click" data-duration="3400">Cocher un ou plusieurs créneaux à venir. Un créneau qui porte déjà un document est grisé : rien n'est écrasé.</li>
+          <li data-cursor="#pl-4b" data-action="click" data-duration="3400">On peut cocher dans plusieurs classes : un compteur rond apparaît sur le bouton de chaque classe.</li>
+          <li data-cursor="#pl-ok" data-action="click"><span class="btn-nom">Placer sur 3 cours</span>.</li>
+          <li data-cursor="#pl-pc" data-duration="3200">Les copies apparaissent en pastilles de classe sur la ligne de l'original, et dans l'onglet <b>Par classe</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Créneaux proposés : ceux des cinq prochaines semaines de l'emploi du temps enregistré (importé dans Réglages › Emploi du temps), sans les cours annulés. Le nom du demi-groupe suit la date le cas échéant.</li>
+            <li>Si une copie n'a pas pu être posée, le message nomme le créneau : il a peut-être déjà un document.</li>
+            <li>Aucun créneau à venir : importer l'emploi du temps, ou poser un document à la main depuis le calendrier de l'accueil.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#lier-activite">Lier une activité à une heure</a> · <a href="accueil.html">Accueil et calendrier</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="pl-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="pl-v-bib">Bibliothèque</span><span class="vue" id="pl-v-meth">Fiches méthode</span><span class="vue" id="pl-v-cls">Par classe</span><span class="vue" id="pl-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche<span class="puce puce--4">4A</span></span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne" data-on="1"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche<span class="puce puce--4 repli zoom" id="pl-pc" data-from="6">4A</span><span class="puce puce--4 repli zoom" data-from="6">4B</span></span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                    </div>
+                    <div class="menu zoom" data-at="1" style="right:22px;top:172px;width:250px">
+                      <div class="menu__it">Ajouter un lien vers un site ou une app…</div>
+                      <div class="menu__it" id="pl-item" data-on="1">Placer sur un cours…</div>
+                      <div class="menu__it">Dupliquer</div>
+                      <div class="menu__it">Renommer, ranger</div>
+                    </div>
+                    <div class="toast" data-at="6">« Activité 3 — Les risques » est placé sur 3 cours.</div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-at="2-5">
+                  <div class="modale zoom" data-at="2-5" style="width:580px">
+                    <div class="modale__t" style="margin-bottom:4px">Placer sur un cours</div>
+                    <div class="muet" style="font-size:12.5px">« Activité 3 — Les risques » — une copie par cours coché : l'original ne bouge pas.</div>
+                    <div class="pl-classes">
+                      <span class="pl-cl" id="pl-4a" data-on="2-3">4A<span class="pl-cpt repli zoom" data-from="3">2</span></span>
+                      <span class="pl-cl" id="pl-4b" data-on="4-5">4B<span class="pl-cpt repli zoom" data-from="4">1</span></span>
+                      <span class="pl-cl">4C</span>
+                      <span class="pl-cl pl-cl--5">5A</span>
+                      <span class="pl-cl pl-cl--3">3A</span>
+                    </div>
+                    <div class="pl-liste repli" data-at="2-3">
+                      <div class="pl-cr"><span class="case" data-on="3"></span>mer. 2 déc. à 08:15</div>
+                      <div class="pl-cr" id="pl-c2"><span class="case" data-on="3"></span>ven. 4 déc. à 14:00 · Groupe 1</div>
+                      <div class="pl-cr pl-cr--pris"><span class="case"></span>mer. 9 déc. à 08:15<span class="muet">déjà un document : Activité 4 — Les tsunamis</span></div>
+                      <div class="pl-cr"><span class="case"></span>ven. 11 déc. à 14:00 · Groupe 1</div>
+                    </div>
+                    <div class="pl-liste repli" data-at="4-5">
+                      <div class="pl-cr"><span class="case case--on"></span>jeu. 3 déc. à 10:05</div>
+                      <div class="pl-cr"><span class="case"></span>lun. 7 déc. à 09:00</div>
+                      <div class="pl-cr"><span class="case"></span>jeu. 10 déc. à 10:05</div>
+                      <div class="pl-cr"><span class="case"></span>lun. 14 déc. à 09:00</div>
+                    </div>
+                    <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit repli" data-at="2">Placer</span><span class="b b--petit repli" data-at="3">Placer sur 2 cours</span><span class="b b--petit repli" id="pl-ok" data-at="4-5" data-on="5">Placer sur 3 cours</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 10. lier une activité -->
+    <section class="fiche fiche--large" id="lier-activite">
+      <div class="fiche__texte">
+        <h2>Lier une activité à une heure</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › calendrier › un cours à venir</span></p>
+        <p class="fiche__but">Le chemin inverse du placement : partir d'une heure de cours et y poser le document déjà préparé d'une activité de la bibliothèque (la fiche ou sa correction), écrans compris.</p>
+        <ol class="etapes">
+          <li data-cursor="#la-cours" data-action="click">Dans le calendrier de l'accueil, cliquer un cours à venir qui n'a pas encore de tableau.</li>
+          <li data-cursor="#la-lier" data-action="click">Dans la fiche du cours, section <b>Tableau du cours</b>, cliquer <span class="btn-nom">Lier une activité</span>.</li>
+          <li data-cursor="#la-sugg" data-action="click" data-duration="3400"><b>Quelle activité lier ?</b> Des suggestions viennent en tête (suite de la séquence, correction de la dernière activité…) ; on peut aussi chercher ou afficher toutes les activités.</li>
+          <li data-cursor="#la-act" data-action="click" data-duration="3400"><b>Quel tableau ?</b> Choisir <span class="btn-nom">Activité</span> ou <span class="btn-nom">Correction</span>. Le rôle suggéré est en indigo ; un rôle absent de la bibliothèque est grisé.</li>
+          <li data-cursor="#la-fait" data-duration="3200">Le cours reçoit sa propre copie et la section devient <b>Tableau du cours</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La copie garde le titre et la séquence de l'original ; la bibliothèque n'est pas touchée et chaque classe garde ensuite sa version.</li>
+            <li>Seules les activités et évaluations du niveau de la classe, rangées dans une séquence, sont proposées.</li>
+            <li>« ◀ Autre activité » revient à la liste. Le tableau n'est pas ouvert tout seul après la liaison.</li>
+            <li>C'est ce que fait Claude, en série, avec « Prépare ma semaine ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="accueil.html">Accueil et calendrier de la semaine</a> · <a href="#placer">Placer sur un cours</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Accueil</span><span class="esp"></span><span class="muet">Semaine du 30 nov.</span></div>
+                  <div class="app__corps">
+                    <div class="cal" style="width:450px">
+                      <span></span><span class="cal__j">Lun.</span><span class="cal__j">Mar.</span><span class="cal__j">Mer.</span><span class="cal__j">Jeu.</span><span class="cal__j">Ven.</span>
+                      <span class="cal__h">08:15</span><span class="cal__c cal__c--5"><b>5A</b>Salle 12</span><span class="cal__v"></span><span class="cal__c cal__c--4"><b>4A</b>Salle 12</span><span class="cal__v"></span><span class="cal__c cal__c--3"><b>3A</b>Labo</span>
+                      <span class="cal__h">09:10</span><span class="cal__v"></span><span class="cal__c cal__c--3"><b>3B</b>Labo</span><span class="cal__v"></span><span class="cal__c cal__c--5"><b>5B</b>Salle 12</span><span class="cal__v"></span>
+                      <span class="cal__h">10:05</span><span class="cal__c cal__c--4"><b>4C</b>Salle 12</span><span class="cal__v"></span><span class="cal__v"></span><span class="cal__c cal__c--4" id="la-cours" data-on="1-5"><b>4B</b>Salle 12</span><span class="cal__v"></span>
+                      <span class="cal__h">11:00</span><span class="cal__v"></span><span class="cal__c cal__c--5"><b>5A</b>Salle 12</span><span class="cal__v"></span><span class="cal__v"></span><span class="cal__c cal__c--4"><b>4A</b>Salle 12</span>
+                      <span class="cal__h">14:00</span><span class="cal__c cal__c--3"><b>3A</b>Labo</span><span class="cal__v"></span><span class="cal__v"></span><span class="cal__c cal__c--3"><b>3B</b>Labo</span><span class="cal__c cal__c--4"><b>4A</b>Salle 12</span>
+                    </div>
+                    <div class="pop zoom" data-from="2">
+                      <div class="pop__tete"><div><b>4B</b><span class="muet" style="font-size:12px">jeu. 3 déc. · 10:05 – 11:00 · Salle 12</span></div><span class="muet" style="font-size:16px">×</span></div>
+                      <div class="pop__sec"><span class="muet" style="font-size:12px">Aucune séance enregistrée sur ce créneau.</span></div>
+                      <div class="pop__sec repli" data-at="2">
+                        <div class="pop__lab">Tableau du cours</div>
+                        <div class="grille2" style="gap:6px"><span class="pop__btn">Rédiger un cours</span><span class="pop__btn">Tableau blanc</span></div>
+                        <div class="pop__btn" id="la-lier" data-on="2" style="margin-top:6px">Lier une activité</div>
+                      </div>
+                      <div class="pop__sec repli" data-at="3">
+                        <div class="pop__lab">Quelle activité lier ?<span>Annuler</span></div>
+                        <div class="pop__carte" id="la-sugg" data-on="3"><b>Activité 3 — Les risques</b><span>Suite de la séquence · Séquence 2</span></div>
+                        <div class="pop__carte"><b>Activité 2 — Les volcans</b><span>Correction de la dernière activité · Séquence 2</span></div>
+                        <div class="champ champ--vide" style="height:28px;font-size:12px">Chercher une activité…</div>
+                        <div style="margin-top:6px;font-size:12px;color:var(--indigo)">Toutes les activités</div>
+                      </div>
+                      <div class="pop__sec repli" data-at="4">
+                        <div class="pop__lab">Quel tableau ?<span>Annuler</span></div>
+                        <b style="font-size:12.5px">Activité 3 — Les risques</b> <span class="muet">Séquence 2</span>
+                        <div class="grille2" style="gap:6px;margin:8px 0"><span class="pop__btn pop__btn--plein" id="la-act" data-on="4">Activité</span><span class="pop__btn pop__btn--off">Correction</span></div>
+                        <span class="muet" style="font-size:11.5px">Le cours reçoit sa propre copie, écrans compris : la bibliothèque n'est pas touchée.</span>
+                        <div style="margin-top:6px;font-size:12px;color:var(--indigo)">◀ Autre activité</div>
+                      </div>
+                      <div class="pop__sec repli" data-at="5">
+                        <div class="pop__lab">Tableau du cours</div>
+                        <div class="pop__carte is-on" id="la-fait"><b>Activité 3 — Les risques</b><span>modifié aujourd'hui</span></div>
+                      </div>
+                    </div>
+                    <div class="toast" data-at="5">Activité liée au cours.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 11. par classe -->
+    <section class="fiche fiche--large" id="par-classe">
+      <div class="fiche__texte">
+        <h2>Onglet Par classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Par classe</span></p>
+        <p class="fiche__but">Voir, classe par classe, les documents posés sur ses heures, à venir puis passés ; rouvrir le tableau tel qu'il était en fin de séance ; suivre une même activité dans toutes les classes.</p>
+        <ol class="etapes">
+          <li data-cursor="#pc-v-cls" data-action="click">Cliquer l'onglet <span class="btn-nom">Par classe</span> : la première classe qui a des documents est choisie.</li>
+          <li data-cursor="#pc-4b" data-action="click">Choisir une classe dans la rangée de boutons colorés.</li>
+          <li data-cursor="#pc-titre" data-duration="3200">Deux parties, <b>À venir</b> puis <b>Passé</b>. Cliquer un titre ouvre la copie de cette classe ; le triangle l'essaie en classe.</li>
+          <li data-cursor="#pc-fin" data-action="click" data-duration="3400"><span class="btn-nom">Fin de séance</span> déplie les pages du tableau telles qu'à la fin de la séance, avec le bouton <b>PDF</b> pour les absents.</li>
+          <li data-cursor="#pc-plus" data-action="click" data-duration="3400"><b>⋯</b> › <b>Voir les autres classes</b> : la même activité dans toutes les classes où elle est placée.</li>
+          <li data-cursor="#pc-retour" data-action="click"><span class="btn-nom">← Par classe</span> revient à la classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un document devient « passé » dès qu'une séance l'a joué ou quand son jour est passé.</li>
+            <li>Les documents sont lus directement, sans passer par l'emploi du temps : un document dont le créneau a disparu reste trouvable ici. « Sans classe » regroupe ceux dont la classe est inconnue.</li>
+            <li>Les tableaux créés directement sur une heure, sans original, sont listés aussi ; « Voir les autres classes » ne vaut que pour les copies d'un original.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html">Séances</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours?vue=classes</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="pc-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue" id="pc-v-bib">Bibliothèque</span><span class="vue" id="pc-v-meth">Fiches méthode</span><span class="vue is-actif" id="pc-v-cls">Par classe</span><span class="vue" id="pc-v-clr">Classeur des classes</span></div>
+                    <div class="repli" data-to="4">
+                      <div class="pl-classes" style="margin-top:0">
+                        <span class="pl-cl" data-on="1">4A</span><span class="pl-cl" id="pc-4b" data-on="2-4">4B</span><span class="pl-cl">4C</span><span class="pl-cl pl-cl--5">5A</span><span class="pl-cl pl-cl--3">3A</span><span class="pl-cl" style="font-weight:500;color:var(--text-dim)">Sans classe</span>
+                      </div>
+                      <div class="mc-carte pc-lignes">
+                        <div class="pc-tsec">À venir</div>
+                        <div class="mc-ligne"><span class="pc-date">jeu. 3 déc. 10:05</span><span class="mc-ico"></span><span class="mc-t" id="pc-titre" data-on="3">Activité 3 — Les risques</span><span class="esp"></span><span class="lect-b"><i></i></span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="pc-date">mar. 8 déc. 08:15 · Groupe 1</span><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques (correction)</span><span class="esp"></span><span class="lect-b"><i></i></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                      <div class="mc-carte pc-lignes">
+                        <div class="pc-tsec">Passé</div>
+                        <div class="mc-ligne"><span class="pc-date">jeu. 26 nov. 10:05</span><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="esp"></span><span class="pc-fin" id="pc-fin" data-on="4">Fin de séance ▾</span><span class="lect-b"><i></i></span><span class="mc-plus" id="pc-plus">⋯</span></div>
+                        <div class="pc-gal repli glisse-haut" data-at="4"><span class="vg"><i class="r"></i><i></i><i style="width:70%"></i></span><span class="vg"><i></i><i class="r"></i><i style="width:50%"></i></span><span class="vg"><i style="width:80%"></i><i></i><i class="r"></i></span><span class="b b--fantome b--petit">PDF</span></div>
+                        <div class="mc-ligne"><span class="pc-date">lun. 23 nov. 09:00</span><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes (correction)</span><span class="esp"></span><span class="pc-fin">Fin de séance ▾</span><span class="lect-b"><i></i></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                    </div>
+                    <div class="repli" data-from="5">
+                      <div class="ligne" style="margin-bottom:10px"><span class="b b--fantome b--petit" id="pc-retour" data-on="6">← Par classe</span><b style="font-size:14px">Activité 2 — Les volcans</b></div>
+                      <div class="mc-carte pc-lignes">
+                        <div class="pc-tsec">À venir</div>
+                        <div class="mc-ligne"><span class="pc-date">ven. 4 déc. 14:00</span><span class="puce puce--4">4C</span><span class="mc-t">Activité 2 — Les volcans</span><span class="esp"></span><span class="lect-b"><i></i></span><span class="mc-plus">⋯</span></div>
+                      </div>
+                      <div class="mc-carte pc-lignes">
+                        <div class="pc-tsec">Passé</div>
+                        <div class="mc-ligne"><span class="pc-date">jeu. 26 nov. 10:05</span><span class="puce puce--4">4B</span><span class="mc-t">Activité 2 — Les volcans</span><span class="esp"></span><span class="pc-fin">Fin de séance ▾</span><span class="mc-plus">⋯</span></div>
+                        <div class="mc-ligne"><span class="pc-date">mer. 25 nov. 08:15</span><span class="puce puce--4">4A</span><span class="mc-t">Activité 2 — Les volcans</span><span class="esp"></span><span class="pc-fin">Fin de séance ▾</span><span class="mc-plus">⋯</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 12. choisir dans Mes cours -->
+    <section class="fiche fiche--large" id="choisir-dans-mes-cours">
+      <div class="fiche__texte">
+        <h2>Sujet et corrigé d'une évaluation pris dans Mes cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Évaluations › fiche d'une évaluation › Choisir dans Mes cours</span></p>
+        <p class="fiche__but">Relier une évaluation au sujet ou au corrigé déjà écrits dans la bibliothèque, plutôt que d'importer un PDF. Le sujet emporte avec lui les documents de son activité, que lit « Corriger avec Claude ».</p>
+        <ol class="etapes">
+          <li data-cursor="#cm-choisir" data-action="click">Dans la fiche de l'évaluation, bloc <b>Sujet</b>, cliquer <span class="btn-nom">Choisir dans Mes cours</span>.</li>
+          <li data-cursor="#cm-tous" data-duration="3400">Fenêtre « Choisir le sujet dans Mes cours ». Chercher une activité ou une séquence ; cocher <b>Tous les niveaux</b> pour sortir du niveau de la classe.</li>
+          <li data-cursor="#cm-sujet" data-action="click" data-duration="3400">Chaque activité montre ses boutons de rôle ; celui attendu (<b>Sujet</b> ou <b>Fiche</b>, ou <b>Correction</b> pour un corrigé) est mis en avant. Cliquer le bon.</li>
+          <li data-cursor="#cm-lie" data-duration="3200">Le bloc rappelle le cours relié, avec <b>Ouvrir</b>, <b>Autre cours</b>, <b>Fichier à la place</b>, <b>Retirer</b>.</li>
+          <li data-cursor="#cm-bareme" data-duration="4200">Avec un corrigé relié, la visionneuse des copies dit d'où vient le barème que « Corriger avec Claude » appliquera : <b>Voir les lignes</b>, <b>Refaire le barème</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le cours reste dans Mes cours : une retouche s'y voit aussi depuis l'évaluation.</li>
+            <li>Ni fiches méthode, ni documents du classeur, ni copies modèles, ni extraits ne sont proposés.</li>
+            <li>Barème : repris des copies déjà corrigées de la classe, sinon lu dans la correction de l'activité, à vérifier. Si la correction a changé depuis, un avertissement orange invite à le refaire ; les notes déjà mises ne bougent pas.</li>
+            <li>La correction automatique est réservée à certains comptes.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="carnet-et-evaluations.html">Carnet et évaluations</a> · <a href="copies-et-correction.html">Copies et correction</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it is-actif"><span class="ico"></span>Évaluations</div>
+<div class="side__it side__sous is-actif">Carnet et fiches</div>
+<div class="side__it side__sous">Activité en direct</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Séismes et volcans</span><span class="puce puce--4">4B</span></div>
+                  <div class="app__corps">
+                    <div class="ev-blocs">
+                      <div class="ev-bloc">
+                        <div class="ev-bloc__t">Sujet</div>
+                        <div class="repli" data-to="3">
+                          <div class="ligne" style="flex-wrap:wrap"><span class="b b--petit" id="cm-choisir" data-on="1">Choisir dans Mes cours</span><span class="b b--fantome b--petit">Importer un fichier (PDF ou image)</span></div>
+                          <div class="ev-note">Document Word : dans Word, <b>Fichier → Enregistrer sous → PDF</b>.</div>
+                        </div>
+                        <div class="repli zoom" data-from="4" id="cm-lie">
+                          <div style="font-size:13px;margin-bottom:8px">Fiche de Mes cours : « Évaluation — Séismes et volcans »</div>
+                          <div class="ligne" style="flex-wrap:wrap"><span class="b b--petit">Ouvrir</span><span class="b b--fantome b--petit">Autre cours</span><span class="b b--fantome b--petit">Fichier à la place</span><span class="b b--danger b--petit">Retirer</span></div>
+                        </div>
+                      </div>
+                      <div class="ev-bloc">
+                        <div class="ev-bloc__t">Corrigé</div>
+                        <div class="repli" data-to="4">
+                          <div class="ligne" style="flex-wrap:wrap"><span class="b b--petit">Choisir dans Mes cours</span><span class="b b--fantome b--petit">Importer un fichier (PDF ou image)</span></div>
+                        </div>
+                        <div class="repli" data-from="5">
+                          <div style="font-size:13px;margin-bottom:8px">Correction de Mes cours : « Évaluation — Séismes et volcans (correction) »</div>
+                          <div class="ligne" style="flex-wrap:wrap"><span class="b b--petit">Ouvrir</span><span class="b b--fantome b--petit">Autre cours</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="repli glisse-haut" data-at="5" id="cm-bareme">
+                      <div class="etiq" style="margin-top:16px">Copies · visionneuse</div>
+                      <div class="bareme">Barème : 6 lignes, sur 20 — lu dans la correction de l'activité par Claude, à vérifier.<div style="margin-top:5px"><span class="l">Voir les lignes</span><span class="l">Refaire le barème</span></div></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-at="2-3">
+                  <div class="modale zoom" data-at="2-3" style="width:560px">
+                    <div class="modale__t">Choisir le sujet dans Mes cours</div>
+                    <div class="ligne"><div class="champ champ--vide" style="flex:1">Chercher une activité ou une séquence…</div><span class="ligne" id="cm-tous" style="gap:6px;font-size:12px;color:var(--text-muted)"><span class="case"></span>Tous les niveaux</span></div>
+                    <div class="pick-seq">Séquence 2 — La Terre en mouvement</div>
+                    <div class="pick-l"><span>Évaluation — Séismes et volcans</span><span class="puce-pick puce-pick--pref" id="cm-sujet" data-on="3">Sujet</span><span class="puce-pick">Documents</span><span class="puce-pick">Correction</span></div>
+                    <div class="pick-l"><span>Activité 1 — Les séismes</span><span class="puce-pick puce-pick--pref">Fiche</span><span class="puce-pick">Documents</span><span class="puce-pick">Correction</span></div>
+                    <div class="pick-l"><span>Activité 2 — Les volcans</span><span class="puce-pick puce-pick--pref">Fiche</span><span class="puce-pick">Correction</span></div>
+                    <div class="pick-seq">Séquence 3 — Le climat</div>
+                    <div class="pick-l"><span>Activité 1 — Climat et météo</span><span class="puce-pick puce-pick--pref">Fiche</span><span class="puce-pick">Correction</span></div>
+                    <div class="modale__pied" style="justify-content:space-between"><span class="modale__note">Le cours reste dans Mes cours : une retouche s'y voit aussi depuis l'évaluation.</span><span class="b b--fantome b--petit">Annuler</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 13. lien lecture seule -->
+    <section class="fiche fiche--large" id="lien-lecture-seule">
+      <div class="fiche__texte">
+        <h2>Lien lecture seule pour le cahier de texte</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › clic droit sur un document</span><span class="chemin">Éditeur › Fichier › Lien lecture seule</span></p>
+        <p class="fiche__but">Obtenir une adresse à coller dans le cahier de texte (Pronote, ENT) : les élèves lisent le document sans compte, sur téléphone ou en pages A4, l'impriment ou l'enregistrent en PDF, sans rien pouvoir modifier.</p>
+        <ol class="etapes">
+          <li data-cursor="#ll-fiche" data-action="click">Faire un clic droit sur un bouton (<b>Fiche</b>, <b>Documents</b>, <b>Correction</b>…) ou sur un titre : un menu s'ouvre là où l'on a cliqué.</li>
+          <li data-cursor="#ll-copier" data-action="click" data-duration="3400">Il réunit <b>Ouvrir</b>, <b>Essayer en classe</b>, le partage, puis les actions du menu ⋯. Choisir <span class="btn-nom">Copier le lien lecture seule</span>.</li>
+          <li data-cursor="#ll-toast" data-duration="3000">Le lien est créé s'il n'existe pas, et copié : il n'y a plus qu'à le coller dans le cahier de texte.</li>
+          <li data-cursor="#ll-champ" data-duration="3800"><span class="btn-nom">Gérer le lien lecture seule…</span> ouvre la fenêtre « Partager en lecture seule » : l'adresse, <b>Copier</b>, <b>Ouvrir</b>, <b>Couper le lien</b>.</li>
+          <li data-cursor="#ll-couper" data-action="click" data-duration="3600"><span class="btn-nom">Couper le lien</span> demande confirmation : l'adresse déjà collée ne mènera plus à rien. Un prochain partage en créera une autre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Se partagent : fiches, documents, corrections d'activité, fiches méthode. Jamais une évaluation (sujet, documents ou corrigé), une copie modèle ni un devoir noté (« Entraînement noté », « Contrôle », « DS ») : l'entrée est alors grisée.</li>
+            <li>Pour une correction, la fenêtre rappelle de ne coller le lien que lorsqu'on veut la donner aux élèves.</li>
+            <li>Le lien montre toujours la dernière version du document. Pour une copie posée sur l'emploi du temps, il ouvre l'original de la bibliothèque.</li>
+            <li>Les zones d'écriture et pointillés sont gardés (pour imprimer la fiche) ; les encarts, écrans, liens vers un site et annotations au stylet ne sortent jamais.</li>
+            <li>Couper le lien ne touche pas le QR code des feuilles déjà imprimées.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../public/cahier-de-texte-en-lecture-seule.html">Ce que voient les élèves</a> · <a href="cahier-de-texte.html">Cahier de texte</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+<aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+<div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+<div class="side__it side__sous">Mes TP</div>
+<div class="side__it side__sous">Annales</div>
+<div class="side__it side__sous">Mes clouds</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside>
+                <div class="app__main">
+<div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="ll-nouveau">+ Nouveau</span></div>
+                  <div class="app__corps">
+<div class="vues"><span class="vue is-actif" id="ll-v-bib">Bibliothèque</span><span class="vue" id="ll-v-meth">Fiches méthode</span><span class="vue" id="ll-v-cls">Par classe</span><span class="vue" id="ll-v-clr">Classeur des classes</span></div>
+                    <div class="mc-carte">
+                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc" id="ll-fiche" data-on="1-2">Fiche</span><span class="mc-doc mc-doc--gris">Documents</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                    </div>
+                    <div class="menu zoom" data-at="2" style="left:236px;top:150px;width:290px">
+                      <div class="menu__tete">Activité 1 — Les séismes</div>
+                      <div class="menu__it">Ouvrir</div>
+                      <div class="menu__it">Essayer en classe</div>
+                      <div class="menu__filet"></div>
+                      <div class="menu__it" id="ll-copier" data-on="2">Copier le lien lecture seule</div>
+                      <div class="menu__it">Gérer le lien lecture seule…</div>
+                      <div class="menu__filet"></div>
+                      <div class="menu__it">Placer sur un cours…</div>
+                      <div class="menu__it">Dupliquer</div>
+                      <div class="menu__it">Enregistrer comme modèle</div>
+                      <div class="menu__it">Renommer, ranger</div>
+                      <div class="menu__it menu__it--danger">Supprimer</div>
+                    </div>
+                    <div class="toast" id="ll-toast" data-at="3">Lien lecture seule copié : collez-le dans le cahier de texte.</div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-at="4-5">
+                  <div class="modale zoom" data-at="4-5" style="width:520px">
+                    <div class="modale__t">Partager en lecture seule</div>
+                    <p style="margin:0;font-size:12.5px;color:var(--text-muted)">Les élèves ouvrent ce lien sans compte : ils lisent le document sur leur téléphone ou en pages A4, et peuvent l'imprimer ou l'enregistrer en PDF. Ils ne peuvent rien modifier. Le lien montre toujours la dernière version du document.</p>
+                    <div class="part-champ"><div class="champ" id="ll-champ" data-on="4">qwetsh.github.io/gestion-classe/d/R4T9QX2M</div><span class="b b--petit">Copier</span></div>
+                    <div class="modale__pied" style="justify-content:space-between">
+                      <span class="repli" data-at="4"><span class="b b--fantome b--petit" id="ll-couper">Couper le lien</span></span>
+                      <span class="conf repli" data-at="5">L'adresse déjà collée ne mènera plus à rien.<span class="b b--fantome b--petit" style="color:var(--text)">Garder</span><span class="b b--danger b--petit">Couper le lien</span></span>
+                      <span class="ligne"><span class="b b--fantome b--petit">Ouvrir</span><span class="b b--fantome b--petit">Fermer</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ 14. QR version couleur -->
+    <section class="fiche fiche--large" id="qr-version-couleur">
+      <div class="fiche__texte">
+        <h2>QR code « Version couleur »</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--public">Sans compte</span><span class="chemin">Éditeur › impression d'un document</span></p>
+        <p class="fiche__but">Chaque feuille imprimée porte en haut à droite un petit QR code. L'élève le scanne et lit le même document, en couleur, sur une colonne de téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#qr-past" data-duration="3600">Dans l'éditeur, la pastille <b>Version mobile : automatique</b> annonce que le QR code ouvrira la version faite par l'application.</li>
+          <li data-cursor="#qr-impr" data-action="click">Imprimer comme d'habitude : <b>Fichier</b> › <span class="btn-nom">Imprimer</span> (ou Ctrl+P).</li>
+          <li data-cursor="#qr-code" data-duration="3600">À la première impression, le lien est créé. Le QR code se pose dans la marge du haut, avec la légende « Version couleur ».</li>
+          <li data-cursor="#qr-tel" data-duration="3800">L'élève le scanne : le document s'affiche en couleur, à la largeur du téléphone, sans compte. Il suit toujours la dernière version.</li>
+          <li data-cursor="#qr-mesure" data-action="click" data-duration="4000">Si une version « sur mesure » a été déposée (par Claude), la pastille le dit ; un clic donne sa date, <b>Voir</b>, et <b>Revenir à l'automatique</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>QR code posé sur : fiche d'activité, documents, extraits, fiche protocole, version adaptée, fiche méthode, cours. Jamais sur une correction, une copie modèle, une évaluation ni un devoir noté. Le titre est relu à chaque scan : un document renommé « (correction) » n'est plus servi.</li>
+            <li>Le QR code n'existe que sur le papier et dans le PDF, jamais dans le document. Il ne change jamais : une feuille déjà imprimée reste valable.</li>
+            <li>Sur le téléphone : le texte et sa mise en page, images à toute la largeur ; jamais les écrans, les liens vers un site ni les annotations ; encarts, zones d'écriture et pointillés retirés.</li>
+            <li>Une copie posée sur l'emploi du temps renvoie à l'original de la bibliothèque.</li>
+            <li>Une version sur mesure qui date d'avant une retouche est signalée « plus ancienne que le document » : <b>Garder</b> si elle convient encore. Elle n'est servie que par le QR code, jamais par le lien lecture seule.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../public/documents-par-qr-code.html">La page que voient les élèves</a> · <a href="editeur-de-cours.html#imprimer">Imprimer un cours</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours?ouvrir=…</div></div>
+              <div class="ce">
+                <div class="ce__titre">
+                  <span class="ce__gc">GC</span><span class="ce__ic">↶</span><span class="ce__ic is-off">↷</span>
+                  <span class="ce__nom">Activité 1 — Les séismes</span>
+                  <span class="esp"></span>
+                  <span class="ce__past ce__past--mob repli" id="qr-past" data-to="4" data-on="1">Version mobile : automatique</span>
+                  <span class="ce__past ce__past--mesure repli" id="qr-mesure" data-at="5" data-on="5">Version mobile : sur mesure</span>
+                  <span class="ce__etat"><i></i>Enregistré</span>
+                  <span class="ce__fermer">Fermer</span>
+                </div>
+                <div class="ce__onglets">
+                  <span class="ce__og ce__og--fichier">Fichier</span><span class="ce__og">Accueil</span><span class="ce__og">Insertion</span><span class="ce__og">Mise en page</span><span class="ce__og">Révision</span><span class="ce__og">Affichage</span>
+                </div>
+                <div class="ce__ruban">
+                  <div class="ce__rang">
+                    <div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb" id="qr-impr" data-on="2"><span class="pic">▭</span>Imprimer</div><div class="ce__gb"><span class="pic">P</span>Exporter en PDF</div></div><div class="ce__grp-t">Imprimer</div></div>
+                    <div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb"><span class="pic">∞</span>Lien lecture seule</div></div><div class="ce__grp-t">Partager</div></div>
+                    <div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb"><span class="pic">W</span>Word ou PDF…</div></div><div class="ce__grp-t">Importer</div></div>
+                    <div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb"><span class="pic"><span class="ic ic-crayon" aria-hidden="true"></span></span>Renommer</div><div class="ce__gb"><span class="pic">⧉</span>Dupliquer</div><div class="ce__gb"><span class="pic">▦</span>Comme modèle</div></div><div class="ce__grp-t">Cours</div></div>
+                    <div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb"><span class="pic">◷</span>Historique</div><div class="ce__gb"><span class="pic">+</span>Nouvelle version</div></div><div class="ce__grp-t">Versions</div></div>
+                  </div>
+                </div>
+                <div class="ce__regle"><b><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span><span>14</span><span>16</span></b></div>
+                <div class="ce__milieu">
+                  <div class="ce__bureau">
+                    <div class="ce__feuille">
+                      <div class="fe-h1">Les séismes</div>
+                      <div class="fe-cal fe-cal--consigne"><i>CONSIGNE</i>Lire les documents 1 et 2, puis répondre aux questions.</div>
+                      <div class="fe-h2">1. Que ressent-on pendant un séisme ?</div>
+                      <p class="fe-p">Le sol tremble pendant quelques secondes. Les dégâts dépendent de l'énergie libérée et de la distance au foyer.</p>
+                      <div class="fe-h2">2. Où se produisent les séismes ?</div>
+                      <p class="fe-p">Repérer sur la carte les zones où les séismes sont nombreux.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="ce__etatbar"><span>Page 1 sur 2</span><span>184 mots</span><span class="esp"></span><span class="ce__modes"><span class="is-actif">¶ Texte</span><span>▣ Tableau</span><span>▶ En classe</span></span></div>
+
+                <div class="voile-gris" data-at="3-4"></div>
+                <div class="papier zoom" data-at="3-4" style="height:530px">
+                  <div class="qr" id="qr-code"><span>Version<br>couleur</span>
+                    <svg viewBox="0 0 21 21" shape-rendering="crispEdges" aria-hidden="true"><rect width="21" height="21" fill="#fff"/><g fill="#111"><path d="M0 0h7v7H0zM14 0h7v7h-7zM0 14h7v7H0z"/></g><g fill="#fff"><path d="M1 1h5v5H1zM15 1h5v5h-5zM1 15h5v5H1z"/></g><g fill="#111"><path d="M2 2h3v3H2zM16 2h3v3h-3zM2 16h3v3H2z"/><path d="M8 1h1v2H8zM10 0h2v1h-2zM9 4h2v2H9zM12 3h1v3h-1zM8 8h3v1H8zM13 8h2v2h-2zM16 9h3v1h-3zM1 9h2v2H1zM4 8h2v1H4zM9 10h1v3H9zM11 11h3v1h-3zM15 12h2v2h-2zM18 11h2v3h-2zM8 14h2v2H8zM11 15h1v3h-1zM13 14h3v1h-3zM14 17h2v2h-2zM17 16h1v4h-1zM9 18h3v2H9zM19 19h2v2h-2zM6 10h1v2H6z"/></g></svg>
+                  </div>
+                  <div style="font-size:16px;font-weight:700;color:#1E3A8A;margin-bottom:6px">Les séismes</div>
+                  <div style="background:#EFF6FF;color:#1E3A8A;font-style:italic;padding:5px 8px;border-radius:3px;margin-bottom:8px">Lire les documents 1 et 2, puis répondre aux questions.</div>
+                  <div style="font-weight:650;color:#3730A3;margin:6px 0 2px">1. Que ressent-on pendant un séisme ?</div>
+                  <p style="margin:0 0 6px">Le sol tremble pendant quelques secondes. Les dégâts dépendent de l'énergie libérée et de la distance au foyer.</p>
+                  <div style="font-weight:650;color:#3730A3;margin:6px 0 2px">2. Où se produisent les séismes ?</div>
+                  <p style="margin:0 0 6px">Repérer sur la carte les zones où les séismes sont nombreux.</p>
+                  <svg width="300" height="110" viewBox="0 0 240 96" aria-hidden="true" style="display:block;margin:6px auto"><rect width="240" height="96" fill="#E0F2FE"/><path d="M0 60 Q40 40 80 58 T160 54 T240 50 V96 H0Z" fill="#BBF7D0"/><g fill="#DC2626"><circle cx="52" cy="50" r="3"/><circle cx="70" cy="56" r="3"/><circle cx="150" cy="52" r="3"/><circle cx="168" cy="47" r="3"/><circle cx="196" cy="50" r="3"/></g></svg>
+                  <p style="text-align:center;font-style:italic;font-size:10px;color:#334155;margin:0">Document 1 : localisation de séismes récents</p>
+                </div>
+                <div class="halo halo-qr" data-at="3" style="left:552px;top:22px;width:66px;height:52px"></div>
+                <div class="tel-boite glisse-gauche" data-at="4" id="qr-tel">
+                  <div class="tel"><div class="tel__ecran">
+                    <div class="tel__statut"><span>10:12</span><span>4G</span></div>
+                    <div class="tel-doc">
+                      <h4>Les séismes</h4>
+                      <div class="cons"><i>CONSIGNE</i>Lire les documents 1 et 2, puis répondre aux questions.</div>
+                      <h5>1. Que ressent-on pendant un séisme ?</h5>
+                      <div>Le sol tremble pendant quelques secondes. Les dégâts dépendent de l'énergie libérée et de la distance au foyer.</div>
+                      <h5>2. Où se produisent les séismes ?</h5>
+                      <div>Repérer sur la carte les zones où les séismes sont nombreux.</div>
+                      <svg viewBox="0 0 240 96" aria-hidden="true"><rect width="240" height="96" fill="#E0F2FE"/><path d="M0 60 Q40 40 80 58 T160 54 T240 50 V96 H0Z" fill="#BBF7D0"/><g fill="#DC2626"><circle cx="52" cy="50" r="4"/><circle cx="70" cy="56" r="4"/><circle cx="150" cy="52" r="4"/><circle cx="168" cy="47" r="4"/><circle cx="196" cy="50" r="4"/></g></svg>
+                    </div>
+                  </div></div>
+                </div>
+                <div class="ce__modal-fond" data-at="2"><div class="ce__modal zoom" data-at="2" style="width:520px">
+                  <div class="ce__modal-t">Imprimer le cours</div>
+                  <div class="etiq">Version</div><div class="grille2"><div class="ce__choix is-actif"><b>Normale</b>Le cours tel qu'à l'écran</div><div class="ce__choix"><b>Adaptée (dys)</b>Texte plus grand, plus espacé</div></div>
+                  <div class="etiq" style="margin-top:8px">Par feuille</div><div class="grille2"><div class="ce__choix is-actif"><b>Une page A4</b>Comme d'habitude</div><div class="ce__choix"><b>Deux demi-feuilles</b>Chaque page deux fois en A5</div></div>
+                  <div class="etiq" style="margin-top:8px">Couleurs</div><div class="grille3"><div class="ce__choix is-actif"><b>Couleur</b>Encadrés et titres en couleur</div><div class="ce__choix"><b>Noir et blanc</b>Propre à la photocopieuse</div><div class="ce__choix"><b>Économie d'encre</b>Sans fonds colorés</div></div>
+                  <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit">Imprimer</span></div>
+                </div></div>
+                <div class="mob-pop zoom" data-at="5">
+                  Sur mesure, déposée le 26 novembre 2026 à 14:05.
+                  <div class="bts"><span class="bt">Voir</span><span class="bt">Revenir à l'automatique</span></div>
+                </div>
+                <div class="bulle bulle--haut" data-at="1" style="right:150px;top:44px;max-width:300px">Le QR code des feuilles imprimées ouvre la version faite automatiquement par l'application.</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

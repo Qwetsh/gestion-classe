@@ -1,0 +1,1616 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cadre général — Guide Gestion Classe</title>
+<meta name="description" content="Ce qui entoure toutes les pages du site enseignant : connexion, menu latéral, recherche, compte, notifications, retours, et le site ouvert sur une tablette ou un téléphone.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="12">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---- barre latérale du site (fond gris clair, menu regroupé) */
+.gcs { width: 190px; flex: none; background: #F6F6F7; border-right: 1px solid var(--border); padding: 12px 10px 10px; display: flex; flex-direction: column; gap: 2px; transition: width .4s ease, padding .4s ease; overflow: hidden; }
+.gcs__marque { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; padding: 2px 4px 10px; white-space: nowrap; }
+.gcs__marque b { width: 24px; height: 24px; border-radius: 7px; background: var(--indigo); color: #fff; font-size: 10.5px; display: grid; place-items: center; flex: none; }
+.gcs__cherche { display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text-dim); font-size: 12px; margin-bottom: 8px; white-space: nowrap; transition: all .25s; }
+.gcs__cherche svg { flex: none; }
+.gcs__cherche kbd { margin-left: auto; font-family: var(--font); font-size: 9.5px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); color: var(--text-dim); }
+.gcs__cherche.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.gcs__it { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; transition: background .25s, color .25s; }
+.gcs__it svg { flex: none; }
+.gcs__chev { margin-left: auto; font-style: normal; font-size: 10px; opacity: .6; }
+.gcs__sub { margin: 1px 0 3px 15px; padding-left: 9px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 1px; }
+.gcs__sub .gcs__it { height: 25px; font-size: 12px; }
+.gcs__it.is-actif, .gcs__it.is-on { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+.gcs__pied { margin-top: auto; border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.gcs__pronote { display: flex; align-items: center; gap: 4px; background: #FDF1E3; color: #9A3412; font-size: 10.5px; border-radius: 6px; padding: 6px 6px; margin-bottom: 4px; white-space: nowrap; transition: box-shadow .25s; }
+.gcs__pronote svg { flex: none; }
+.gcs__pronote u { font-weight: 600; }
+.gcs__pronote .x { margin-left: auto; opacity: .7; font-size: 13px; }
+.gcs__pronote.is-on { box-shadow: 0 0 0 3px rgba(180,83,9,.2); }
+.gcs__petit { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px; font-size: 11.5px; color: var(--text-dim); border-radius: 6px; white-space: nowrap; transition: background .25s; }
+.gcs__petit svg { flex: none; }
+.gcs__petit.is-on { background: var(--surface-3); color: var(--text); }
+.gcs__compte { display: flex; align-items: center; gap: 3px; padding: 4px 2px 0; }
+.gcs__ic { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); position: relative; transition: background .25s; flex: none; }
+.gcs__ic.is-on { background: var(--surface-3); color: var(--text); }
+.gcs__badge { position: absolute; top: 0; right: -2px; min-width: 15px; height: 15px; border-radius: 8px; background: var(--neg); color: #fff; font-size: 9px; font-weight: 700; display: grid; place-items: center; padding: 0 3px; }
+.gcs__av { width: 26px; height: 26px; border-radius: 50%; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 650; display: grid; place-items: center; margin-left: auto; flex: none; transition: box-shadow .25s; }
+.gcs__av.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.28); }
+/* mode rail : icônes seules */
+.gcs--rail, .gcs--bascule.is-on { width: 64px; padding: 12px 8px 10px; }
+.gcs--rail .gcs__marque span, .gcs--bascule.is-on .gcs__marque span,
+.gcs--rail .gcs__it span, .gcs--bascule.is-on .gcs__it span,
+.gcs--rail .gcs__chev, .gcs--bascule.is-on .gcs__chev,
+.gcs--rail .gcs__cherche span, .gcs--bascule.is-on .gcs__cherche span,
+.gcs--rail .gcs__cherche kbd, .gcs--bascule.is-on .gcs__cherche kbd,
+.gcs--rail .gcs__petit span, .gcs--bascule.is-on .gcs__petit span,
+.gcs--rail .gcs__pronote .txt, .gcs--bascule.is-on .gcs__pronote .txt { display: none; }
+.gcs--rail .gcs__marque, .gcs--bascule.is-on .gcs__marque { justify-content: center; padding: 2px 0 10px; }
+.gcs--rail .gcs__it, .gcs--bascule.is-on .gcs__it,
+.gcs--rail .gcs__petit, .gcs--bascule.is-on .gcs__petit,
+.gcs--rail .gcs__cherche, .gcs--bascule.is-on .gcs__cherche,
+.gcs--rail .gcs__pronote, .gcs--bascule.is-on .gcs__pronote { justify-content: center; padding: 0; }
+.gcs--rail .gcs__pronote, .gcs--bascule.is-on .gcs__pronote { height: 28px; }
+.gcs--rail .gcs__sub, .gcs--bascule.is-on .gcs__sub { margin: 2px 0; padding: 4px 0; border-left: 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.gcs--rail .gcs__sub .gcs__it::before, .gcs--bascule.is-on .gcs__sub .gcs__it::before { content: ''; width: 12px; height: 12px; border-radius: 3px; border: 1.6px solid currentColor; opacity: .7; }
+.gcs--rail .gcs__compte, .gcs--bascule.is-on .gcs__compte { flex-direction: column; gap: 4px; align-items: center; }
+.gcs--rail .gcs__av, .gcs--bascule.is-on .gcs__av { margin-left: 0; }
+
+/* ---- divers maquettes du site */
+.app__corps--blanc { background: #fff; }
+.gc-voile { position: absolute; inset: 0; background: rgba(20,25,40,.45); z-index: 600; }
+.gc-modale { position: absolute; z-index: 610; background: #fff; border-radius: 8px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; }
+.gc-modale__tete { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 16px; font-weight: 650; }
+.gc-modale__tete .x { margin-left: auto; color: var(--text-dim); font-size: 18px; font-weight: 400; }
+.gc-modale__corps { padding: 14px 16px; font-size: 12.5px; flex: 1; min-height: 0; overflow: hidden; }
+.gc-modale__pied { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); }
+.infob { position: absolute; z-index: 820; background: #18181B; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 5px; white-space: nowrap; box-shadow: var(--shadow); }
+.gtoast { position: absolute; z-index: 880; right: 14px; top: 14px; min-width: 250px; max-width: 380px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border-left: 4px solid var(--pos); background: rgba(234,246,238,.97); color: var(--pos); font-size: 12.5px; font-weight: 550; box-shadow: var(--shadow-lg); }
+.gtoast b { font-size: 14px; }
+.gtoast .x { margin-left: auto; opacity: .6; font-weight: 400; }
+.gtoast--err { border-left-color: var(--neg); background: rgba(251,234,234,.97); color: var(--neg); }
+.gtoast--info { border-left-color: var(--indigo); background: rgba(238,240,255,.97); color: var(--indigo); }
+.gtoast--warn { border-left-color: var(--warn); background: rgba(253,241,227,.97); color: var(--warn); }
+.pill { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 650; white-space: nowrap; transition: all .25s; }
+.pill--pos { background: var(--pos-soft); color: var(--pos); }
+.pill--neg { background: var(--neg-soft); color: var(--neg); }
+.pill--neu { background: var(--surface-3); color: var(--text-muted); }
+.pill--ind { background: var(--indigo-soft); color: var(--indigo); }
+.pill--amb { background: var(--warn-soft); color: var(--warn); }
+.pill.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.2); }
+.lien { color: var(--indigo); font-size: 12px; font-weight: 550; }
+.sel { white-space: nowrap; overflow: hidden; height: 28px; border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+
+.ac-corps { padding: 14px 20px; }
+.ac-tete { display: flex; align-items: baseline; gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.ac-tete h1 { font-size: 21px; font-weight: 600; letter-spacing: -.01em; margin: 0; line-height: 26px; }
+.ac-tete p { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.mod-t { display: flex; align-items: center; gap: 8px; height: 24px; margin-bottom: 6px; }
+.mod-t b { font-size: 13.5px; font-weight: 600; }
+.mod-t .per { font-size: 12.5px; color: var(--text-dim); }
+.ib { min-width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 5px; display: grid; place-items: center; font-size: 13px; color: var(--text-muted); background: #fff; }
+.wtt { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: grid; grid-template-columns: 38px repeat(5, 1fr); position: relative; background: #fff; }
+.wtt__hh { background: var(--bg-alt); border-bottom: 1px solid var(--border); height: 26px; }
+.wtt__jh { background: var(--bg-alt); border-bottom: 1px solid var(--border); border-left: 1px solid var(--border); height: 26px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 11.5px; color: var(--text-muted); }
+.wtt__jh b { font-weight: 600; color: var(--text); }
+.wtt__jh.auj { background: var(--indigo-soft); color: var(--indigo); }
+.wtt__jh.auj b { color: var(--indigo); }
+.wtt__h { position: relative; background: var(--bg-alt); }
+.wtt__h span { position: absolute; right: 5px; font-size: 10px; color: var(--text-dim); }
+.wtt__j { position: relative; border-left: 1px solid var(--border); background-image: repeating-linear-gradient(to bottom, var(--border) 0, var(--border) 1px, transparent 1px, transparent 44px); }
+.wtt__j.auj { background-color: rgba(79,70,229,.04); }
+.wc { position: absolute; left: 3px; right: 3px; background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 3px 5px; font-size: 11px; overflow: hidden; }
+.wc__l { display: flex; align-items: center; gap: 4px; }
+.wc__p { display: inline-flex; align-items: center; height: 17px; padding: 0 5px; border-radius: 4px; font-size: 10.5px; font-weight: 650; white-space: nowrap; }
+.wc__p--brut { padding: 0; color: var(--text-muted); }
+.wc__s { font-size: 10.5px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.wc__s i { width: 6px; height: 6px; border-radius: 50%; background: var(--pos); flex: none; }
+.wc__nt::before { content: ''; width: 8px; height: 9px; border: 1.3px solid var(--warn); border-radius: 2px; flex: none; }
+.wc__b { color: var(--indigo); font-size: 11px; margin-left: auto; }
+.wc__st { font-size: 9.5px; font-weight: 650; padding: 0 4px; border-radius: 3px; background: var(--neg-soft); color: var(--neg); margin-left: auto; }
+.wc--passe { opacity: .6; }
+.wc--encours { box-shadow: 0 0 0 2px var(--indigo); z-index: 2; }
+.wc--annule { background: var(--surface-3); color: var(--text-dim); }
+.wc--annule .wc__p { text-decoration: line-through; opacity: .7; }
+.wc--nonrelie { background: var(--bg-alt); }
+.wc--note { border-left: 3px solid var(--warn); }
+.wtt__now { position: absolute; left: 0; right: 0; height: 2px; background: var(--indigo); z-index: 4; }
+.pile { display: inline-grid; }
+.pile > * { grid-area: 1 / 1; }
+.pile--bloc { display: grid; }
+/* connexion */
+.lg-fond { flex: 1; background: #fff; display: flex; justify-content: center; align-items: flex-start; padding-top: 34px; position: relative; }
+.lg-carte { width: 400px; background: #fff; border-radius: 8px; box-shadow: 0 8px 32px rgba(20,25,40,.12); border: 1px solid var(--border); padding: 24px 28px 18px; display: flex; flex-direction: column; gap: 10px; }
+.lg-logo { width: 56px; height: 56px; border-radius: 14px; background: var(--indigo); color: #fff; font-weight: 700; font-size: 20px; display: grid; place-items: center; margin: 0 auto; }
+.lg-titre { text-align: center; font-size: 20px; font-weight: 650; margin: 2px 0 0; }
+.lg-sous { text-align: center; color: var(--text-muted); font-size: 13px; margin-top: -6px; }
+.lg-lab { font-size: 12px; font-weight: 550; color: var(--text-muted); margin-bottom: 3px; }
+.lg-champ { height: 36px; border-radius: 6px; background: var(--surface-3); border: 1px solid transparent; padding: 0 10px; display: flex; align-items: center; font-size: 13px; transition: all .25s; }
+.lg-champ.is-on { border-color: var(--indigo); background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.lg-champ--err { border-color: var(--neg); }
+.lg-err { color: var(--neg); font-size: 11.5px; margin-top: 2px; }
+.lg-lien { font-size: 12px; color: var(--indigo); text-align: right; margin-top: -4px; }
+.lg-btn { height: 38px; border-radius: 6px; background: var(--indigo); color: #fff; font-weight: 600; font-size: 13.5px; display: grid; place-items: center; transition: box-shadow .25s; }
+.lg-btn.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.lg-bas { border-top: 1px solid var(--border); padding-top: 10px; text-align: center; font-size: 12.5px; color: var(--text-muted); }
+.lg-bas b { color: var(--indigo); font-weight: 600; }
+.lg-ok { border-radius: 8px; padding: 14px; text-align: center; font-size: 12.5px; line-height: 1.5; }
+.lg-ok b { display: block; font-size: 15px; margin: 4px 0; }
+.lg-ok--vert { background: #E8F5E9; color: #2E7D32; }
+.lg-ok--bleu { background: #E3F2FD; color: #1565C0; }
+.rond-ic { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.7); display: grid; place-items: center; margin: 0 auto; }
+/* pages factices */
+.pg-lignes { display: grid; gap: 8px; margin-top: 12px; }
+.pg-lignes span { height: 34px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+/* recherche */
+.rc-voile { position: absolute; inset: 0; background: rgba(20,25,40,.35); z-index: 600; }
+.rc-mod { position: absolute; z-index: 610; left: 210px; top: 70px; width: 580px; background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); overflow: hidden; }
+.rc-champ { height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-bottom: 1px solid var(--border); font-size: 15px; color: var(--text); }
+.rc-champ .ph { color: var(--text-dim); }
+.rc-champ kbd { margin-left: auto; font-family: var(--font); font-size: 10.5px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); background: var(--surface-2); }
+.rc-liste { padding: 6px; max-height: 360px; overflow: hidden; }
+.rc-fam { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; padding: 8px 10px 4px; }
+.rc-it { display: flex; align-items: center; height: 34px; padding: 0 10px; border-radius: 7px; font-size: 13px; transition: background .2s; }
+.rc-it span { margin-left: auto; color: var(--text-dim); font-size: 12px; }
+.rc-it.is-on, .rc-it.sel0 { background: var(--indigo-soft); }
+/* menus flottants */
+.flot { position: absolute; z-index: 650; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); }
+.flot__it { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; transition: background .2s; }
+.flot__it.is-on { background: var(--surface-3); }
+.nt-it { display: flex; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; position: relative; }
+.nt-it--neuf { background: var(--indigo-soft); }
+.nt-it--neuf::after { content: ''; position: absolute; right: 10px; top: 14px; width: 7px; height: 7px; border-radius: 50%; background: var(--indigo); }
+.nt-ic { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none; color: #fff; font-size: 12px; font-weight: 700; }
+.annonce { position: absolute; z-index: 700; left: 50%; translate: -50% 0; top: 14px; width: 480px; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: var(--indigo); color: #fff; font-size: 13px; box-shadow: var(--shadow-lg); }
+.annonce .x { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,255,255,.2); display: grid; place-items: center; font-size: 11px; flex: none; transition: box-shadow .2s; }
+.annonce .x.is-on { box-shadow: 0 0 0 3px rgba(255,255,255,.45); }
+.is-hidden.annonce { transform: translateY(-30px); }
+/* retour */
+.fb-tete { background: var(--indigo); color: #fff; padding: 14px 18px; }
+.fb-tete b { font-size: 16px; display: block; }
+.fb-tete span { font-size: 12px; opacity: .85; }
+.fb-type { flex: 1; height: 54px; border-radius: 8px; border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; color: var(--text-muted); transition: all .25s; }
+.fb-type--bug.is-on { background: var(--neg); border-color: var(--neg); color: #fff; }
+.fb-type--sug.is-on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+/* bandeau rouge */
+.ef-bande { background: #B3261E; color: #fff; padding: 9px 20px; font-size: 13px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ef-bande .bt { background: #fff; color: #B3261E; font-weight: 700; height: 28px; padding: 0 12px; border-radius: 6px; display: inline-flex; align-items: center; transition: box-shadow .25s; }
+.ef-bande .bt.is-on { box-shadow: 0 0 0 3px rgba(255,255,255,.5); }
+.ef-bande u { font-size: 12px; opacity: .95; }
+.cf-carte { position: absolute; z-index: 610; left: 280px; top: 120px; width: 440px; background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); padding: 22px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cf-rond { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; }
+.cf-prec { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 11.5px; color: var(--text-muted); text-align: left; }
+.cf-bts { display: flex; gap: 8px; width: 100%; margin-top: 6px; }
+.cf-bts span { flex: 1; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 13px; transition: box-shadow .25s; }
+.cf-bts span.is-on { box-shadow: 0 0 0 3px rgba(245,124,0,.35); }
+/* site ouvert sur un téléphone */
+.wtop { height: 46px; flex: none; background: #fff; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 4px; padding: 0 10px; }
+.wtop .mq { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13.5px; margin-right: auto; }
+.wtop .mq b { width: 24px; height: 24px; border-radius: 7px; background: var(--indigo); color: #fff; font-size: 10px; display: grid; place-items: center; }
+.wtop .ic { width: 30px; height: 30px; display: grid; place-items: center; color: var(--text-muted); border-radius: 8px; transition: background .25s; }
+.wtop .ic.is-on { background: var(--surface-3); }
+.wtop .av { width: 26px; height: 26px; border-radius: 50%; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 650; display: grid; place-items: center; margin-left: 2px; }
+.wsub { display: flex; gap: 6px; padding: 8px 10px; overflow: hidden; flex: none; background: #fff; }
+.wsub span { height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); font-size: 12.5px; display: inline-flex; align-items: center; white-space: nowrap; color: var(--text-muted); transition: all .25s; }
+.wsub span.on, .wsub span.is-on { background: var(--indigo-soft); border-color: var(--indigo); color: var(--indigo); font-weight: 600; }
+.wcorps { flex: 1; min-height: 0; padding: 10px 12px; position: relative; overflow: hidden; background: #fff; }
+.wcorps h3 { margin: 0 0 8px; font-size: 19px; }
+.wbas { height: 58px; flex: none; border-top: 1px solid var(--border); background: #fff; display: flex; justify-content: space-around; align-items: center; font-size: 11px; color: var(--text-dim); }
+.wbas span { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 6px; border-radius: 8px; transition: all .25s; }
+.wbas span.on { color: var(--indigo); font-weight: 600; }
+.wbas span.is-on { background: var(--surface-3); }
+.wfeuille { position: absolute; left: 0; right: 0; bottom: 0; z-index: 600; background: #fff; border-radius: 20px 20px 0 0; box-shadow: 0 -10px 40px rgba(0,0,0,.18); padding: 8px 14px 16px; }
+.wfeuille::before { content: ''; display: block; width: 38px; height: 5px; border-radius: 3px; background: #D4D4D8; margin: 0 auto 10px; }
+.is-hidden.wfeuille { transform: translateY(60px); }
+.wfeuille .l { display: flex; align-items: center; gap: 12px; height: 44px; font-size: 15px; border-radius: 10px; padding: 0 10px; }
+.wfeuille .l.on { background: var(--indigo-soft); color: var(--indigo); }
+.wfeuille hr { border: 0; border-top: 1px solid var(--border); margin: 6px 0; }
+.rf { border-radius: 12px; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-size: 14px; font-weight: 600; transition: box-shadow .25s; }
+.rf.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.rf--p { height: 48px; background: var(--indigo); color: #fff; }
+.rf--g { height: 46px; border: 1px solid var(--border-strong); background: #fff; flex: 1; font-size: 13.5px; }
+.rf small { display: block; font-weight: 500; font-size: 11.5px; opacity: .8; }
+.rf--reprise { height: 54px; background: var(--indigo-soft); color: var(--indigo); border: 1px solid #C7D2FE; }
+.rf--reprise-warn { height: 52px; background: #fff; border: 1.5px solid var(--warn); color: var(--text); }
+.live { margin-left: auto; font-size: 11px; font-weight: 650; padding: 2px 8px; border-radius: 999px; background: var(--indigo); color: #fff; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Cadre général</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#connexion">Se connecter</a></li>
+      <li><a href="#compte">Créer un compte, mot de passe oublié</a></li>
+      <li><a href="#menu">Le menu latéral</a></li>
+      <li><a href="#rail">Menu réduit et rappel Pronote</a></li>
+      <li><a href="#recherche">La recherche (Ctrl K)</a></li>
+      <li><a href="#compte-menu">Le compte et la déconnexion</a></li>
+      <li><a href="#notifications">Notifications et annonces</a></li>
+      <li><a href="#retour">Envoyer un retour</a></li>
+      <li><a href="#envois-fermes">Bandeau « Envois fermés »</a></li>
+      <li><a href="#tablette">Le site sur tablette et téléphone</a></li>
+      <li><a href="#lanceurs">Lancer une séance depuis le navigateur du téléphone</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/accueil.html">◀ Accueil</a><a href="../enseignant/cadre-general-suite.html">Réglages et éléments communs ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Cadre général</div>
+      <h1>Cadre général</h1>
+      <p>Ce qui entoure toutes les pages du site enseignant : la connexion, le menu, la recherche, le compte, les notifications et les retours, et la façon dont le site se range sur une tablette ou un téléphone.</p>
+      <div class="chap__resume"><span>Toutes les pages</span><span>Ordinateur</span><span>Aussi en navigateur sur tablette et téléphone</span></div>
+    </header>
+
+    <!-- ============================================================ connexion -->
+    <section class="fiche" id="connexion">
+      <div class="fiche__texte">
+        <h2>Se connecter</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Page de connexion</span></p>
+        <p class="fiche__but">Entrer dans son espace enseignant avec son adresse et son mot de passe. Toute page du site y renvoie tant qu'on n'est pas connecté.</p>
+        <ol class="etapes">
+          <li data-cursor="#cx-email" data-action="click">Saisir l'<b>Email</b> du compte.</li>
+          <li data-cursor="#cx-mdp" data-action="click">Saisir le <b>Mot de passe</b>.</li>
+          <li data-cursor="#cx-go" data-action="click">Cliquer <span class="btn-nom">Se connecter</span> : « Connexion... » pendant la vérification.</li>
+          <li data-cursor="#cx-acc" data-duration="3200">Une fois connecté, l'accueil s'ouvre. Les autres pages se chargent en arrière-plan pour s'ouvrir plus vite.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Déjà connecté, la page de connexion renvoie directement à l'accueil. Une session expirée ramène ici.</li>
+            <li>Les messages d'erreur (mot de passe faux, par exemple) viennent du service de connexion et peuvent s'afficher en anglais.</li>
+            <li>Les élèves ne passent pas par ici : ils entrent dans leur espace avec un code.</li>
+            <li>Les pages ouvertes sans compte (document par QR code, cahier de texte en lecture seule, dépôt d'une copie) ne demandent pas de connexion.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/connexion-et-accueil.html">Connexion des élèves</a> · <a href="../public/documents-par-qr-code.html">Pages ouvertes sans compte</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/login</div></div>
+              <div class="app" style="position:relative">
+                <div class="lg-fond" data-to="3">
+                  <div class="lg-carte">
+                    <div class="lg-logo">GC</div>
+                    <div class="lg-titre">Gestion Classe</div>
+                    <div><div class="lg-lab">Email</div><div class="lg-champ" id="cx-email" data-on="1"><span class="pile"><span class="muet" style="font-size:13px" data-at="0">votre@email.com</span><span data-type="m.martin@exemple.fr" data-type-at="1"></span></span></div></div>
+                    <div><div class="lg-lab">Mot de passe</div><div class="lg-champ" id="cx-mdp" data-on="2"><span data-type="●●●●●●●●●●" data-type-at="2"></span></div></div>
+                    <div class="lg-lien">Mot de passe oublié ?</div>
+                    <div class="lg-btn" id="cx-go" data-on="3"><span class="pile"><span data-to="2">Se connecter</span><span data-at="3">Connexion...</span></span></div>
+                    <div class="lg-bas">Pas encore de compte ? <b>Créer un compte</b></div>
+                  </div>
+                </div>
+                <div data-from="4" style="position:absolute;inset:0;display:flex">
+                  <aside class="gcs">
+<div class="gcs__marque" id="cx-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="cx-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="cx-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="cx-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="cx-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="cx-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="cx-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="cx-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="cx-pronote-x">×</span></div>
+<div class="gcs__petit" id="cx-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="cx-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="cx-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="cx-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="cx-avatar">M</span></div>
+</div></aside>
+                  <div class="app__main"><div class="app__corps ac-corps">
+                    <div class="ac-tete"><h1 id="cx-titre">Jeudi 26 novembre</h1><p id="cx-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div>
+                    <div class="mod-t"><b id="cx-mt">Cette semaine</b><span class="per">23 – 27 novembre</span><span class="esp"></span><span class="ib" id="cx-gear"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="ib" id="cx-prev">‹</span><span class="ib" id="cx-next">›</span></div>
+                    <div class="wtt">
+<div class="wtt__hh"></div>
+<div class="wtt__jh">lun <b>23</b></div>
+<div class="wtt__jh">mar <b>24</b></div>
+<div class="wtt__jh">mer <b>25</b></div>
+<div class="wtt__jh auj">jeu <b>26</b></div>
+<div class="wtt__jh">ven <b>27</b></div>
+<div class="wtt__h" style="height:396px"><span style="top:2px">8h</span><span style="top:38px">9h</span><span style="top:82px">10h</span><span style="top:126px">11h</span><span style="top:170px">12h</span><span style="top:214px">13h</span><span style="top:258px">14h</span><span style="top:302px">15h</span><span style="top:346px">16h</span></div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="cx-l1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+<div class="wc wc--passe" id="cx-l2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Séisme et failles</div>
+</div>
+<div class="wc wc--passe" id="cx-l3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Météo du jour</div>
+</div>
+<div class="wc wc--passe" id="cx-l4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="cx-l5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="cx-m1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="cx-m2" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G1</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="cx-m3" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G2</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="cx-m4" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="cx-w1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="cx-w2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc wc--passe" id="cx-w3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Volcans</div>
+</div>
+<div class="wc wc--passe wc--nonrelie" id="cx-w4" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p wc__p--brut">3°EP2</span></div>
+</div>
+</div>
+<div class="wtt__j auj">
+<div class="wc wc--passe" id="cx-j1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="cx-j2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="cx-j3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--passe" id="cx-j4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--encours" id="cx-j5" style="top:344.7px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span><span class="wc__b">▤</span></div>
+</div>
+<div class="wtt__now" id="cx-now" style="top:381px"></div>
+</div>
+<div class="wtt__j">
+<div class="wc" id="cx-v1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+</div>
+<div class="wc wc--note" id="cx-v2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span><span class="wc__b">▤</span></div>
+<div class="wc__s wc__nt">Rendre les copies</div>
+</div>
+<div class="wc wc--annule" id="cx-v3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span><span class="wc__st">Annulé</span></div>
+</div>
+<div class="wc" id="cx-v4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc" id="cx-v5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+</div>
+</div>
+</div>
+                  </div></div>
+                </div>
+                <span id="cx-acc" style="position:absolute;left:480px;top:20px;width:10px;height:10px"></span>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ inscription / mot de passe -->
+    <section class="fiche" id="compte">
+      <div class="fiche__texte">
+        <h2>Créer un compte, mot de passe oublié</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Page de connexion</span></p>
+        <p class="fiche__but">Ouvrir un compte enseignant, ou recevoir un lien pour choisir un nouveau mot de passe.</p>
+        <ol class="etapes">
+          <li data-cursor="#ic-creer" data-action="click">Sous le formulaire, cliquer <span class="btn-nom">Créer un compte</span>.</li>
+          <li data-cursor="#ic-conf" data-duration="3400">Saisir <b>Email</b>, <b>Mot de passe</b> et <b>Confirmer le mot de passe</b>. Un écart s'affiche en rouge : « Les mots de passe ne correspondent pas ».</li>
+          <li data-cursor="#ic-go" data-action="click" data-duration="3600"><span class="btn-nom">Créer mon compte</span> : « Compte créé ! ». Activer le compte par le lien reçu par email, puis revenir se connecter.</li>
+          <li data-cursor="#ic-oubli" data-action="click">Sur le formulaire de connexion, <span class="btn-nom">Mot de passe oublié ?</span> ouvre « Réinitialiser le mot de passe ».</li>
+          <li data-cursor="#ic-env" data-action="click" data-duration="3600">Saisir l'adresse, cliquer <span class="btn-nom">Envoyer le lien</span> : « Email envoyé ! ». Le lien reçu permet de choisir un nouveau mot de passe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le mot de passe compte 6 caractères au moins (« 6 caractères minimum »).</li>
+            <li>Penser à regarder les courriers indésirables si l'email n'arrive pas.</li>
+            <li>Par prudence, « Email envoyé ! » s'affiche même si aucun compte n'existe pour cette adresse (« Si un compte existe pour… »).</li>
+            <li><span class="btn-nom">Retour à la connexion</span> ramène au formulaire.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/login</div></div>
+              <div class="app">
+                <div class="lg-fond">
+                  <div class="lg-carte">
+                    <div class="lg-logo">GC</div>
+                    <div class="lg-titre">Gestion Classe</div>
+                    <div class="pile pile--bloc">
+                      <div data-at="1" style="display:flex;flex-direction:column;gap:10px">
+                        <div><div class="lg-lab">Email</div><div class="lg-champ"><span class="muet" style="font-size:13px">votre@email.com</span></div></div>
+                        <div><div class="lg-lab">Mot de passe</div><div class="lg-champ"></div></div>
+                        <div class="lg-lien">Mot de passe oublié ?</div>
+                        <div class="lg-btn">Se connecter</div>
+                        <div class="lg-bas">Pas encore de compte ? <b id="ic-creer">Créer un compte</b></div>
+                      </div>
+                      <div data-at="2" style="display:flex;flex-direction:column;gap:9px">
+                        <div class="lg-sous">Créer un compte</div>
+                        <div><div class="lg-lab">Email</div><div class="lg-champ">m.martin@exemple.fr</div></div>
+                        <div><div class="lg-lab">Mot de passe</div><div class="lg-champ">●●●●●●●●</div></div>
+                        <div><div class="lg-lab">Confirmer le mot de passe</div><div class="lg-champ lg-champ--err" id="ic-conf">●●●●●●●</div><div class="lg-err">Les mots de passe ne correspondent pas</div></div>
+                        <div class="lg-btn" id="ic-go" data-on="3">Créer mon compte</div>
+                        <div class="lg-bas">Déjà un compte ? <b>Se connecter</b></div>
+                      </div>
+                      <div data-at="3" class="zoom">
+                        <div class="lg-ok lg-ok--vert"><span class="rond-ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg></span><b>Compte créé !</b>Un email de confirmation a été envoyé à m.martin@exemple.fr.<br>Cliquez sur le lien dans cet email pour activer votre compte, puis revenez ici pour vous connecter.<br><span style="opacity:.8">Pensez à vérifier vos spams si vous ne le trouvez pas.</span></div>
+                        <div class="lg-lien" style="text-align:center;margin-top:10px">Retour à la connexion</div>
+                      </div>
+                      <div data-at="4" style="display:flex;flex-direction:column;gap:10px">
+                        <div><div class="lg-lab">Email</div><div class="lg-champ">m.martin@exemple.fr</div></div>
+                        <div><div class="lg-lab">Mot de passe</div><div class="lg-champ"></div></div>
+                        <div class="lg-lien" id="ic-oubli">Mot de passe oublié ?</div>
+                        <div class="lg-btn">Se connecter</div>
+                      </div>
+                      <div data-at="5" style="display:flex;flex-direction:column;gap:10px">
+                        <div class="lg-sous">Réinitialiser le mot de passe</div>
+                        <div><div class="lg-lab">Email</div><div class="lg-champ">m.martin@exemple.fr</div></div>
+                        <div class="lg-btn" id="ic-env" data-on="5">Envoyer le lien</div>
+                        <div class="lg-ok lg-ok--bleu glisse-haut" data-at="5"><b>Email envoyé !</b>Si un compte existe pour m.martin@exemple.fr, vous recevrez un lien pour réinitialiser votre mot de passe.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ menu latéral -->
+    <section class="fiche" id="menu">
+      <div class="fiche__texte">
+        <h2>Le menu latéral</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">À gauche de toutes les pages</span></p>
+        <p class="fiche__but">Aller d'une page à l'autre. Cinq entrées, et seule celle de la page affichée se déplie pour montrer ses pages.</p>
+        <ol class="etapes">
+          <li data-cursor="#mn-cours" data-duration="3600">Cinq entrées : <b>Accueil</b>, <b>Mes cours</b>, <b>Classes</b>, <b>Évaluations</b>, <b>Plus</b>. Au-dessus, le logo (retour à l'accueil) et <b>Rechercher</b>.</li>
+          <li data-cursor="#mn-classes" data-action="click" data-duration="3400">Cliquer une entrée fermée ouvre sa première page et la déplie : <b>Classes</b> ouvre <b>Classes et plans</b>.</li>
+          <li data-cursor="#mn-classes1" data-action="click" data-duration="3400">Cliquer une page de l'entrée : <b>Suivi élèves</b>. La page affichée est sur fond indigo pâle.</li>
+          <li data-cursor="#mn-plus" data-duration="3400">Les autres entrées : Mes cours (bibliothèque, Mes TP, Annales, Mes clouds), Évaluations (carnet, activité en direct), Plus (Récompenses, Académie, Outils, Pronote).</li>
+          <li data-cursor="#mn-guide" data-duration="3200">En bas : le rappel Pronote, <b>Guide</b> (ce guide, dans un nouvel onglet), <b>Réduire le menu</b>, puis la rangée du compte.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une page masquée dans Réglages › Onglets visibles quitte le menu ; une entrée dont toutes les pages sont masquées disparaît ; une entrée réduite à une page devient un simple lien.</li>
+            <li>Une page reste allumée sur ses sous-pages : le détail d'une séance allume <b>Séances</b>, une fiche d'évaluation <b>Carnet et fiches</b>.</li>
+            <li>Le classeur virtuel, ouvert depuis Mes cours, n'allume aucune entrée.</li>
+            <li>Sous 1 024 px de large, le menu laisse la place à une barre en haut (et en bas sur téléphone).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="cadre-general-suite.html#onglets">Onglets visibles</a> · <a href="#tablette">Le site sur tablette et téléphone</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/students</div></div>
+              <div class="app">
+                <aside class="gcs">
+<div class="gcs__marque" id="mn-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="mn-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it" id="mn-accueil" data-on="1"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="mn-cours" data-on="1"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="mn-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">▾</i></div>
+<div class="gcs__sub" data-from="2">
+<div class="gcs__it" id="mn-classes0" data-on="2"><span>Classes et plans</span></div>
+<div class="gcs__it" id="mn-classes1" data-on="3-5"><span>Suivi élèves</span></div>
+<div class="gcs__it" id="mn-classes2"><span>Séances</span></div>
+<div class="gcs__it" id="mn-classes3"><span>Cahier de texte</span></div>
+<div class="gcs__it" id="mn-classes4"><span>Analyses</span></div>
+</div>
+<div class="gcs__it" id="mn-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="mn-plus" data-on="4"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="mn-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="mn-pronote-x">×</span></div>
+<div class="gcs__petit" id="mn-guide" data-on="5"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="mn-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="mn-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="mn-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="mn-avatar">M</span></div>
+</div></aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre pile"><span data-at="1">Jeudi 26 novembre</span><span data-at="2">Classes et plans</span><span data-from="3">Suivi élèves</span></span></div>
+                  <div class="app__corps">
+                    <div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                    <div class="bulle bulle--gauche" data-at="3" style="left:10px;top:40px">Page affichée : fond indigo pâle, texte indigo</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ rail -->
+    <section class="fiche" id="rail">
+      <div class="fiche__texte">
+        <h2>Menu réduit et rappel Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Pied du menu latéral</span></p>
+        <p class="fiche__but">Réduire le menu à ses icônes pour gagner de la place, et voir d'un coup d'œil si Pronote est connecté.</p>
+        <ol class="etapes">
+          <li data-cursor="#rl-reduire" data-action="click">Cliquer <span class="btn-nom">Réduire le menu</span> (double chevron).</li>
+          <li data-cursor="#rl-classes" data-duration="3400">Le menu passe à 64 px : il ne reste que les icônes. Le libellé s'affiche au survol.</li>
+          <li data-cursor="#rl-reduire" data-action="click" data-duration="3200">Le même bouton (« Afficher les libellés du menu ») rend les libellés.</li>
+          <li data-cursor="#rl-pronote" data-duration="3400">L'encart « Pronote non connecté » rappelle que l'emploi du temps en direct demande Pronote. <b>Connecter</b> ouvre la page Pronote.</li>
+          <li data-cursor="#rl-pronote-x" data-action="click" data-duration="3200">La croix <b>×</b> le masque jusqu'à la fermeture de l'onglet.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Sous 1 440 px de large, le menu se réduit tout seul. Dès qu'on clique le bouton, ce choix est gardé dans le navigateur et passe avant la largeur de l'écran.</li>
+            <li>En menu réduit, l'encart Pronote n'est plus qu'une icône (« Pronote non connecté — Connecter » au survol).</li>
+            <li>La connexion Pronote est propre au navigateur : l'encart peut apparaître sur un autre ordinateur.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="pronote.html">Pronote</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div>
+              <div class="app">
+                <aside class="gcs gcs--bascule" data-on="2">
+<div class="gcs__marque" id="rl-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="rl-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it" id="rl-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="rl-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rl-classes" data-on="2"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">▾</i></div>
+<div class="gcs__sub">
+<div class="gcs__it is-actif" id="rl-classes0"><span>Classes et plans</span></div>
+<div class="gcs__it" id="rl-classes1"><span>Suivi élèves</span></div>
+<div class="gcs__it" id="rl-classes2"><span>Séances</span></div>
+<div class="gcs__it" id="rl-classes3"><span>Cahier de texte</span></div>
+<div class="gcs__it" id="rl-classes4"><span>Analyses</span></div>
+</div>
+<div class="gcs__it" id="rl-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rl-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="rl-pronote" data-on="4-5" data-to="4"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="rl-pronote-x">×</span></div>
+<div class="gcs__petit" id="rl-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="rl-reduire" data-on="1,3"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="rl-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="rl-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="rl-avatar">M</span></div>
+</div></aside>
+                <div class="app__main" style="position:relative">
+                  <div class="app__entete"><span class="app__titre">Plan de salle</span></div>
+                  <div class="app__corps"><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                  <div class="infob" data-at="2" style="left:6px;top:118px">Classes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ recherche -->
+    <section class="fiche" id="recherche">
+      <div class="fiche__texte">
+        <h2>La recherche (Ctrl K)</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Rechercher, ou Ctrl K partout</span></p>
+        <p class="fiche__but">Aller n'importe où en tapant quelques lettres : une page, un cours, une classe, un élève, une évaluation, un outil ou une section des Réglages.</p>
+        <ol class="etapes">
+          <li data-cursor="#rc-search" data-action="click" data-duration="3200">Cliquer <b>Rechercher</b> ou taper Ctrl K (Cmd K sur Mac). Sans rien taper, la liste montre les pages du menu.</li>
+          <li data-cursor="#rc-champ" data-duration="3600">Taper quelques lettres : les résultats se rangent par famille (Pages, Cours, Classes, Élèves, Évaluations, Outils, Réglages).</li>
+          <li data-cursor="#rc-r2" data-duration="3000">Les flèches haut et bas choisissent une ligne.</li>
+          <li data-cursor="#rc-page" data-duration="3200">Entrée ouvre le résultat : ici la fiche de l'élève dans Suivi élèves. Échap ou un clic sur le fond referme.</li>
+          <li data-cursor="#rc-reg" data-duration="3400">Un mot comme « sombre » ou « trimestre » trouve aussi la section des Réglages, qui s'ouvre directement.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ni majuscules ni accents ne comptent ; tous les mots tapés doivent se trouver dans le titre, la précision ou les mots-clés. Six résultats au plus par famille.</li>
+            <li>Les élèves sont cherchés par pseudonyme et classe ; un élève détaché de toute classe n'est pas proposé. Une page masquée dans Réglages n'est pas proposée.</li>
+            <li>Un cours s'ouvre dans Mes cours, une classe dans Classes et plans, une évaluation sur sa fiche, un outil dans la boîte à outils.</li>
+            <li>Les données sont relues au plus une fois par minute.</li>
+            <li>Dans l'éditeur de cours, le tableau blanc ou une présentation, Ctrl K leur appartient et n'ouvre pas la recherche.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="rc-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="rc-search" data-on="1"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="rc-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="rc-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rc-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rc-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rc-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="rc-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="rc-pronote-x">×</span></div>
+<div class="gcs__petit" id="rc-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="rc-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="rc-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="rc-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="rc-avatar">M</span></div>
+</div></aside>
+                <div class="app__main">
+                  <div class="app__corps ac-corps" data-to="3">
+                    <div class="ac-tete"><h1 id="rc-titre">Jeudi 26 novembre</h1><p id="rc-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div>
+                    <div class="mod-t"><b id="rc-mt">Cette semaine</b><span class="per">23 – 27 novembre</span><span class="esp"></span><span class="ib" id="rc-gear"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="ib" id="rc-prev">‹</span><span class="ib" id="rc-next">›</span></div>
+                    <div class="wtt">
+<div class="wtt__hh"></div>
+<div class="wtt__jh">lun <b>23</b></div>
+<div class="wtt__jh">mar <b>24</b></div>
+<div class="wtt__jh">mer <b>25</b></div>
+<div class="wtt__jh auj">jeu <b>26</b></div>
+<div class="wtt__jh">ven <b>27</b></div>
+<div class="wtt__h" style="height:396px"><span style="top:2px">8h</span><span style="top:38px">9h</span><span style="top:82px">10h</span><span style="top:126px">11h</span><span style="top:170px">12h</span><span style="top:214px">13h</span><span style="top:258px">14h</span><span style="top:302px">15h</span><span style="top:346px">16h</span></div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="rc-l1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+<div class="wc wc--passe" id="rc-l2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Séisme et failles</div>
+</div>
+<div class="wc wc--passe" id="rc-l3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Météo du jour</div>
+</div>
+<div class="wc wc--passe" id="rc-l4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="rc-l5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="rc-m1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="rc-m2" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G1</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="rc-m3" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G2</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="rc-m4" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="rc-w1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="rc-w2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc wc--passe" id="rc-w3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Volcans</div>
+</div>
+<div class="wc wc--passe wc--nonrelie" id="rc-w4" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p wc__p--brut">3°EP2</span></div>
+</div>
+</div>
+<div class="wtt__j auj">
+<div class="wc wc--passe" id="rc-j1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="rc-j2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="rc-j3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--passe" id="rc-j4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--encours" id="rc-j5" style="top:344.7px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span><span class="wc__b">▤</span></div>
+</div>
+<div class="wtt__now" id="rc-now" style="top:381px"></div>
+</div>
+<div class="wtt__j">
+<div class="wc" id="rc-v1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+</div>
+<div class="wc wc--note" id="rc-v2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span><span class="wc__b">▤</span></div>
+<div class="wc__s wc__nt">Rendre les copies</div>
+</div>
+<div class="wc wc--annule" id="rc-v3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span><span class="wc__st">Annulé</span></div>
+</div>
+<div class="wc" id="rc-v4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc" id="rc-v5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+</div>
+</div>
+</div>
+                  </div>
+                  <div data-from="4" style="position:absolute;left:190px;right:0;top:0;bottom:0;background:#fff">
+                    <div class="app__entete"><span class="app__titre" id="rc-page">Suivi élèves</span><span class="puce puce--3">3A</span></div>
+                    <div class="app__corps"><div class="ligne"><span class="avatar">LB</span><b>Lina BO</b><span class="muet">3A</span></div><div class="pg-lignes"><span></span><span></span><span></span><span></span></div></div>
+                  </div>
+                </div>
+                <div class="rc-voile" data-at="1-3,5"></div>
+                <div class="rc-mod zoom" data-at="1-3,5">
+                  <div class="rc-champ" id="rc-champ"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span class="pile"><span class="ph" data-at="1">Aller à une page, un cours, un élève, une évaluation…</span><span data-at="2-3" data-type="lin" data-type-at="2"></span><span data-at="5" data-type="sombre" data-type-at="5"></span></span><kbd>Échap</kbd></div>
+                  <div class="rc-liste pile pile--bloc">
+                    <div data-at="1">
+                      <div class="rc-fam">Pages</div>
+                      <div class="rc-it sel0">Accueil<span>Accueil</span></div>
+                      <div class="rc-it">Bibliothèque et classes<span>Mes cours</span></div>
+                      <div class="rc-it">Mes TP<span>Mes cours</span></div>
+                      <div class="rc-it">Annales<span>Mes cours</span></div>
+                      <div class="rc-it">Classes et plans<span>Classes</span></div>
+                      <div class="rc-it">Suivi élèves<span>Classes</span></div>
+                      <div class="rc-it">Séances<span>Classes</span></div>
+                    </div>
+                    <div data-at="2-3">
+                      <div class="rc-fam">Cours</div>
+                      <div class="rc-it" data-on="2">Activité 1 — Le déclin des pollinisateurs<span>5e · Séquence 3</span></div>
+                      <div class="rc-fam">Élèves</div>
+                      <div class="rc-it" id="rc-r2" data-on="3">Lina BO<span>3A</span></div>
+                      <div class="rc-it">Line DU<span>5E</span></div>
+                      <div class="rc-it">Linoa TE<span>6A</span></div>
+                    </div>
+                    <div data-at="5">
+                      <div class="rc-fam">Réglages</div>
+                      <div class="rc-it sel0" id="rc-reg">Thème<span>Réglages</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ compte -->
+    <section class="fiche" id="compte-menu">
+      <div class="fiche__texte">
+        <h2>Le compte et la déconnexion</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Bas du menu latéral</span></p>
+        <p class="fiche__but">Trois boutons en bas du menu : les notifications, les Réglages, et le rond du compte pour envoyer un retour ou se déconnecter.</p>
+        <ol class="etapes">
+          <li data-cursor="#cm-cloche" data-duration="3000">La cloche ouvre les <b>Notifications</b> (fiche suivante).</li>
+          <li data-cursor="#cm-reglages" data-duration="3000">La roue dentée ouvre les <b>Réglages</b>.</li>
+          <li data-cursor="#cm-avatar" data-action="click" data-duration="3400">Le rond indigo porte l'initiale du compte. Un clic ouvre le menu : « Connecté en tant que » et l'adresse.</li>
+          <li data-cursor="#cm-fb" data-duration="3000"><span class="btn-nom">Envoyer un retour</span> ouvre la fenêtre « Votre retour ».</li>
+          <li data-cursor="#cm-deco" data-action="click" data-duration="3200"><span class="btn-nom">Déconnexion</span>, en rouge, ramène à la page de connexion.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un clic ailleurs ferme le menu.</li>
+            <li>Sur tablette et téléphone, les mêmes boutons sont dans la barre du haut, et les menus s'ouvrent vers le bas.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="cadre-general-suite.html#reglages">Réglages</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="cm-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="cm-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="cm-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="cm-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="cm-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="cm-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="cm-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="cm-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="cm-pronote-x">×</span></div>
+<div class="gcs__petit" id="cm-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="cm-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="cm-cloche" data-on="1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="cm-reglages" data-on="2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="cm-avatar" data-on="3-5">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps">
+                  <div class="ac-tete"><h1 id="cm-titre">Jeudi 26 novembre</h1><p id="cm-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div>
+                  <div class="mod-t"><b id="cm-mt">Cette semaine</b><span class="per">23 – 27 novembre</span><span class="esp"></span><span class="ib" id="cm-gear"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="ib" id="cm-prev">‹</span><span class="ib" id="cm-next">›</span></div>
+                  <div class="wtt">
+<div class="wtt__hh"></div>
+<div class="wtt__jh">lun <b>23</b></div>
+<div class="wtt__jh">mar <b>24</b></div>
+<div class="wtt__jh">mer <b>25</b></div>
+<div class="wtt__jh auj">jeu <b>26</b></div>
+<div class="wtt__jh">ven <b>27</b></div>
+<div class="wtt__h" style="height:396px"><span style="top:2px">8h</span><span style="top:38px">9h</span><span style="top:82px">10h</span><span style="top:126px">11h</span><span style="top:170px">12h</span><span style="top:214px">13h</span><span style="top:258px">14h</span><span style="top:302px">15h</span><span style="top:346px">16h</span></div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="cm-l1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+<div class="wc wc--passe" id="cm-l2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Séisme et failles</div>
+</div>
+<div class="wc wc--passe" id="cm-l3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Météo du jour</div>
+</div>
+<div class="wc wc--passe" id="cm-l4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="cm-l5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="cm-m1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="cm-m2" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G1</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="cm-m3" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G2</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="cm-m4" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="cm-w1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="cm-w2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc wc--passe" id="cm-w3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Volcans</div>
+</div>
+<div class="wc wc--passe wc--nonrelie" id="cm-w4" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p wc__p--brut">3°EP2</span></div>
+</div>
+</div>
+<div class="wtt__j auj">
+<div class="wc wc--passe" id="cm-j1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="cm-j2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="cm-j3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--passe" id="cm-j4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--encours" id="cm-j5" style="top:344.7px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span><span class="wc__b">▤</span></div>
+</div>
+<div class="wtt__now" id="cm-now" style="top:381px"></div>
+</div>
+<div class="wtt__j">
+<div class="wc" id="cm-v1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+</div>
+<div class="wc wc--note" id="cm-v2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span><span class="wc__b">▤</span></div>
+<div class="wc__s wc__nt">Rendre les copies</div>
+</div>
+<div class="wc wc--annule" id="cm-v3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span><span class="wc__st">Annulé</span></div>
+</div>
+<div class="wc" id="cm-v4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc" id="cm-v5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+</div>
+</div>
+</div>
+                </div></div>
+                <div class="flot glisse-haut" data-from="3" style="left:12px;top:400px;width:240px;padding:4px">
+                  <div style="padding:8px 12px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:500">Connecté en tant que</div><div class="muet">m.martin@exemple.fr</div></div>
+                  <div class="flot__it" id="cm-fb" data-on="4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Envoyer un retour</div>
+                  <div class="flot__it" id="cm-deco" data-on="5" style="color:var(--neg)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></svg>Déconnexion</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ notifications -->
+    <section class="fiche" id="notifications">
+      <div class="fiche__texte">
+        <h2>Notifications et annonces</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Cloche du menu, haut de page</span></p>
+        <p class="fiche__but">Lire les annonces publiées pour tous les utilisateurs de l'application : nouveautés, interruptions prévues, conseils.</p>
+        <ol class="etapes">
+          <li data-cursor="#nt-cloche" data-duration="3000">Une pastille rouge sur la cloche compte les nouveautés (« 9+ » au-delà de 9).</li>
+          <li data-cursor="#nt-cloche" data-action="click" data-duration="3600">Cliquer la cloche : le panneau « Notifications » s'ouvre, les nouveautés sur fond indigo pâle. Tout est alors marqué lu et la pastille disparaît.</li>
+          <li data-cursor="#nt-fond" data-action="click">Un clic ailleurs ferme le panneau.</li>
+          <li data-cursor="#nt-ann" data-duration="3400">À l'ouverture d'une page, une annonce importante peut aussi glisser du haut de l'écran.</li>
+          <li data-cursor="#nt-x" data-action="click" data-duration="3200">Elle disparaît seule au bout de 5 secondes, par sa croix, ou en la faisant glisser de côté.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le panneau montre les 20 annonces actives les plus récentes. Leur couleur dit leur type : information (indigo), avertissement (ambre), réussite (vert).</li>
+            <li>« Lu » est retenu par le navigateur : sur un autre appareil, les mêmes annonces reviennent comme nouvelles.</li>
+            <li>Une annonce flottante fermée ne revient pas avant la prochaine ouverture du site.</li>
+            <li>Les annonces sont publiées par le développeur de l'application ; elles ne s'écrivent pas depuis ce panneau.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="nt-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="nt-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="nt-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="nt-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="nt-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="nt-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="nt-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="nt-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="nt-pronote-x">×</span></div>
+<div class="gcs__petit" id="nt-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="nt-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="nt-cloche" data-on="1-2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="gcs__badge" data-to="1">2</span></span><span class="gcs__ic" id="nt-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="nt-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps" id="nt-fond">
+                  <div class="ac-tete"><h1 id="nt-titre">Jeudi 26 novembre</h1><p id="nt-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div>
+                  <div class="mod-t"><b id="nt-mt">Cette semaine</b><span class="per">23 – 27 novembre</span><span class="esp"></span><span class="ib" id="nt-gear"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="ib" id="nt-prev">‹</span><span class="ib" id="nt-next">›</span></div>
+                  <div class="wtt">
+<div class="wtt__hh"></div>
+<div class="wtt__jh">lun <b>23</b></div>
+<div class="wtt__jh">mar <b>24</b></div>
+<div class="wtt__jh">mer <b>25</b></div>
+<div class="wtt__jh auj">jeu <b>26</b></div>
+<div class="wtt__jh">ven <b>27</b></div>
+<div class="wtt__h" style="height:396px"><span style="top:2px">8h</span><span style="top:38px">9h</span><span style="top:82px">10h</span><span style="top:126px">11h</span><span style="top:170px">12h</span><span style="top:214px">13h</span><span style="top:258px">14h</span><span style="top:302px">15h</span><span style="top:346px">16h</span></div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="nt-l1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+<div class="wc wc--passe" id="nt-l2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Séisme et failles</div>
+</div>
+<div class="wc wc--passe" id="nt-l3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Météo du jour</div>
+</div>
+<div class="wc wc--passe" id="nt-l4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="nt-l5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="nt-m1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="nt-m2" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G1</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="nt-m3" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G2</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="nt-m4" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="nt-w1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="nt-w2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc wc--passe" id="nt-w3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Volcans</div>
+</div>
+<div class="wc wc--passe wc--nonrelie" id="nt-w4" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p wc__p--brut">3°EP2</span></div>
+</div>
+</div>
+<div class="wtt__j auj">
+<div class="wc wc--passe" id="nt-j1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="nt-j2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="nt-j3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--passe" id="nt-j4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--encours" id="nt-j5" style="top:344.7px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span><span class="wc__b">▤</span></div>
+</div>
+<div class="wtt__now" id="nt-now" style="top:381px"></div>
+</div>
+<div class="wtt__j">
+<div class="wc" id="nt-v1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+</div>
+<div class="wc wc--note" id="nt-v2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span><span class="wc__b">▤</span></div>
+<div class="wc__s wc__nt">Rendre les copies</div>
+</div>
+<div class="wc wc--annule" id="nt-v3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span><span class="wc__st">Annulé</span></div>
+</div>
+<div class="wc" id="nt-v4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc" id="nt-v5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+</div>
+</div>
+</div>
+                </div></div>
+                <div class="flot glisse-haut" data-at="2" style="left:12px;top:180px;width:340px;overflow:hidden">
+                  <div style="display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid var(--border)"><b style="font-size:14px">Notifications</b><span class="muet" style="margin-left:auto">2 nouvelles</span></div>
+                  <div class="rc-fam">Annonces</div>
+                  <div class="nt-it nt-it--neuf"><span class="nt-ic" style="background:var(--indigo)">i</span><div>Nouveau : le guide de l'application est en ligne, lien en bas du menu.<div class="muet">26 nov., 08:10</div></div></div>
+                  <div class="nt-it nt-it--neuf"><span class="nt-ic" style="background:#D97706">!</span><div>Courte interruption du site prévue dimanche soir.<div class="muet">25 nov., 18:30</div></div></div>
+                  <div class="nt-it"><span class="nt-ic" style="background:var(--pos)"><span class="ic ic-ok" aria-hidden="true"></span></span><div>La synchronisation du téléphone est rétablie.<div class="muet">20 nov., 07:45</div></div></div>
+                </div>
+                <div class="annonce" id="nt-ann" data-at="4-5"><span class="nt-ic" style="background:rgba(255,255,255,.25)">i</span>Nouveau : le guide de l'application est en ligne, lien en bas du menu.<span class="x" id="nt-x" data-on="5">×</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ retour -->
+    <section class="fiche" id="retour">
+      <div class="fiche__texte">
+        <h2>Envoyer un retour</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Rond du compte › Envoyer un retour</span></p>
+        <p class="fiche__but">Signaler un problème ou proposer une idée au développeur de l'application, sans quitter la page.</p>
+        <ol class="etapes">
+          <li data-cursor="#rt-avatar" data-action="click">Cliquer le rond du compte, en bas du menu.</li>
+          <li data-cursor="#rt-fb" data-action="click"><span class="btn-nom">Envoyer un retour</span> ouvre la fenêtre « Votre retour ».</li>
+          <li data-cursor="#rt-bug" data-action="click" data-duration="3200">Choisir le <b>Type</b> : <b>Bug</b>, <b>Suggestion</b> (choisi d'office) ou <b>Autre</b>.</li>
+          <li data-cursor="#rt-msg" data-duration="3600">Écrire le <b>Message</b> : ce qui s'est passé, sur quelle page.</li>
+          <li data-cursor="#rt-env" data-action="click" data-duration="3400">Cliquer <span class="btn-nom">Envoyer</span> : « Merci pour votre retour ! », puis la fenêtre se ferme seule.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Envoyer</b> reste grisé tant que le message est vide.</li>
+            <li>Le retour part avec le compte et l'adresse de l'auteur : le développeur peut répondre.</li>
+            <li>Ne pas y écrire de nom réel d'élève : un élève se désigne par son pseudonyme.</li>
+            <li>Sur téléphone, « Envoyer un retour » est dans la feuille <b>Plus</b>.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="rt-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="rt-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="rt-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="rt-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rt-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rt-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rt-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="rt-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="rt-pronote-x">×</span></div>
+<div class="gcs__petit" id="rt-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="rt-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="rt-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="rt-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="rt-avatar" data-on="1">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps">
+                  <div class="ac-tete"><h1 id="rt-titre">Jeudi 26 novembre</h1><p id="rt-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div>
+                  <div class="mod-t"><b id="rt-mt">Cette semaine</b><span class="per">23 – 27 novembre</span><span class="esp"></span><span class="ib" id="rt-gear"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="ib" id="rt-prev">‹</span><span class="ib" id="rt-next">›</span></div>
+                  <div class="wtt">
+<div class="wtt__hh"></div>
+<div class="wtt__jh">lun <b>23</b></div>
+<div class="wtt__jh">mar <b>24</b></div>
+<div class="wtt__jh">mer <b>25</b></div>
+<div class="wtt__jh auj">jeu <b>26</b></div>
+<div class="wtt__jh">ven <b>27</b></div>
+<div class="wtt__h" style="height:396px"><span style="top:2px">8h</span><span style="top:38px">9h</span><span style="top:82px">10h</span><span style="top:126px">11h</span><span style="top:170px">12h</span><span style="top:214px">13h</span><span style="top:258px">14h</span><span style="top:302px">15h</span><span style="top:346px">16h</span></div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="rt-l1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+<div class="wc wc--passe" id="rt-l2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Séisme et failles</div>
+</div>
+<div class="wc wc--passe" id="rt-l3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Météo du jour</div>
+</div>
+<div class="wc wc--passe" id="rt-l4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="rt-l5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="rt-m1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="rt-m2" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G1</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="rt-m3" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G2</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="rt-m4" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="rt-w1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="rt-w2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc wc--passe" id="rt-w3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Volcans</div>
+</div>
+<div class="wc wc--passe wc--nonrelie" id="rt-w4" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p wc__p--brut">3°EP2</span></div>
+</div>
+</div>
+<div class="wtt__j auj">
+<div class="wc wc--passe" id="rt-j1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="rt-j2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="rt-j3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--passe" id="rt-j4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--encours" id="rt-j5" style="top:344.7px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span><span class="wc__b">▤</span></div>
+</div>
+<div class="wtt__now" id="rt-now" style="top:381px"></div>
+</div>
+<div class="wtt__j">
+<div class="wc" id="rt-v1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+</div>
+<div class="wc wc--note" id="rt-v2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span><span class="wc__b">▤</span></div>
+<div class="wc__s wc__nt">Rendre les copies</div>
+</div>
+<div class="wc wc--annule" id="rt-v3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span><span class="wc__st">Annulé</span></div>
+</div>
+<div class="wc" id="rt-v4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc" id="rt-v5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+</div>
+</div>
+</div>
+                </div></div>
+                <div class="flot" data-at="1-2" style="left:12px;top:400px;width:240px;padding:4px">
+                  <div style="padding:8px 12px;border-bottom:1px solid var(--border)"><div style="font-size:13px;font-weight:500">Connecté en tant que</div><div class="muet">m.martin@exemple.fr</div></div>
+                  <div class="flot__it" id="rt-fb" data-on="2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Envoyer un retour</div>
+                  <div class="flot__it" style="color:var(--neg)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9"/></svg>Déconnexion</div>
+                </div>
+                <div class="gc-voile" data-from="2"></div>
+                <div class="gc-modale zoom" data-from="2" style="left:276px;top:80px;width:448px">
+                  <div class="fb-tete" style="position:relative"><b>Votre retour</b><span>Aidez-nous à améliorer l'application</span><span style="position:absolute;right:16px;top:14px;font-size:16px">×</span></div>
+                  <div class="pile pile--bloc">
+                    <div data-to="4" style="padding:16px 18px">
+                      <div class="etiq">Type</div>
+                      <div class="ligne"><span class="fb-type fb-type--bug" id="rt-bug" data-on="3-4"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="7" width="8" height="12" rx="4"/><path d="M12 7V4M4 13h4M16 13h4M5 8l3 2M19 8l-3 2M5 19l3-2M19 19l-3-2"/></svg>Bug</span><span class="fb-type fb-type--sug" data-on="2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0 0 12 3z"/></svg>Suggestion</span><span class="fb-type"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Autre</span></div>
+                      <div class="etiq" style="margin-top:12px">Message</div>
+                      <div class="zone-fb" id="rt-msg" style="border:1px solid var(--border-strong);border-radius:6px;min-height:84px;padding:8px 10px;font-size:12.5px"><span class="pile"><span class="muet" data-at="2">Votre idée ou commentaire...</span><span class="muet" data-at="3">Décrivez le problème rencontré...</span><span data-type="Dans Classes et plans, le bouton Générer ne réagit pas sur la 4B." data-type-at="4"></span></span></div>
+                    </div>
+                    <div data-at="5" class="zoom" style="padding:40px 18px;text-align:center"><span style="width:52px;height:52px;border-radius:50%;background:var(--pos-soft);color:var(--pos);display:grid;place-items:center;margin:0 auto 10px;font-size:24px"><span class="ic ic-ok" aria-hidden="true"></span></span><b style="font-size:16px">Merci pour votre retour !</b></div>
+                  </div>
+                  <div class="gc-modale__pied"><span class="b b--fantome">Annuler</span><span class="b" id="rt-env" data-on="5">Envoyer</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ envois fermés -->
+    <section class="fiche" id="envois-fermes">
+      <div class="fiche__texte">
+        <h2>Bandeau « Envois fermés »</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Haut de toutes les pages</span></p>
+        <p class="fiche__but">Prévenir, dans la minute, que des élèves écrivent encore sur une activité dont les envois sont fermés, et récupérer leur travail.</p>
+        <ol class="etapes">
+          <li data-cursor="#ef-txt" data-duration="4000">Le bandeau rouge nomme l'activité, le nombre de fiches mises de côté, la classe, l'heure de la dernière et les élèves (six au plus, sous pseudonyme).</li>
+          <li data-cursor="#ef-voir" data-duration="3000"><b>Voir dans Productions</b> ouvre la page des productions des élèves.</li>
+          <li data-cursor="#ef-notif" data-duration="3400">Le lien souligné demande au navigateur l'autorisation de prévenir aussi par une notification quand le site est dans un autre onglet.</li>
+          <li data-cursor="#ef-bt" data-action="click" data-duration="3800"><span class="btn-nom">Rouvrir et récupérer</span> demande confirmation : l'activité sera rouverte et les fiches mises de côté enregistrées comme des envois normaux.</li>
+          <li data-cursor="#ef-ok" data-action="click" data-duration="3400">Confirmer : « 4 fiches récupérées, envois rouverts. » Le bandeau disparaît.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La vérification a lieu toutes les 60 secondes et au retour sur l'onglet ; tant que des fiches attendent, le titre de l'onglet porte un signe d'avertissement.</li>
+            <li>Une copie déjà corrigée est remplacée par la version reçue (marquée « modifiée après correction ») ; une copie validée n'est jamais touchée.</li>
+            <li>Sans réseau, le site réessaie plus tard, sans message.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="productions-et-direct.html">Productions et activité en direct</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="ef-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="ef-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="ef-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="ef-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ef-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ef-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ef-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="ef-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="ef-pronote-x">×</span></div>
+<div class="gcs__petit" id="ef-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="ef-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="ef-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="ef-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="ef-avatar">M</span></div>
+</div></aside>
+                <div class="app__main">
+                  <div class="ef-bande repli" data-to="4">
+                    <span id="ef-txt" style="flex:1 1 100%">Envois fermés pour « Activité 3 — Les anticorps », mais des élèves travaillent dessus. 4 fiches mises de côté (3A), dernière à 10:42<span style="opacity:.85"> · Lina BO, Noé MA, Iris TA, Adam KE</span></span>
+                    <span class="bt" id="ef-bt" data-on="4">Rouvrir et récupérer</span>
+                    <span id="ef-voir" style="font-size:13px">Voir dans Productions</span>
+                    <u id="ef-notif">Me prévenir aussi par une notification quand gestion-classe est dans un autre onglet</u>
+                  </div>
+                  <div class="app__corps ac-corps">
+                    <div class="ac-tete"><h1 id="ef-titre">Jeudi 26 novembre</h1><p id="ef-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div>
+                    <div class="mod-t"><b id="ef-mt">Cette semaine</b><span class="per">23 – 27 novembre</span><span class="esp"></span><span class="ib" id="ef-gear"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="ib" id="ef-prev">‹</span><span class="ib" id="ef-next">›</span></div>
+                    <div class="wtt">
+<div class="wtt__hh"></div>
+<div class="wtt__jh">lun <b>23</b></div>
+<div class="wtt__jh">mar <b>24</b></div>
+<div class="wtt__jh">mer <b>25</b></div>
+<div class="wtt__jh auj">jeu <b>26</b></div>
+<div class="wtt__jh">ven <b>27</b></div>
+<div class="wtt__h" style="height:396px"><span style="top:2px">8h</span><span style="top:38px">9h</span><span style="top:82px">10h</span><span style="top:126px">11h</span><span style="top:170px">12h</span><span style="top:214px">13h</span><span style="top:258px">14h</span><span style="top:302px">15h</span><span style="top:346px">16h</span></div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="ef-l1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+<div class="wc wc--passe" id="ef-l2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Séisme et failles</div>
+</div>
+<div class="wc wc--passe" id="ef-l3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Météo du jour</div>
+</div>
+<div class="wc wc--passe" id="ef-l4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="ef-l5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 1</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="ef-m1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="ef-m2" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G1</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="ef-m3" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A · G2</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="ef-m4" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+</div>
+<div class="wtt__j">
+<div class="wc wc--passe" id="ef-w1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 2</div>
+</div>
+<div class="wc wc--passe" id="ef-w2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc wc--passe" id="ef-w3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+<div class="wc__s"><i></i>Volcans</div>
+</div>
+<div class="wc wc--passe wc--nonrelie" id="ef-w4" style="top:139.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p wc__p--brut">3°EP2</span></div>
+</div>
+</div>
+<div class="wtt__j auj">
+<div class="wc wc--passe" id="ef-j1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+<div class="wc__s"><i></i>faite</div>
+</div>
+<div class="wc wc--passe" id="ef-j2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span></div>
+<div class="wc__s"><i></i>Climat</div>
+</div>
+<div class="wc wc--passe" id="ef-j3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--passe" id="ef-j4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+<div class="wc__s"><i></i>S2 · Activité 3</div>
+</div>
+<div class="wc wc--encours" id="ef-j5" style="top:344.7px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span><span class="wc__b">▤</span></div>
+</div>
+<div class="wtt__now" id="ef-now" style="top:381px"></div>
+</div>
+<div class="wtt__j">
+<div class="wc" id="ef-v1" style="top:0.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3A</span></div>
+</div>
+<div class="wc wc--note" id="ef-v2" style="top:44.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--3">3B</span><span class="wc__b">▤</span></div>
+<div class="wc__s wc__nt">Rendre les copies</div>
+</div>
+<div class="wc wc--annule" id="ef-v3" style="top:95.3px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--5">5E</span><span class="wc__st">Annulé</span></div>
+</div>
+<div class="wc" id="ef-v4" style="top:242.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--6">6A</span></div>
+</div>
+<div class="wc" id="ef-v5" style="top:286.0px;height:38.3px">
+<div class="wc__l"><span class="wc__p puce--4">4B</span></div>
+</div>
+</div>
+</div>
+                  </div>
+                </div>
+                <div class="gc-voile" data-at="4" style="background:rgba(0,0,0,.5)"></div>
+                <div class="cf-carte zoom" data-at="4">
+                  <span class="cf-rond" style="background:#FFF3E0;color:#F57C00"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg></span>
+                  <b style="font-size:17px">Rouvrir les envois et récupérer les fiches ?</b>
+                  <span class="muet" style="font-size:12.5px">« Activité 3 — Les anticorps » sera rouverte et les 4 fiches mises de côté seront enregistrées comme des envois normaux.</span>
+                  <div class="cf-prec">Une copie déjà corrigée sera remplacée par la version reçue (elle sera marquée « modifiée après correction »). Une copie validée n'est jamais touchée.</div>
+                  <div class="cf-bts"><span style="border:1px solid var(--border-strong)">Annuler</span><span id="ef-ok" data-on="4" style="background:linear-gradient(135deg,#FF9800,#F57C00);color:#fff">Rouvrir et récupérer</span></div>
+                </div>
+                <div class="gtoast glisse-bas" data-at="5"><b><span class="ic ic-ok" aria-hidden="true"></span></b>4 fiches récupérées, envois rouverts.<span class="x">×</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ tablette / téléphone -->
+    <section class="fiche fiche--etroite" id="tablette">
+      <div class="fiche__texte">
+        <h2>Le site sur tablette et téléphone</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Navigateur du téléphone</span><span class="chemin">Sous 1 024 px de large</span></p>
+        <p class="fiche__but">Ouvert dans le navigateur d'une tablette ou d'un téléphone, le site range son menu autrement : une barre en haut, des puces pour les pages, et sur téléphone une barre en bas.</p>
+        <ol class="etapes">
+          <li data-cursor="#tb-loupe" data-action="tap" data-duration="3400">La barre du haut garde le logo, la loupe de recherche, la cloche, les Réglages et le rond du compte.</li>
+          <li data-cursor="#tb-chip" data-action="tap" data-duration="3400">Dessous, les pages de l'entrée en cours défilent en puces : toucher <b>Séances</b> pour y aller.</li>
+          <li data-cursor="#tb-cours" data-action="tap" data-duration="3200">En bas (téléphone) : <b>Accueil</b>, <b>Cours</b>, <b>Classes</b>, <b>Évals</b>, <b>Plus</b>. Une entrée ouvre sa première page.</li>
+          <li data-cursor="#tb-plus" data-action="tap" data-duration="3600"><b>Plus</b> fait monter une feuille : Récompenses, Académie, Outils, Pronote, puis Réglages et Envoyer un retour.</li>
+          <li data-cursor="#tb-voile" data-action="tap">Toucher le fond referme la feuille.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Sur tablette (768 à 1 023 px), barre du haut et puces seulement ; la barre du bas n'apparaît que sous 768 px.</li>
+            <li>Les puces n'apparaissent que si l'entrée a plusieurs pages visibles. Sous 640 px, les fenêtres occupent tout l'écran et les boutons grandissent pour le doigt.</li>
+            <li>C'est le site dans un navigateur, pas l'application téléphone de l'enseignant : celle-ci est un autre logiciel, qui marche sans réseau et synchronise ensuite.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/prise-en-main.html">Application téléphone : prise en main</a></p>
+      </div>
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran" style="background:#fff;font-family:var(--font)">
+              <div class="tel__statut"><span>10:42</span><span>5G</span></div>
+              <div class="wtop"><span class="mq"><b>GC</b>Gestion Classe</span><span class="ic" id="tb-loupe" data-on="1"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></span><span class="ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="av">M</span></div>
+              <div class="wsub"><span>Classes et plans</span><span data-on="1">Suivi élèves</span><span id="tb-chip" data-on="2-5">Séances</span><span>Cahier de texte</span></div>
+              <div class="wcorps">
+                <h3 class="pile"><span data-to="1">Suivi élèves</span><span data-from="2">Séances</span></h3>
+                <div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+                <div class="voile" id="tb-voile" data-at="4" style="z-index:590"></div>
+              </div>
+              <div class="wbas"><span><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg>Accueil</span><span id="tb-cours" data-on="3"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg>Cours</span><span class="on"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg>Classes</span><span><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>Évals</span><span id="tb-plus" data-on="4"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg>Plus</span></div>
+              <div class="wfeuille" data-at="4">
+                <div class="l"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>Récompenses</div>
+                <div class="l"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8h3v3h3V8h4v3h3V8h3v13zM10 21v-5h4v5"/></svg>Académie</div>
+                <div class="l"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"/></svg>Outils</div>
+                <div class="l"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>Pronote</div>
+                <hr>
+                <div class="l"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>Réglages</div>
+                <div class="l"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg>Envoyer un retour</div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ lanceurs -->
+    <section class="fiche fiche--etroite" id="lanceurs">
+      <div class="fiche__texte">
+        <h2>Lancer une séance depuis le navigateur du téléphone</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Navigateur du téléphone</span><span class="chemin">Accueil, sous la date</span></p>
+        <p class="fiche__but">Quand le site est ouvert sur un téléphone, l'accueil propose en tête de démarrer une séance ou une notation de groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#la-dem" data-action="tap" data-duration="3400"><span class="btn-nom">Démarrer une séance</span> lance le parcours de séance du site.</li>
+          <li data-cursor="#la-rep" data-action="tap" data-duration="3400">Une séance mise en réduit se retrouve ici : <b>Reprendre la séance</b>, avec la classe et la pastille « En cours ».</li>
+          <li data-cursor="#la-grp" data-action="tap" data-duration="3600"><b>Travail de groupe</b> ouvre une notation de groupe ; <b>Épreuve</b> (icône de château) une épreuve de l'Académie. Les deux commencent par le choix de la classe.</li>
+          <li data-cursor="#la-not" data-action="tap" data-duration="3400">Une notation de groupe suspendue se reprend par <b>Reprendre la notation</b>, bordée d'ambre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ces boutons n'apparaissent que sur un téléphone, et pas en mode édition de l'accueil.</li>
+            <li>L'outil prévu pour la séance en classe reste l'application téléphone de l'enseignant : elle marche sans réseau, confirme chaque action par une vibration en moins de 2 secondes, et garde les vrais noms des élèves sur le téléphone.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html">Séances</a> · <a href="tp-en-groupes.html">TP en groupes</a> · <a href="academie.html">Académie</a></p>
+      </div>
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran" style="background:#fff;font-family:var(--font)">
+              <div class="tel__statut"><span>10:42</span><span>5G</span></div>
+              <div class="wtop"><span class="mq"><b>GC</b>Gestion Classe</span><span class="ic"><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg></span><span class="ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="av">M</span></div>
+              <div class="wcorps" style="display:flex;flex-direction:column;gap:10px">
+                <h3 style="margin:2px 0 4px;font-size:20px">Jeudi 26 novembre</h3>
+                <div class="pile pile--bloc">
+                  <div class="rf rf--p" id="la-dem" data-on="1" data-at="1"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg>Démarrer une séance</div>
+                  <div class="rf rf--reprise glisse-haut" id="la-rep" data-on="2" data-from="2"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l13 8-13 8z"/></svg><div>Reprendre la séance<small>3A</small></div><span class="live">En cours</span></div>
+                </div>
+                <div class="pile pile--bloc">
+                  <div class="ligne" style="gap:8px" data-to="3"><span class="rf rf--g" id="la-grp" data-on="3"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M15 20a5 5 0 0 1 6-4.5"/></svg>Travail de groupe</span><span class="rf rf--g"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21V8h3v3h3V8h4v3h3V8h3v13zM10 21v-5h4v5"/></svg>Épreuve</span></div>
+                  <div class="rf rf--reprise-warn glisse-haut" id="la-not" data-on="4" data-from="4"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20a6 6 0 0 1 12 0M15 20a5 5 0 0 1 6-4.5"/></svg><div>Reprendre la notation<small style="color:var(--text-muted)">TP microscope · 3A</small></div></div>
+                </div>
+                <div style="margin-top:8px;font-size:14px;font-weight:600">Cette semaine</div>
+                <div class="ligne" style="gap:5px"><span class="chip">lun 23</span><span class="chip">mar 24</span><span class="chip">mer 25</span><span class="chip chip--plein">jeu 26</span><span class="chip">ven 27</span></div>
+                <div class="pg-lignes" style="margin-top:2px"><span></span><span></span><span></span><span></span></div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="cadre-general-suite.html">Suite : Réglages et éléments communs →</a> · <a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

@@ -1,0 +1,537 @@
+
+
+
+
+
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cahier de texte — Guide Gestion Classe</title>
+<meta name="description" content="Réunir les entrées de cahier de texte de l'année, les retoucher, et suivre ce qui reste à recopier dans Pronote.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="64">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* cahier de texte (pages/Journal.tsx, components/journal/JournalEntryDialog.tsx, index.css journal-*) */
+.ecran .is-hidden:not(.bulle):not(.modale-fond):not(.toast):not(.menu):not(.pop){display:none}
+.app__corps.cj{padding:14px 18px}
+.rf-head{display:flex;align-items:flex-end;gap:10px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.rf-bc{font-size:11px;color:var(--text-muted);margin-bottom:2px}
+.rf-h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.rf-meta{font-size:12px;color:var(--text-dim);margin-left:8px}
+.seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:6px;padding:2px;gap:2px;background:#fff}
+.seg span{padding:3px 9px;border-radius:4px;font-size:12px;color:var(--text-muted);transition:all .25s}
+.seg span.on{background:var(--indigo-soft);color:var(--indigo);font-weight:560}
+.seg span.is-on{background:var(--indigo-soft);color:var(--indigo);font-weight:560}
+.fl{display:flex;gap:6px;padding:9px 0}
+.fc{height:24px;padding:0 9px;border-radius:5px;font-size:11.5px;font-weight:650;display:inline-flex;align-items:center;border:1.5px solid transparent;transition:all .25s}
+.fc--3{background:var(--n3-soft);color:var(--n3-ink)}.fc--3.is-on{border-color:var(--n3)}
+.fc--4{background:var(--n4-soft);color:var(--n4-ink)}.fc--4.is-on{border-color:var(--n4)}
+.fc--5{background:var(--n5-soft);color:var(--n5-ink)}.fc--5.is-on{border-color:var(--n5)}
+.fc--all{background:#fff;border:1px solid var(--border-strong);color:var(--text-muted)}
+.fc--all.is-on{background:var(--indigo-soft);border-color:var(--indigo-soft);color:var(--indigo)}
+.jday{font-size:10.5px;font-weight:650;letter-spacing:.07em;text-transform:uppercase;color:var(--text-dim);margin:10px 0 5px}
+.jrow{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:7px 10px;margin-bottom:5px;background:#fff;font-size:12px;transition:all .25s}
+.jrow.is-on{border-color:var(--border-strong);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+.jrow .h{font-variant-numeric:tabular-nums;color:var(--text-muted);width:34px;flex:none}
+.jcl{padding:1px 8px;border-radius:999px;font-size:11px;font-weight:650;flex:none}
+.jcl--3{background:var(--n3-soft);color:var(--n3-ink)}.jcl--4{background:var(--n4-soft);color:var(--n4-ink)}.jcl--5{background:var(--n5-soft);color:var(--n5-ink)}
+.jrow .tx{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.jchip{padding:2px 8px;border-radius:999px;font-size:10.5px;font-weight:650;flex:none;display:inline-flex;align-items:center;gap:5px;transition:all .25s}
+.jchip--todo{background:var(--warn-soft);color:var(--warn)}
+.jchip--done{background:var(--pos-soft);color:var(--pos)}
+.jchip--done::before{content:'';width:7px;height:4px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(-45deg);margin-top:-2px}
+.jchip.is-on{box-shadow:0 0 0 3px rgba(79,70,229,.25)}
+.jcop{flex:none}
+.jdlg{position:absolute;inset:34px 0 0 0;background:rgba(20,25,40,.45);z-index:600;display:grid;place-items:center}
+.jbox{width:620px;background:#fff;border-radius:10px;box-shadow:var(--shadow-lg);display:flex;flex-direction:column}
+.jbox__t{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;font-size:15px;font-weight:650}
+.jbox__c{padding:10px 16px}
+.jmeta{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-dim);margin-bottom:8px}
+.jtxt{border:1px solid var(--border-strong);border-radius:6px;padding:9px 11px;font-size:12px;line-height:1.5;height:300px;white-space:pre-wrap;color:var(--text);overflow:hidden;transition:border-color .25s}
+.jtxt.is-on{border-color:var(--indigo);box-shadow:0 0 0 3px rgba(79,70,229,.15)}
+.jtxt.vide{color:var(--text-dim)}
+.jbox__p{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.vert{background:var(--pos);color:#fff}
+/* accueil */
+.edt{display:grid;grid-template-columns:40px repeat(5,1fr);border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:11px}
+.edt__h{height:26px;display:grid;place-items:center;border-left:1px solid var(--border);border-bottom:1px solid var(--border);color:var(--text-muted)}
+.edt__c{grid-row:2;border-left:1px solid var(--border);position:relative;height:420px;background:repeating-linear-gradient(#fff 0 69px,var(--border) 69px 70px)}
+.edt__r{grid-row:2;font-size:10px;color:var(--text-dim)}.edt__r span{display:block;height:70px;text-align:right;padding-right:5px}
+.cours{position:absolute;left:3px;right:3px;border-radius:6px;padding:4px 6px;font-size:10.5px;line-height:1.25;border-left:3px solid;transition:all .25s}
+.cours b{display:block}
+.cours--3{background:var(--n3-soft);border-color:var(--n3);color:var(--n3-ink)}.cours--4{background:var(--n4-soft);border-color:var(--n4);color:var(--n4-ink)}.cours--5{background:var(--n5-soft);border-color:var(--n5);color:var(--n5-ink)}
+.cours.is-on{box-shadow:0 0 0 3px rgba(79,70,229,.3)}
+.pop{position:absolute;z-index:580;width:300px;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow-lg);padding:12px 14px;font-size:12px}
+.pop__t{font-size:14px;font-weight:650}
+.pop__s{color:var(--text-dim);font-size:11.5px;margin-bottom:8px}
+.pop__sec{border-top:1px solid var(--border);padding-top:8px;margin-top:8px}
+.pop__sec .ligne{font-weight:650;font-size:12px;margin-bottom:5px}
+.pcad{border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);transition:all .25s}
+.pcad.is-on{border-color:var(--indigo)}
+.plien{color:var(--indigo);font-weight:600;font-size:11.5px;padding:2px 4px;border-radius:4px;transition:background .25s}
+.plien.is-on{background:var(--indigo-soft)}
+.mut{color:var(--text-dim)}
+/* Mes cours */
+.mc-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);font-size:12.5px;transition:background .25s}
+.mc-row.is-on{background:var(--indigo-soft)}
+.mc-ico{width:22px;height:26px;border:1.5px solid var(--text-dim);border-radius:3px;flex:none}
+.menu__it.off{color:var(--text-dim)}
+.sep{height:1px;background:var(--border);margin:4px 0}
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Cahier de texte</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#page">La page Cahier de texte</a></li>
+    <li><a href="#filtres">Ne voir que ce qui reste à recopier</a></li>
+    <li><a href="#copier">Copier pour Pronote</a></li>
+    <li><a href="#fenetre">Lire et retoucher une entrée</a></li>
+    <li><a href="#etat">Marquer recopiée, ou remettre à recopier</a></li>
+    <li><a href="#supprimer">Supprimer une entrée, ou abandonner ses changements</a></li>
+    <li><a href="#accueil">Écrire l'entrée depuis l'emploi du temps</a></li>
+    <li><a href="#liens">Joindre un document : le lien lecture seule</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/travail-de-groupe-sur-tablette.html">◀ Travail de groupe sur tablette</a><a href="../enseignant/analyses.html">Analyses ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Cahier de texte</h1>
+      <p>Une entrée par cours de l'emploi du temps : écrite par l'enseignant, ou préparée par Claude avec la séance. La page les réunit, jour par jour, et dit lesquelles restent à recopier dans Pronote.</p>
+      <div class="chap__resume"><span>Menu Classes › Cahier de texte</span><span>Ordinateur</span><span>Aussi dans la bulle d'un cours, sur l'accueil</span></div>
+    </header>
+
+
+    <!-- ============================================================ la page -->
+    <section class="fiche" id="page">
+      <div class="fiche__texte">
+        <h2>La page Cahier de texte</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Cahier de texte</span></p>
+        <p class="fiche__but">Toutes les entrées de l'année, du jour le plus récent au plus ancien, chacune marquée « À recopier » ou « Copiée ».</p>
+        <ol class="etapes">
+          <li data-cursor="#pg-menu" data-action="click">Dans le menu, ouvrir <b>Classes</b> puis <span class="btn-nom">Cahier de texte</span>.</li>
+          <li data-cursor="#pg-meta">À côté du titre : le nombre d'entrées qui restent à recopier dans Pronote.</li>
+          <li data-cursor="#pg-row" data-duration="3600">Une ligne par cours : l'heure, la classe (et le demi-groupe, « 4B · G1 »), la première ligne du texte, puis l'état.</li>
+          <li data-cursor="#pg-done" data-duration="3200">Vert « Copiée » : déjà recopiée. Orange « À recopier » : reste à faire.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'année commence au 1<sup>er</sup> août : seules les entrées des cours depuis cette date sont chargées.</li>
+            <li>Trois provenances : « préparée par Claude » (écrite avec la séance), « écrite dans l'application », « reprise des fichiers » (anciens fichiers importés).</li>
+            <li>On n'écrit pas une nouvelle entrée depuis cette page, mais depuis la bulle d'un cours de l'emploi du temps, sur l'accueil.</li>
+            <li>Le texte est brut, sans mise en forme : c'est ce qui se colle dans Pronote. Rien sur le téléphone pour l'instant.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#accueil">Écrire l'entrée depuis l'emploi du temps</a> · <a href="pronote.html">Pronote</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cahier-de-texte</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous" id="pg-menu" data-on="1">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+          
+<div class="rf-head">
+  <div><div class="rf-bc">Accueil › Cahier de texte</div><span class="rf-h1">Cahier de texte</span><span class="rf-meta" id="pg-meta">3 à recopier dans Pronote</span></div>
+  <span class="esp"></span>
+  <span class="seg"><span class="on">Toutes</span><span>À recopier</span></span>
+</div>
+
+          <div class="fl"><span class="fc fc--all is-on">Toutes</span><span class="fc fc--3">3A</span><span class="fc fc--4">4B</span><span class="fc fc--5">5B</span></div>
+          <div class="jday">Lundi 23 novembre</div>
+          <div class="jrow"><span class="h">08:05</span><span class="jcl jcl--3">3A</span><span class="tx">SVT — Séquence 2, séance 4 : les bactéries résistent-elles aux antibiotiques ?</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit jcop">Copier</span></div>
+          <div class="jrow" id="pg-row" data-on="3"><span class="h">11:15</span><span class="jcl jcl--4">4B · G1</span><span class="tx">SVT — Séquence 2, séance 3 : d'où viennent les séismes ?</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit jcop">Copier</span></div>
+          <div class="jrow"><span class="h">15:10</span><span class="jcl jcl--5">5B</span><span class="tx">SVT — Séquence 2, séance 5 : lire un relevé de températures</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit jcop">Copier</span></div>
+          <div class="jday">Vendredi 20 novembre</div>
+          <div class="jrow"><span class="h">09:00</span><span class="jcl jcl--4">4B · G2</span><span class="tx">SVT — Séquence 2, séance 3 : d'où viennent les séismes ?</span><span class="jchip jchip--done" id="pg-done" data-on="4">Copiée</span><span class="b b--fantome b--petit jcop">Copier</span></div>
+          <div class="jrow"><span class="h">14:00</span><span class="jcl jcl--5">5B</span><span class="tx">SVT — Séquence 2, séance 4 : météo ou climat ?</span><span class="jchip jchip--done">Copiée</span><span class="b b--fantome b--petit jcop">Copier</span></div>
+          <div class="jday">Jeudi 19 novembre</div>
+          <div class="jrow"><span class="h">10:15</span><span class="jcl jcl--3">3A</span><span class="tx">SVT — Séquence 2, séance 3 : à la découverte des micro-organismes</span><span class="jchip jchip--done">Copiée</span><span class="b b--fantome b--petit jcop">Copier</span></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ filtres -->
+    <section class="fiche" id="filtres">
+      <div class="fiche__texte">
+        <h2>Ne voir que ce qui reste à recopier</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Cahier de texte › Toutes / À recopier</span></p>
+        <p class="fiche__but">Avant une séance de recopiage dans Pronote : ne garder que les entrées en retard, ou celles d'une classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#fi-arec" data-action="click">À droite, cliquer <span class="btn-nom">À recopier</span> : les entrées déjà copiées disparaissent.</li>
+          <li data-cursor="#fi-4b" data-action="click">Cliquer la puce d'une classe : il ne reste que ses entrées, et le compteur suit.</li>
+          <li data-cursor="#fi-toutes" data-action="click">Recliquer la puce, ou <span class="btn-nom">Toutes</span>, pour revenir à toutes les classes.</li>
+          <li data-cursor="#fi-tout" data-action="click" data-duration="3200">Quand tout est recopié, le filtre affiche « Tout est recopié ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le choix Toutes / À recopier n'apparaît que s'il existe au moins une entrée ; les puces, que si au moins deux classes ont des entrées.</li>
+            <li>La classe choisie est gardée dans l'adresse de la page : on peut garder le lien en favori.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cahier-de-texte</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous is-actif">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+          
+<div class="rf-head">
+  <div><div class="rf-bc">Accueil › Cahier de texte</div><span class="rf-h1">Cahier de texte</span><span class="rf-meta" data-at="1,3">3 à recopier dans Pronote</span><span class="rf-meta" data-at="2">1 à recopier dans Pronote</span></div>
+  <span class="esp"></span>
+  <span class="seg"><span data-on="4">Toutes</span><span id="fi-arec" data-on="1-3">À recopier</span></span>
+</div>
+
+          <div class="fl"><span class="fc fc--all" id="fi-toutes" data-on="1,3-4">Toutes</span><span class="fc fc--3">3A</span><span class="fc fc--4" id="fi-4b" data-on="2">4B</span><span class="fc fc--5" id="fi-tout">5B</span></div>
+          <div data-at="1-3">
+            <div class="jday">Lundi 23 novembre</div>
+            <div class="jrow" data-at="1,3"><span class="h">08:05</span><span class="jcl jcl--3">3A</span><span class="tx">SVT — Séquence 2, séance 4 : les bactéries résistent-elles aux antibiotiques ?</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit">Copier</span></div>
+            <div class="jrow"><span class="h">11:15</span><span class="jcl jcl--4">4B · G1</span><span class="tx">SVT — Séquence 2, séance 3 : d'où viennent les séismes ?</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit">Copier</span></div>
+            <div class="jrow" data-at="1,3"><span class="h">15:10</span><span class="jcl jcl--5">5B</span><span class="tx">SVT — Séquence 2, séance 5 : lire un relevé de températures</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit">Copier</span></div>
+          </div>
+          <div data-at="4">
+            <div class="jday">Mardi 17 novembre</div>
+            <div class="jrow"><span class="h">10:15</span><span class="jcl jcl--5">5B</span><span class="tx">SVT — Séquence 2, séance 3 : le cycle de l'eau</span><span class="jchip jchip--done">Copiée</span><span class="b b--fantome b--petit">Copier</span></div>
+          </div>
+          <div class="bulle bulle--haut" data-at="4" style="left:330px;top:140px">Avec « À recopier » et une classe à jour, la page affiche « Tout est recopié »</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ copier -->
+    <section class="fiche" id="copier">
+      <div class="fiche__texte">
+        <h2>Copier pour Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Cahier de texte › Copier</span></p>
+        <p class="fiche__but">Mettre le texte de l'entrée dans le presse-papiers, le coller dans le cahier de texte de Pronote, et garder la trace que c'est fait.</p>
+        <ol class="etapes">
+          <li data-cursor="#co-btn" data-action="click">Sur la ligne, cliquer <span class="btn-nom">Copier</span> (« Copie… » pendant un instant).</li>
+          <li data-cursor="#co-toast" data-duration="3200">Message vert : « Entrée copiée : à coller dans Pronote. » La pastille passe à <b>Copiée</b>, le compteur baisse.</li>
+          <li data-cursor="#co-row" data-duration="3200">Dans Pronote, ouvrir le cahier de texte du même cours et coller (Ctrl+V).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>C'est le seul « export » du cahier de texte : pas de fichier, pas d'envoi direct vers Pronote.</li>
+            <li>Si le navigateur refuse l'accès au presse-papiers, une autre méthode est tentée ; sinon « Impossible de copier l'entrée. ».</li>
+            <li>Une entrée déjà copiée garde la date de sa première copie.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="pronote.html">Pronote</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cahier-de-texte</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous is-actif">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+          
+<div class="rf-head">
+  <div><div class="rf-bc">Accueil › Cahier de texte</div><span class="rf-h1">Cahier de texte</span><span class="rf-meta" data-at="1">3 à recopier dans Pronote</span><span class="rf-meta" data-from="2">2 à recopier dans Pronote</span></div>
+  <span class="esp"></span>
+  <span class="seg"><span class="on">Toutes</span><span>À recopier</span></span>
+</div>
+
+          <div class="fl"><span class="fc fc--all is-on">Toutes</span><span class="fc fc--3">3A</span><span class="fc fc--4">4B</span><span class="fc fc--5">5B</span></div>
+          <div class="jday">Lundi 23 novembre</div>
+          <div class="jrow"><span class="h">08:05</span><span class="jcl jcl--3">3A</span><span class="tx">SVT — Séquence 2, séance 4 : les bactéries résistent-elles aux antibiotiques ?</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit">Copier</span></div>
+          <div class="jrow" id="co-row" data-on="1-3"><span class="h">11:15</span><span class="jcl jcl--4">4B · G1</span><span class="tx">SVT — Séquence 2, séance 3 : d'où viennent les séismes ?</span><span class="jchip jchip--todo" data-at="1">À recopier</span><span class="jchip jchip--done" data-from="2">Copiée</span><span class="b b--fantome b--petit" id="co-btn" data-on="1">Copier</span></div>
+          <div class="jrow"><span class="h">15:10</span><span class="jcl jcl--5">5B</span><span class="tx">SVT — Séquence 2, séance 5 : lire un relevé de températures</span><span class="jchip jchip--todo">À recopier</span><span class="b b--fantome b--petit">Copier</span></div>
+          <div class="toast" id="co-toast" data-at="2-3" style="background:var(--pos)">Entrée copiée : à coller dans Pronote.</div>
+          <div class="bulle bulle--haut" data-at="3" style="left:260px;top:170px">Le texte est dans le presse-papiers : il reste à le coller dans Pronote</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ fenêtre -->
+    <section class="fiche" id="fenetre">
+      <div class="fiche__texte">
+        <h2>Lire et retoucher une entrée</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Cahier de texte › clic sur le texte</span></p>
+        <p class="fiche__but">Relire le texte complet d'une entrée, le corriger ou le compléter avant de le recopier.</p>
+        <ol class="etapes">
+          <li data-cursor="#fe-tx" data-action="click">Cliquer le texte d'une ligne : la fenêtre <b>Cahier de texte · 4B</b> s'ouvre.</li>
+          <li data-cursor="#fe-meta" data-duration="3200">Sous le titre : le jour, l'heure, la provenance, et l'état de l'entrée.</li>
+          <li data-cursor="#fe-txt" data-duration="3400">Retoucher le texte dans la grande zone (correcteur d'orthographe actif).</li>
+          <li data-cursor="#fe-enr" data-action="click" data-duration="3400">Cliquer <span class="btn-nom">Enregistrer</span> (ou Ctrl+Entrée) : « Entrée enregistrée. » Une entrée déjà copiée repasse « À recopier ».</li>
+          <li data-cursor="#fe-cop" data-action="click"><span class="btn-nom">Copier pour Pronote</span> enregistre si besoin, copie et marque l'entrée copiée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>À l'enregistrement, les espaces en fin de ligne et les lignes vides au début et à la fin sont retirés ; un texte vide ne s'enregistre pas.</li>
+            <li><b>Enregistrer</b> reste grisé tant que rien n'a changé.</li>
+            <li>Une entrée retouchée garde sa provenance (« préparée par Claude » reste ainsi).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cahier-de-texte</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous is-actif">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+          
+<div class="rf-head">
+  <div><div class="rf-bc">Accueil › Cahier de texte</div><span class="rf-h1">Cahier de texte</span><span class="rf-meta">3 à recopier dans Pronote</span></div>
+  <span class="esp"></span>
+  <span class="seg"><span class="on">Toutes</span><span>À recopier</span></span>
+</div>
+
+          <div class="jday" style="margin-top:14px">Lundi 23 novembre</div>
+          <div class="jrow"><span class="h">11:15</span><span class="jcl jcl--4">4B · G1</span><span class="tx" id="fe-tx">SVT — Séquence 2, séance 3 : d'où viennent les séismes ?</span><span class="jchip jchip--done">Copiée</span><span class="b b--fantome b--petit">Copier</span></div>
+        </div>
+        
+<div class="jdlg zoom" data-from="2">
+  <div class="jbox">
+    <div class="jbox__t">Cahier de texte · 4B<span class="esp"></span><span class="mut">×</span></div>
+    <div class="jbox__c">
+      <div class="jmeta"><span>Lundi 23 novembre · 11:15</span><span>· préparée par Claude</span><span id="fe-meta"><span class="jchip jchip--done" data-to="3">Copiée le 23 nov.</span><span class="jchip jchip--todo" data-from="4" data-to="4">À recopier</span><span class="jchip jchip--done" data-at="5">Copiée le 23 nov.</span></span></div>
+      <div class="jtxt" id="fe-txt" data-on="3">SVT — Séquence 2, séance 3 : d’où viennent les séismes ?
+
+TRAVAIL EFFECTUÉ EN CLASSE
+Activité 3 : à partir d’une carte des séismes et des volcans, repérer où se produisent les séismes.
+Mise en commun et bilan<span data-from="3"> écrit dans le cahier</span>.
+
+COMPÉTENCES TRAVAILLÉES
+- Lire et exploiter une carte.
+- Rédiger une réponse argumentée.</div>
+    </div>
+    <div class="jbox__p"><span class="b b--danger b--petit" >Supprimer</span><span class="esp"></span><span class="b b--fantome b--petit" >Fermer</span><span class="b b--fantome b--petit" id="fe-enr" data-on="4">Enregistrer</span><span class="b b--petit" id="fe-cop" data-on="5">Copier pour Pronote</span></div>
+  </div>
+</div>
+
+        <div class="toast" data-at="4" style="z-index:700">Entrée enregistrée.</div>
+        <div class="toast" data-at="5" style="z-index:700;background:var(--pos)">Entrée copiée : à coller dans Pronote.</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ état -->
+    <section class="fiche" id="etat">
+      <div class="fiche__texte">
+        <h2>Marquer recopiée, ou remettre à recopier</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fenêtre d'une entrée › pastille d'état</span></p>
+        <p class="fiche__but">Le texte a été tapé directement dans Pronote, ou il faut le recopier à nouveau : changer l'état sans rien copier.</p>
+        <ol class="etapes">
+          <li data-cursor="#et-todo" data-action="click" data-duration="3200">Dans la fenêtre, cliquer la pastille <b>À recopier</b> : « Marquer comme recopiée dans Pronote, sans copier ».</li>
+          <li data-cursor="#et-done" data-duration="3000">Elle devient <b>Copiée le 27 nov.</b>, et la ligne de la liste suit.</li>
+          <li data-cursor="#et-done" data-action="click">Recliquer : l'entrée est remise « à recopier ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Dans la liste, la pastille n'est pas cliquable : c'est dans la fenêtre qu'on change l'état.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cahier-de-texte</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous is-actif">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+<div class="rf-head">
+  <div><div class="rf-bc">Accueil › Cahier de texte</div><span class="rf-h1">Cahier de texte</span><span class="rf-meta">3 à recopier dans Pronote</span></div>
+  <span class="esp"></span>
+  <span class="seg"><span class="on">Toutes</span><span>À recopier</span></span>
+</div>
+</div>
+        
+<div class="jdlg zoom" >
+  <div class="jbox">
+    <div class="jbox__t">Cahier de texte · 4B<span class="esp"></span><span class="mut">×</span></div>
+    <div class="jbox__c">
+      <div class="jmeta"><span>Lundi 23 novembre · 11:15</span><span>· préparée par Claude</span><span class="jchip jchip--todo" id="et-todo" data-on="1" data-at="1,3">À recopier</span><span class="jchip jchip--done" id="et-done" data-at="2" data-on="2">Copiée le 27 nov.</span></div>
+      <div class="jtxt" >SVT — Séquence 2, séance 3 : d’où viennent les séismes ?
+
+TRAVAIL EFFECTUÉ EN CLASSE
+Activité 3 : à partir d’une carte des séismes et des volcans, repérer où se produisent les séismes.
+Mise en commun et bilan écrit dans le cahier.
+
+COMPÉTENCES TRAVAILLÉES
+- Lire et exploiter une carte.
+- Rédiger une réponse argumentée.</div>
+    </div>
+    <div class="jbox__p"><span class="b b--danger b--petit" >Supprimer</span><span class="esp"></span><span class="b b--fantome b--petit" >Fermer</span><span class="b b--fantome b--petit" >Enregistrer</span><span class="b b--petit" >Copier pour Pronote</span></div>
+  </div>
+</div>
+
+        <div class="bulle bulle--haut" data-at="1" style="left:360px;top:130px">Marquer comme recopiée dans Pronote, sans copier</div>
+        <div class="bulle bulle--haut" data-at="3" style="left:360px;top:130px">Remettre « à recopier »</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ supprimer -->
+    <section class="fiche" id="supprimer">
+      <div class="fiche__texte">
+        <h2>Supprimer une entrée, ou abandonner ses changements</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fenêtre d'une entrée › Supprimer / Fermer</span></p>
+        <p class="fiche__but">Retirer de l'application le texte d'un cours, ou fermer la fenêtre sans garder ce qu'on vient de modifier.</p>
+        <ol class="etapes">
+          <li data-cursor="#su-sup" data-action="click" data-duration="3400">En bas à gauche, <span class="btn-nom">Supprimer</span> : « Le texte de cahier de texte de ce cours sera supprimé de l'application (pas de Pronote). »</li>
+          <li data-cursor="#su-ok" data-action="click">Confirmer avec <span class="btn-nom">Supprimer</span>.</li>
+          <li data-cursor="#su-ferm" data-action="click" data-duration="3400">Autre cas : texte modifié puis <span class="btn-nom">Fermer</span> sans enregistrer. La fenêtre demande « Abandonner les modifications ? ».</li>
+          <li data-cursor="#su-ab" data-action="click"><span class="btn-nom">Abandonner</span> ferme sans garder ; sinon, revenir et enregistrer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La suppression ne touche pas Pronote : ce qui y a été collé reste.</li>
+            <li>Le cours garde sa place dans l'emploi du temps ; on peut réécrire son entrée depuis la bulle du cours.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cahier-de-texte</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous is-actif">Cahier de texte</div><div class="side__it side__sous">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+<div class="rf-head">
+  <div><div class="rf-bc">Accueil › Cahier de texte</div><span class="rf-h1">Cahier de texte</span><span class="rf-meta">3 à recopier dans Pronote</span></div>
+  <span class="esp"></span>
+  <span class="seg"><span class="on">Toutes</span><span>À recopier</span></span>
+</div>
+</div>
+        
+<div class="jdlg zoom" >
+  <div class="jbox">
+    <div class="jbox__t">Cahier de texte · 4B<span class="esp"></span><span class="mut">×</span></div>
+    <div class="jbox__c">
+      <div class="jmeta"><span>Lundi 23 novembre · 11:15</span><span>· préparée par Claude</span><span class="jchip jchip--todo">À recopier</span></div>
+      <div class="jtxt" >SVT — Séquence 2, séance 3 : d’où viennent les séismes ?
+
+TRAVAIL EFFECTUÉ EN CLASSE
+Activité 3 : à partir d’une carte des séismes et des volcans, repérer où se produisent les séismes.<span data-from="3"> Correction au tableau.</span>
+
+COMPÉTENCES TRAVAILLÉES
+- Lire et exploiter une carte.</div>
+    </div>
+    <div class="jbox__p"><span class="b b--danger b--petit" id="su-sup" data-on="1">Supprimer</span><span class="esp"></span><span class="b b--fantome b--petit" id="su-ferm" data-on="3">Fermer</span><span class="b b--fantome b--petit" >Enregistrer</span><span class="b b--petit" >Copier pour Pronote</span></div>
+  </div>
+</div>
+
+        <div class="modale-fond zoom" data-at="1-2" style="z-index:650"><div class="modale" style="width:360px"><div class="modale__t">Supprimer cette entrée ?</div><p style="margin:0 0 14px;font-size:13px;color:var(--text-muted)">Le texte de cahier de texte de ce cours sera supprimé de l'application (pas de Pronote).</p><div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="su-ok" data-on="2" style="background:var(--neg);border-color:var(--neg)">Supprimer</span></div></div></div>
+        <div class="modale-fond zoom" data-at="3-4" style="z-index:650"><div class="modale" style="width:340px"><div class="modale__t">Abandonner les modifications ?</div><p style="margin:0 0 14px;font-size:13px;color:var(--text-muted)">Le texte modifié n'est pas enregistré.</p><div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="su-ab" data-on="4" style="background:var(--neg);border-color:var(--neg)">Abandonner</span></div></div></div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ accueil -->
+    <section class="fiche" id="accueil">
+      <div class="fiche__texte">
+        <h2>Écrire l'entrée depuis l'emploi du temps</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › emploi du temps › un cours</span></p>
+        <p class="fiche__but">Écrire ou relire l'entrée d'un cours au moment où l'on regarde sa semaine, avant ou après l'heure.</p>
+        <ol class="etapes">
+          <li data-cursor="#ac-cours" data-action="click">Sur l'accueil, cliquer le cours dans l'emploi du temps de la semaine.</li>
+          <li data-cursor="#ac-ecrire" data-action="click" data-duration="3200">Dans la section <b>Cahier de texte</b> de la bulle, cliquer <span class="btn-nom">Écrire l'entrée</span> : la fenêtre s'ouvre, vide, avec le modèle en gris.</li>
+          <li data-cursor="#ac-cad" data-duration="3400">Quand l'entrée existe, la bulle montre sa première ligne (clic : la fenêtre), sa pastille d'état, <b>Copier pour Pronote</b> et <b>Tout le cahier</b>.</li>
+          <li data-cursor="#ac-tout" data-action="click"><span class="btn-nom">Tout le cahier</span> ouvre la page Cahier de texte, filtrée sur la classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La section n'apparaît pas pour un cours annulé.</li>
+            <li>L'entrée est rattachée au cours par son heure et son libellé dans l'emploi du temps ; la classe et le demi-groupe sont repris.</li>
+            <li>En préparant la semaine, Claude peut écrire les entrées en même temps que les séances : elles arrivent « préparées par Claude ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="accueil.html">Accueil et emploi du temps</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it is-actif"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+          <div class="ligne" style="margin-bottom:10px"><span class="rf-h1" style="font-size:18px">Semaine du 23 novembre</span></div>
+          <div class="edt">
+            <div class="edt__h" style="border-left:0"></div><div class="edt__h">Lun 23</div><div class="edt__h">Mar 24</div><div class="edt__h">Mer 25</div><div class="edt__h">Jeu 26</div><div class="edt__h">Ven 27</div>
+            <div class="edt__r"><span>08:00</span><span>09:00</span><span>10:00</span><span>11:00</span><span>14:00</span><span>15:00</span></div>
+            <div class="edt__c"><div class="cours cours--3" style="top:4px;height:60px"><b>3A</b>SVT · Salle 12</div><div class="cours cours--4" style="top:214px;height:60px"><b>4B · G1</b>SVT · Salle 12</div></div>
+            <div class="edt__c"><div class="cours cours--4" style="top:74px;height:60px"><b>4B</b>SVT · Salle 12</div></div>
+            <div class="edt__c"></div>
+            <div class="edt__c"><div class="cours cours--5" style="top:144px;height:60px"><b>5B</b>SVT · Salle 12</div></div>
+            <div class="edt__c"><div class="cours cours--3" id="ac-cours" data-on="1-2" style="top:4px;height:60px"><b>3A</b>SVT · Salle 12</div><div class="cours cours--5" style="top:284px;height:60px"><b>5B</b>SVT · Salle 12</div></div>
+          </div>
+          <div class="pop glisse-haut" data-at="1-2" style="left:330px;top:60px">
+            <div class="pop__t">3A · SVT</div><div class="pop__s">Vendredi 27 novembre · 08:05 – 09:00 · Salle 12</div>
+            <div class="pop__sec"><div class="ligne">Cahier de texte</div><span class="b b--fantome b--petit" id="ac-ecrire" data-on="2">Écrire l'entrée</span></div>
+          </div>
+          <div class="pop glisse-haut" data-from="3" style="left:20px;top:250px">
+            <div class="pop__t">4B · G1 · SVT</div><div class="pop__s">Lundi 23 novembre · 11:15 – 12:10 · Salle 12</div>
+            <div class="pop__sec"><div class="ligne">Cahier de texte<span class="esp"></span><span class="jchip jchip--todo">À recopier</span></div>
+              <div class="pcad" id="ac-cad" data-on="3">SVT — Séquence 2, séance 3 : d'où viennent les séismes ?</div>
+              <div class="ligne" style="margin-top:6px;font-weight:400"><span class="plien">Copier pour Pronote</span><span class="plien mut" id="ac-tout" data-on="4" style="color:var(--text-dim)">Tout le cahier</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="jdlg zoom" data-at="2" style="background:transparent;place-items:end center;padding-bottom:14px">
+          <div class="jbox" style="width:560px">
+            <div class="jbox__t">Cahier de texte · 3A<span class="esp"></span><span class="mut">×</span></div>
+            <div class="jbox__c"><div class="jmeta">Vendredi 27 novembre · 08:05</div><div class="jtxt vide" style="height:150px">Thème — séquence, séance n : titre
+
+TRAVAIL EFFECTUÉ EN CLASSE
+…
+
+COMPÉTENCES TRAVAILLÉES
+- …</div></div>
+            <div class="jbox__p"><span class="esp"></span><span class="b b--fantome b--petit">Fermer</span><span class="b b--fantome b--petit" style="opacity:.5">Enregistrer</span><span class="b b--petit" style="opacity:.5">Copier pour Pronote</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ liens lecture seule -->
+    <section class="fiche" id="liens">
+      <div class="fiche__texte">
+        <h2>Joindre un document : le lien lecture seule</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › clic droit sur un document</span></p>
+        <p class="fiche__but">Donner aux élèves et aux familles l'adresse d'une fiche qu'ils pourront lire, imprimer ou enregistrer en PDF sans compte, à coller avec l'entrée.</p>
+        <ol class="etapes">
+          <li data-cursor="#li-doc" data-action="click">Dans Mes cours, faire un clic droit sur le document.</li>
+          <li data-cursor="#li-copier" data-action="click" data-duration="3200">Choisir <span class="btn-nom">Copier le lien lecture seule</span>. <b>Gérer le lien lecture seule…</b> montre l'adresse, l'ouvre ou coupe le lien.</li>
+          <li data-cursor="#li-txt" data-duration="3600">Coller le lien à la main, dans le texte de l'entrée ou directement dans Pronote.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Jamais pour une évaluation : l'option est alors grisée (« Lien lecture seule (pas pour une évaluation) »).</li>
+            <li>Le lien n'est pas rangé à part dans l'entrée : il fait partie du texte collé.</li>
+            <li>Le même lien se crée depuis l'éditeur de cours.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../public/cahier-de-texte-en-lecture-seule.html">Ce que voit celui qui ouvre le lien</a> · <a href="editeur-de-cours.html">Éditeur de cours</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it is-actif"><span class="ico"></span>Mes cours</div><div class="side__it side__sous is-actif">Bibliothèque et classes</div><div class="side__it side__sous">Mes TP</div><div class="side__it side__sous">Annales</div><div class="side__it side__sous">Mes clouds</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps cj">
+          <div class="rf-head"><div><div class="rf-bc">Mes cours › 4e › Séquence 2</div><span class="rf-h1">Bibliothèque</span></div></div>
+          <div style="margin-top:10px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <div class="mc-row"><span class="mc-ico"></span>Activité 2 — La Terre bouge</div>
+            <div class="mc-row" id="li-doc" data-on="1-2"><span class="mc-ico"></span>Activité 3 — D'où viennent les séismes ?</div>
+            <div class="mc-row"><span class="mc-ico"></span>Activité 3 — D'où viennent les séismes ? (documents)</div>
+            <div class="mc-row"><span class="mc-ico"></span>Activité 3 — D'où viennent les séismes ? (correction)</div>
+            <div class="mc-row"><span class="mc-ico"></span>Évaluation 1 — La Terre en mouvement</div>
+          </div>
+          <div class="menu glisse-haut" data-at="1-2" style="left:300px;top:150px;width:290px">
+            <div class="menu__it">Ouvrir</div><div class="menu__it">Essayer en classe</div><div class="sep"></div>
+            <div class="menu__it" id="li-copier" data-on="2">Copier le lien lecture seule</div><div class="menu__it">Gérer le lien lecture seule…</div>
+          </div>
+        </div>
+        <div class="jdlg zoom" data-at="3">
+          <div class="jbox" style="width:560px">
+            <div class="jbox__t">Cahier de texte · 4B<span class="esp"></span><span class="mut">×</span></div>
+            <div class="jbox__c"><div class="jmeta">Lundi 23 novembre · 11:15 · préparée par Claude<span class="jchip jchip--todo">À recopier</span></div>
+              <div class="jtxt is-on" id="li-txt" style="height:200px">SVT — Séquence 2, séance 3 : d’où viennent les séismes ?
+
+TRAVAIL EFFECTUÉ EN CLASSE
+Activité 3 : repérer où se produisent les séismes.
+Fiche à relire : <span style="color:var(--indigo)">qwetsh.github.io/gestion-classe/d/…</span>
+
+COMPÉTENCES TRAVAILLÉES
+- Lire et exploiter une carte.</div></div>
+            <div class="jbox__p"><span class="b b--danger b--petit">Supprimer</span><span class="esp"></span><span class="b b--fantome b--petit">Fermer</span><span class="b b--fantome b--petit">Enregistrer</span><span class="b b--petit">Copier pour Pronote</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+
