@@ -67,7 +67,9 @@ export function StudentHome({
                   {tpLine && <span style={{ fontSize: 14, lineHeight: '20px', color: 'var(--el-muted)' }}>{tpLine}</span>}
                 </div>
               </div>
-              <button type="button" className="el-btn el-btn--primary el-btn--block" onClick={onOpenTp}>Ouvrir le TP</button>
+              <button type="button" className="el-btn el-btn--primary el-btn--block" onClick={onOpenTp}>
+                {activeTp.deposit_open ? 'Déposer une photo' : 'Ouvrir le TP'}
+              </button>
             </div>
           )}
           {bonusToPick && (

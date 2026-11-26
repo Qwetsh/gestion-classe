@@ -18,6 +18,44 @@
 /* Classeur ouvert par-dessus l'espace élève : au-dessus de ses en-têtes et de ses onglets */
 .bd-root--over { z-index: 1000; }
 
+/* ---------- Vue des élèves (direction A de l'espace élève, 26/11/2026) ----------
+   Barre et sommaire clairs, bureau gris clair : la même famille que le reste de l'espace élève.
+   Les pages du classeur, elles, ne changent pas. */
+.bd-root--student { background: #DCDCE0; color: #18181B; }
+.bd-root--student .bd-bar { background: #FFFFFF; border-bottom: 1px solid #E6E6E9; }
+.bd-root--student .bd-btn { min-width: 44px; height: 44px; justify-content: center; border-color: #D4D4D8; color: #18181B; }
+.bd-root--student .bd-btn:hover { background: #F0F0F2; }
+.bd-root--student .bd-btn[aria-pressed='true'] { background: #EEF0FF; border-color: #C7D2FE; color: #4338CA; }
+.bd-root--student .bd-level { background: #F0F0F2; color: #52525B; }
+.bd-root--student .bd-count { color: #52525B; }
+.bd-root--student .bd-toc { background: #FFFFFF; border-right: 1px solid #E6E6E9; }
+.bd-root--student .bd-toc__item { padding: 8px 10px; color: #52525B; font-size: 14px; }
+.bd-root--student .bd-toc__item:hover { background: #F0F0F2; color: #18181B; }
+.bd-root--student .bd-toc__item--d0 { color: #6B6B74; font-size: 12px; }
+.bd-root--student .bd-toc__item--d1 { padding-left: 18px; color: #18181B; }
+.bd-root--student .bd-toc__item--d2 { padding-left: 30px; }
+.bd-root--student .bd-toc__item[aria-current='page'] { background: #EEF0FF; color: #4338CA; }
+.bd-root--student .bd-message { color: #52525B; }
+.bd-root--student .bd-arrow { background: rgba(24,24,27,.08); color: #18181B; }
+.bd-root--student .bd-arrow:hover:not(:disabled) { background: rgba(24,24,27,.16); }
+.bd-root--student .bd-stage--read .bd-arrow { background: #FFFFFF; border: 1px solid #D4D4D8; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+/* Les trous de perforation laissent voir le bureau */
+.bd-root--student .bd-hole { background: #DCDCE0; }
+
+/* Téléphone : flèches et numéro de page dans une bande à part, sous le bureau */
+.bd-foot {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 8px 16px max(10px, env(safe-area-inset-bottom)); background: #FFFFFF; border-top: 1px solid #E6E6E9; color: #18181B;
+}
+.bd-foot__label { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.bd-foot__btn {
+  display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #D4D4D8; border-radius: 24px;
+  background: #FFFFFF; color: #18181B; cursor: pointer;
+}
+.bd-foot__btn--next { border-color: #4F46E5; background: #4F46E5; color: #FFFFFF; }
+.bd-foot__btn:disabled { border-color: #E6E6E9; background: #F6F6F7; color: #A1A1AA; cursor: default; }
+.bd-root--foot .bd-stage--read .bd-spread-outer { margin-bottom: 16px; }
+
 /* Lien pour Pronote */
 .bd-link { position: relative; }
 .bd-link__panel {
