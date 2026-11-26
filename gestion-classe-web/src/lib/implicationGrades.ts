@@ -144,6 +144,9 @@ export interface ArchivedGradeRow {
   archived_at: string | null;
 }
 
+/** Les réglages d'une classe dont dépend la note. */
+export type GradeRules = Omit<ClassConfig, 'class_id'>;
+
 /** Réglages appliqués à une classe qui n'en a pas enregistré. */
 export const DEFAULT_TARGET_PARTICIPATIONS = 15;
 export const DEFAULT_TOTAL_SESSIONS_EXPECTED = 60;
@@ -162,7 +165,7 @@ export interface ImplicationGrade {
 /** La note d'implication, à partir des compteurs du trimestre et du réglage de la classe. */
 export function computeImplicationGrade(
   counts: { totalParticipations: number; malus: number; absences: number },
-  config: ClassConfig | undefined,
+  config: GradeRules | undefined,
 ): ImplicationGrade {
   const { totalParticipations, malus, absences } = counts;
   const targetParticipations = config?.target_participations || DEFAULT_TARGET_PARTICIPATIONS;

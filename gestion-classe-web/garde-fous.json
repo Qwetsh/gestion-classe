@@ -6,7 +6,7 @@
     "src/components/classroom/Whiteboard.tsx": 4717,
     "src/components/course/CourseEditor.tsx": 1636,
     "src/lib/evaluationQueries.ts": 1734,
-    "src/pages/Classes.tsx": 2160,
+    "src/pages/Classes.tsx": 1945,
     "src/pages/Students.tsx": 2113,
     "src/tools/timeline-templates.ts": 1534,
     "src/tools/TimelineGenerator.tsx": 1710
@@ -26,7 +26,7 @@
     "src/contexts/AuthContext.tsx": 4,
     "src/pages/Academy.tsx": 6,
     "src/pages/Analytics.tsx": 4,
-    "src/pages/Classes.tsx": 30,
+    "src/pages/Classes.tsx": 20,
     "src/pages/Classroom.tsx": 2,
     "src/pages/DevPanel.tsx": 13,
     "src/pages/GroupSessions.tsx": 5,
