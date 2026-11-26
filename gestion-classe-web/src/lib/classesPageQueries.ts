@@ -82,6 +82,20 @@ export async function fetchRooms(userId: string): Promise<Room[]> {
   })) as unknown as Room[];
 }
 
+/** Enregistre le plan de la classe entière dans une salle : le met à jour, ou le crée s'il n'existe pas. */
+export async function saveClassRoomPlan(
+  userId: string,
+  classId: string,
+  roomId: string,
+  planId: string | null,
+  positions: Positions,
+): Promise<void> {
+  const { error } = planId
+    ? await supabase.from('class_room_plans').update({ positions, updated_at: new Date().toISOString() }).eq('id', planId)
+    : await supabase.from('class_room_plans').insert({ class_id: classId, room_id: roomId, user_id: userId, positions });
+  if (error) throw error;
+}
+
 /** Enregistre les liaisons entre tables d'une salle. Un échec est seulement journalisé, comme avant. */
 export async function saveRoomTableGroups(roomId: string, groups: TableGroup[]): Promise<void> {
   const { error } = await supabase

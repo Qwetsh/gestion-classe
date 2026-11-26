@@ -19,12 +19,18 @@ import { AccommodationBadges } from '../components/AccommodationBadges';
 import { SeatingGeneratorModal } from '../components/SeatingGeneratorModal';
 import { Sparkles, X } from 'lucide-react';
 import { MoreMenu } from '../components/MoreMenu';
+import { VisibilityToggle } from '../components/VisibilityToggle';
+import { MiniSpark } from '../components/MiniSpark';
+import { PlanScopeBar } from '../components/class-groups/PlanScopeBar';
+import { fetchClassGroups, fetchGroupMembers, fetchGroupPlan, saveGroupPlan, type ClassGroupInfo, type ClassGroupMemberInfo } from '../lib/classGroupQueries';
+import { groupSizes, keepPlacedStudents, studentsInScope } from '../lib/planScope';
 import {
   fetchClassesWithCounts,
   fetchClassRoomPlan,
   fetchClassStudents,
   fetchRooms,
   fetchSeatGrades,
+  saveClassRoomPlan,
   saveRoomTableGroups,
   type ClassRoomPlan,
   type ClassStudent as Student,
@@ -58,62 +64,6 @@ interface ImportPreview {
 
 function getClassLabel(name: string): string {
   return name.replace(/ème groupe /i, 'G').replace(/ème /i, '').substring(0, 3);
-}
-
-function VisibilityToggle({ icon, label, enabled, disabled, onToggle, accent }: {
-  icon: string; label: string; enabled: boolean; disabled?: boolean; onToggle: () => void; accent?: string;
-}) {
-  const color = accent || 'var(--indigo)';
-  return (
-    <label
-      style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        gap: 8, padding: '4px 6px', borderRadius: 6,
-        background: enabled ? 'var(--surface-3)' : 'transparent',
-        cursor: disabled ? 'wait' : 'pointer', transition: 'background 0.2s',
-        fontSize: 12, color: 'var(--text)',
-      }}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 14 }}>{icon}</span>
-        <span style={{ fontWeight: 500 }}>{label}</span>
-      </span>
-      <div
-        onClick={disabled ? undefined : onToggle}
-        style={{
-          width: 34, height: 18, borderRadius: 9,
-          background: enabled ? color : 'var(--border)',
-          position: 'relative', cursor: disabled ? 'wait' : 'pointer',
-          transition: 'background 0.2s', flexShrink: 0, opacity: disabled ? 0.5 : 1,
-        }}
-      >
-        <div style={{
-          width: 14, height: 14, borderRadius: '50%',
-          background: '#fff', position: 'absolute', top: 2,
-          left: enabled ? 18 : 2,
-          transition: 'left 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
-        }} />
-      </div>
-    </label>
-  );
-}
-
-function MiniSpark({ history }: { history: (number | null)[] }) {
-  const w = 38, h = 14;
-  const max = 2, min = -2;
-  const pts = history.map((v, i) => {
-    if (v === null) return null;
-    const x = (i / (history.length - 1)) * w;
-    const y = h / 2 - ((v - 0) / (max - min)) * h;
-    return { x, y };
-  }).filter(Boolean) as { x: number; y: number }[];
-  if (pts.length < 2) return null;
-  return (
-    <svg width={w} height={h} style={{ overflow: 'visible', display: 'block', opacity: 0.85 }}>
-      <line x1={0} y1={h/2} x2={w} y2={h/2} stroke="currentColor" opacity={0.25} strokeWidth={0.5} />
-      <polyline points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
 }
 
 export function Classes() {
@@ -191,6 +141,10 @@ export function Classes() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showStudentsPanel, setShowStudentsPanel] = useState(false);
   const [showGroupSplitter, setShowGroupSplitter] = useState(false);
+  // Groupes de classe : le plan édité est celui de la classe entière (null) ou d'un groupe
+  const [classGroups, setClassGroups] = useState<ClassGroupInfo[]>([]);
+  const [groupMembers, setGroupMembers] = useState<ClassGroupMemberInfo[]>([]);
+  const [planGroupId, setPlanGroupId] = useState<string | null>(null);
   // Génération automatique du plan (contraintes + règles)
   const [showGenerator, setShowGenerator] = useState(false);
   const [showRoomModal, setShowRoomModal] = useState(false);
@@ -382,7 +336,23 @@ export function Classes() {
     }
   };
 
-  // Load plan when class+room changes
+  // Groupes de la classe (rechargés à la fermeture du panneau « Groupes de classe »)
+  const loadClassGroups = async (classId: string) => {
+    const [groups, members] = await Promise.all([fetchClassGroups(classId), fetchGroupMembers(classId)]).catch(() => [[], []] as [ClassGroupInfo[], ClassGroupMemberInfo[]]);
+    setClassGroups(groups);
+    setGroupMembers(members);
+    setPlanGroupId(prev => (prev && groups.some(g => g.id === prev) ? prev : null));
+  };
+  // Sur l'identifiant : renommer la classe ne doit pas ramener l'éditeur sur « Classe entière »
+  const selectedClassId = selectedClass?.id ?? null;
+  useEffect(() => {
+    setPlanGroupId(null);
+    setClassGroups([]);
+    setGroupMembers([]);
+    if (selectedClassId) void loadClassGroups(selectedClassId);
+  }, [selectedClassId]);
+
+  // Load plan when class, room or group changes
   useEffect(() => {
     if (selectedClass && selectedRoom) {
       loadPlan(selectedClass.id, selectedRoom.id);
@@ -390,19 +360,18 @@ export function Classes() {
       setPlan(null);
       setPositions({});
     }
-  }, [selectedClass, selectedRoom]);
+  }, [selectedClass, selectedRoom, planGroupId]);
 
+  // Une lecture lancée avant un changement de classe, de salle ou de groupe ne doit pas écraser la suivante
+  const planRequest = useRef(0);
   const loadPlan = async (classId: string, roomId: string) => {
+    const request = ++planRequest.current;
     try {
-      const data = await fetchClassRoomPlan(classId, roomId);
-
-      if (data) {
-        setPlan(data);
-        setPositions(data.positions || {});
-      } else {
-        setPlan(null);
-        setPositions({});
-      }
+      const groupPlan = planGroupId ? await fetchGroupPlan(classId, roomId, planGroupId) : null;
+      const classPlan = planGroupId ? null : await fetchClassRoomPlan(classId, roomId);
+      if (request !== planRequest.current) return;
+      setPlan(classPlan);
+      setPositions((planGroupId ? groupPlan?.positions : classPlan?.positions) || {});
       setHasChanges(false);
     } catch (err) {
       console.error('Error loading plan:', err);
@@ -413,13 +382,26 @@ export function Classes() {
   };
 
   // Computed
+  const planStudents = studentsInScope(students, groupMembers, planGroupId);
   const placedStudentIds = new Set(Object.values(positions));
-  const unplacedStudents = students.filter(s => !placedStudentIds.has(s.id));
+  const unplacedStudents = planStudents.filter(s => !placedStudentIds.has(s.id));
+
+  const changePlanGroup = (groupId: string | null) => {
+    if (groupId === planGroupId) return;
+    if (hasChanges && !window.confirm('Le plan a des modifications non enregistrées. Les abandonner ?')) return;
+    setPlanGroupId(groupId);
+  };
+  const copyClassPlanToGroup = async () => {
+    if (!selectedClass || !selectedRoom) return;
+    const classPlan = await fetchClassRoomPlan(selectedClass.id, selectedRoom.id).catch(() => null);
+    setPositions(keepPlacedStudents(classPlan?.positions, planStudents));
+    setHasChanges(true);
+  };
 
   const getStudentAtCell = (row: number, col: number): Student | undefined => {
     const key = `${row}-${col}`;
     const studentId = positions[key];
-    return studentId ? students.find(s => s.id === studentId) : undefined;
+    return studentId ? planStudents.find(s => s.id === studentId) : undefined;
   };
 
   const isCellDisabled = (row: number, col: number): boolean => {
@@ -549,20 +531,10 @@ export function Classes() {
     setIsSaving(true);
 
     try {
-      if (plan) {
-        const { error } = await supabase
-          .from('class_room_plans')
-          .update({ positions, updated_at: new Date().toISOString() })
-          .eq('id', plan.id);
-        if (error) throw error;
+      if (planGroupId) {
+        await saveGroupPlan(user.id, selectedClass.id, selectedRoom.id, planGroupId, keepPlacedStudents(positions, planStudents));
       } else {
-        const { error } = await supabase.from('class_room_plans').insert({
-          class_id: selectedClass.id,
-          room_id: selectedRoom.id,
-          user_id: user.id,
-          positions,
-        });
-        if (error) throw error;
+        await saveClassRoomPlan(user.id, selectedClass.id, selectedRoom.id, plan?.id ?? null, positions);
       }
 
       await loadPlan(selectedClass.id, selectedRoom.id);
@@ -1267,7 +1239,7 @@ export function Classes() {
                         <span style={{ marginRight: 6, verticalAlign: 'middle', display: 'inline-flex' }}>
                           <ClassChip label={getClassLabel(selectedClass.name)} color={classColor(selectedClass.name)} size={22} />
                         </span>
-                        {selectedClass.name} · <b>{students.length - unplacedStudents.length}/{students.length}</b> placés · {selectedRoom.name}
+                        {selectedClass.name} · <b>{planStudents.length - unplacedStudents.length}/{planStudents.length}</b> placés · {selectedRoom.name}
                       </span>
                     )}
                     {selectedRoom && (
@@ -1282,6 +1254,17 @@ export function Classes() {
                     )}
                   </div>
                 </div>
+                {classGroups.length > 0 && selectedRoom && (
+                  <PlanScopeBar
+                    groups={classGroups}
+                    sizes={groupSizes(groupMembers)}
+                    classSize={students.length}
+                    value={planGroupId}
+                    onChange={changePlanGroup}
+                    groupPlanIsEmpty={Object.keys(positions).length === 0}
+                    onCopyFromClass={() => { void copyClassPlanToGroup(); }}
+                  />
+                )}
               </div>
 
               {/* Main content area */}
@@ -1451,7 +1434,7 @@ export function Classes() {
               <div>
                 <div className="pool__title">Non placés</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                  {unplacedStudents.length} sur {students.length}
+                  {unplacedStudents.length} sur {planStudents.length}
                 </div>
               </div>
             </div>
@@ -1571,7 +1554,7 @@ export function Classes() {
         <SeatingGeneratorModal
           userId={user.id}
           classId={selectedClass.id}
-          students={students.map(s => {
+          students={planStudents.map(s => {
             const g = studentGrades.get(s.id);
             return { id: s.id, pseudo: s.pseudo, gender: s.gender ?? null, has_pap: s.has_pap, has_ppre: s.has_ppre, has_pai: s.has_pai, grade: g?.grade, malus: g?.malus };
           })}
@@ -1590,7 +1573,7 @@ export function Classes() {
           className={selectedClass.name}
           students={students}
           rooms={rooms}
-          onClose={() => setShowGroupSplitter(false)}
+          onClose={() => { setShowGroupSplitter(false); void loadClassGroups(selectedClass.id); }}
         />
       )}
 
