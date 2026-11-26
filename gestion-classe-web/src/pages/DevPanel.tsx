@@ -878,6 +878,47 @@ function PronoteTab() {
         return await pw.frequency(sess, weekNum);
       },
     },
+    // Agenda (requête brute PageAgenda, onglet 9 ; format relevé sur le site de démo Pronote 2026.2.8)
+    {
+      id: 'agenda', label: 'Agenda (conseils de classe)', icon: '🗓️', category: 'Agenda',
+      description: 'Événements de l\'Agenda Pronote, conseils de classe en tête',
+      run: async (pw, sess) => {
+        if (!pw.RawRequest) throw new Error('pawnote non patché : relancer npm install (patch-package).');
+        const props = pw.rawPropertyNames(sess);
+        const req = new pw.RawRequest(sess, 'PageAgenda', {
+          [props.signature]: { onglet: 9 },
+          [props.data]: {
+            avecEventsPasses: true,
+            listeFamillesFiltre: null,
+            uniquementMesEvenements: false,
+            avecRdvPartages: true,
+            AvecListeClasses: true,
+          },
+        });
+        const res = await req.send();
+        const d = res.data?.[props.data] ?? {};
+        const events: any[] = d.ListeEvenements ?? [];
+        const brief = (e: any) => ({
+          titre: e.L,
+          debut: e.DateDebut?.V,
+          fin: e.DateFin?.V,
+          journeeEntiere: !!e.journeeEntiere,
+          genre: e.G,
+          estConseilClasse: !!e.estConseilClasse,
+          commentaire: typeof e.Commentaire === 'string' ? e.Commentaire.slice(0, 200) : undefined,
+          auteur: e.strAuteur,
+        });
+        return {
+          nbEvenements: events.length,
+          nbConseils: events.filter(e => e.estConseilClasse).length,
+          conseils: events.filter(e => e.estConseilClasse).map(brief),
+          autresEvenements: events.filter(e => !e.estConseilClasse).map(brief),
+          avecExportICal: d.AvecExportiCal,
+          clesReponse: Object.keys(d),
+          brut: events.slice(0, 5),
+        };
+      },
+    },
     // Notes
     {
       id: 'grades_overview', label: 'Notes (overview)', icon: '📊', category: 'Notes',
