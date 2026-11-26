@@ -546,7 +546,7 @@ export function CarnetTab({ userId, account, onError }: {
               grade: row?.grade ?? null,
               status: (row?.status ?? 'noted') as GradeStatus,
             },
-            assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average },
+            assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average, onlyIfRaises: !!a.only_if_raises_average },
           };
         }),
       ),
@@ -1122,6 +1122,7 @@ export function CarnetTab({ userId, account, onError }: {
                 period,
                 schoolYear,
                 countsInAverage: values.countsInAverage,
+                onlyIfRaisesAverage: values.onlyIfRaises,
                 shortName: values.shortName,
                 sequence: values.sequence,
               });
@@ -1137,6 +1138,7 @@ export function CarnetTab({ userId, account, onError }: {
                 period,
                 schoolYear,
                 countsInAverage: values.countsInAverage,
+                onlyIfRaisesAverage: values.onlyIfRaises,
                 shortName: values.shortName,
                 sequence: values.sequence,
               });

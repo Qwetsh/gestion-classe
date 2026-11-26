@@ -2,7 +2,8 @@ import { ASSESSMENT_KIND_LABEL, type AssessmentKind } from '../lib/evaluationQue
 
 /**
  * Petite icône du type d'évaluation, pour l'en-tête de colonne du carnet (traits, couleur du
- * texte). Écrit : feuille ; devoir maison : maison ; TP : fiole ; oral : micro ; projet : dossier.
+ * texte). Écrit : feuille ; activité notée : porte-bloc coché ; devoir maison : maison ; TP : fiole ;
+ * oral : micro ; projet : dossier.
  */
 export function KindIcon({ kind, size = 12 }: { kind: AssessmentKind; size?: number }) {
   const common = {
@@ -11,6 +12,8 @@ export function KindIcon({ kind, size = 12 }: { kind: AssessmentKind; size?: num
     role: 'img' as const, 'aria-label': ASSESSMENT_KIND_LABEL[kind] ?? kind,
   };
   switch (kind) {
+    case 'activite':
+      return <svg {...common}><title>{ASSESSMENT_KIND_LABEL.activite}</title><path d="M9 5H6v16h12V5h-3M9 3h6v4H9zM9 14l2 2 4-4" /></svg>;
     case 'dm':
       return <svg {...common}><title>{ASSESSMENT_KIND_LABEL.dm}</title><path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1v-9z" /></svg>;
     case 'tp':

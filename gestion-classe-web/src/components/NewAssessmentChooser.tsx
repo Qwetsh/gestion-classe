@@ -13,7 +13,7 @@ import {
 
 /**
  * « + Évaluation » par type (hub Évaluations, phase 6) :
- * - une éval classique (copie, DM, oral, TP noté à la main) : le formulaire habituel ;
+ * - une éval classique (copie, activité notée, DM, oral, TP noté à la main) : le formulaire habituel ;
  * - une production numérique : on choisit une activité existante (elles sont créées par l'app
  *   élève), l'éval du carnet est créée et reçoit les notes déjà corrigées ;
  * - un TP de groupe : la séance se note au téléphone ; à la fin, l'éval arrive dans le carnet.
@@ -71,7 +71,7 @@ export function NewAssessmentChooser({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
         {step === 'type' && (
           <>
-            <Choice kind="ecrit" title="Évaluation" text="Écrit, devoir maison, oral, TP noté à la main : nom, barème, coefficient. Les copies se scannent ensuite." onClick={onClassic} />
+            <Choice kind="ecrit" title="Évaluation" text="Écrit, activité notée, devoir maison, oral, TP noté à la main : nom, barème, coefficient. Les copies se scannent ensuite." onClick={onClassic} />
             <Choice kind="tp" title="Production numérique" text="Une activité faite dans l’application élève : ses envois, leur correction et la note au carnet, au même endroit." onClick={() => setStep('production')} />
             <Choice kind="groupe" title="TP de groupe" text="Une séance notée par groupe et sur critères. Elle arrive dans le carnet à la fin de la séance." onClick={() => (isMobile ? startGroup() : setStep('groupe'))} />
           </>

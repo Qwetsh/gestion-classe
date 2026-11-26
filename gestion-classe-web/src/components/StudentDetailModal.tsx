@@ -506,6 +506,7 @@ export function StudentDetailModal({
                   if (group) sub.push(/^groupe/i.test(group.group_name) ? group.group_name : `Groupe ${group.group_name}`);
                   if (grade?.grade_raw != null && bareme !== 20) sub.push(`${formatGrade(Number(grade.grade_raw))}/${bareme}`);
                   if (!a.counts_in_average) sub.push('hors moyenne');
+                  else if (a.only_if_raises_average) sub.push('si elle monte la moyenne');
                   return (
                     <div key={a.id} className="rf-fiche__note">
                       <span className="rf-fiche__note-name">

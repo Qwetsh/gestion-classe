@@ -37,6 +37,8 @@ export interface AnalyticsAssessment {
   period: number | null;
   coefficient: number;
   countsInAverage: boolean;
+  /** Migration 093 : ne compte que si elle fait monter la moyenne de l'élève. */
+  onlyIfRaises?: boolean;
   seriesId: string | null;
   /** Nom de la série quand l'éval en fait partie : c'est lui qui titre le point de courbe. */
   seriesName: string | null;
@@ -76,6 +78,7 @@ interface RawAssessment {
   period: number | null;
   coefficient: number | string | null;
   counts_in_average: boolean;
+  only_if_raises_average?: boolean | null;
   series_id: string | null;
   classes?: { name: string } | null;
   assessment_series?: { name: string } | null;
@@ -101,7 +104,7 @@ export async function fetchGradeAnalytics(
     let q = supabase
       .from('written_assessments')
       .select(
-        'id, class_id, name, date, created_at, period, coefficient, counts_in_average, series_id,' +
+        'id, class_id, name, date, created_at, period, coefficient, counts_in_average, only_if_raises_average, series_id,' +
         ' classes(name), assessment_series(name)',
       )
       .eq('user_id', userId)
@@ -123,6 +126,7 @@ export async function fetchGradeAnalytics(
     period: a.period,
     coefficient: toNumber(a.coefficient) ?? 1,
     countsInAverage: a.counts_in_average,
+    onlyIfRaises: !!a.only_if_raises_average,
     seriesId: a.series_id,
     seriesName: a.assessment_series?.name ?? null,
   }));
@@ -271,7 +275,7 @@ function computeStudentAverages(
     const average = studentAverage(
       rows.map((r) => ({
         entry: entryOf(r.grade),
-        assessment: { coefficient: r.assessment.coefficient, countsInAverage: r.assessment.countsInAverage },
+        assessment: { coefficient: r.assessment.coefficient, countsInAverage: r.assessment.countsInAverage, onlyIfRaises: r.assessment.onlyIfRaises },
       })),
     );
 

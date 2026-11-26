@@ -35,6 +35,13 @@ describe('résumé des détails d’une colonne', () => {
     expect(columnDetailsSummary({ chip: null, countsInAverage: true, coefficient: null, seriesSize: 2 })).toBe('2 classes');
   });
 
+  it('dit quand l’éval ne compte que si elle monte la moyenne, sauf si elle est hors moyenne', () => {
+    expect(columnDetailsSummary({ chip: null, countsInAverage: true, onlyIfRaises: true, coefficient: 2, seriesSize: 1 }))
+      .toBe('compte seulement si elle monte la moyenne · coef 2');
+    expect(columnDetailsSummary({ chip: null, countsInAverage: false, onlyIfRaises: true, coefficient: null, seriesSize: 1 }))
+      .toBe('hors moyenne');
+  });
+
   it('ne dit rien quand il n’y a rien à dire (série d’une seule classe comprise)', () => {
     expect(columnDetailsSummary({ chip: null, countsInAverage: true, coefficient: null, seriesSize: 1 })).toBe('');
   });
