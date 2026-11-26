@@ -10,7 +10,8 @@
 import { supabase } from './supabase';
 import { seedSignedUrls } from './boardMedia';
 import type { CourseDoc } from './course/courseDoc';
-import { linkTarget, newMobileToken, type CourseRef, type LinkKind } from './mobileVersion';
+import { docFingerprint, linkTarget, newMobileToken, type CourseRef, type LinkKind } from './mobileVersion';
+import { fetchCourseDoc } from './course/courseDoc';
 
 // ---------------------------------------------------------------------------------------------
 // Professeur : le lien d'un document
@@ -144,25 +145,105 @@ export class MobileDocError extends Error {
   }
 }
 
-export interface MobileDocument {
-  title: string;
-  /** QR code imprimé ou lien de partage (cahier de texte). */
-  kind: LinkKind;
-  doc: CourseDoc;
-}
+export type MobileDocument =
+  | {
+    title: string;
+    /** QR code imprimé ou lien de partage (cahier de texte). */
+    kind: LinkKind;
+    doc: CourseDoc;
+    custom: null;
+    /** Le document a une version sur mesure (bouton « Version sur mesure » de la version simple). */
+    customAvailable: boolean;
+  }
+  | {
+    title: string;
+    kind: 'qr';
+    doc: null;
+    /** Page sur mesure (migration 093), à montrer dans un cadre isolé (customSrcdoc). */
+    custom: string;
+    customAvailable: true;
+  };
 
 /**
- * Le document d'un lien, tel qu'il est à l'instant. Les adresses de ses images, signées par le
- * serveur, sont posées là où le rendu des cours les cherche.
+ * Le document d'un lien, tel qu'il est à l'instant : sa page sur mesure s'il en a une et que le
+ * lien est celui du QR code, sinon (ou `simple`) sa version automatique. Les adresses des images
+ * de celle-ci, signées par le serveur, sont posées là où le rendu des cours les cherche.
  */
-export async function fetchMobileDoc(token: string): Promise<MobileDocument> {
-  const { data, error } = await supabase.functions.invoke<{ title?: unknown; kind?: unknown; doc?: unknown; images?: unknown }>('version-mobile', { body: { token } });
+export async function fetchMobileDoc(token: string, simple = false): Promise<MobileDocument> {
+  const { data, error } = await supabase.functions.invoke<{ title?: unknown; kind?: unknown; doc?: unknown; images?: unknown; custom?: unknown; custom_available?: unknown }>(
+    'version-mobile',
+    { body: simple ? { token, version: 'simple' } : { token } },
+  );
   if (error) {
     const status = (error as { context?: { status?: number } }).context?.status;
     throw new MobileDocError(status === 403 ? 'forbidden' : status === 404 ? 'not_found' : status ? 'server' : 'network');
   }
+  const title = typeof data?.title === 'string' ? data.title : '';
+  if (typeof data?.custom === 'string' && data.custom) return { title, kind: 'qr', doc: null, custom: data.custom, customAvailable: true };
   const doc = data?.doc as CourseDoc | undefined;
   if (!doc || typeof doc !== 'object' || !doc.content || typeof doc.content !== 'object') throw new MobileDocError('server');
   if (data?.images && typeof data.images === 'object') seedSignedUrls(data.images as Record<string, string>);
-  return { title: typeof data?.title === 'string' ? data.title : '', kind: data?.kind === 'share' ? 'share' : 'qr', doc };
+  return { title, kind: data?.kind === 'share' ? 'share' : 'qr', doc, custom: null, customAvailable: data?.custom_available === true };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Professeur : la version sur mesure d'un document (table `board_mobile_custom`, migration 093)
+// ---------------------------------------------------------------------------------------------
+
+let customMissing = false;
+
+/** Vrai si la migration 093 n'est pas appliquée (détecté au premier appel) : l'éditeur n'affiche rien. */
+export const customVersionsUnavailable = () => customMissing;
+
+/** Ce que l'éditeur sait d'une version sur mesure (jamais la page elle-même : droits par colonne). */
+export interface CustomVersion {
+  boardId: string;
+  depositedAt: string;
+  checkedAt: string;
+  docFingerprint: string;
+  bytes: number;
+}
+
+/**
+ * La version sur mesure d'un original, s'il en a une. Null aussi si la migration 093 manque :
+ * l'éditeur n'affiche alors rien (détecté au premier appel, plus redemandé ensuite).
+ */
+export async function fetchCustomVersion(targetId: string): Promise<CustomVersion | null> {
+  if (customMissing) return null;
+  const { data, error } = await supabase
+    .from('board_mobile_custom')
+    .select('board_id, deposited_at, checked_at, doc_fingerprint, bytes')
+    .eq('board_id', targetId)
+    .maybeSingle();
+  if (isMissingTable(error, 'board_mobile_custom')) { customMissing = true; return null; }
+  if (error) throw error;
+  const row = data as { board_id: string; deposited_at: string; checked_at: string; doc_fingerprint: string; bytes: number } | null;
+  return row ? { boardId: row.board_id, depositedAt: row.deposited_at, checkedAt: row.checked_at, docFingerprint: row.doc_fingerprint, bytes: row.bytes } : null;
+}
+
+/** Empreinte du document d'un original à l'instant (lu en base : c'est lui que sert le QR code). */
+export async function currentFingerprint(targetId: string): Promise<string | null> {
+  return docFingerprint(await fetchCourseDoc(targetId));
+}
+
+/**
+ * « Garder » : la version sur mesure convient au document tel qu'il est maintenant (son empreinte
+ * devient la référence). Renvoie la nouvelle empreinte, null si le document est illisible.
+ */
+export async function keepCustomVersion(targetId: string): Promise<string | null> {
+  const doc = await fetchCourseDoc(targetId);
+  const fingerprint = docFingerprint(doc);
+  if (!fingerprint) return null;
+  const { error } = await supabase
+    .from('board_mobile_custom')
+    .update({ doc_fingerprint: fingerprint, doc_rev: doc?.rev ?? null, checked_at: new Date().toISOString() })
+    .eq('board_id', targetId);
+  if (error) throw error;
+  return fingerprint;
+}
+
+/** « Revenir à l'automatique » : la version sur mesure est retirée, le QR code sert la version automatique. */
+export async function removeCustomVersion(targetId: string): Promise<void> {
+  const { error } = await supabase.from('board_mobile_custom').delete().eq('board_id', targetId);
+  if (error) throw error;
 }

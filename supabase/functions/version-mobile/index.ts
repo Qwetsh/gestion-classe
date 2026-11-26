@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.208.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { imagePaths, isUuid, ownedPaths } from "../classeur-eleve/release.ts";
 import { MOBILE_TOKEN, linkEligible, mobileDoc, type LinkKind } from "./rules.ts";
+import { servedVersion } from "./custom.ts";
 
 /**
  * Sert la version couleur au format téléphone d'un document imprimé, à qui scanne son QR code.
@@ -20,9 +21,19 @@ import { MOBILE_TOKEN, linkEligible, mobileDoc, type LinkKind } from "./rules.ts
  * d'activité (jamais une évaluation : rules.ts, shareEligible), et garde les zones d'écriture
  * pour que la fiche s'imprime telle qu'elle est distribuée.
  *
- * Un appel (POST, JSON) : { token } → { title, kind, doc, images } : le texte du cours, la sorte de
- * lien (« qr » ou « share ») et les adresses signées de ses images. Même refus (403) pour un jeton mal formé, inconnu, coupé, ou un cours qui
- * ne peut pas sortir : rien à apprendre de l'erreur.
+ * Version mobile sur mesure (table `board_mobile_custom`, migration 093) : une page HTML autonome
+ * déposée par Claude pour un document. Le QR code imprimé la sert à la place de la version
+ * automatique (custom.ts, servedVersion) ; le lien de partage, jamais (il garde ses vues
+ * automatiques, qui s'impriment). Le titre est relu de même avant de la servir.
+ *
+ * Un appel (POST, JSON) : { token, version? } →
+ *  - { title, kind: "qr", custom } : la page sur mesure (texte HTML), quand elle existe et que
+ *    `version` n'est pas « simple » ;
+ *  - sinon { title, kind, doc, images, custom_available } : le texte du cours, la sorte de lien
+ *    (« qr » ou « share »), les adresses signées de ses images, et s'il existe une page sur mesure
+ *    (bouton « Version sur mesure » de la version simple).
+ * Même refus (403) pour un jeton mal formé, inconnu, coupé, ou un cours qui ne peut pas sortir :
+ * rien à apprendre de l'erreur.
  */
 
 const corsHeaders = {
@@ -62,6 +73,7 @@ serve(async (req: Request) => {
   }
   const token = typeof body?.token === "string" ? body.token : null;
   if (token === null || !MOBILE_TOKEN.test(token)) return json({ error: "forbidden" }, 403);
+  const wantSimple = body?.version === "simple";
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
@@ -70,7 +82,7 @@ serve(async (req: Request) => {
   );
 
   try {
-    return await answer(supabase, token);
+    return await answer(supabase, token, wantSimple);
   } catch (err) {
     // Toute panne répond en 500 avec ses en-têtes (sans eux, le navigateur dirait « pas de connexion »)
     if (!(err instanceof ServerError)) console.error("version-mobile", err);
@@ -106,7 +118,28 @@ async function findLink(supabase: SupabaseClient, token: string): Promise<Link |
   return share.data ? { ...share.data, kind: "share" } : null;
 }
 
-async function answer(supabase: SupabaseClient, token: string): Promise<Response> {
+/**
+ * Version sur mesure d'un original, par le QR code seulement : sa page (`withHtml`) ou seulement
+ * sa présence. Null : pas de version sur mesure, ou migration 093 pas encore appliquée.
+ */
+async function findCustom(supabase: SupabaseClient, link: Link, withHtml: boolean): Promise<{ html: string | null } | null> {
+  if (link.kind !== "qr") return null;
+  const res = await supabase
+    .from("board_mobile_custom")
+    .select(withHtml ? "html" : "board_id")
+    .eq("board_id", link.board_id)
+    .eq("user_id", link.user_id)
+    .maybeSingle();
+  if (res.error) {
+    if (isMissingTable(res.error)) return null;
+    throw new ServerError();
+  }
+  if (!res.data) return null;
+  const html = (res.data as unknown as { html?: unknown }).html;
+  return { html: typeof html === "string" ? html : null };
+}
+
+async function answer(supabase: SupabaseClient, token: string, wantSimple: boolean): Promise<Response> {
   const link = await findLink(supabase, token);
   if (!link || !isUuid(link.board_id) || !isUuid(link.user_id)) return json({ error: "forbidden" }, 403);
 
@@ -122,6 +155,12 @@ async function answer(supabase: SupabaseClient, token: string): Promise<Response
   // Une évaluation ne sort jamais, une correction seulement par un lien de partage, même par un jeton existant
   if (!linkEligible(link.kind, title)) return json({ error: "forbidden" }, 403);
 
+  // La page sur mesure, par le QR code, sauf si le lecteur a demandé la version simple
+  const custom = await findCustom(supabase, link, !wantSimple);
+  if (servedVersion(link.kind, custom !== null, wantSimple) === "custom" && custom?.html) {
+    return json({ title, kind: link.kind, custom: custom.html });
+  }
+
   const doc = mobileDoc(board.doc, link.kind);
   if (!doc) return json({ error: "not_found" }, 404);
 
@@ -131,5 +170,5 @@ async function answer(supabase: SupabaseClient, token: string): Promise<Response
     const signed = must(await supabase.storage.from(BUCKET).createSignedUrls(paths, SIGNED_URL_TTL));
     for (const s of signed ?? []) if (s.path && s.signedUrl) images[s.path] = s.signedUrl;
   }
-  return json({ title, kind: link.kind, doc, images });
+  return json({ title, kind: link.kind, doc, images, custom_available: custom !== null });
 }

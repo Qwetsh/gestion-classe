@@ -170,6 +170,8 @@ Lancer ce script avec `python -I script.py`. La bibliothèque produit un brouill
 
 **QR code « Version couleur » : rien à faire dans les brouillons.** Tout document imprimé ou exporté en PDF depuis l'éditeur (fiche, documents, extraits, protocole, version adaptée) porte automatiquement, en haut à droite de sa première page, dans la marge, un QR code vers sa version couleur au format téléphone (page `/d/<jeton>`, qui suit les modifications du cours). Jamais sur une correction, une copie modèle ni une évaluation. Ne pas laisser de place pour lui : il tient dans la marge (migration 090, fonction `version-mobile`).
 
+**Version mobile sur mesure** : pour remplacer, sur demande de Thomas, cette version automatique par une page pensée pour le téléphone (schémas interactifs, animations validées), que le même QR code ouvre sans réimpression : skill `version-mobile` (`.claude/skills/version-mobile/`, `gc_mobile.py`, `gc_envoi.py mobile`).
+
 Une fiche d'activité tient sur **une page A4**. Elle suit cet ordre, comme `exemples/microbiote.py` :
 
 1. `LigneIdentite()`, puis `Cartouche(...)`. Le cartouche contient :
@@ -534,7 +536,8 @@ marcher avant le chargement. Fiches de l'hôpital : `C:/dev/hopital-virtuel/cont
 
 **Tout support interactif vit dans le tableau** (écrans, animations, scènes riches) : pas de
 fichier HTML autonome ni de widget Genially (Thomas, 22/11/2026). Pour les élèves, l'export
-« page web pour les élèves » du tableau en tient lieu.
+« page web pour les élèves » du tableau en tient lieu. Seule exception : la version mobile sur mesure d'un
+document (skill `version-mobile`, validée par Thomas le 26/11/2026).
 
 **Une animation ou une scène riche ne se code qu'avec l'accord explicite de Thomas**, donnée à
 cette animation-là, après un storyboard (règle du 21/11/2026, skill `tableau-seance` § 2-3).

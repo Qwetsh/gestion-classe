@@ -38,6 +38,7 @@ import { checkCourse, setLiveSpell, spellHits, spellKey, hideSpell, type SpellHi
 import { CourseSpellPopover } from './CourseSpellPopover';
 import { CoursePrintDialog } from './CoursePrintDialog';
 import { CourseShareDialog } from './CourseShareDialog';
+import { CourseMobileStatus } from './CourseMobileStatus';
 import { buildTwoUp, printClasses, type PrintOptions } from './coursePrint';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
@@ -1319,6 +1320,7 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
           <button type="button" className="ce-title" onClick={() => setRenaming(true)} title="Renommer le cours">{title}</button>
         )}
         {lessonChip && <span className="ce-chip" title="Cours de l'emploi du temps auquel ce document est rattaché">{lessonChip}</span>}
+        {mobile.target && mobileEligible(title) && <CourseMobileStatus boardId={boardId} target={mobile.target} token={mobile.token} save={save} />}
         <span className={`ce-saved ce-saved--${save}`} role="status">{saveLabel[save]}</span>
         {others > 0 && (
           <span className="ce-chip ce-chip--warn" title="Ce cours est ouvert dans un autre onglet ou sur un autre appareil. Si les deux enregistrent, l’éditeur demandera quelle version garder.">

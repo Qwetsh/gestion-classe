@@ -11,8 +11,14 @@
  * dans le cahier de texte. Deux vues : « Téléphone » (une colonne) et « Pages A4 » (les feuilles
  * telles qu'imprimées) ; « Imprimer » imprime toujours les feuilles A4, ou les enregistre en PDF
  * depuis la fenêtre d'impression du navigateur.
+ *
+ * Version sur mesure (migration 093) : quand le document en a une, le QR code l'ouvre en plein
+ * écran, dans un cadre isolé (`sandbox="allow-scripts"` sans `allow-same-origin` : origine opaque,
+ * la page ne lit ni le stockage ni les jetons de l'application ; CSP qui coupe le réseau :
+ * lib/mobileVersion.ts, customSrcdoc). Un petit bouton « Version simple » ramène à la version
+ * automatique, et « Version sur mesure » y retourne.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Printer } from 'lucide-react';
 import { CoursePhoneDoc } from '../components/course/CoursePhoneDoc';
@@ -20,7 +26,7 @@ import { CourseA4Doc } from '../components/course/CourseA4Doc';
 import { printPages, sheetPrintPages, whenSettled } from '../lib/binderPrint';
 import '../styles/classeur-eleves.css';
 import { setSeededUrlsOnly } from '../lib/boardMedia';
-import { MOBILE_TOKEN } from '../lib/mobileVersion';
+import { MOBILE_TOKEN, customSrcdoc } from '../lib/mobileVersion';
 import { MobileDocError, fetchMobileDoc, type MobileDocument as Loaded } from '../lib/mobileVersionQueries';
 
 /** Âge au-delà duquel le document est relu au retour sur la page. */
@@ -47,6 +53,10 @@ export function MobileDocument() {
   /** Vue choisie ; null : celle par défaut (pages A4 pour un lien de partage sur grand écran). */
   const [chosen, setChosen] = useState<View | null>(null);
   const [printing, setPrinting] = useState(false);
+  /** Version simple demandée alors que le document a une version sur mesure. */
+  const [simple, setSimple] = useState(false);
+  /** Page sur mesure à l'écran : pas de relecture au retour sur la page (elle perdrait où en est l'élève). */
+  const customShownRef = useRef(false);
   const sheetsRef = useRef<HTMLDivElement>(null);
   const a4Ref = useRef<HTMLDivElement>(null);
 
@@ -75,14 +85,14 @@ export function MobileDocument() {
     if (malformed) return;
     let cancelled = false;
     const readAt = Date.now();
-    fetchMobileDoc(token).then(
+    fetchMobileDoc(token, simple).then(
       (value) => { if (!cancelled) { setLoaded({ token, at: readAt, value }); setFailed(null); } },
       (err: unknown) => { if (!cancelled) setFailed({ token, kind: err instanceof MobileDocError ? err.kind : 'server' }); },
     );
-    const onVisible = () => { if (document.visibilityState === 'visible' && Date.now() - readAt > STALE_MS) setRound((n) => n + 1); };
+    const onVisible = () => { if (document.visibilityState === 'visible' && !customShownRef.current && Date.now() - readAt > STALE_MS) setRound((n) => n + 1); };
     document.addEventListener('visibilitychange', onVisible);
     return () => { cancelled = true; document.removeEventListener('visibilitychange', onVisible); };
-  }, [token, malformed, round]);
+  }, [token, malformed, round, simple]);
 
   const current = loaded?.token === token ? loaded : null;
   // Une relecture ratée ne retire pas le document déjà affiché, sauf un lien coupé entre-temps
@@ -91,6 +101,9 @@ export function MobileDocument() {
   const share = current?.value.kind === 'share';
   const tag = share ? 'Lecture seule' : 'Version couleur';
   const view: View = chosen ?? (share && window.innerWidth >= WIDE ? 'a4' : 'phone');
+  const custom = !error && current?.value.custom ? current.value.custom : null;
+  const srcdoc = useMemo(() => (custom ? customSrcdoc(custom) : ''), [custom]);
+  useEffect(() => { customShownRef.current = custom !== null; }, [custom]);
 
   useEffect(() => {
     const before = document.title;
@@ -111,12 +124,26 @@ export function MobileDocument() {
     if (sheets) printPages(sheetPrintPages(sheets), title || 'Document');
   };
 
+  if (custom) {
+    return (
+      <div className="mdoc-custom">
+        <iframe className="mdoc-custom__frame" title={title || tag} sandbox="allow-scripts" referrerPolicy="no-referrer" srcDoc={srcdoc} />
+        <button type="button" className="mdoc-custom__simple" onClick={() => setSimple(true)} title="La version automatique du document, en une colonne">
+          Version simple
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="mdoc">
       <header className="mdoc__bar">
         <h1 className="mdoc__title">{error ? '' : title}</h1>
         {!error && current && (
           <>
+            {current.value.customAvailable && simple && (
+              <button type="button" className="mdoc__custom" onClick={() => setSimple(false)}>Version sur mesure</button>
+            )}
             <div className="mdoc__views" role="group" aria-label="Affichage">
               <button type="button" aria-pressed={view === 'phone'} onClick={() => setChosen('phone')}>Téléphone</button>
               <button type="button" aria-pressed={view === 'a4'} onClick={() => setChosen('a4')}>Pages A4</button>
@@ -131,7 +158,7 @@ export function MobileDocument() {
       {error ? (
         <p className="mdoc__message" role="alert"><strong>{error.title}</strong>{error.text}</p>
       ) : current ? (
-        view === 'a4' ? (
+        !current.value.doc ? null : view === 'a4' ? (
           <main ref={a4Ref} className="mdoc__body mdoc__body--a4">
             <CourseA4Doc key={`${current.token}:${current.at}`} doc={current.value.doc} title={title} sheetsRef={sheetsRef} />
           </main>

@@ -13,9 +13,10 @@
 import QRCode from 'qrcode';
 import type { JSONContent } from '@tiptap/core';
 import { COL_W, MARGIN, MM } from './course/coursePage';
-import { MOBILE_TOKEN, linkEligible, mobileEligible, shareEligible, type LinkKind } from '../../../supabase/functions/version-mobile/rules';
+import { MOBILE_TOKEN, linkEligible, linkTarget, mobileEligible, shareEligible, type CourseRef, type LinkKind } from '../../../supabase/functions/version-mobile/rules';
 
-export { MOBILE_TOKEN, linkEligible, mobileEligible, shareEligible, type LinkKind };
+export { MOBILE_TOKEN, linkEligible, linkTarget, mobileEligible, shareEligible, type CourseRef, type LinkKind };
+export { CUSTOM_MAX_BYTES, customPageProblem, customState, docFingerprint, servedVersion, type CustomProblem, type CustomState } from '../../../supabase/functions/version-mobile/custom';
 
 // ---------------------------------------------------------------------------------------------
 // Lien
@@ -36,8 +37,6 @@ export function mobileUrl(token: string, origin: string = window.location.origin
   return `${origin}${base.replace(/\/$/, '')}/d/${token}`;
 }
 
-export interface CourseRef { id: string; title: string }
-
 /**
  * Le document vers lequel pointe le QR code d'un cours imprimé : toujours l'original de la
  * bibliothèque. Une copie posée pour une classe (`lesson_boards.source_board_id`) renvoie au lien de
@@ -46,18 +45,6 @@ export interface CourseRef { id: string; title: string }
  */
 export function mobileTarget(printed: CourseRef, original: CourseRef | null): string | null {
   return linkTarget('qr', printed, original);
-}
-
-/**
- * Le document vers lequel pointe un lien de cette sorte : QR code imprimé (`qr`) ou lien de
- * partage collé dans le cahier de texte (`share`, qui peut aussi ouvrir une correction d'activité).
- * Toujours l'original de la bibliothèque, comme pour le QR code ; null si le cours ou son original
- * ne peut pas sortir par ce lien.
- */
-export function linkTarget(kind: LinkKind, course: CourseRef, original: CourseRef | null): string | null {
-  if (!linkEligible(kind, course.title)) return null;
-  if (original && original.id !== course.id) return linkEligible(kind, original.title) ? original.id : null;
-  return course.id;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -174,4 +161,39 @@ export function phoneContent(content: JSONContent): JSONContent {
     else blocks.push(block);
   });
   return phoneNode({ ...content, content: blocks });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Version sur mesure (migration 093) : la page déposée par Claude, dans un cadre isolé
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Règles de la page sur mesure : rien du réseau. Images, polices, sons et vidéos seulement en
+ * data URI (ou blob: créé par la page elle-même) ; styles et scripts seulement écrits dans la page.
+ * `connect-src data: blob:` : une scène 3D lit les textures de son modèle par une adresse blob:
+ * (rien ne sort de la page). Les cadres `srcdoc` d'une animation héritent de ces règles.
+ */
+export const CUSTOM_CSP = [
+  "default-src 'none'",
+  'img-src data: blob:',
+  "style-src 'unsafe-inline'",
+  "script-src 'unsafe-inline'",
+  'font-src data:',
+  'media-src data: blob:',
+  'connect-src data: blob:',
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+
+const DOCTYPE = /^(\uFEFF?(?:\s|<!--[\s\S]*?-->)*<!doctype[^>]*>)/i;
+
+/**
+ * La page sur mesure prête pour le `srcdoc` du cadre : la CSP et « pas d'adresse transmise » posées
+ * en tout premier (après le doctype, qui doit rester en tête : sans lui, la page passerait en mode
+ * de compatibilité). Une CSP écrite plus loin par la page ne peut que restreindre davantage.
+ */
+export function customSrcdoc(html: string): string {
+  const guard = `<meta http-equiv="Content-Security-Policy" content="${CUSTOM_CSP}"><meta name="referrer" content="no-referrer">`;
+  const m = DOCTYPE.exec(html);
+  return m ? m[1] + guard + html.slice(m[1].length) : guard + html;
 }
