@@ -35,8 +35,5 @@
     "src/pages/Sessions.tsx": 13,
     "src/pages/StudentDashboard.tsx": 6,
     "src/pages/Students.tsx": 43
-  },
-  "clientSansTypes": [
-    "src/pages/StudentDashboard.tsx"
-  ]
+  }
 }

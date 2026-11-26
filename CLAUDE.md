@@ -34,9 +34,9 @@ Une skill ne se modifie donc qu'ici, sur une branche, par une PR ; jamais dans `
 
 - **La base se lit et s'écrit depuis `src/lib/`.** Une page ou un composant n'appelle pas `supabase.from`, `.rpc`, `.storage` ni `.functions` : il appelle une fonction de `src/lib/`, qui se teste sans écran.
 - **Un fichier de plus de 1 500 lignes ne grossit pas**, et aucun nouveau fichier ne dépasse ce seuil. Pour y ajouter du code, en sortir d'abord (logique dans `src/lib/`, sous-composants à part).
-- **Le client de la base est typé.** `src/lib/supabase.ts` connaît les tables, colonnes et fonctions (`src/lib/database.types.ts`, fichier généré) : une requête mal nommée ne compile pas. Après une migration, ou avant d'utiliser une table ou une fonction pour la première fois dans `src/` : `npm run db:types` (il faut être connecté, `npx supabase login`). Le code nouveau n'importe jamais `src/lib/supabaseUntyped.ts`, réservé aux fichiers anciens pas encore mis en accord.
+- **Le client de la base est typé.** `src/lib/supabase.ts` connaît les tables, colonnes et fonctions (`src/lib/database.types.ts`, fichier généré) : une requête mal nommée ne compile pas. Après une migration, ou avant d'utiliser une table ou une fonction pour la première fois dans `src/` : `npm run db:types` (il faut être connecté, `npx supabase login`). Une colonne JSON ou le résultat JSON d'une fonction de la base se convertit par `toJson` / `fromJson` (`src/lib/dbJson.ts`), jamais par `any`.
 
-L'existant est toléré et consigné dans `gestion-classe-web/garde-fous.json` ; `scripts/garde-fous.mjs` fait échouer `npm test` dès qu'une de ces mesures s'aggrave. Quand un fichier maigrit, `npm run garde-fous:maj` enregistre le progrès. La même commande enregistre aussi une hausse : la réserver à un cas justifié, écrit dans la PR.
+Pour les deux premières, l'existant est toléré et consigné dans `gestion-classe-web/garde-fous.json` ; `scripts/garde-fous.mjs` fait échouer `npm test` dès qu'une de ces mesures s'aggrave. La troisième est tenue par la compilation. Quand un fichier maigrit, `npm run garde-fous:maj` enregistre le progrès. La même commande enregistre aussi une hausse : la réserver à un cas justifié, écrit dans la PR.
 
 ## Base de données et fonctions serveur
 

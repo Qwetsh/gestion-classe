@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Archive, BookOpen, Box, ChevronLeft, FlaskConical } from 'lucide-react';
-import { supabase } from '../lib/supabaseUntyped';
+import { supabase } from '../lib/supabase';
+import { fromJson } from '../lib/dbJson';
 import { studentBinderOpen } from '../lib/studentBinder';
 import { StudentBinderView } from '../components/binder/StudentBinderView';
 import { fetchStudentTps, type StudentTpItem } from '../lib/studentTp';
@@ -239,8 +240,10 @@ export function StudentDashboard() {
     currentCodeRef.current = fullCode;
 
     try {
-      const { data: result, error: rpcError } = await supabase.rpc('get_student_dashboard', { p_code: fullCode });
+      const { data: rawResult, error: rpcError } = await supabase.rpc('get_student_dashboard', { p_code: fullCode });
       if (rpcError) throw rpcError;
+      const result = fromJson<(DashboardData & { error?: string; bavardages?: number }) | null>(rawResult);
+      if (!result) throw new Error('réponse vide');
       if (result?.error) {
         setError(result.error === 'not_found' ? 'Code incorrect. Vérifie et réessaie.' : 'Erreur inconnue');
         setIsLoading(false);
@@ -255,7 +258,7 @@ export function StudentDashboard() {
       setStampError(null);
       try {
         const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_code: fullCode });
-        if (!sErr && sData) setStampData(sData);
+        if (!sErr && sData) setStampData(fromJson<StampData>(sData));
         else setStampError('Impossible de charger les tampons');
       } catch {
         setStampError('Erreur de chargement des tampons');
@@ -286,7 +289,8 @@ export function StudentDashboard() {
 
       // Académie
       try {
-        const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
+        const { data: rawAcademy } = await supabase.rpc('get_student_academy', { p_code: fullCode });
+        const aData = fromJson<{ error?: string; enabled?: boolean; house?: HouseId | null; test_completed?: boolean; class_id?: string | null } | null>(rawAcademy);
         if (aData && !aData.error) {
           setAcademyData({
             enabled: aData.enabled ?? false,
@@ -309,7 +313,8 @@ export function StudentDashboard() {
     const refresh = async () => {
       if (document.visibilityState !== 'visible' || !currentCodeRef.current) return;
       const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
-      if (sData && !sData.error) setStampData(sData);
+      const stamps = fromJson<(StampData & { error?: string }) | null>(sData);
+      if (stamps && !stamps.error) setStampData(stamps);
     };
     const interval = setInterval(refresh, 30000);
     document.addEventListener('visibilitychange', refresh);
@@ -328,7 +333,7 @@ export function StudentDashboard() {
       if (bonusTimerRef.current) clearTimeout(bonusTimerRef.current);
       bonusTimerRef.current = setTimeout(() => setBonusSaved(false), 6000);
       const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
-      if (sData) setStampData(sData);
+      if (sData) setStampData(fromJson<StampData>(sData));
       return true;
     } catch {
       return false;
