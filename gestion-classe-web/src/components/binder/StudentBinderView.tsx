@@ -40,9 +40,11 @@ interface Props {
   onClose?: () => void;
   /** Le nom de la classe est connu (titre de la page). */
   onClassName?: (name: string) => void;
+  /** Page sur laquelle ouvrir le classeur (clé de la page, telle que la donne le sommaire de l'espace élève). */
+  startKey?: string | null;
 }
 
-export function StudentBinderView({ binderKey, onClose, onClassName }: Props) {
+export function StudentBinderView({ binderKey, onClose, onClassName, startKey }: Props) {
   const id = binderKeyId(binderKey);
   // La clé est refaite à chaque rendu par l'appelant : on la fige tant qu'elle désigne le même accès
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,6 +101,12 @@ export function StudentBinderView({ binderKey, onClose, onClassName }: Props) {
     return withSummaries(sheets, texts, (paragraphs) => wrapInk(paragraphs, width, measure, SUMMARY_LEAD));
   }, [toc, measure]);
 
+  const startPage = useMemo(() => {
+    if (!startKey) return undefined;
+    const at = pages.findIndex((p) => p.key === startKey);
+    return at >= 0 ? at + 1 : undefined;
+  }, [pages, startKey]);
+
   const message = error ? null
     : !toc || !measure ? 'Ouverture du classeur…'
     : pages.length === 0 ? 'Ce classeur est encore vide. Les activités y arrivent au fil des cours.'
@@ -112,7 +120,9 @@ export function StudentBinderView({ binderKey, onClose, onClassName }: Props) {
         error={error}
         message={message}
         student
+        lightChrome
         embedded={embedded}
+        startPage={startPage}
         barStart={onClose && (
           <button type="button" className="bd-btn" onClick={onClose} title="Revenir à mon espace">
             <ArrowLeft size={18} aria-hidden /> <span className="bd-hide-sm">Retour</span>

@@ -1,15 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Archive, BookOpen, Box, ChevronLeft, ChevronRight, FlaskConical } from 'lucide-react';
+import { Archive, BookOpen, Box, ChevronLeft, FlaskConical } from 'lucide-react';
 import { supabase } from '../lib/supabaseUntyped';
 import { studentBinderOpen } from '../lib/studentBinder';
 import { StudentBinderView } from '../components/binder/StudentBinderView';
 import { fetchStudentTps, type StudentTpItem } from '../lib/studentTp';
-import { StudentTp } from '../components/StudentTp';
+import { StudentTp, type Part as TpPart } from '../components/StudentTp';
 import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
 import { StudentAnnales } from '../components/StudentAnnales';
 import { StudentAr } from '../components/StudentAr';
 import { StudentGrades } from '../components/StudentGrades';
+import { StudentBinderToc } from '../components/student/StudentBinderToc';
 import { StudentHome } from '../components/student/StudentHome';
 import { StudentImplication } from '../components/student/StudentImplication';
 import type { DashboardData } from '../lib/studentDashboard';
@@ -54,8 +55,11 @@ export function StudentDashboard() {
   const [binderCode, setBinderCode] = useState<string | null>(null);
   const showBinder = binderCode !== null;
   const [binderOpen, setBinderOpen] = useState(false);
+  /** Page sur laquelle le classeur s'ouvre (clé donnée par le sommaire de « Cours ») ; null : au début. */
+  const [binderStart, setBinderStart] = useState<string | null>(null);
   // Le retour du téléphone referme le classeur au lieu de quitter l'espace (et de faire ressaisir le code)
-  const openBinder = useCallback(() => {
+  const openBinder = useCallback((pageKey?: string) => {
+    setBinderStart(pageKey ?? null);
     window.history.pushState({ ...(window.history.state as object | null), gcBinder: true }, '');
     setBinderOpen(true);
   }, []);
@@ -78,8 +82,11 @@ export function StudentDashboard() {
   /** Le TP en cours de l'élève, pour l'accueil. */
   const [activeTp, setActiveTp] = useState<StudentTpItem | null>(null);
   const [tpOpen, setTpOpen] = useState(false);
+  /** TP sur lequel l'écran des TP s'ouvre directement (depuis l'accueil) ; null : la liste. */
+  const [tpStart, setTpStart] = useState<{ id: string; part?: TpPart } | null>(null);
   const closingTp = useRef(false);
-  const openTp = useCallback(() => {
+  const openTp = useCallback((start?: { id: string; part?: TpPart }) => {
+    setTpStart(start ?? null);
     window.history.pushState({ ...(window.history.state as object | null), gcTp: true }, '');
     setTpOpen(true);
   }, []);
@@ -517,7 +524,7 @@ export function StudentDashboard() {
           <StudentHome
             data={data}
             activeTp={tpCode ? activeTp : null}
-            onOpenTp={openTp}
+            onOpenTp={() => openTp(activeTp ? { id: activeTp.session_id, part: activeTp.deposit_open ? 'photos' : undefined } : undefined)}
             lastGrade={lastGrade}
             stampCount={stampCount}
             bonusToPick={bonusToPick}
@@ -552,47 +559,36 @@ export function StudentDashboard() {
               <span className="el-kicker">{data.class_name}</span>
               <h1 className="el-h1">Cours</h1>
             </div>
-            <div className="el-card">
-              {showBinder && (
-                <button type="button" className="el-row" onClick={openBinder}>
-                  <span className="el-icon-box"><BookOpen size={22} strokeWidth={1.8} aria-hidden /></span>
-                  <span className="el-row__body">
-                    <span className="el-row__title">Mon classeur</span>
-                    <span className="el-row__meta">Fiches d’activité, fiches méthode, révisions</span>
-                  </span>
-                  <ChevronRight size={20} className="el-row__chev" aria-hidden />
-                </button>
-              )}
+            <div className="el-tiles">
               {tpCode && (
-                <button type="button" className="el-row" onClick={openTp}>
-                  <span className="el-icon-box"><FlaskConical size={22} strokeWidth={1.8} aria-hidden /></span>
-                  <span className="el-row__body">
-                    <span className="el-row__title">Mes TP</span>
-                    <span className="el-row__meta">Fiche, protocole et photos du groupe</span>
+                <button type="button" className="el-tilebox" onClick={() => openTp()}>
+                  <FlaskConical size={24} strokeWidth={1.8} aria-hidden />
+                  <span className="el-tilebox__text">
+                    <span className="el-tilebox__title">Mes TP</span>
+                    {activeTp
+                      ? <span className="el-tilebox__note el-tilebox__note--on">1 en cours</span>
+                      : <span className="el-tilebox__note">Fiches et photos</span>}
                   </span>
-                  {activeTp && <span className="el-chip">En cours</span>}
-                  <ChevronRight size={20} className="el-row__chev" aria-hidden />
                 </button>
               )}
               {showAnnales && (
-                <button type="button" className="el-row" onClick={() => { setCoursPart('annales'); window.scrollTo(0, 0); }}>
-                  <span className="el-icon-box"><Archive size={22} strokeWidth={1.8} aria-hidden /></span>
-                  <span className="el-row__body">
-                    <span className="el-row__title">Annales du brevet</span>
-                    <span className="el-row__meta">Des sujets pour t’entraîner</span>
+                <button type="button" className="el-tilebox" onClick={() => { setCoursPart('annales'); window.scrollTo(0, 0); }}>
+                  <Archive size={24} strokeWidth={1.8} aria-hidden />
+                  <span className="el-tilebox__text">
+                    <span className="el-tilebox__title">Annales</span>
+                    <span className="el-tilebox__note">Brevet</span>
                   </span>
-                  <ChevronRight size={20} className="el-row__chev" aria-hidden />
                 </button>
               )}
-              <button type="button" className="el-row" onClick={() => { setCoursPart('ar'); window.scrollTo(0, 0); }}>
-                <span className="el-icon-box"><Box size={22} strokeWidth={1.8} aria-hidden /></span>
-                <span className="el-row__body">
-                  <span className="el-row__title">En 3D</span>
-                  <span className="el-row__meta">Vise une image de ton cours avec la caméra</span>
+              <button type="button" className="el-tilebox" onClick={() => { setCoursPart('ar'); window.scrollTo(0, 0); }}>
+                <Box size={24} strokeWidth={1.8} aria-hidden />
+                <span className="el-tilebox__text">
+                  <span className="el-tilebox__title">En 3D</span>
+                  <span className="el-tilebox__note">Avec la caméra</span>
                 </span>
-                <ChevronRight size={20} className="el-row__chev" aria-hidden />
               </button>
             </div>
+            {showBinder && binderCode && <StudentBinderToc code={binderCode} onOpen={openBinder} />}
           </>
         )}
 
@@ -619,9 +615,9 @@ export function StudentDashboard() {
       <StudentNav active={current} available={available} onChange={goTo} />
 
       {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
-      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} />}
+      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} startKey={binderStart} />}
       {/* Les TP en groupes de l'élève, en plein écran */}
-      {tpOpen && tpCode && <StudentTp code={tpCode} pseudo={data.pseudo} className={data.class_name} onClose={closeTp} />}
+      {tpOpen && tpCode && <StudentTp code={tpCode} className={data.class_name} onClose={closeTp} start={tpStart} />}
     </div>
   );
 }

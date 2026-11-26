@@ -39,6 +39,8 @@ const DOUBLE_MIN_W = 1000;
 const TAB_W = 70;
 /** Hauteur de la barre du haut. */
 const BAR_H = 56;
+/** Hauteur de la bande de navigation du bas (élève, sur téléphone). */
+const FOOT_H = 68;
 /** Lecture : marge laissée de chaque côté du texte de la fiche, en px d'écran, et agrandissement maximal. */
 const READ_PAD = 10;
 const READ_MAX = 1.5;
@@ -78,6 +80,14 @@ interface Props {
    * affichée reste dans son état à lui) et passe au-dessus de tout.
    */
   embedded?: boolean;
+  /**
+   * Habillage clair de l'espace élève (barre et sommaire blancs, bureau gris clair, et sur téléphone
+   * les flèches dans une bande en bas). Pas pour l'aperçu d'une classe par le professeur, qui garde
+   * ses réglages dans la barre sombre.
+   */
+  lightChrome?: boolean;
+  /** Classeur embarqué : page montrée à l'ouverture (1 = la première), tant que l'élève n'a pas feuilleté. */
+  startPage?: number;
   /** Double-clic sur une fiche. */
   onOpen?: (boardId: string) => void;
   /** Réglage d'une classe : la page est fermée pour elle (voilée, grisée au sommaire). */
@@ -88,9 +98,9 @@ interface Props {
   strip?: (page: BinderPage) => ReactNode;
 }
 
-export function BinderBook({ pages, ready, message, error, barStart, barEnd, notice, noticeH = 0, keepParams, student, embedded, onOpen, veiled, inkClosed, strip }: Props) {
-  /** Page affichée d'un classeur embarqué (1 = la première). */
-  const [localPage, setLocalPage] = useState(1);
+export function BinderBook({ pages, ready, message, error, barStart, barEnd, notice, noticeH = 0, keepParams, student, embedded, lightChrome, startPage, onOpen, veiled, inkClosed, strip }: Props) {
+  /** Page affichée d'un classeur embarqué (1 = la première) ; null tant que l'élève n'a pas feuilleté. */
+  const [localPage, setLocalPage] = useState<number | null>(null);
   const { loadDoc } = useContext(BinderSourceContext);
   const [params, setParams] = useSearchParams();
   const viewport = useViewport();
@@ -108,16 +118,21 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   const swipeX = useRef<number | null>(null);
 
   const count = pages.length;
-  const index = Math.max(0, Math.min(count - 1, (embedded ? localPage : Number(params.get('page')) || 1) - 1));
+  const index = Math.max(0, Math.min(count - 1, (embedded ? (localPage ?? startPage ?? 1) : Number(params.get('page')) || 1) - 1));
 
   const tocW = tocOpen && viewport.w >= 900 ? 260 : 0;
   const narrow = viewport.w < 640;
+  /**
+   * Élève sur téléphone : les flèches et le numéro de page ont leur bande en bas de l'écran, au lieu
+   * d'être posés sur la page (ils y recouvraient « Imprimer » et « Page 1 / 4 » de la fiche).
+   */
+  const footNav = !!lightChrome && narrow;
   const double = doubleChoice ?? viewport.w - tocW >= DOUBLE_MIN_W;
   // Mise à l'échelle : la vue entière tient dans l'écran ; en lecture, le texte prend la largeur
   const stageW = viewport.w - tocW;
   // Sur téléphone, les flèches sont posées sur la page (et le doigt tourne les pages)
   const availW = Math.max(200, stageW - (narrow ? 8 : 2 * 56));
-  const availH = Math.max(200, viewport.h - BAR_H - noticeH - 32);
+  const availH = Math.max(200, viewport.h - BAR_H - noticeH - (footNav ? FOOT_H : 0) - 32);
   const spreadW = PAGE_W * (double ? 2 : 1) + 2 * TAB_W;
   const fitScale = Math.min(availW / spreadW, availH / PAGE_H);
   /**
@@ -257,7 +272,7 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
   };
 
   return (
-    <div className={embedded ? 'bd-root bd-root--over' : 'bd-root'}>
+    <div className={`bd-root${embedded ? ' bd-root--over' : ''}${lightChrome ? ' bd-root--student' : ''}${footNav ? ' bd-root--foot' : ''}`}>
       <header className="bd-bar">
         {barStart}
         <button type="button" className="bd-btn" aria-pressed={tocOpen} onClick={() => setTocOpen((o) => !o)} title="Sommaire">
@@ -322,7 +337,7 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
           {!error && message && <p className="bd-message">{message}</p>}
           {!error && count > 0 && ready && (
             <>
-              <button type="button" className="bd-arrow bd-arrow--prev" onClick={() => go(turn(index, count, double, -1), true)} disabled={firstShown === 0} aria-label="Page précédente">
+              <button type="button" className="bd-arrow bd-arrow--prev" style={footNav ? { display: 'none' } : undefined} onClick={() => go(turn(index, count, double, -1), true)} disabled={firstShown === 0} aria-label="Page précédente">
                 <ChevronLeft size={28} aria-hidden />
               </button>
               <div ref={scrollerRef} className="bd-scroller">
@@ -383,13 +398,25 @@ export function BinderBook({ pages, ready, message, error, barStart, barEnd, not
                   })}
                 </div>
               </div>
-              <button type="button" className="bd-arrow bd-arrow--next" onClick={() => go(turn(index, count, double, 1), true)} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
+              <button type="button" className="bd-arrow bd-arrow--next" style={footNav ? { display: 'none' } : undefined} onClick={() => go(turn(index, count, double, 1), true)} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
                 <ChevronRight size={28} aria-hidden />
               </button>
             </>
           )}
         </main>
       </div>
+
+      {footNav && !error && count > 0 && ready && (
+        <footer className="bd-foot">
+          <button type="button" className="bd-foot__btn" onClick={() => go(turn(index, count, double, -1), true)} disabled={firstShown === 0} aria-label="Page précédente">
+            <ChevronLeft size={26} aria-hidden />
+          </button>
+          <span className="bd-foot__label">{shownLabel} sur {count}</span>
+          <button type="button" className="bd-foot__btn bd-foot__btn--next" onClick={() => go(turn(index, count, double, 1), true)} disabled={(rightIdx ?? firstShown) >= count - 1} aria-label="Page suivante">
+            <ChevronRight size={26} aria-hidden />
+          </button>
+        </footer>
+      )}
     </div>
   );
 }
