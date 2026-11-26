@@ -1,35 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ChevronRight, ExternalLink, Search, X } from 'lucide-react';
 import { PdfUrlReader } from './clouds/PdfUrlReader';
 import { brevets, type Brevet, type Matiere } from '../lib/brevets';
 import { fetchCustomAnnales, type BrevetItem } from '../lib/customAnnales';
 
-// Palette du dashboard élève (StudentDashboard.tsx) — dupliquée ici pour
-// éviter un import circulaire dashboard <-> composant.
-const T = {
-  card: '#2a2018',
-  cardBorder: '#3a2e22',
-  surface: '#1e1712',
-  text: '#e8dcc8',
-  textMuted: '#a09080',
-  textDim: '#6a5c4e',
-  gold: '#d4a843',
-  goldBright: '#e8c066',
-  indigo: '#a5b4fc',
-  indigoSoft: '#1e1b4b',
-} as const;
+/**
+ * Annales du brevet dans l'espace élève (Cours › Annales). Direction A : une recherche, deux menus
+ * (matière, année), puis une session ouverte à la fois et huit sujets d'abord — l'ancienne page
+ * affichait les 186 sujets d'un bloc, soit 29 écrans de haut sur un téléphone.
+ *
+ * Les couleurs viennent de `styles/eleve.css` (racine `.el`).
+ */
 
 // Matière d'un sujet (entrées historiques sans champ = SVT)
 const matiereOf = (b: Brevet): Matiere => b.matiere ?? 'SVT';
 
 const MATIERE_ORDER: Matiere[] = ['SVT', 'Maths', 'Français', 'Histoire-Géo-EMC', 'Physique-Chimie'];
 
-const MATIERE_ICONS: Record<Matiere, string> = {
-  'SVT': '🧬',
-  'Maths': '📐',
-  'Français': '✒️',
-  'Histoire-Géo-EMC': '🗺️',
-  'Physique-Chimie': '⚗️',
-};
+/** Sujets montrés d'abord dans une session. */
+const FIRST = 8;
 
 function normalize(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -40,6 +29,10 @@ export function StudentAnnales() {
   const [annee, setAnnee] = useState<number | 'all'>('all');
   const [matiere, setMatiere] = useState<Matiere | 'all'>('all');
   const [preview, setPreview] = useState<Brevet | null>(null);
+  /** Session dépliée : `undefined` tant que l'élève n'a rien touché (la plus récente est ouverte), `null` si toutes sont repliées. */
+  const [openYear, setOpenYear] = useState<number | null | undefined>(undefined);
+  /** Sessions dont tous les sujets sont affichés. */
+  const [whole, setWhole] = useState<Record<number, boolean>>({});
 
   // Sujets ajoutés manuellement par l'enseignante (lecture seule côté élève)
   const [custom, setCustom] = useState<BrevetItem[]>([]);
@@ -57,7 +50,7 @@ export function StudentAnnales() {
     [allBrevets],
   );
 
-  // Fermeture de la modale au clavier (Échap)
+  // Fermeture du lecteur au clavier (Échap)
   useEffect(() => {
     if (!preview) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null); };
@@ -65,6 +58,7 @@ export function StudentAnnales() {
     return () => window.removeEventListener('keydown', onKey);
   }, [preview]);
 
+  const searching = query.trim() !== '';
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
     return allBrevets.filter((b) => {
@@ -85,186 +79,146 @@ export function StudentAnnales() {
   }, [filtered]);
 
   return (
-    <div>
-      {/* En-tête */}
-      <div style={{
-        background: T.card, borderRadius: '16px', padding: '16px',
-        marginBottom: '12px', border: `1px solid ${T.cardBorder}`, textAlign: 'center',
-      }}>
-        <p style={{ color: T.goldBright, fontSize: '18px', fontWeight: 700, margin: 0 }}>
-          📚 Annales du Brevet
-        </p>
-        <p style={{ color: T.textMuted, fontSize: '12px', marginTop: '4px' }}>
-          {filtered.length} sujet{filtered.length > 1 ? 's' : ''} pour t'entraîner
-          {matiere !== 'all' ? ` en ${matiere}` : ''}
-        </p>
+    <>
+      <div className="el-head__titles">
+        <h1 className="el-h1" style={{ fontSize: 22, lineHeight: '28px' }}>Annales du brevet</h1>
+        <span className="el-label" style={{ fontSize: 14 }}>
+          {filtered.length} sujet{filtered.length > 1 ? 's' : ''} pour t’entraîner
+        </span>
       </div>
 
-      {/* Filtres matière */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-        <FilterChip active={matiere === 'all'} onClick={() => setMatiere('all')}>Toutes</FilterChip>
-        {MATIERES.map((m) => (
-          <FilterChip key={m} active={matiere === m} onClick={() => setMatiere(m)}>
-            {MATIERE_ICONS[m]} {m}
-          </FilterChip>
-        ))}
-      </div>
+      <label className="el-search">
+        <Search size={20} aria-hidden />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Rechercher un thème, un centre…"
+          aria-label="Rechercher un thème ou un centre"
+        />
+      </label>
 
-      {/* Filtres année */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
-        <FilterChip active={annee === 'all'} onClick={() => setAnnee('all')}>Toutes années</FilterChip>
-        {ANNEES.map((a) => (
-          <FilterChip key={a} active={annee === a} onClick={() => setAnnee(a)}>{a}</FilterChip>
-        ))}
+      <div className="el-grid2">
+        <select className="el-select" aria-label="Matière" value={matiere} onChange={(e) => setMatiere(e.target.value as Matiere | 'all')}>
+          <option value="all">Toutes les matières</option>
+          {MATIERES.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
+        <select className="el-select" aria-label="Année" value={String(annee)} onChange={(e) => setAnnee(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
+          <option value="all">Toutes les années</option>
+          {ANNEES.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
       </div>
-
-      {/* Recherche */}
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Rechercher un thème, un centre…"
-        style={{
-          width: '100%', boxSizing: 'border-box', padding: '10px 14px',
-          marginBottom: '12px', borderRadius: '10px',
-          border: `1px solid ${T.cardBorder}`, background: T.surface,
-          color: T.text, fontSize: '14px', outline: 'none',
-        }}
-      />
 
       {filtered.length === 0 && (
-        <p style={{ color: T.textMuted, textAlign: 'center', padding: '32px 0', fontSize: '13px' }}>
-          Aucune annale ne correspond à ta recherche.
-        </p>
+        <div className="el-card el-empty"><p>Aucun sujet ne correspond à ta recherche.</p></div>
       )}
 
-      {/* Liste groupée par session */}
-      {groupes.map(([an, items]) => (
-        <div key={an} style={{ marginBottom: '16px' }}>
-          <p style={{
-            color: T.textDim, fontSize: '11px', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.08em',
-            margin: '0 0 8px 4px',
-          }}>
-            Session {an} · {items.length} sujet{items.length > 1 ? 's' : ''}
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {items.map((b) => (
-              <div key={b.url} style={{
-                background: T.card, borderRadius: '12px', padding: '12px',
-                border: `1px solid ${T.cardBorder}`,
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                  <span style={{
-                    fontSize: '11px', fontWeight: 700, color: T.indigo,
-                    background: T.indigoSoft, borderRadius: '6px', padding: '2px 8px',
-                    flexShrink: 0,
-                  }}>
-                    {MATIERE_ICONS[matiereOf(b)]} {matiereOf(b)}
+      {/* Une session ouverte à la fois ; une recherche les ouvre toutes */}
+      {groupes.map(([an, items], index) => {
+        const open = searching || (openYear === undefined ? index === 0 : openYear === an);
+        const shown = whole[an] || searching ? items : items.slice(0, FIRST);
+        const hidden = items.length - shown.length;
+        return (
+          <section key={an} className="el-card">
+            <button
+              type="button"
+              className="el-row"
+              aria-expanded={open}
+              onClick={() => setOpenYear(open ? null : an)}
+              style={open ? undefined : { borderBottom: 0 }}
+            >
+              <span className="el-row__body"><span className="el-row__title" style={{ fontWeight: 700 }}>Session {an}</span></span>
+              <span className="el-row__end el-label">{items.length} sujet{items.length > 1 ? 's' : ''}</span>
+              <ChevronRight size={20} className="el-row__chev" aria-hidden style={{ transform: open ? 'rotate(90deg)' : undefined }} />
+            </button>
+            {open && shown.map((b) => (
+              <button key={b.url} type="button" className="el-row" onClick={() => setPreview(b)}>
+                <span className="el-row__body" style={{ gap: 4 }}>
+                  <span className="el-row__title">{b.theme}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <span className="el-chip">{matiereOf(b)}</span>
+                    <span className="el-row__meta" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.centre}</span>
                   </span>
-                  <span style={{
-                    fontSize: '11px', color: T.textDim,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {b.centre}
-                  </span>
-                </div>
-                <p style={{ color: T.text, fontSize: '14px', fontWeight: 600, margin: '0 0 10px', lineHeight: 1.35 }}>
-                  {b.theme}
-                </p>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={() => setPreview(b)}
-                    style={{
-                      flex: 1, padding: '8px', borderRadius: '8px', border: 'none',
-                      background: T.gold, color: '#1a1410',
-                      fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-                    }}
-                  >
-                    Visualiser
-                  </button>
-                  <a
-                    href={b.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Ouvrir dans un nouvel onglet"
-                    style={{
-                      padding: '8px 14px', borderRadius: '8px',
-                      border: `1px solid ${T.cardBorder}`, background: T.surface,
-                      color: T.textMuted, fontSize: '13px', textDecoration: 'none',
-                    }}
-                  >
-                    ↗
-                  </a>
-                </div>
-              </div>
+                </span>
+                <ChevronRight size={20} className="el-row__chev" aria-hidden />
+              </button>
             ))}
-          </div>
-        </div>
-      ))}
+            {open && hidden > 0 && (
+              <button
+                type="button"
+                className="el-row"
+                onClick={() => setWhole((w) => ({ ...w, [an]: true }))}
+                style={{ justifyContent: 'center', color: 'var(--el-indigo)', fontSize: 14, fontWeight: 600 }}
+              >
+                Afficher {hidden === 1 ? 'le dernier sujet' : `les ${hidden} autres sujets`} de {an}
+              </button>
+            )}
+          </section>
+        );
+      })}
 
-      {/* Modale de visualisation PDF */}
+      {/* Lecteur d'un sujet, par-dessus la page */}
       {preview && (
         <div
           onClick={() => setPreview(null)}
           style={{
             position: 'fixed', inset: 0, zIndex: 1000,
-            background: 'rgba(0,0,0,0.8)',
+            background: 'rgba(24, 24, 27, 0.6)',
             display: 'flex', flexDirection: 'column',
-            padding: '12px', boxSizing: 'border-box',
+            padding: 'max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom))', boxSizing: 'border-box',
           }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={preview.theme}
             onClick={(e) => e.stopPropagation()}
             style={{
-              flex: 1, display: 'flex', flexDirection: 'column',
+              flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
               maxWidth: 1100, width: '100%', margin: '0 auto',
-              background: T.card, borderRadius: '16px',
-              border: `1px solid ${T.cardBorder}`,
-              overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+              background: 'var(--el-surface)', borderRadius: 8,
+              border: '1px solid var(--el-line)', overflow: 'hidden',
             }}
           >
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              gap: '10px', padding: '10px 14px', borderBottom: `1px solid ${T.cardBorder}`,
+              gap: 8, padding: '8px 8px 8px 16px', borderBottom: '1px solid var(--el-line)',
             }}>
               <div style={{ minWidth: 0 }}>
                 <p style={{
-                  color: T.text, fontSize: '14px', fontWeight: 700, margin: 0,
+                  color: 'var(--el-text)', fontSize: 15, fontWeight: 600, margin: 0,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   {preview.theme}
                 </p>
                 <p style={{
-                  color: T.textDim, fontSize: '11px', margin: 0,
+                  color: 'var(--el-dim)', fontSize: 13, margin: 0,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>
                   {matiereOf(preview)} · {preview.centre} · {preview.annee}
                 </p>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                 <a
                   href={preview.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    padding: '8px 12px', borderRadius: '8px',
-                    background: T.gold, color: '#1a1410',
-                    fontSize: '12px', fontWeight: 700, textDecoration: 'none',
-                  }}
+                  className="el-btn"
+                  title="Ouvrir dans un nouvel onglet"
+                  aria-label="Ouvrir le sujet dans un nouvel onglet"
+                  style={{ padding: 0, width: 44 }}
                 >
-                  Ouvrir ↗
+                  <ExternalLink size={20} aria-hidden />
                 </a>
                 <button
+                  type="button"
                   onClick={() => setPreview(null)}
+                  className="el-btn"
                   title="Fermer (Échap)"
-                  style={{
-                    width: '34px', height: '34px', borderRadius: '8px',
-                    border: `1px solid ${T.cardBorder}`, background: T.surface,
-                    color: T.textMuted, fontSize: '16px', cursor: 'pointer',
-                  }}
+                  aria-label="Fermer"
+                  style={{ padding: 0, width: 44 }}
                 >
-                  ×
+                  <X size={20} aria-hidden />
                 </button>
               </div>
             </div>
@@ -273,24 +227,6 @@ export function StudentAnnales() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '6px 12px', borderRadius: '8px',
-        border: `1px solid ${active ? T.gold : T.cardBorder}`,
-        background: active ? T.gold : T.surface,
-        color: active ? '#1a1410' : T.textMuted,
-        fontSize: '12px', fontWeight: 600, cursor: 'pointer',
-        transition: 'all 0.2s',
-      }}
-    >
-      {children}
-    </button>
+    </>
   );
 }

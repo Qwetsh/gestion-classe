@@ -1,116 +1,38 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { BookOpen, FlaskConical } from 'lucide-react';
+import { Archive, BookOpen, Box, ChevronLeft, ChevronRight, FlaskConical } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { studentBinderOpen } from '../lib/studentBinder';
 import { StudentBinderView } from '../components/binder/StudentBinderView';
-import { fetchStudentTps } from '../lib/studentTp';
+import { fetchStudentTps, type StudentTpItem } from '../lib/studentTp';
 import { StudentTp } from '../components/StudentTp';
-import { getCardTier } from '../lib/rewardsQueries';
-import { CategoryIcon } from '../components/rewards/CategoryIcon';
-import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { AcademyQuiz } from '../components/academy/AcademyQuiz';
 import { MyHouse } from '../components/academy/MyHouse';
 import { StudentAnnales } from '../components/StudentAnnales';
 import { StudentAr } from '../components/StudentAr';
 import { StudentGrades } from '../components/StudentGrades';
-import { fetchStudentGrades } from '../lib/studentGrades';
+import { StudentHome } from '../components/student/StudentHome';
+import { StudentImplication } from '../components/student/StudentImplication';
+import type { DashboardData } from '../lib/studentDashboard';
+import { StudentNav, type StudentView } from '../components/student/StudentNav';
+import { StudentStamps, type StampData } from '../components/student/StudentStamps';
+import { fetchStudentGrades, type StudentAssessment } from '../lib/studentGrades';
 import type { HouseId } from '../lib/academyQueries';
 import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
+import '../styles/eleve.css';
 
-// ============================================
-// Student theme — warm dark palette
-// ============================================
-const T = {
-  bg: '#1a1410',
-  bg2: '#221b14',
-  card: '#2a2018',
-  cardBorder: '#3a2e22',
-  surface: '#1e1712',
-  text: '#e8dcc8',
-  textMuted: '#a09080',
-  textDim: '#6a5c4e',
-  gold: '#d4a843',
-  goldBright: '#e8c066',
-  goldDeep: '#b8860b',
-  accent: '#c084fc',
-  accentSoft: '#2e1065',
-  pos: '#4ade80',
-  posSoft: '#14532d',
-  neg: '#f87171',
-  negSoft: '#450a0a',
-  warn: '#fbbf24',
-  warnSoft: '#451a03',
-  indigo: '#a5b4fc',
-  indigoSoft: '#1e1b4b',
-  font: "'Cormorant Garamond', Georgia, serif",
-} as const;
+/**
+ * Espace élève (/eleve), direction A « Carnet » (26/11/2026) : une barre en bas à cinq entrées au
+ * plus (Accueil, Notes, Cours, Tampons, Maison), la même famille visuelle que l'app du professeur.
+ *
+ * L'onglet Maison (Académie) garde son décor, son en-tête et sa musique : seul ce qui l'entoure a
+ * changé (la barre du bas, dans ses teintes sombres).
+ */
 
-// ============================================
-// Stamp card types
-// ============================================
+// Teintes de l'en-tête de l'onglet Maison (l'ancien thème de l'espace, que l'Académie garde)
+const ACADEMY_FONT = "'Cormorant Garamond', Georgia, serif";
 
-interface StampData {
-  student_id: string;
-  active_card: {
-    id: string;
-    card_number: number;
-    status: string;
-    created_at: string;
-    stamps: {
-      id: string;
-      slot_number: number;
-      category_label: string;
-      category_icon: string;
-      category_icon_ref?: string | null;
-      category_color: string;
-      awarded_at: string;
-    }[];
-    stamp_count: number;
-  } | null;
-  completed_cards: {
-    id: string;
-    card_number: number;
-    completed_at: string;
-    bonus_label: string | null;
-    bonus_used: boolean;
-    selected_at: string | null;
-    used_at: string | null;
-  }[];
-  categories: {
-    label: string;
-    icon: string;
-    icon_ref?: string | null;
-    color: string;
-  }[];
-  available_bonuses: {
-    id: string;
-    label: string;
-  }[];
-}
-
-interface DashboardData {
-  pseudo: string;
-  class_name: string;
-  trimester: number;
-  school_year: string;
-  is_witness?: boolean;
-  tabs?: { stamps: boolean; annales: boolean };
-  grade: number;
-  participations: number;
-  malus: number;
-  absences: number;
-  target: number;
-  class_rank: number;
-  class_total: number;
-  overall_rank: number;
-  overall_total: number;
-  top10_class: { rank: number; grade: number }[];
-  top10_overall: { rank: number; grade: number }[];
-  my_class_rank_among_classes: number;
-  total_classes: number;
-  my_class_avg: number;
-  all_classes_ranking: { rank: number; class_name: string; avg_grade: number; student_count: number }[];
-}
+/** Sous-écrans de « Cours » : le sommaire, puis les annales ou la réalité augmentée dans la page. */
+type CoursPart = 'hub' | 'annales' | 'ar';
 
 export function StudentDashboard() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -118,13 +40,17 @@ export function StudentDashboard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
-  const [activeTab, setActiveTab] = useState<'grades' | 'marks' | 'stamps' | 'academy' | 'annales' | 'ar'>('grades');
-  // Onglet « Évals » : ouvert par la classe (class_student_tabs.show_grades), resolu
-  // par la RPC elle-meme pour ne pas avoir a toucher get_student_dashboard.
+  const [view, setView] = useState<StudentView>('home');
+  const [notesPart, setNotesPart] = useState<'marks' | 'implication'>('marks');
+  const [coursPart, setCoursPart] = useState<CoursPart>('hub');
+  // Notes d'évaluation : ouvertes par la classe (class_student_tabs.show_grades), résolu
+  // par la RPC elle-même pour ne pas avoir à toucher get_student_dashboard.
   const [showMarks, setShowMarks] = useState(false);
-  // Onglet « Classeur » : ouvert par la classe (class_binders.tab_enabled) ; le serveur du classeur
-  // le dit lui-même. Il ouvre le classeur en plein écran, par-dessus l'espace élève.
-  /** Code de l'élève dont la classe a l'onglet ouvert (null : pas d'onglet). */
+  /** Les évaluations de l'élève, pour la dernière note de l'accueil. */
+  const [marks, setMarks] = useState<StudentAssessment[]>([]);
+  // Classeur : ouvert par la classe (class_binders.tab_enabled) ; le serveur du classeur
+  // le dit lui-même. Il s'ouvre en plein écran, par-dessus l'espace élève.
+  /** Code de l'élève dont la classe a le classeur ouvert (null : pas de classeur). */
   const [binderCode, setBinderCode] = useState<string | null>(null);
   const showBinder = binderCode !== null;
   const [binderOpen, setBinderOpen] = useState(false);
@@ -147,9 +73,10 @@ export function StudentDashboard() {
   }, []);
   // TP en groupes (PLAN_tp_groupes.md, lot 3) : visible dès que l'élève a fait partie d'un groupe,
   // sans réglage de classe. Plein écran par-dessus l'espace, comme le classeur (même retour du téléphone).
-  /** Code de l'élève qui a au moins un TP (null : pas de bouton). */
+  /** Code de l'élève qui a au moins un TP (null : pas d'entrée). */
   const [tpCode, setTpCode] = useState<string | null>(null);
-  const [tpCurrent, setTpCurrent] = useState(false);
+  /** Le TP en cours de l'élève, pour l'accueil. */
+  const [activeTp, setActiveTp] = useState<StudentTpItem | null>(null);
   const [tpOpen, setTpOpen] = useState(false);
   const closingTp = useRef(false);
   const openTp = useCallback(() => {
@@ -166,8 +93,8 @@ export function StudentDashboard() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
-  // Visibilité des onglets : pilotée par la classe (RPC get_student_dashboard).
-  // Un élève témoin voit tout (preview en conditions réelles).
+  // Visibilité des entrées : pilotée par la classe (RPC get_student_dashboard).
+  // Un élève témoin voit tout (aperçu en conditions réelles).
   const isWitness = !!data?.is_witness;
   const showStamps = isWitness || !!data?.tabs?.stamps;
   const showAnnales = isWitness || !!data?.tabs?.annales;
@@ -175,16 +102,19 @@ export function StudentDashboard() {
   const [academyData, setAcademyData] = useState<{ enabled: boolean; house: HouseId | null; test_completed: boolean; classId: string | null } | null>(null);
   const [stampLoading, setStampLoading] = useState(false);
   const [stampError, setStampError] = useState<string | null>(null);
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [showBonusSelect, setShowBonusSelect] = useState(false);
-  const [selectedStampDetail, setSelectedStampDetail] = useState<{ label: string; icon: string; iconRef?: string | null; color: string; date: string } | null>(null);
+  const [bonusSaved, setBonusSaved] = useState(false);
   const currentCodeRef = useRef('');
   const [muted, setMuted] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Academy music — play HP theme when Maison tab is active
+  /** Entrées de la barre ouvertes à cet élève. */
+  const available: StudentView[] = ['home', 'notes', 'cours', ...(showStamps ? ['stamps' as const] : []), ...(academyData?.enabled ? ['academy' as const] : [])];
+  /** L'entrée affichée : une entrée refermée entre-temps ramène à l'accueil. */
+  const current: StudentView = available.includes(view) ? view : 'home';
+
+  // Musique de l'Académie : le thème joue tant que l'onglet Maison est affiché
   // (le classeur ouvert par-dessus coupe la musique)
-  const isAcademyActive = activeTab === 'academy' && !!academyData?.enabled && !binderOpen;
+  const isAcademyActive = current === 'academy' && !!academyData?.enabled && !binderOpen;
   useEffect(() => {
     if (isAcademyActive && !muted) {
       if (!audioRef.current) {
@@ -206,11 +136,10 @@ export function StudentDashboard() {
     };
   }, [isAcademyActive, muted]);
 
-  const celebrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
+  const bonusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
-      if (celebrationTimerRef.current) clearTimeout(celebrationTimerRef.current);
+      if (bonusTimerRef.current) clearTimeout(bonusTimerRef.current);
     };
   }, []);
 
@@ -250,9 +179,6 @@ export function StudentDashboard() {
     if (e.key === 'Backspace' && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-    if (e.key === 'Enter') {
-      handleSubmit();
-    }
   }, [code]);
 
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
@@ -288,8 +214,9 @@ export function StudentDashboard() {
       // l'interface parle de « malus » depuis le renommage des libellés.
       setData({ ...result, malus: Number(result.malus ?? result.bavardages ?? 0) });
 
-      // Load stamp data
+      // Tampons
       setStampLoading(true);
+      setStampError(null);
       try {
         const { data: sData, error: sErr } = await supabase.rpc('get_student_stamps', { p_code: fullCode });
         if (!sErr && sData) setStampData(sData);
@@ -299,27 +226,29 @@ export function StudentDashboard() {
       }
       setStampLoading(false);
 
-      // Notes d'evaluation : la RPC dit elle-meme si l'onglet est ouvert.
+      // Notes d'évaluation : la RPC dit elle-même si elles sont ouvertes à la classe.
       try {
-        const marks = await fetchStudentGrades(fullCode);
-        setShowMarks(marks.enabled);
+        const grades = await fetchStudentGrades(fullCode);
+        setShowMarks(grades.enabled);
+        setMarks(grades.enabled ? grades.assessments : []);
       } catch {
         setShowMarks(false);
+        setMarks([]);
       }
 
-      // Classeur : le serveur dit si l'onglet est ouvert à la classe (rien d'autre n'est lu ici).
+      // Classeur : le serveur dit s'il est ouvert à la classe (rien d'autre n'est lu ici).
       void studentBinderOpen({ code: fullCode }).then((open) => { if (currentCodeRef.current === fullCode) setBinderCode(open ? fullCode : null); });
 
-      // TP en groupes : le bouton n'apparaît que si l'élève en a fait au moins un
+      // TP en groupes : l'entrée n'apparaît que si l'élève en a fait au moins un
       void fetchStudentTps(fullCode)
         .then((tps) => {
           if (currentCodeRef.current !== fullCode) return;
           setTpCode(tps.length > 0 ? fullCode : null);
-          setTpCurrent(tps.some((t) => t.status === 'active'));
+          setActiveTp(tps.find((t) => t.status === 'active') ?? null);
         })
-        .catch(() => { /* sans la migration 088, pas de bouton */ });
+        .catch(() => { /* sans la migration 088, pas d'entrée */ });
 
-      // Load academy data
+      // Académie
       try {
         const { data: aData } = await supabase.rpc('get_student_academy', { p_code: fullCode });
         if (aData && !aData.error) {
@@ -337,10 +266,10 @@ export function StudentDashboard() {
     setIsLoading(false);
   };
 
-  // Pendant que l'onglet Tampons est ouvert : rafraichir toutes les 30 s et au retour
-  // sur l'onglet (un tampon donne en classe apparait sans recharger la page).
+  // Pendant que l'onglet Tampons est ouvert : rafraîchir toutes les 30 s et au retour
+  // sur l'onglet (un tampon donné en classe apparaît sans recharger la page).
   useEffect(() => {
-    if (activeTab !== 'stamps' || !showStamps || !currentCodeRef.current) return;
+    if (current !== 'stamps' || !showStamps || !currentCodeRef.current) return;
     const refresh = async () => {
       if (document.visibilityState !== 'visible' || !currentCodeRef.current) return;
       const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
@@ -352,21 +281,21 @@ export function StudentDashboard() {
       clearInterval(interval);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [activeTab, showStamps]);
+  }, [current, showStamps]);
 
-  const handleSelectBonus = async (bonusId: string) => {
-    if (!stampData?.active_card || !currentCodeRef.current) return;
+  const handleSelectBonus = async (bonusId: string): Promise<boolean> => {
+    if (!stampData?.active_card || !currentCodeRef.current) return false;
     try {
       const { error: err } = await supabase.rpc('select_student_bonus', { p_code: currentCodeRef.current, p_bonus_id: bonusId });
       if (err) throw err;
-      setShowBonusSelect(false);
-      setShowCelebration(true);
-      celebrationTimerRef.current = setTimeout(() => setShowCelebration(false), 3500);
-      // Reload stamp data
+      setBonusSaved(true);
+      if (bonusTimerRef.current) clearTimeout(bonusTimerRef.current);
+      bonusTimerRef.current = setTimeout(() => setBonusSaved(false), 6000);
       const { data: sData } = await supabase.rpc('get_student_stamps', { p_code: currentCodeRef.current });
       if (sData) setStampData(sData);
+      return true;
     } catch {
-      setError('Erreur lors de la selection du bonus');
+      return false;
     }
   };
 
@@ -376,153 +305,108 @@ export function StudentDashboard() {
     setAcademyData(null);
     setCode(['', '', '', '', '', '']);
     setError(null);
-    setActiveTab('grades');
+    setView('home');
+    setNotesPart('marks');
+    setCoursPart('hub');
+    setShowMarks(false);
+    setMarks([]);
     setBinderCode(null);
     setBinderOpen(false);
     setTpCode(null);
-    setTpCurrent(false);
+    setActiveTp(null);
     setTpOpen(false);
+    setBonusSaved(false);
     currentCodeRef.current = '';
     setTimeout(() => inputRefs.current[0]?.focus(), 100);
   };
 
-  const gradeColor = (grade: number) => {
-    if (grade >= 16) return T.pos;
-    if (grade >= 12) return T.indigo;
-    if (grade >= 8) return T.warn;
-    return T.neg;
+  /** Change d'entrée : on arrive en haut de la page, sur le premier écran de l'entrée. */
+  const goTo = (next: StudentView) => {
+    if (next === 'cours') setCoursPart('hub');
+    setView(next);
+    window.scrollTo(0, 0);
   };
 
-  const gradePercent = (grade: number) => Math.min(100, (grade / 20) * 100);
-
   // ============================================
-  // CODE ENTRY SCREEN
+  // SAISIE DU CODE
   // ============================================
   if (!data) {
+    const complete = code.join('').length === 6;
     return (
-      <div style={{
-        minHeight: '100vh',
-        background: `radial-gradient(ellipse at 50% 30%, ${T.bg2} 0%, ${T.bg} 70%)`,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        padding: '24px',
-        fontFamily: T.font,
-      }}>
-        <div style={{
-          background: T.card,
-          borderRadius: '20px',
-          padding: '40px 32px',
-          maxWidth: '400px',
-          width: '100%',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.5)',
-          border: `1px solid ${T.cardBorder}`,
-        }}>
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{ fontSize: '48px', marginBottom: '12px' }}>📊</div>
-            <h1 style={{ color: T.goldBright, fontFamily: T.font, fontWeight: 600, fontSize: 36, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0 }}>
-              Mon espace
-            </h1>
-            <p style={{ color: T.textMuted, fontSize: '14px', marginTop: '8px' }}>
-              Entre ton code personnel pour voir tes résultats
-            </p>
-          </div>
+      <div className="el">
+        <div className="el-login">
+          <form className="el-card el-login__card" onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <span className="el-icon-box" style={{ width: 48, height: 48 }}><BookOpen size={26} strokeWidth={1.8} aria-hidden /></span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <h1 className="el-h1" style={{ fontSize: 28, lineHeight: '34px' }}>Mon espace</h1>
+                <p className="el-login__text">Entre ton code personnel à 6 chiffres pour voir tes résultats.</p>
+              </div>
+            </div>
 
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '24px' }}>
-            {code.map((digit, i) => (
-              <input
-                key={i}
-                ref={el => { inputRefs.current[i] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={e => handleDigitChange(i, e.target.value)}
-                onKeyDown={e => handleKeyDown(i, e)}
-                onPaste={i === 0 ? handlePaste : undefined}
-                style={{
-                  width: '48px', height: '56px', textAlign: 'center',
-                  fontSize: '24px', fontWeight: 700, borderRadius: '12px',
-                  border: `2px solid ${digit ? T.gold : T.cardBorder}`,
-                  background: T.surface, color: T.text, outline: 'none',
-                  transition: 'border-color 0.2s',
-                }}
-                onFocus={e => { e.target.style.borderColor = T.gold; }}
-                onBlur={e => { if (!digit) e.target.style.borderColor = T.cardBorder; }}
-              />
-            ))}
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <span className="el-field-label" id="el-code-label">Code personnel</span>
+              <div className="el-code" role="group" aria-labelledby="el-code-label">
+                {code.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={el => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    maxLength={1}
+                    value={digit}
+                    aria-label={`Chiffre ${i + 1}`}
+                    onChange={e => handleDigitChange(i, e.target.value)}
+                    onKeyDown={e => handleKeyDown(i, e)}
+                    onPaste={i === 0 ? handlePaste : undefined}
+                  />
+                ))}
+              </div>
+              {error && <p className="el-error" role="alert">{error}</p>}
+            </div>
 
-          {error && (
-            <p style={{ color: T.neg, textAlign: 'center', fontSize: '14px', marginBottom: '16px' }}>
-              {error}
-            </p>
-          )}
-
-          <button
-            onClick={() => handleSubmit()}
-            disabled={isLoading || code.join('').length !== 6}
-            style={{
-              width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-              background: code.join('').length === 6
-                ? `linear-gradient(135deg, ${T.gold}, ${T.goldDeep})`
-                : T.surface,
-              color: code.join('').length === 6 ? T.bg : T.textDim,
-              fontSize: '16px', fontWeight: 700, fontFamily: T.font,
-              cursor: code.join('').length === 6 ? 'pointer' : 'default',
-              opacity: isLoading ? 0.7 : 1,
-              transition: 'all 0.2s',
-              boxShadow: code.join('').length === 6 ? '0 4px 16px rgba(180,130,50,0.3)' : 'none',
-            }}
-          >
-            {isLoading ? 'Chargement...' : 'Voir mes résultats'}
-          </button>
+            <button type="submit" className="el-btn el-btn--primary el-btn--tall el-btn--block" disabled={isLoading || !complete}>
+              {isLoading ? 'Chargement…' : 'Voir mes résultats'}
+            </button>
+          </form>
         </div>
       </div>
     );
   }
 
   // ============================================
-  // DASHBOARD SCREEN
+  // ONGLET MAISON (ACADÉMIE) : contenu, en-tête et décor inchangés
   // ============================================
-  const isInTop10Class = data.class_rank <= 10;
-  const isInTop10Overall = data.overall_rank <= 10;
-  const isAcademyTab = isAcademyActive;
-
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: isAcademyTab ? 'transparent' : `radial-gradient(ellipse at 50% 0%, ${T.bg2} 0%, ${T.bg} 60%)`,
-      padding: isAcademyTab ? 0 : '16px',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      position: 'relative',
-    }}>
-      <div style={{ maxWidth: isAcademyTab ? 'none' : '480px', margin: '0 auto' }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          marginBottom: isAcademyTab ? 0 : '20px',
-          padding: isAcademyTab ? '10px 16px' : '0 4px',
-          ...(isAcademyTab ? {
+  if (current === 'academy' && academyData?.enabled) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'transparent',
+        padding: 0,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        position: 'relative',
+      }}>
+        <div style={{ maxWidth: 'none', margin: '0 auto' }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            marginBottom: 0,
+            padding: '10px 16px',
             position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
             background: 'oklch(0.08 0.01 50 / 0.7)',
             backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-          } : {}),
-        }}>
-          <div>
-            <h1 style={{
-              color: isAcademyTab ? 'oklch(0.85 0.04 60)' : T.goldBright,
-              fontFamily: T.font, fontWeight: 600,
-              fontSize: isAcademyTab ? 20 : 32, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0,
-            }}>
-              {data.pseudo}
-            </h1>
-            {!isAcademyTab && (
-              <p style={{ color: T.textDim, fontSize: '13px', margin: '2px 0 0 0' }}>
-                {data.class_name} · Trimestre {data.trimester} · {data.school_year}
-              </p>
-            )}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {isAcademyTab && (
+          }}>
+            <div>
+              <h1 style={{
+                color: 'oklch(0.85 0.04 60)',
+                fontFamily: ACADEMY_FONT, fontWeight: 600,
+                fontSize: 20, letterSpacing: '-0.02em', fontStyle: 'italic', margin: 0,
+              }}>
+                {data.pseudo}
+              </h1>
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               <button
                 onClick={() => setMuted(m => !m)}
                 style={{
@@ -536,98 +420,29 @@ export function StudentDashboard() {
               >
                 {muted ? '🔇' : '🔊'}
               </button>
-            )}
-          <button
-            onClick={handleLogout}
-            style={{
-              padding: '8px 14px', borderRadius: '8px',
-              border: isAcademyTab ? '1px solid oklch(0.35 0.04 60 / 0.4)' : `1px solid ${T.cardBorder}`,
-              background: 'transparent',
-              color: isAcademyTab ? 'oklch(0.60 0.03 60)' : T.textMuted,
-              fontSize: '13px', cursor: 'pointer',
-            }}
-          >
-            Quitter
-          </button>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div style={{
-          display: 'flex', gap: '4px',
-          marginBottom: isAcademyTab ? 0 : '16px',
-          ...(isAcademyTab ? {
-            position: 'absolute' as const, bottom: 0, left: 0, right: 0, zIndex: 10,
-            background: 'oklch(0.08 0.01 50 / 0.75)',
-            backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-            borderRadius: 0, padding: '6px 12px',
-            paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
-          } : { background: T.surface, borderRadius: '12px', padding: '4px' }),
-        }}>
-          {[
-            { key: 'grades' as const, icon: '📊', label: 'Notes', activeColor: T.indigoSoft, activeText: T.indigo },
-            ...(showMarks ? [{ key: 'marks' as const, icon: '📄', label: 'Évals', activeColor: T.indigoSoft, activeText: T.indigo }] : []),
-            ...(showStamps ? [{ key: 'stamps' as const, icon: '⭐', label: 'Tampons', activeColor: T.warnSoft, activeText: T.warn }] : []),
-            ...(academyData?.enabled ? [{ key: 'academy' as const, icon: '🏰', label: 'Maison', activeColor: T.accentSoft, activeText: T.accent }] : []),
-            ...(showAnnales ? [{ key: 'annales' as const, icon: '📚', label: 'Annales', activeColor: T.posSoft, activeText: T.pos }] : []),
-            { key: 'ar' as const, icon: '🔍', label: 'RA', activeColor: T.accentSoft, activeText: T.accent },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              style={{
-                flex: 1, padding: isAcademyTab ? '8px' : '10px',
-                borderRadius: '10px', border: 'none',
-                background: activeTab === tab.key
-                  ? (isAcademyTab ? 'oklch(0.25 0.03 50 / 0.9)' : tab.activeColor)
-                  : 'transparent',
-                color: activeTab === tab.key
-                  ? (isAcademyTab ? 'oklch(0.90 0.06 60)' : tab.activeText)
-                  : (isAcademyTab ? 'oklch(0.55 0.03 60)' : T.textDim),
-                fontSize: isAcademyTab ? '12px' : '14px',
-                fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s',
-              }}
-            >
-              {tab.icon} {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Le classeur de la classe : hors de la barre d'onglets (déjà pleine sur un téléphone), il s'ouvre en plein écran */}
-        {showBinder && !isAcademyTab && (
-          <button
-            type="button"
-            onClick={openBinder}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
-              marginBottom: '16px', padding: '12px', borderRadius: '12px', border: 'none',
-              background: T.indigoSoft, color: T.indigo, fontSize: '15px', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <BookOpen size={18} aria-hidden /> Mon classeur de SVT
-          </button>
-        )}
-
-        {/* TP en groupes : même place que le classeur, en orange (couleur des TP) */}
-        {tpCode && !isAcademyTab && (
-          <button
-            type="button"
-            onClick={openTp}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', width: '100%',
-              marginBottom: '16px', padding: '12px', borderRadius: '12px', border: 'none',
-              background: '#FFF1E8', color: '#9A3412', fontSize: '15px', fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <FlaskConical size={18} aria-hidden /> Mes TP{tpCurrent ? ' · TP en cours' : ''}
-          </button>
-        )}
-
-        {activeTab === 'academy' && academyData?.enabled ? (
-          academyData.house && academyData.classId ? (
-            <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
-              <MyHouse houseId={academyData.house} classId={academyData.classId} />
+              <button
+                onClick={handleLogout}
+                style={{
+                  padding: '8px 14px', borderRadius: '8px',
+                  border: '1px solid oklch(0.35 0.04 60 / 0.4)',
+                  background: 'transparent',
+                  color: 'oklch(0.60 0.03 60)',
+                  fontSize: '13px', cursor: 'pointer',
+                }}
+              >
+                Quitter
+              </button>
             </div>
+          </div>
+
+          {academyData.house && academyData.classId ? (
+            <>
+              <div style={{ overflow: 'hidden', minHeight: '100vh' }}>
+                <MyHouse houseId={academyData.house} classId={academyData.classId} />
+              </div>
+              {/* La barre du bas est un peu plus haute que l'ancienne : cette marge garde lisible la dernière ligne de la Maison */}
+              <div aria-hidden style={{ height: 24, background: 'oklch(0.06 0.01 50)' }} />
+            </>
           ) : academyData.test_completed ? (
             <div className="academy-root" style={{
               width: '100%', minHeight: '100vh',
@@ -678,511 +493,135 @@ export function StudentDashboard() {
                 }}
               />
             </div>
-          )
-        ) : activeTab === 'ar' ? (
-          <StudentAr />
-        ) : activeTab === 'marks' ? (
-          <StudentGrades code={currentCodeRef.current} />
-        ) : activeTab === 'annales' ? (
-          <StudentAnnales />
-        ) : activeTab === 'stamps' && showStamps ? (
-          <StampCardView
-            stampData={stampData}
-            stampLoading={stampLoading}
-            stampError={stampError}
-            showCelebration={showCelebration}
-            showBonusSelect={showBonusSelect}
-            setShowBonusSelect={setShowBonusSelect}
-            onSelectBonus={handleSelectBonus}
-            selectedStampDetail={selectedStampDetail}
-            setSelectedStampDetail={setSelectedStampDetail}
+          )}
+        </div>
+        <StudentNav active="academy" available={available} onChange={goTo} academy />
+      </div>
+    );
+  }
+
+  // ============================================
+  // ACCUEIL, NOTES, COURS, TAMPONS
+  // ============================================
+  const notesShown = showMarks ? notesPart : 'implication';
+  const lastGrade = [...marks]
+    .filter((a) => a.status === 'noted' && a.grade !== null && !!a.date)
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))[0] ?? null;
+  const stampCount = showStamps && stampData ? (stampData.active_card?.stamp_count ?? 0) : null;
+  const bonusToPick = showStamps && (stampData?.active_card?.stamp_count ?? 0) >= 10 && (stampData?.available_bonuses.length ?? 0) > 0;
+
+  return (
+    <div className="el">
+      <main className="el-main">
+        {current === 'home' && (
+          <StudentHome
+            data={data}
+            activeTp={tpCode ? activeTp : null}
+            onOpenTp={openTp}
+            lastGrade={lastGrade}
+            stampCount={stampCount}
+            bonusToPick={bonusToPick}
+            onOpenMarks={() => { setNotesPart('marks'); goTo('notes'); }}
+            onOpenImplication={() => { setNotesPart('implication'); goTo('notes'); }}
+            onOpenStamps={() => goTo('stamps')}
+            onLogout={handleLogout}
           />
-        ) : (
-        <>
-        {/* Grade Card */}
-        <div style={{
-          background: T.card, borderRadius: '16px', padding: '24px',
-          marginBottom: '12px', border: `1px solid ${T.cardBorder}`, textAlign: 'center',
-        }}>
-          <p style={{ color: T.textMuted, fontSize: '13px', marginBottom: '8px' }}>Ma note actuelle</p>
-          <div style={{ fontSize: '56px', fontWeight: 700, color: gradeColor(data.grade), lineHeight: 1 }}>
-            {data.grade.toFixed(1)}
-            <span style={{ fontSize: '24px', color: T.textDim }}>/20</span>
-          </div>
-          <div style={{
-            marginTop: '16px', height: '8px', background: T.surface,
-            borderRadius: '4px', overflow: 'hidden',
-          }}>
-            <div style={{
-              height: '100%',
-              width: `${gradePercent(data.grade)}%`,
-              background: `linear-gradient(90deg, ${gradeColor(data.grade)}88, ${gradeColor(data.grade)})`,
-              borderRadius: '4px', transition: 'width 0.8s ease',
-            }} />
-          </div>
-          <p style={{ color: T.textDim, fontSize: '12px', marginTop: '8px' }}>
-            Objectif : {data.target} implications
-          </p>
-        </div>
-
-        {/* Stats Row */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-          <StatCard label="Implications" value={data.participations} color={T.pos} />
-          <StatCard label="Malus" value={data.malus} color={T.warn} />
-          <StatCard label="Absences" value={data.absences} color={T.neg} />
-        </div>
-
-        {/* Rankings */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '12px' }}>
-          <div style={{ background: T.card, borderRadius: '16px', padding: '16px', border: `1px solid ${T.cardBorder}` }}>
-            <p style={{ color: T.textMuted, fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
-              Classement classe
-            </p>
-            <RankingDisplay rank={data.class_rank} total={data.class_total} top10={data.top10_class} isInTop10={isInTop10Class} studentGrade={data.grade} />
-          </div>
-          <div style={{ background: T.card, borderRadius: '16px', padding: '16px', border: `1px solid ${T.cardBorder}` }}>
-            <p style={{ color: T.textMuted, fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
-              Classement général
-            </p>
-            <RankingDisplay rank={data.overall_rank} total={data.overall_total} top10={data.top10_overall} isInTop10={isInTop10Overall} studentGrade={data.grade} />
-          </div>
-        </div>
-
-        {/* Class vs Classes */}
-        {data.all_classes_ranking.length > 1 && (
-          <div style={{ background: T.card, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid ${T.cardBorder}` }}>
-            <p style={{ color: T.textMuted, fontSize: '12px', marginBottom: '12px', textAlign: 'center' }}>
-              Classement des classes
-            </p>
-            <div style={{
-              textAlign: 'center', marginBottom: '12px', padding: '8px',
-              background: T.surface, borderRadius: '8px',
-            }}>
-              <span style={{ fontSize: '24px', fontWeight: 700, color: T.accent }}>
-                {data.my_class_rank_among_classes}<sup style={{ fontSize: '12px' }}>e</sup>
-              </span>
-              <span style={{ color: T.textMuted, fontSize: '13px' }}> / {data.total_classes} classes</span>
-              <div style={{ color: T.textDim, fontSize: '11px', marginTop: '4px' }}>
-                Moyenne {data.class_name} : <span style={{ color: T.accent, fontWeight: 600 }}>{data.my_class_avg.toFixed(1)}</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              {data.all_classes_ranking.map((entry, index) => {
-                const isMyClass = entry.class_name === data.class_name;
-                const medalEmoji = (r: number) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `${r}.`;
-                return (
-                  <div key={index} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '6px 8px', borderRadius: '6px',
-                    background: isMyClass ? T.accentSoft : 'transparent', fontSize: '12px',
-                  }}>
-                    <span style={{ color: isMyClass ? T.accent : T.textDim, fontWeight: isMyClass ? 700 : 400 }}>
-                      {medalEmoji(entry.rank)} {entry.class_name}
-                    </span>
-                    <span style={{ color: isMyClass ? T.accent : T.text, fontWeight: isMyClass ? 700 : 400 }}>
-                      {entry.avg_grade.toFixed(1)}
-                      <span style={{ color: T.textDim, fontSize: '10px', marginLeft: '4px' }}>
-                        ({entry.student_count} el.)
-                      </span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        </>
         )}
 
-        {/* Footer */}
-        <p style={{ textAlign: 'center', color: T.textDim, fontSize: '11px', marginTop: '16px' }}>
-          Données mises à jour en temps réel
-        </p>
-      </div>
-      {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
-      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} />}
-      {/* Les TP en groupes de l'élève, en plein écran */}
-      {tpOpen && tpCode && data && <StudentTp code={tpCode} pseudo={data.pseudo} className={data.class_name} onClose={closeTp} />}
-    </div>
-  );
-}
-
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div style={{
-      background: T.card, borderRadius: '12px', padding: '14px 10px',
-      textAlign: 'center', border: `1px solid ${T.cardBorder}`,
-    }}>
-      <div style={{ fontSize: '28px', fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: '11px', color: T.textDim, marginTop: '4px' }}>{label}</div>
-    </div>
-  );
-}
-
-// ============================================
-// Stamp Card View (Student)
-// ============================================
-
-function StampCardView({
-  stampData, stampLoading, stampError, showCelebration, showBonusSelect, setShowBonusSelect, onSelectBonus, selectedStampDetail, setSelectedStampDetail,
-}: {
-  stampData: StampData | null;
-  stampLoading: boolean;
-  stampError: string | null;
-  showCelebration: boolean;
-  showBonusSelect: boolean;
-  setShowBonusSelect: (v: boolean) => void;
-  onSelectBonus: (bonusId: string) => void;
-  selectedStampDetail: { label: string; icon: string; iconRef?: string | null; color: string; date: string } | null;
-  setSelectedStampDetail: (v: { label: string; icon: string; iconRef?: string | null; color: string; date: string } | null) => void;
-}) {
-  const { confirm: showConfirm } = useUIFeedback();
-
-  if (stampLoading) return <div style={{ textAlign: 'center', color: T.textDim, padding: '40px 0' }}>Chargement...</div>;
-  if (stampError) return <div style={{ textAlign: 'center', color: T.neg, padding: '40px 0' }}>{stampError}</div>;
-  if (!stampData) return <div style={{ textAlign: 'center', color: T.textDim, padding: '40px 0' }}>Aucune donnée</div>;
-
-  const card = stampData.active_card;
-  const stampCount = card?.stamp_count || 0;
-  const cardComplete = stampCount >= 10;
-  const stamps = card?.stamps || [];
-  const tier = getCardTier(card?.card_number || 1);
-
-  return (
-    <div>
-      {/* Celebration overlay */}
-      {showCelebration && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 100,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.85)', animation: 'fadeIn 0.3s ease',
-        }}>
-          {['🎊', '⭐', '🌟', '✨', '🎉', '💫', '🏆', '🎁'].map((emoji, i) => (
-            <div key={i} style={{
-              position: 'absolute', fontSize: '28px', left: `${12 + i * 11}%`, top: '40%',
-              animation: `confetti ${1.2 + i * 0.15}s ease-out forwards`,
-              animationDelay: `${i * 0.1}s`,
-            }}>{emoji}</div>
-          ))}
-          <div style={{ textAlign: 'center', animation: 'pulse 1.5s ease infinite' }}>
-            <div style={{ fontSize: '80px', animation: 'bounce 0.6s ease infinite' }}>🎉</div>
-            <p style={{ color: T.warn, fontSize: '24px', fontWeight: 700, marginTop: '16px', textShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
-              Bravo ! Bonus enregistré !
-            </p>
-            <p style={{ color: T.textMuted, fontSize: '14px', marginTop: '8px' }}>
-              Ton enseignant le prendra en compte.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Stamp detail popup */}
-      {selectedStampDetail && (
-        <div onClick={() => setSelectedStampDetail(null)} style={{
-          position: 'fixed', inset: 0, zIndex: 90,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(0,0,0,0.7)',
-        }}>
-          <div style={{
-            background: T.card, borderRadius: '16px', padding: '24px',
-            border: `1px solid ${T.cardBorder}`, textAlign: 'center', maxWidth: '280px',
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><CategoryIcon icon={selectedStampDetail.icon} iconRef={selectedStampDetail.iconRef} size={48} color={selectedStampDetail.color} /></div>
-            <p style={{ color: T.text, fontSize: '16px', fontWeight: 600 }}>{selectedStampDetail.label}</p>
-            <p style={{ color: T.textDim, fontSize: '12px', marginTop: '8px' }}>
-              {new Date(selectedStampDetail.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
-            <div style={{ width: '20px', height: '4px', borderRadius: '2px', background: selectedStampDetail.color, margin: '12px auto 0' }} />
-          </div>
-        </div>
-      )}
-
-      {/* Active Card */}
-      <div style={{
-        background: tier.gradient, borderRadius: '20px', padding: '24px',
-        marginBottom: '12px',
-        boxShadow: `0 8px 32px ${tier.borderColor}30`,
-        position: 'relative', overflow: 'hidden',
-        animation: cardComplete ? 'cardComplete 2s ease infinite' : undefined,
-      }}>
-        <div style={{ position: 'absolute', inset: 0, background: tier.bgPattern, pointerEvents: 'none' }} />
-        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '24px' }}>{tier.emoji}</span>
-            <div>
-              <p style={{ color: '#ffffff', fontSize: '16px', fontWeight: 700, textShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
-                Carte n°{card?.card_number || 1}
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '11px' }}>{tier.name}</p>
-            </div>
-          </div>
-          <span style={{
-            padding: '5px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700,
-            background: 'rgba(255,255,255,0.2)', color: '#ffffff', backdropFilter: 'blur(4px)',
-          }}>
-            {stampCount}/10
-          </span>
-        </div>
-
-        <div style={{
-          position: 'relative', height: '8px', background: 'rgba(0,0,0,0.25)', borderRadius: '4px',
-          overflow: 'hidden', marginBottom: '20px',
-        }}>
-          <div style={{
-            height: '100%', borderRadius: '4px', transition: 'width 0.8s ease',
-            width: `${(stampCount / 10) * 100}%`,
-            background: cardComplete ? tier.progressGradientComplete : tier.progressGradient,
-            backgroundSize: cardComplete ? '200% 100%' : undefined,
-            animation: cardComplete ? 'shimmer 2s linear infinite' : undefined,
-          }} />
-        </div>
-
-        <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-          {Array.from({ length: 10 }, (_, i) => {
-            const stamp = stamps.find(s => s.slot_number === i + 1);
-            return (
-              <button
-                key={i}
-                onClick={() => stamp ? setSelectedStampDetail({
-                  label: stamp.category_label, icon: stamp.category_icon, iconRef: stamp.category_icon_ref ?? null,
-                  color: stamp.category_color, date: stamp.awarded_at,
-                }) : undefined}
-                disabled={!stamp}
-                style={{
-                  aspectRatio: '1', borderRadius: '14px',
-                  border: stamp ? `2px solid ${stamp.category_color}90` : '2px dashed rgba(255,255,255,0.3)',
-                  background: stamp ? `${stamp.category_color}25` : 'rgba(0,0,0,0.2)',
-                  backdropFilter: 'blur(4px)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: stamp ? '24px' : '16px',
-                  cursor: stamp ? 'pointer' : 'default',
-                  transition: 'transform 0.2s, box-shadow 0.2s',
-                  boxShadow: stamp ? `0 2px 8px ${stamp.category_color}30` : 'none',
-                  animation: stamp ? `stampAppear 0.4s ease ${i * 0.05}s both` : undefined,
-                }}
-              >
-                {stamp ? <CategoryIcon icon={stamp.category_icon} iconRef={stamp.category_icon_ref} size={24} color="#fff" title={stamp.category_label} style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }} /> : (
-                  <span style={{ color: 'rgba(255,255,255,0.3)' }}>{tier.emptyIcon}</span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {cardComplete && !showBonusSelect && stampData.available_bonuses.length > 0 && (
-          <button
-            onClick={() => setShowBonusSelect(true)}
-            style={{
-              position: 'relative', width: '100%', marginTop: '20px', padding: '14px',
-              borderRadius: '12px', border: 'none',
-              background: `linear-gradient(135deg, ${T.gold}, ${T.goldDeep})`,
-              color: T.bg, fontSize: '15px', fontWeight: 700,
-              cursor: 'pointer', animation: 'pulse 2s ease infinite',
-            }}
-          >
-            🎁 Choisir ton bonus !
-          </button>
-        )}
-      </div>
-
-      {/* Bonus selection */}
-      {showBonusSelect && (
-        <div style={{
-          background: T.card, borderRadius: '20px', padding: '20px',
-          marginBottom: '12px', border: `1px solid ${T.cardBorder}`,
-        }}>
-          <p style={{ color: T.warn, fontSize: '16px', fontWeight: 700, marginBottom: '4px', textAlign: 'center' }}>
-            🎁 Choisis ton bonus !
-          </p>
-          <p style={{ color: T.textDim, fontSize: '12px', marginBottom: '16px', textAlign: 'center' }}>
-            Tu as rempli ta carte, bravo ! Choisis ta récompense :
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {stampData.available_bonuses.map(bonus => (
-              <button
-                key={bonus.id}
-                onClick={async () => {
-                  const ok = await showConfirm({ title: 'Choisir ce bonus', message: `Tu veux choisir : "${bonus.label}" ?`, confirmLabel: 'Choisir', variant: 'warning' });
-                  if (ok) onSelectBonus(bonus.id);
-                }}
-                style={{
-                  padding: '14px 16px', borderRadius: '12px',
-                  border: `1px solid ${T.cardBorder}`, background: T.surface,
-                  color: T.text, fontSize: '14px', fontWeight: 500,
-                  cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
-                }}
-              >
-                🎁 {bonus.label}
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => setShowBonusSelect(false)}
-            style={{
-              width: '100%', marginTop: '12px', padding: '10px',
-              borderRadius: '10px', border: `1px solid ${T.cardBorder}`,
-              background: 'transparent', color: T.textDim, fontSize: '13px', cursor: 'pointer',
-            }}
-          >
-            Annuler
-          </button>
-        </div>
-      )}
-
-      {/* Completed cards history */}
-      {stampData.completed_cards.length > 0 && (
-        <div style={{
-          background: T.card, borderRadius: '16px', padding: '16px',
-          marginBottom: '12px', border: `1px solid ${T.cardBorder}`,
-        }}>
-          <p style={{ color: T.textMuted, fontSize: '13px', fontWeight: 600, marginBottom: '12px' }}>
-            Historique des cartes
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {stampData.completed_cards.map(c => {
-              const cTier = getCardTier(c.card_number);
-              return (
-                <div key={c.id || `card-${c.card_number}`} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '8px 12px', borderRadius: '10px', background: T.surface,
-                }}>
-                  <div>
-                    <span style={{ fontSize: '14px', marginRight: '6px' }}>{cTier.emoji}</span>
-                    <span style={{ color: T.text, fontSize: '13px', fontWeight: 600 }}>
-                      Carte n°{c.card_number}
-                    </span>
-                    <span style={{ color: T.textDim, fontSize: '11px', marginLeft: '6px' }}>
-                      {cTier.name}
-                    </span>
-                    {c.completed_at && (
-                      <span style={{ color: T.textDim, fontSize: '10px', marginLeft: '8px' }}>
-                        {new Date(c.completed_at).toLocaleDateString('fr-FR')}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    {c.bonus_label ? (
-                      <span style={{ fontSize: '11px', fontWeight: 500, color: c.bonus_used ? T.pos : T.warn }}>
-                        🎁 {c.bonus_label} {c.bonus_used ? '✓' : '⏳'}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '11px', color: T.textDim }}>Pas de bonus</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* How to earn stamps */}
-      {stampData.categories.length > 0 && (
-        <details style={{
-          background: T.card, borderRadius: '16px',
-          marginBottom: '12px', border: `1px solid ${T.cardBorder}`, overflow: 'hidden',
-        }}>
-          <summary style={{
-            padding: '14px 16px', color: T.textMuted, fontSize: '13px', fontWeight: 600,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            listStyle: 'none', userSelect: 'none',
-          }}>
-            <span>Comment gagner un tampon ?</span>
-            <span style={{ fontSize: '11px', transition: 'transform 0.2s' }} className="accordion-arrow">▼</span>
-          </summary>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', padding: '0 16px 14px',
-          }}>
-            {stampData.categories.filter((cat, i, arr) =>
-              arr.findIndex(c => c.label === cat.label) === i
-            ).map((cat, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '6px 10px', borderRadius: '8px', background: T.surface,
-              }}>
-                <CategoryIcon icon={cat.icon} iconRef={cat.icon_ref} size={16} color={cat.color} />
-                <span style={{ color: T.text, fontSize: '11px' }}>{cat.label}</span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-
-      <style>{`
-        details summary::-webkit-details-marker { display: none; }
-        details[open] .accordion-arrow { transform: rotate(180deg); }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
-        @keyframes stampAppear {
-          0% { transform: scale(0) rotate(-180deg); opacity: 0; }
-          60% { transform: scale(1.3) rotate(10deg); opacity: 1; }
-          100% { transform: scale(1) rotate(0deg); opacity: 1; }
-        }
-        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
-        @keyframes confetti { 0% { transform: translateY(0) rotate(0deg); opacity: 1; } 100% { transform: translateY(-80px) rotate(720deg); opacity: 0; } }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
-        @keyframes cardComplete { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); } 70% { box-shadow: 0 0 0 12px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
-      `}</style>
-    </div>
-  );
-}
-
-function RankingDisplay({
-  rank, total, top10, isInTop10, studentGrade,
-}: {
-  rank: number; total: number;
-  top10: { rank: number; grade: number }[];
-  isInTop10: boolean; studentGrade: number;
-}) {
-  const medalEmoji = (r: number) => r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `${r}.`;
-
-  return (
-    <div>
-      <div style={{
-        textAlign: 'center', marginBottom: '12px', padding: '8px',
-        background: T.surface, borderRadius: '8px',
-      }}>
-        <span style={{ fontSize: '24px', fontWeight: 700, color: isInTop10 ? T.pos : T.indigo }}>
-          {rank}<sup style={{ fontSize: '12px' }}>e</sup>
-        </span>
-        <span style={{ color: T.textMuted, fontSize: '13px' }}> / {total}</span>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-        {top10.map((entry, index) => {
-          const isMe = entry.rank === rank && Math.abs(entry.grade - studentGrade) < 0.05;
-          return (
-            <div key={index} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '4px 6px', borderRadius: '6px',
-              background: isMe ? T.indigoSoft : 'transparent', fontSize: '12px',
-            }}>
-              <span style={{ color: isMe ? T.indigo : T.textDim, fontWeight: isMe ? 700 : 400 }}>
-                {medalEmoji(entry.rank)}
-              </span>
-              <span style={{ color: isMe ? T.indigo : T.text, fontWeight: isMe ? 700 : 400 }}>
-                {entry.grade.toFixed(1)}
-              </span>
-            </div>
-          );
-        })}
-
-        {!isInTop10 && (
+        {current === 'notes' && (
           <>
-            <div style={{ textAlign: 'center', color: T.textDim, fontSize: '11px', padding: '2px 0' }}>
-              ···
+            <div className="el-head__titles">
+              <span className="el-kicker">Trimestre {data.trimester} · {data.school_year}</span>
+              <h1 className="el-h1">Notes</h1>
             </div>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between',
-              padding: '4px 6px', borderRadius: '6px',
-              background: T.indigoSoft, fontSize: '12px',
-            }}>
-              <span style={{ color: T.indigo, fontWeight: 700 }}>{rank}.</span>
-              <span style={{ color: T.indigo, fontWeight: 700 }}>Toi · {studentGrade.toFixed(1)}</span>
+            {showMarks && (
+              <div className="el-seg" role="tablist" aria-label="Type de note">
+                <button type="button" role="tab" aria-selected={notesShown === 'marks'} onClick={() => setNotesPart('marks')}>Évaluations</button>
+                <button type="button" role="tab" aria-selected={notesShown === 'implication'} onClick={() => setNotesPart('implication')}>Implication</button>
+              </div>
+            )}
+            {notesShown === 'marks'
+              ? <StudentGrades code={currentCodeRef.current} />
+              : <StudentImplication data={data} />}
+          </>
+        )}
+
+        {current === 'cours' && coursPart === 'hub' && (
+          <>
+            <div className="el-head__titles">
+              <span className="el-kicker">{data.class_name}</span>
+              <h1 className="el-h1">Cours</h1>
+            </div>
+            <div className="el-card">
+              {showBinder && (
+                <button type="button" className="el-row" onClick={openBinder}>
+                  <span className="el-icon-box"><BookOpen size={22} strokeWidth={1.8} aria-hidden /></span>
+                  <span className="el-row__body">
+                    <span className="el-row__title">Mon classeur</span>
+                    <span className="el-row__meta">Fiches d’activité, fiches méthode, révisions</span>
+                  </span>
+                  <ChevronRight size={20} className="el-row__chev" aria-hidden />
+                </button>
+              )}
+              {tpCode && (
+                <button type="button" className="el-row" onClick={openTp}>
+                  <span className="el-icon-box"><FlaskConical size={22} strokeWidth={1.8} aria-hidden /></span>
+                  <span className="el-row__body">
+                    <span className="el-row__title">Mes TP</span>
+                    <span className="el-row__meta">Fiche, protocole et photos du groupe</span>
+                  </span>
+                  {activeTp && <span className="el-chip">En cours</span>}
+                  <ChevronRight size={20} className="el-row__chev" aria-hidden />
+                </button>
+              )}
+              {showAnnales && (
+                <button type="button" className="el-row" onClick={() => { setCoursPart('annales'); window.scrollTo(0, 0); }}>
+                  <span className="el-icon-box"><Archive size={22} strokeWidth={1.8} aria-hidden /></span>
+                  <span className="el-row__body">
+                    <span className="el-row__title">Annales du brevet</span>
+                    <span className="el-row__meta">Des sujets pour t’entraîner</span>
+                  </span>
+                  <ChevronRight size={20} className="el-row__chev" aria-hidden />
+                </button>
+              )}
+              <button type="button" className="el-row" onClick={() => { setCoursPart('ar'); window.scrollTo(0, 0); }}>
+                <span className="el-icon-box"><Box size={22} strokeWidth={1.8} aria-hidden /></span>
+                <span className="el-row__body">
+                  <span className="el-row__title">En 3D</span>
+                  <span className="el-row__meta">Vise une image de ton cours avec la caméra</span>
+                </span>
+                <ChevronRight size={20} className="el-row__chev" aria-hidden />
+              </button>
             </div>
           </>
         )}
-      </div>
+
+        {current === 'cours' && coursPart !== 'hub' && (
+          <>
+            <button type="button" className="el-back" onClick={() => { setCoursPart('hub'); window.scrollTo(0, 0); }}>
+              <ChevronLeft size={22} aria-hidden /> Cours
+            </button>
+            {coursPart === 'annales' && showAnnales ? <StudentAnnales /> : <StudentAr />}
+          </>
+        )}
+
+        {current === 'stamps' && (
+          <StudentStamps
+            stampData={stampData}
+            loading={stampLoading}
+            error={stampError}
+            bonusSaved={bonusSaved}
+            onSelectBonus={handleSelectBonus}
+          />
+        )}
+      </main>
+
+      <StudentNav active={current} available={available} onChange={goTo} />
+
+      {/* Le classeur de la classe, en plein écran par-dessus l'espace élève */}
+      {binderOpen && binderCode && <StudentBinderView binderKey={{ code: binderCode }} onClose={closeBinder} />}
+      {/* Les TP en groupes de l'élève, en plein écran */}
+      {tpOpen && tpCode && <StudentTp code={tpCode} pseudo={data.pseudo} className={data.class_name} onClose={closeTp} />}
     </div>
   );
 }
