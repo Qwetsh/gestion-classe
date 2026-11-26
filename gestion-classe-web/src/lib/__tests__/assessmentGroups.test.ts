@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { carnetHeaderChip, describeClassRow, groupAssessments, groupOf, groupStage, pendingDrafts, stageLabel } from '../assessmentGroups';
+import { carnetHeaderChip, describeClassRow, groupAssessments, groupOf, groupStage, hasCopies, pendingDrafts, stageLabel } from '../assessmentGroups';
 import type { CopyOverview } from '../copyStatus';
 import type { AssessmentRow } from '../evaluationQueries';
 
@@ -94,5 +94,14 @@ describe('stageLabel', () => {
     expect(stageLabel(overview({ stage: 'corrigee', graded: 24, validated: 24 }))).toBe('Corrigée');
     expect(stageLabel(overview({ stage: 'publiee' }))).toBe('Publiée');
     expect(pendingDrafts(undefined)).toBe(0);
+  });
+});
+
+describe('hasCopies', () => {
+  it('ouvre les copies papier à l’écrit, à l’activité notée et au devoir maison', () => {
+    expect(['ecrit', 'activite', 'dm'].map((kind) => hasCopies({ kind } as Pick<AssessmentRow, 'kind'>))).toEqual([true, true, true]);
+  });
+  it('pas de copies pour le TP, l’oral, le projet ni le TP de groupe', () => {
+    expect(['tp', 'oral', 'projet', 'groupe'].some((kind) => hasCopies({ kind } as Pick<AssessmentRow, 'kind'>))).toBe(false);
   });
 });
