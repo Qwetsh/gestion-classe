@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { mobileUrl } from '../../lib/mobileVersion';
 import { ShareUnavailableError, deleteShareToken, ensureShareToken, findShareToken, resolveLinkTarget } from '../../lib/mobileVersionQueries';
+import './course.css';
 
 interface Props {
   boardId: string;

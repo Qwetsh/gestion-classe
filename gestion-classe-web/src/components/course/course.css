@@ -20,7 +20,7 @@
 body.ce-open { overflow: hidden; }
 
 /* Variables de l'habillage : l'éditeur de cours (.ce-root) et le ruban du tableau blanc (.ce-chrome) */
-.ce-root, .ce-chrome, .ce-pres {
+.ce-root, .ce-chrome, .ce-pres, .ce-modal {
   --ce-accent: var(--indigo, #4F46E5);
   --ce-accent-soft: var(--indigo-soft, #EEF0FF);
   --ce-accent-ink: #3730A3;
