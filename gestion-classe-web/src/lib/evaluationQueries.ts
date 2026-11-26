@@ -554,6 +554,15 @@ export async function fetchKitSummaries(assessmentId: string): Promise<KitSummar
   return ((data || []) as KitSummaryRow[]).map(summarizeKit);
 }
 
+/** Titres de cours de Mes cours (sujet et corrigé reliés à une éval, migration 095). */
+export async function fetchBoardTitles(ids: string[]): Promise<Record<string, string>> {
+  const unique = [...new Set(ids.filter(Boolean))];
+  if (unique.length === 0) return {};
+  const { data, error } = await supabase.from('boards').select('id, title').in('id', unique);
+  if (error) return {};
+  return Object.fromEntries(((data || []) as { id: string; title: string }[]).map((b) => [b.id, b.title]));
+}
+
 /** Dernière modification d'un cours de la bibliothèque (correction retouchée depuis le kit ?). */
 export async function fetchBoardUpdatedAt(boardId: string): Promise<string | null> {
   const { data, error } = await supabase.from('boards').select('updated_at').eq('id', boardId).maybeSingle();

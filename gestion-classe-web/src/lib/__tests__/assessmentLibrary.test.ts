@@ -8,6 +8,7 @@ import {
   groupsForAssessment,
   hasLibraryLink,
   libraryColumns,
+  linkedDocBoardId,
   linkFromGroup,
   linkFromRow,
   matchLibrarySequence,
@@ -136,5 +137,18 @@ describe('summarizeKit', () => {
     expect(correctionChangedSince(k, '2026-11-21T08:00:00Z')).toBe(true);
     expect(correctionChangedSince(k, '2026-11-19T08:00:00Z')).toBe(false);
     expect(correctionChangedSince(k, null)).toBe(false);
+  });
+});
+
+describe('linkedDocBoardId', () => {
+  it('donne la fiche pour le sujet et la correction pour le corrigé', () => {
+    const row = { library_board_id: 'fiche', library_correction_board_id: 'corr' };
+    expect(linkedDocBoardId([row], 'subject')).toBe('fiche');
+    expect(linkedDocBoardId([row], 'correction')).toBe('corr');
+  });
+  it('prend la première éval reliée de la série, et rien sans lien', () => {
+    expect(linkedDocBoardId([{}, { library_correction_board_id: 'c2' }], 'correction')).toBe('c2');
+    expect(linkedDocBoardId([{ library_board_id: null }], 'subject')).toBeNull();
+    expect(linkedDocBoardId([], 'subject')).toBeNull();
   });
 });

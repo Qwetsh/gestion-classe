@@ -1,4 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { linkedDocBoardId } from '../lib/assessmentLibrary';
+import { courseHref } from '../lib/courseLibrary';
 import { CopyViewer } from './CopyViewer';
 import { MoreMenu, type MoreMenuItem } from './MoreMenu';
 import { ExportCorrectionsDialog, exportableSheets, type ExportableRow } from './ExportCorrectionsDialog';
@@ -35,6 +38,7 @@ import {
   fetchAssessmentTranscripts,
   fetchExpectedStudents,
   fetchLatestAiCorrections,
+  fetchBoardTitles,
   getDocUrl,
   purgeCopiesNow,
   updateAssessment,
@@ -105,6 +109,19 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
     await onReload();
     setViewerKey((k) => k + 1);
   };
+
+  // Activité de Mes cours reliée (migration 095) : sa fiche et sa correction tiennent lieu de
+  // sujet et de corrigé tant qu'aucun fichier n'est ajouté à la main.
+  const linkedSubject = linkedDocBoardId(group.items, 'subject');
+  const linkedCorrection = linkedDocBoardId(group.items, 'correction');
+  const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
+  useEffect(() => {
+    const ids = [linkedSubject, linkedCorrection].filter((x): x is string => !!x);
+    if (ids.length === 0) return;
+    let cancelled = false;
+    fetchBoardTitles(ids).then((t) => { if (!cancelled) setLinkedTitles(t); }, () => {});
+    return () => { cancelled = true; };
+  }, [linkedSubject, linkedCorrection]);
 
   const openDoc = async (path: string) => {
     const url = await getDocUrl(path);
@@ -320,7 +337,22 @@ export function AssessmentDetail({ group, overviews, sessionStarts, userId, open
                 style={{ display: 'none' }}
                 onChange={(e) => { void handleFile(kind, e.target.files?.[0]); e.target.value = ''; }}
               />
-              {path ? (
+              {!path && (kind === 'subject' ? linkedSubject : linkedCorrection) ? (() => {
+                const boardId = (kind === 'subject' ? linkedSubject : linkedCorrection)!;
+                return (
+                  <>
+                    <div style={{ fontSize: 13, color: 'var(--text)', marginBottom: 8 }}>
+                      {kind === 'subject' ? 'Fiche' : 'Correction'} de Mes cours : « {linkedTitles[boardId] ?? '…'} »
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <Link to={courseHref(boardId)} target="_blank" rel="noopener" style={{ ...btnPrimary, textDecoration: 'none' }}>Ouvrir</Link>
+                      <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>
+                        {uploading === kind ? 'Envoi…' : 'Ajouter un fichier à la place'}
+                      </button>
+                    </div>
+                  </>
+                );
+              })() : path ? (
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => openDoc(path)} style={btnPrimary}>Ouvrir</button>
                   <button onClick={() => inputRef.current?.click()} style={btnGhost} disabled={uploading === kind}>

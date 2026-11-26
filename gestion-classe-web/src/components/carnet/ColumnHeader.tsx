@@ -8,6 +8,8 @@ import { ClassCopiesDialog, type ClassCopyStudent } from '../ClassCopiesDialog';
 import { hasCopies } from '../../lib/assessmentGroups';
 import { coefLabel, columnDetailsSummary, raisesOnly, type ColumnLabel, type RelinkTarget } from '../../lib/columnHeader';
 import { exportAssessmentNotesXlsx } from '../../lib/gradeExport';
+import { linkedDocBoardId } from '../../lib/assessmentLibrary';
+import { courseHref } from '../../lib/courseLibrary';
 import {
   downloadAssessmentDoc,
   effectiveDocPath,
@@ -287,6 +289,19 @@ export function ColumnHeader({
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
                   </button>
                 </>
+              ) : linkedDocBoardId([assessment], kind) ? (
+                // Activité de Mes cours reliée (migration 095) : sa fiche ou sa correction tient lieu de document.
+                <Link
+                  role="menuitem"
+                  to={courseHref(linkedDocBoardId([assessment], kind)!)}
+                  target="_blank"
+                  rel="noopener"
+                  onClick={closeMenu}
+                  className="gc-colmenu__btn"
+                  title={kind === 'subject' ? 'La fiche de l’activité reliée, dans Mes cours' : 'La correction de l’activité reliée, dans Mes cours'}
+                >
+                  Mes cours
+                </Link>
               ) : (
                 <Link role="menuitem" to={`/evaluations/${assessment.id}`} onClick={() => { closeMenu(); onOpen(); }} className="gc-colmenu__btn gc-colmenu__btn--add">Ajouter</Link>
               )}
