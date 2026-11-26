@@ -10,7 +10,7 @@
 import { supabase } from './supabase';
 import { seedSignedUrls } from './boardMedia';
 import type { CourseDoc } from './course/courseDoc';
-import { mobileTarget, newMobileToken, type CourseRef } from './mobileVersion';
+import { linkTarget, newMobileToken, type CourseRef, type LinkKind } from './mobileVersion';
 
 // ---------------------------------------------------------------------------------------------
 // Professeur : le lien d'un document
@@ -44,7 +44,12 @@ const isMissingSource = (error: DbError) =>
  * sinon ; null pour une correction ou une évaluation (pas de QR code).
  */
 export async function resolveMobileTarget(boardId: string, title: string): Promise<string | null> {
-  if (mobileTarget({ id: boardId, title }, null) === null) return null;
+  return resolveLinkTarget('qr', boardId, title);
+}
+
+/** Le document vers lequel pointe un lien de cette sorte (QR code ou lien de partage) ; null : il ne peut pas sortir par ce lien. */
+export async function resolveLinkTarget(kind: LinkKind, boardId: string, title: string): Promise<string | null> {
+  if (linkTarget(kind, { id: boardId, title }, null) === null) return null;
   const own = await supabase.from('lesson_boards').select('source_board_id').eq('board_id', boardId).maybeSingle();
   // Sans la provenance (migration 077), une copie n'est pas reconnue : elle sert elle-même
   if (own.error && !isMissingSource(own.error)) throw own.error;
@@ -55,7 +60,7 @@ export async function resolveMobileTarget(boardId: string, title: string): Promi
     if (error) throw error;
     original = (data as CourseRef | null) ?? null;
   }
-  return mobileTarget({ id: boardId, title }, original);
+  return linkTarget(kind, { id: boardId, title }, original);
 }
 
 /** Jeton du lien d'un original, s'il en a déjà un (null : pas encore imprimé, ou migration absente). */
@@ -84,7 +89,50 @@ export async function ensureMobileToken(userId: string, targetId: string): Promi
 }
 
 // ---------------------------------------------------------------------------------------------
-// Téléphone : le document, par le jeton du QR code
+// Professeur : le lien de partage d'un document (table `board_share_links`, migration 092)
+// ---------------------------------------------------------------------------------------------
+
+/** Migration 092 pas appliquée : le partage n'est pas encore possible. */
+export class ShareUnavailableError extends Error {
+  constructor() { super('share_unavailable'); }
+}
+
+/** Jeton du lien de partage d'un original, s'il en a un (null : jamais partagé, ou lien coupé). */
+export async function findShareToken(targetId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('board_share_links').select('token').eq('board_id', targetId).maybeSingle();
+  if (isMissingTable(error, 'board_share_links')) throw new ShareUnavailableError();
+  if (error) throw error;
+  return (data as { token: string } | null)?.token ?? null;
+}
+
+/** Jeton du lien de partage d'un original, créé s'il n'existe pas. */
+export async function ensureShareToken(userId: string, targetId: string): Promise<string> {
+  const found = await findShareToken(targetId);
+  if (found) return found;
+  const token = newMobileToken();
+  const { error } = await supabase.from('board_share_links').insert({ board_id: targetId, user_id: userId, token });
+  if (isMissingTable(error, 'board_share_links')) throw new ShareUnavailableError();
+  // Créé entre-temps (autre onglet) : on prend celui-là
+  if (error?.code === '23505') {
+    const again = await findShareToken(targetId);
+    if (again) return again;
+  }
+  if (error) throw error;
+  return token;
+}
+
+/**
+ * Coupe le lien de partage : l'adresse déjà collée ne mène plus à rien. Un prochain partage crée
+ * une autre adresse. Le QR code des feuilles imprimées n'est pas touché (autre table, autre jeton).
+ */
+export async function deleteShareToken(targetId: string): Promise<void> {
+  const { error } = await supabase.from('board_share_links').delete().eq('board_id', targetId);
+  if (isMissingTable(error, 'board_share_links')) throw new ShareUnavailableError();
+  if (error) throw error;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Téléphone : le document, par le jeton du QR code ou du lien de partage
 // ---------------------------------------------------------------------------------------------
 
 /** `forbidden` : lien inconnu ou coupé, ou document qui ne peut plus sortir ; `not_found` : plus un cours rédigé ; `network` : pas de réponse. */
@@ -98,6 +146,8 @@ export class MobileDocError extends Error {
 
 export interface MobileDocument {
   title: string;
+  /** QR code imprimé ou lien de partage (cahier de texte). */
+  kind: LinkKind;
   doc: CourseDoc;
 }
 
@@ -106,7 +156,7 @@ export interface MobileDocument {
  * serveur, sont posées là où le rendu des cours les cherche.
  */
 export async function fetchMobileDoc(token: string): Promise<MobileDocument> {
-  const { data, error } = await supabase.functions.invoke<{ title?: unknown; doc?: unknown; images?: unknown }>('version-mobile', { body: { token } });
+  const { data, error } = await supabase.functions.invoke<{ title?: unknown; kind?: unknown; doc?: unknown; images?: unknown }>('version-mobile', { body: { token } });
   if (error) {
     const status = (error as { context?: { status?: number } }).context?.status;
     throw new MobileDocError(status === 403 ? 'forbidden' : status === 404 ? 'not_found' : status ? 'server' : 'network');
@@ -114,5 +164,5 @@ export async function fetchMobileDoc(token: string): Promise<MobileDocument> {
   const doc = data?.doc as CourseDoc | undefined;
   if (!doc || typeof doc !== 'object' || !doc.content || typeof doc.content !== 'object') throw new MobileDocError('server');
   if (data?.images && typeof data.images === 'object') seedSignedUrls(data.images as Record<string, string>);
-  return { title: typeof data?.title === 'string' ? data.title : '', doc };
+  return { title: typeof data?.title === 'string' ? data.title : '', kind: data?.kind === 'share' ? 'share' : 'qr', doc };
 }

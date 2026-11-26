@@ -37,6 +37,7 @@ import { setInvisibles } from './courseInvisibles';
 import { checkCourse, setLiveSpell, spellHits, spellKey, hideSpell, type SpellHit } from './courseSpell';
 import { CourseSpellPopover } from './CourseSpellPopover';
 import { CoursePrintDialog } from './CoursePrintDialog';
+import { CourseShareDialog } from './CourseShareDialog';
 import { buildTwoUp, printClasses, type PrintOptions } from './coursePrint';
 import { COL_W, MARGIN, PAGE_H, PAGE_W, SHEET_GAP } from '../../lib/course/coursePage';
 import { updateBoard } from '../../lib/boardsQueries';
@@ -247,6 +248,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
   useEffect(() => { modeRef.current = mode; }, [mode]);
   /** Fenêtre « Imprimer » / « Exporter en PDF » (lot T13). */
   const [printDialog, setPrintDialog] = useState<'print' | 'pdf' | null>(null);
+  /** Fenêtre « Partager en lecture seule » (lien du cahier de texte). */
+  const [shareOpen, setShareOpen] = useState(false);
   /**
    * Version téléphone (lib/mobileVersion.ts) : l'original vers lequel pointe le QR code imprimé
    * (null : correction, évaluation, ou pas encore connu) et le jeton de son lien (null : jamais imprimé).
@@ -1330,6 +1333,7 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
         editor={editor}
         onPrint={() => setPrintDialog('print')}
         onExportPdf={() => setPrintDialog('pdf')}
+        onShare={() => setShareOpen(true)}
         onRename={() => setRenaming(true)}
         onInsertImage={() => { replacePosRef.current = null; fileRef.current?.click(); }}
         onInsertQr={() => setQrOpen(true)}
@@ -1524,6 +1528,7 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
       {screensOpen === 'test' && <ScreensTest boardId={boardId} userId={userId} title={title} screens={screens} onClose={() => setScreensOpen(null)} />}
 
       {printDialog && <CoursePrintDialog pdf={printDialog === 'pdf'} onPrint={printWith} onClose={() => setPrintDialog(null)} />}
+      {shareOpen && <CourseShareDialog boardId={boardId} userId={userId} title={title} onClose={() => setShareOpen(false)} />}
 
       {spellPop && <CourseSpellPopover editor={editor} hit={spellPop.hit} rect={spellPop.rect} onClose={() => setSpellPop(null)} />}
 

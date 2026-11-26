@@ -711,6 +711,14 @@ body.ce-print-adapted .ce-doc em, body.ce-print-adapted .ce-doc i { font-style: 
 .ce-qrprint { display: none; }
 
 .ce-printd { width: min(560px, calc(100vw - 32px)); }
+/* Partager en lecture seule (CourseShareDialog) */
+.ce-shared { width: min(520px, calc(100vw - 32px)); }
+.ce-shared__link { display: flex; gap: 8px; }
+.ce-shared__link .ce-input { flex: 1; min-width: 0; height: 30px; font-size: 12px; }
+.ce-shared__warn { margin: 0; padding: 8px 10px; border-radius: 6px; background: #FEF3C7; color: #92400E; font-size: 12px; }
+.ce-shared__ok { margin: 0; font-size: 12px; color: #047857; }
+.ce-shared__confirm { flex: 1; font-size: 12px; color: #B91C1C; }
+a.ce-btn { display: inline-flex; align-items: center; text-decoration: none; color: inherit; }
 .ce-printd__row { display: flex; flex-direction: column; gap: 6px; }
 .ce-printd__choices { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
 .ce-printd__choice { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 8px 10px; border: 1px solid var(--ce-line-2); border-radius: 8px; background: #fff; cursor: pointer; font: 12px/1.35 Inter, sans-serif; color: var(--ce-muted); }
