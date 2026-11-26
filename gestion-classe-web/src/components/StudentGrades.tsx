@@ -59,7 +59,7 @@ function averageOf(rows: StudentAssessment[], period: number | null): number | n
       .filter((a) => period === null || a.period === period)
       .map((a) => ({
         entry: { studentId: 'me', grade: a.grade, status: a.status as GradeStatus },
-        assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average },
+        assessment: { coefficient: Number(a.coefficient) || 0, countsInAverage: a.counts_in_average, onlyIfRaises: !!a.only_if_raises_average },
       })),
   );
 }
@@ -154,6 +154,7 @@ export function StudentGrades({ code }: { code: string }) {
                     T{a.period ?? '?'} · coef {Number(a.coefficient)}
                     {a.date ? ` · ${new Date(a.date).toLocaleDateString('fr-FR')}` : ''}
                     {!a.counts_in_average && ' · ne compte pas dans la moyenne'}
+                    {a.counts_in_average && a.only_if_raises_average && ' · compte seulement si elle fait monter ta moyenne'}
                   </div>
                 </div>
                 {hasGrade ? (

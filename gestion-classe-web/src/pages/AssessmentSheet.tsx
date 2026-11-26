@@ -11,6 +11,7 @@ import { ActivityClassPanel } from '../components/productions/ActivityClassPanel
 import { fetchActivityForAssessment, type ActivityRow } from '../lib/productionsQueries';
 import { groupOf, hasCopies, hasCopyContent, neverScanned } from '../lib/assessmentGroups';
 import { sequencesPresent } from '../lib/carnetView';
+import { RAISES_ONLY_LABEL, raisesOnly } from '../lib/columnHeader';
 import type { CopyOverview } from '../lib/copyStatus';
 import { describeGrades, type GradeEntry, type GradeStatus } from '../lib/gradeStats';
 import {
@@ -203,6 +204,7 @@ export function AssessmentSheet() {
                 {focus.period ? ` · T${focus.period}` : ''}
                 {focus.sequence ? ` · ${focus.sequence}` : ''}
                 {!focus.counts_in_average && ' · hors moyenne'}
+                {raisesOnly(focus) && ` · ${RAISES_ONLY_LABEL}`}
                 {group.items.length > 1 ? ' · sujet et corrigé communs' : ''}
               </div>
             </div>
@@ -295,6 +297,7 @@ export function AssessmentSheet() {
             kind: focus.kind,
             date: focus.date ?? '',
             countsInAverage: focus.counts_in_average,
+            onlyIfRaises: !!focus.only_if_raises_average,
             shortName: focus.short_name ?? '',
             sequence: focus.sequence ?? '',
           }}
@@ -312,6 +315,8 @@ export function AssessmentSheet() {
               coefficient: values.coefficient,
               kind: values.kind,
               countsInAverage: values.countsInAverage,
+              // Envoyé seulement s'il change : une base sans la migration 093 accepte le reste.
+              ...(values.onlyIfRaises !== !!focus.only_if_raises_average ? { onlyIfRaisesAverage: values.onlyIfRaises } : {}),
               shortName: values.shortName,
               sequence: values.sequence,
             };
