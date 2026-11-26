@@ -5,6 +5,7 @@ import { describeGrades, effectiveGrade, studentAverage, toNumber, toTwenty, typ
 import { computeCopyOverview, extendedPurgeDate, type CopyGradeInput, type CopyOverview } from './copyStatus';
 import { planCopyPurge } from './copyTranscript';
 import { latestRunByStudent, type AiCorrectionMode, type AiCorrectionRun } from './aiCorrection';
+import { libraryColumns, summarizeKit, type KitSummary, type KitSummaryRow, type LibraryLink } from './assessmentLibrary';
 
 // Buckets (memes noms que cote mobile / migrations)
 const COPIES_BUCKET = 'assessment-copies';
@@ -137,6 +138,10 @@ export interface AssessmentRow {
   sequence?: string | null;
   /** Migration 063 : séance de groupe dont l'éval (kind = groupe) reprend les notes. */
   group_session_id?: string | null;
+  /** Migration 095 : fiche, documents et correction de l'activité de Mes cours choisie. */
+  library_board_id?: string | null;
+  library_documents_board_id?: string | null;
+  library_correction_board_id?: string | null;
   assessment_series?: AssessmentSeriesRow | null;
 }
 
@@ -244,6 +249,8 @@ export interface CreateAssessmentInput {
   /** Migration 060 : envoyes seulement s'ils sont renseignes (une base sans la migration accepte le reste). */
   shortName?: string | null;
   sequence?: string | null;
+  /** Migration 095 : activite de Mes cours ; envoyee seulement si elle est choisie. */
+  library?: LibraryLink | null;
 }
 
 /** Cree une evaluation depuis le web. Renvoie la ligne creee. */
@@ -267,6 +274,7 @@ export async function createAssessment(input: CreateAssessmentInput): Promise<As
       counts_in_average: input.countsInAverage ?? true,
       ...(input.onlyIfRaisesAverage ? { only_if_raises_average: true } : {}),
       ...optionalLabels(input),
+      ...libraryColumns(input.library),
     })
     .select(ASSESSMENT_SELECT)
     .single();
@@ -531,6 +539,43 @@ export async function hasCorrectionKit(assessmentId: string): Promise<boolean> {
   if (isMissingTable(error)) return false;
   if (error) throw error;
   return (count ?? 0) > 0;
+}
+
+/**
+ * Kits de l'éval, résumés (barème, origine) : affichés au-dessus des copies, pour vérifier le
+ * barème d'un kit préparé depuis Mes cours (migration 095).
+ */
+export async function fetchKitSummaries(assessmentId: string): Promise<KitSummary[]> {
+  const { data, error } = await supabase
+    .from('assessment_correction_kits')
+    .select('version_key, source:kit->>source, questions:kit->bareme->questions, library:kit->library')
+    .eq('assessment_id', assessmentId);
+  if (error) return [];
+  return ((data || []) as KitSummaryRow[]).map(summarizeKit);
+}
+
+/** Dernière modification d'un cours de la bibliothèque (correction retouchée depuis le kit ?). */
+export async function fetchBoardUpdatedAt(boardId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('boards').select('updated_at').eq('id', boardId).maybeSingle();
+  if (error) throw error;
+  return (data as { updated_at: string } | null)?.updated_at ?? null;
+}
+
+/**
+ * Retire les kits préparés depuis Mes cours qui ne correspondent plus à l'activité de l'éval
+ * (activité changée ou retirée) : le prochain « Corriger » repart de la bonne correction. Les kits
+ * du Correcteur ne sont jamais touchés.
+ */
+export async function dropLibraryKits(assessmentIds: string[], keepCorrectionId: string | null = null): Promise<void> {
+  if (assessmentIds.length === 0) return;
+  let q = supabase
+    .from('assessment_correction_kits')
+    .delete()
+    .in('assessment_id', assessmentIds)
+    .eq('kit->>source', 'bibliotheque');
+  if (keepCorrectionId) q = q.neq('kit->library->>correction_board_id', keepCorrectionId);
+  const { error } = await q;
+  if (error && !isMissingTable(error)) throw error;
 }
 
 /** Dernier appel de correction automatique de chaque élève de l'éval. */
@@ -1099,6 +1144,8 @@ export interface UpdateAssessmentInput {
   /** Migration 060. Chaîne vide = effacer. */
   shortName?: string | null;
   sequence?: string | null;
+  /** Migration 095. Lien vide = effacer ; absent = ne rien toucher. */
+  library?: LibraryLink | null;
 }
 
 /** Modifie une évaluation. Ne propage rien à sa série : la propagation est un geste explicite. */
@@ -1115,12 +1162,13 @@ export async function updateAssessment(assessmentId: string, patch: UpdateAssess
   if (patch.onlyIfRaisesAverage !== undefined) row.only_if_raises_average = patch.onlyIfRaisesAverage;
   if (patch.publishedToStudents !== undefined) row.published_to_students = patch.publishedToStudents;
   if (patch.correctionsWithheld !== undefined) row.corrections_withheld = patch.correctionsWithheld;
-  Object.assign(row, optionalLabels(patch, true));
+  Object.assign(row, optionalLabels(patch, true), libraryColumns(patch.library, true));
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from('written_assessments').update(row).eq('id', assessmentId);
   if (error) throw error;
 
+  if (patch.library !== undefined) await dropLibraryKits([assessmentId], patch.library?.correctionId ?? null);
   if (patch.baremeTotal !== undefined) await recomputeGradesForBareme(assessmentId, patch.baremeTotal);
 }
 
@@ -1184,6 +1232,7 @@ export interface CreateSeriesInput {
   onlyIfRaisesAverage?: boolean;
   shortName?: string | null;
   sequence?: string | null;
+  library?: LibraryLink | null;
 }
 
 /**
@@ -1232,6 +1281,7 @@ export async function createAssessmentSeries(input: CreateSeriesInput): Promise<
         counts_in_average: input.countsInAverage ?? true,
         ...(input.onlyIfRaisesAverage ? { only_if_raises_average: true } : {}),
         ...optionalLabels(input),
+        ...libraryColumns(input.library),
       })),
     )
     .select(ASSESSMENT_SELECT);
@@ -1554,7 +1604,7 @@ export async function updateSeriesAssessments(
   if (patch.kind !== undefined) row.kind = patch.kind;
   if (patch.countsInAverage !== undefined) row.counts_in_average = patch.countsInAverage;
   if (patch.onlyIfRaisesAverage !== undefined) row.only_if_raises_average = patch.onlyIfRaisesAverage;
-  Object.assign(row, optionalLabels(patch, true));
+  Object.assign(row, optionalLabels(patch, true), libraryColumns(patch.library, true));
   // La date n'est jamais propagée : chaque classe passe l'évaluation son jour.
   if (Object.keys(row).length === 0) return;
 
@@ -1574,6 +1624,9 @@ export async function updateSeriesAssessments(
     .eq('is_deleted', false);
   if (error) throw error;
 
+  if (patch.library !== undefined) {
+    await dropLibraryKits(((before || []) as { id: string }[]).map((a) => a.id), patch.library?.correctionId ?? null);
+  }
   if (patch.baremeTotal !== undefined) {
     const bareme = patch.baremeTotal;
     for (const a of (before || []) as { id: string; bareme_total: number | null }[]) {

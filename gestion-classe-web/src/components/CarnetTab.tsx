@@ -1105,6 +1105,7 @@ export function CarnetTab({ userId, account, onError }: {
           currentClassId={classId}
           sequences={sequencesPresent(assessments)}
           defaultSequence={filters.sequence !== 'all' ? filters.sequence : ''}
+          userId={userId}
           onClose={() => setShowCreate(false)}
           onSubmit={async (values) => {
             const targets = values.classIds ?? [classId];
@@ -1125,6 +1126,7 @@ export function CarnetTab({ userId, account, onError }: {
                 onlyIfRaisesAverage: values.onlyIfRaises,
                 shortName: values.shortName,
                 sequence: values.sequence,
+                library: values.library,
               });
             } else {
               await createAssessment({
@@ -1141,6 +1143,7 @@ export function CarnetTab({ userId, account, onError }: {
                 onlyIfRaisesAverage: values.onlyIfRaises,
                 shortName: values.shortName,
                 sequence: values.sequence,
+                library: values.library,
               });
             }
             setShowCreate(false);
