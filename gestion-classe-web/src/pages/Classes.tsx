@@ -7,7 +7,7 @@ import { useIsMobile, useIsNarrowViewport } from '../hooks/useIsMobile';
 import { Layout } from '../components/Layout';
 import { RoomModal } from '../components/RoomModal';
 import type { Room, TableGroup } from '../components/RoomModal';
-import { getCurrentSchoolYear, GRADE_CONFIG } from '../lib/constants';
+import { getCurrentSchoolYear } from '../lib/constants';
 import * as XLSX from 'xlsx';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
 import { ClassChip, Icon } from '../components/design-system';
@@ -19,51 +19,19 @@ import { AccommodationBadges } from '../components/AccommodationBadges';
 import { SeatingGeneratorModal } from '../components/SeatingGeneratorModal';
 import { Sparkles, X } from 'lucide-react';
 import { MoreMenu } from '../components/MoreMenu';
+import {
+  fetchClassesWithCounts,
+  fetchClassRoomPlan,
+  fetchClassStudents,
+  fetchRooms,
+  fetchSeatGrades,
+  type ClassRoomPlan,
+  type ClassStudent as Student,
+  type ClassWithCount as Class,
+  type Positions,
+} from '../lib/classesPageQueries';
+import type { SeatGrade as StudentGradeData } from '../lib/seatGrades';
 
-interface Class {
-  id: string;
-  name: string;
-  created_at: string;
-  students_count: number;
-}
-
-interface Student {
-  id: string;
-  pseudo: string;
-  created_at: string;
-  gender?: 'M' | 'F' | null;
-  has_pap?: boolean;
-  has_ppre?: boolean;
-  has_pai?: boolean;
-}
-
-interface StudentGradeData {
-  studentId: string;
-  participations: number;
-  malus: number;
-  absences: number;
-  grade: number;
-  sparkHistory: (number | null)[];
-  trend: 'up' | 'down' | 'flat';
-  trendDelta: number;
-}
-
-interface ClassConfig {
-  target_participations: number;
-  total_sessions_expected: number;
-  bavardage_penalty: boolean;
-  base_grade: number | null;
-}
-
-// Positions format: "row-col" -> studentId (compatible with mobile app)
-type Positions = Record<string, string>;
-
-interface ClassRoomPlan {
-  id: string;
-  class_id: string;
-  room_id: string;
-  positions: Positions;
-}
 
 type DragItem = { studentId: string; fromCell?: { row: number; col: number } };
 
@@ -273,39 +241,10 @@ export function Classes() {
     setLoadError(null);
 
     try {
-      const { data: classesData, error } = await supabase
-        .from('classes')
-        .select('id, name, created_at')
-        .eq('user_id', user.id)
-        .order('name');
-
-      if (error) throw error;
-
-      if (classesData && classesData.length > 0) {
-        const classIds = classesData.map(c => c.id);
-        const { data: allStudents, error: studentsError } = await supabase
-          .from('students')
-          .select('class_id')
-          .in('class_id', classIds);
-
-        if (studentsError) throw studentsError;
-
-        const countByClass = new Map<string, number>();
-        (allStudents || []).forEach(s => {
-          const count = countByClass.get(s.class_id) || 0;
-          countByClass.set(s.class_id, count + 1);
-        });
-
-        const classesWithCounts = classesData.map((cls) => ({
-          ...cls,
-          students_count: countByClass.get(cls.id) || 0,
-        }));
-        setClasses(classesWithCounts);
-        const requested = requestedClassId ? classesWithCounts.find(c => c.id === requestedClassId) : undefined;
-        if (requested) setSelectedClass(prev => prev ?? requested);
-      } else {
-        setClasses([]);
-      }
+      const classesWithCounts = await fetchClassesWithCounts(user.id);
+      setClasses(classesWithCounts);
+      const requested = requestedClassId ? classesWithCounts.find(c => c.id === requestedClassId) : undefined;
+      if (requested) setSelectedClass(prev => prev ?? requested);
     } catch (err) {
       console.error('Error loading classes:', err);
       setLoadError('Erreur lors du chargement des classes.');
@@ -317,16 +256,7 @@ export function Classes() {
   const loadRooms = async () => {
     if (!user) return;
     try {
-      const { data, error } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('name');
-      if (error) throw error;
-      setRooms((data || []).map(r => ({
-        ...r,
-        disabled_cells: r.disabled_cells || []
-      })));
+      setRooms(await fetchRooms(user.id));
     } catch (err) {
       console.error('Error loading rooms:', err);
       setLoadError('Erreur lors du chargement des salles.');
@@ -425,16 +355,10 @@ export function Classes() {
 
   const loadStudents = async (classId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, pseudo, created_at, gender, has_pap, has_ppre, has_pai')
-        .eq('class_id', classId)
-        .order('pseudo');
+      const data = await fetchClassStudents(classId);
+      setStudents(data);
 
-      if (error) throw error;
-      setStudents(data || []);
-
-      if (data && data.length > 0) {
+      if (data.length > 0) {
         await loadStudentGrades(classId, data.map(s => s.id));
       } else {
         setStudentGrades(new Map());
@@ -451,139 +375,7 @@ export function Classes() {
     if (!user || studentIds.length === 0) return;
 
     try {
-      const { data: configData } = await supabase
-        .from('class_trimester_config')
-        .select('*')
-        .eq('class_id', classId)
-        .single();
-
-      const config: ClassConfig = configData ? {
-        target_participations: configData.target_participations,
-        total_sessions_expected: configData.total_sessions_expected,
-        bavardage_penalty: configData.bavardage_penalty ?? false,
-        base_grade: configData.base_grade ?? null,
-      } : {
-        target_participations: GRADE_CONFIG.DEFAULT_TARGET_PARTICIPATIONS,
-        total_sessions_expected: GRADE_CONFIG.DEFAULT_SESSIONS_EXPECTED,
-        bavardage_penalty: false,
-        base_grade: null,
-      };
-
-      const { data: settingsData } = await supabase
-        .from('trimester_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
-      const currentTrimester = settingsData?.current_trimester || 1;
-      const currentSchoolYear = settingsData?.school_year || getCurrentSchoolYear();
-
-      const { data: boundaryData } = await supabase
-        .from('trimester_boundaries')
-        .select('started_at')
-        .eq('user_id', user.id)
-        .eq('trimester', currentTrimester)
-        .eq('school_year', currentSchoolYear)
-        .single();
-
-      const trimesterStartDate = boundaryData?.started_at || new Date(0).toISOString();
-
-      // Paginate events query to bypass Supabase's 1000-row default limit
-      const EVENTS_PAGE_SIZE = 1000;
-      const allEventsData: any[] = [];
-      let eventsFrom = 0;
-      let hasMoreEvents = true;
-
-      while (hasMoreEvents) {
-        const { data, error: eventsError } = await supabase
-          .from('events')
-          .select('student_id, type, session_id')
-          .in('student_id', studentIds)
-          .gte('timestamp', trimesterStartDate)
-          .range(eventsFrom, eventsFrom + EVENTS_PAGE_SIZE - 1);
-
-        if (eventsError) {
-          console.error('Error loading events:', eventsError);
-          break;
-        }
-
-        if (data && data.length > 0) {
-          allEventsData.push(...data);
-        }
-
-        hasMoreEvents = data !== null && data.length === EVENTS_PAGE_SIZE;
-        eventsFrom += EVENTS_PAGE_SIZE;
-      }
-
-      const eventsData = allEventsData;
-
-      const { data: manualData } = await supabase
-        .from('manual_participations')
-        .select('student_id, count')
-        .in('student_id', studentIds)
-        .eq('trimester', currentTrimester)
-        .eq('school_year', currentSchoolYear);
-
-      const gradesMap = new Map<string, StudentGradeData>();
-
-      studentIds.forEach(studentId => {
-        const studentEvents = (eventsData || []).filter(e => e.student_id === studentId);
-        const participations = studentEvents.filter(e => e.type === 'participation').length;
-        const malus = studentEvents.filter(e => e.type === 'bavardage').length;
-        const absences = studentEvents.filter(e => e.type === 'absence').length;
-
-        const manualCount = (manualData || [])
-          .filter(m => m.student_id === studentId)
-          .reduce((sum, m) => sum + m.count, 0);
-
-        const totalParticipations = participations + manualCount;
-
-        let grade: number;
-        if (config.base_grade !== null && config.base_grade > 0) {
-          const modifier = config.bavardage_penalty
-            ? totalParticipations - malus
-            : totalParticipations;
-          grade = Math.min(20, Math.max(0, config.base_grade + modifier));
-        } else {
-          const effectiveParticipations = config.bavardage_penalty
-            ? Math.max(0, totalParticipations - malus)
-            : totalParticipations;
-          const reductionPerAbsence = config.target_participations / config.total_sessions_expected;
-          const adjustedTarget = Math.max(1, config.target_participations - (absences * reductionPerAbsence));
-          grade = Math.min(20, Math.max(0, (effectiveParticipations / adjustedTarget) * 20));
-        }
-
-        // Compute sparkline history (last 10 sessions)
-        const sessionGroups: Record<string, { pos: number; neg: number }> = {};
-        studentEvents.forEach(e => {
-          const sid = e.session_id;
-          if (!sid) return;
-          if (!sessionGroups[sid]) sessionGroups[sid] = { pos: 0, neg: 0 };
-          if (e.type === 'participation') sessionGroups[sid].pos++;
-          else if (e.type === 'bavardage') sessionGroups[sid].neg++;
-        });
-        const sessionScores = Object.values(sessionGroups).map(g => Math.max(-2, Math.min(2, g.pos - g.neg)));
-        const sparkHistory: (number | null)[] = Array(10).fill(null);
-        const last10 = sessionScores.slice(-10);
-        last10.forEach((v, i) => { sparkHistory[10 - last10.length + i] = v; });
-
-        // Compute trend
-        const nonNull = sparkHistory.filter(v => v !== null) as number[];
-        let trendDelta = 0;
-        if (nonNull.length >= 2) {
-          const mid = Math.floor(nonNull.length / 2);
-          const first = nonNull.slice(0, mid);
-          const second = nonNull.slice(mid);
-          const avg1 = first.reduce((a, b) => a + b, 0) / first.length;
-          const avg2 = second.reduce((a, b) => a + b, 0) / second.length;
-          trendDelta = avg2 - avg1;
-        }
-        const trend: 'up' | 'down' | 'flat' = trendDelta > 0.15 ? 'up' : trendDelta < -0.15 ? 'down' : 'flat';
-
-        gradesMap.set(studentId, { studentId, participations: totalParticipations, malus, absences, grade, sparkHistory, trend, trendDelta });
-      });
-
-      setStudentGrades(gradesMap);
+      setStudentGrades(await fetchSeatGrades(user.id, classId, studentIds, getCurrentSchoolYear()));
     } catch (err) {
       console.error('Error loading student grades:', err);
     }
@@ -601,14 +393,7 @@ export function Classes() {
 
   const loadPlan = async (classId: string, roomId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('class_room_plans')
-        .select('*')
-        .eq('class_id', classId)
-        .eq('room_id', roomId)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
+      const data = await fetchClassRoomPlan(classId, roomId);
 
       if (data) {
         setPlan(data);
