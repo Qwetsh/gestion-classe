@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabaseUntyped';
 import { fetchSessionPhotos, getPhotoUrl, type GroupSessionPhoto } from './groupSessionPhotos';
 
 /**

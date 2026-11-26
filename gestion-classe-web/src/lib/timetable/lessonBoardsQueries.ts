@@ -8,7 +8,7 @@
  *
  * Table absente (migration non appliquée) : listes vides, création refusée avec un message.
  */
-import { supabase } from '../supabase';
+import { supabase } from '../supabaseUntyped';
 import { copyBoardPages, createBoard, deleteBoard, levelFromClassName } from '../boardsQueries';
 import { fetchBoardPages, upsertBoardPages } from '../boardQueries';
 import { lessonNoteKey } from './lessonNotesQueries';

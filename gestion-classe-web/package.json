@@ -13,6 +13,7 @@
     "test": "node scripts/garde-fous.mjs && vitest run",
     "garde-fous": "node scripts/garde-fous.mjs",
     "garde-fous:maj": "node scripts/garde-fous.mjs --maj",
+    "db:types": "node scripts/gen-db-types.mjs",
     "course:check": "vitest run src/components/course/__tests__/courseDrafts.test.ts",
     "screens:check": "vitest run src/components/course/__tests__/screensDrafts.test.ts",
     "preview": "vite preview",

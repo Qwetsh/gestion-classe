@@ -1,8 +1,11 @@
-// Garde-fous de structure du code web. Deux règles, toutes deux « à cliquet » :
+// Garde-fous de structure du code web. Trois règles, toutes « à cliquet » :
 //
 //   1. Aucun fichier de plus de 1 500 lignes ne grossit, et aucun nouveau fichier ne dépasse ce seuil.
 //   2. Aucun nouvel accès à la base (supabase.from / rpc / storage / functions) n'est écrit hors de
 //      src/lib/ : les pages et les composants passent par une fonction de src/lib/.
+//   3. Aucun nouveau fichier n'utilise le client sans description de la base
+//      (src/lib/supabaseUntyped.ts) : le code nouveau importe src/lib/supabase.ts, que TypeScript
+//      contrôle contre database.types.ts.
 //
 // L'existant est toléré : il est consigné dans garde-fous.json, et seul ce qui l'aggrave fait
 // échouer le contrôle. Quand un fichier maigrit, `npm run garde-fous:maj` abaisse sa ligne.
@@ -21,6 +24,9 @@ const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(RACINE, 'src');
 const REFERENCE = join(RACINE, 'garde-fous.json');
 const SEUIL_LIGNES = 1500;
+// Fichiers générés par un script : leur longueur n'est pas un signe de dette.
+const FICHIERS_GENERES = new Set(['src/lib/database.types.ts']);
+const CLIENT_SANS_TYPES = /from\s+['"][./\w]*supabaseUntyped['"]/;
 const ACCES_BASE = /\bsupabase\s*\.\s*(?:from|rpc|storage|functions)\b/g;
 
 function fichiersSource(dossier) {
@@ -49,17 +55,19 @@ function trie(objet) {
 function etatActuel() {
   const grosFichiers = {};
   const accesBaseHorsLib = {};
+  const clientSansTypes = [];
   for (const chemin of fichiersSource(SRC)) {
     const nom = relative(RACINE, chemin).split('\\').join('/');
     const texte = readFileSync(chemin, 'utf8');
     const lignes = nombreDeLignes(texte);
-    if (lignes > SEUIL_LIGNES) grosFichiers[nom] = lignes;
+    if (lignes > SEUIL_LIGNES && !FICHIERS_GENERES.has(nom)) grosFichiers[nom] = lignes;
+    if (CLIENT_SANS_TYPES.test(texte)) clientSansTypes.push(nom);
     if (!nom.startsWith('src/lib/')) {
       const acces = (texte.match(ACCES_BASE) ?? []).length;
       if (acces > 0) accesBaseHorsLib[nom] = acces;
     }
   }
-  return { grosFichiers: trie(grosFichiers), accesBaseHorsLib: trie(accesBaseHorsLib) };
+  return { grosFichiers: trie(grosFichiers), accesBaseHorsLib: trie(accesBaseHorsLib), clientSansTypes: clientSansTypes.sort((a, b) => a.localeCompare(b)) };
 }
 
 function compare(actuel, reference, messageNouveau, messageHausse) {
@@ -86,7 +94,7 @@ if (process.argv.includes('--maj')) {
     ...actuel,
   };
   writeFileSync(REFERENCE, `${JSON.stringify(contenu, null, 2)}\n`, 'utf8');
-  console.log(`garde-fous.json réécrit : ${Object.keys(actuel.grosFichiers).length} fichiers de plus de ${SEUIL_LIGNES} lignes, ${Object.keys(actuel.accesBaseHorsLib).length} fichiers hors de src/lib/ qui parlent à la base.`);
+  console.log(`garde-fous.json réécrit : ${Object.keys(actuel.grosFichiers).length} fichiers de plus de ${SEUIL_LIGNES} lignes, ${Object.keys(actuel.accesBaseHorsLib).length} fichiers hors de src/lib/ qui parlent à la base, ${actuel.clientSansTypes.length} fichiers sur le client sans description.`);
   process.exit(0);
 }
 
@@ -105,8 +113,16 @@ const acces = compare(
   (nom, valeur, admis) => `${nom} est passé de ${admis} à ${valeur} appels supabase directs. Écrire la nouvelle requête dans une fonction de src/lib/.`,
 );
 
-const erreurs = [...lignes.erreurs, ...acces.erreurs];
-const baisses = [...lignes.baisses, ...acces.baisses];
+const admisSansTypes = new Set(reference.clientSansTypes ?? []);
+const nouveauxSansTypes = actuel.clientSansTypes
+  .filter((nom) => !admisSansTypes.has(nom))
+  .map((nom) => `${nom} importe le client sans description de la base (supabaseUntyped). Importer src/lib/supabase.ts, et lancer \`npm run db:types\` si la table ou la fonction est nouvelle.`);
+const sortisSansTypes = [...admisSansTypes]
+  .filter((nom) => !actuel.clientSansTypes.includes(nom))
+  .map((nom) => `${nom} : n'utilise plus le client sans description`);
+
+const erreurs = [...lignes.erreurs, ...acces.erreurs, ...nouveauxSansTypes];
+const baisses = [...lignes.baisses, ...acces.baisses, ...sortisSansTypes];
 
 if (erreurs.length > 0) {
   console.error('Garde-fous de structure : contrôle en échec.\n');
@@ -115,7 +131,7 @@ if (erreurs.length > 0) {
   process.exit(1);
 }
 
-console.log(`Garde-fous de structure : conformes (${Object.keys(actuel.grosFichiers).length} gros fichiers tolérés, ${Object.keys(actuel.accesBaseHorsLib).length} fichiers hors de src/lib/ qui parlent à la base).`);
+console.log(`Garde-fous de structure : conformes (${Object.keys(actuel.grosFichiers).length} gros fichiers tolérés, ${Object.keys(actuel.accesBaseHorsLib).length} fichiers hors de src/lib/ qui parlent à la base, ${actuel.clientSansTypes.length} fichiers sur le client sans description).`);
 if (baisses.length > 0) {
   console.log('Progrès à enregistrer par `npm run garde-fous:maj` :');
   for (const baisse of baisses) console.log(`  - ${baisse}`);

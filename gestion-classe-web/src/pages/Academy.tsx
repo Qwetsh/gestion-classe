@@ -8,7 +8,7 @@ import {
   type HouseId, type AcademyAssignment, type AcademyHouseBonus, type HousePoints,
 } from '../lib/academyQueries';
 import { calculateStudentScores, runSortingAlgorithm, saveSortingResults, type StudentScores, type SortingResult } from '../lib/sortingAlgorithm';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseUntyped';
 import { Starfield, Ornament, WaxSeal, GoldParticles, RollingNumber } from '../components/academy/Atmosphere';
 import { HouseCrest } from '../components/academy/HouseCrest';
 import { HOUSE_DATA, HOUSE_LIST, type HouseData } from '../components/academy/houses';
