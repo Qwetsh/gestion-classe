@@ -30,6 +30,13 @@ Une skill ne se modifie donc qu'ici, sur une branche, par une PR ; jamais dans `
 - **Le dépôt est public.** Rien de personnel n'y entre : ni nom d'élève réel, ni document de classe, ni correction d'évaluation, ni secret. Les fichiers de travail posés à la racine sont ignorés par git ; ne pas forcer leur ajout.
 - **Dire ce qui n'a pas été vérifié.** Un écran non ouvert, une fonction non essayée avec un vrai compte, un APK non essayé sur téléphone : l'écrire dans la PR et le dire à Thomas.
 
+### Deux règles de structure (web), contrôlées par `npm test`
+
+- **La base se lit et s'écrit depuis `src/lib/`.** Une page ou un composant n'appelle pas `supabase.from`, `.rpc`, `.storage` ni `.functions` : il appelle une fonction de `src/lib/`, qui se teste sans écran.
+- **Un fichier de plus de 1 500 lignes ne grossit pas**, et aucun nouveau fichier ne dépasse ce seuil. Pour y ajouter du code, en sortir d'abord (logique dans `src/lib/`, sous-composants à part).
+
+L'existant est toléré et consigné dans `gestion-classe-web/garde-fous.json` ; `scripts/garde-fous.mjs` fait échouer `npm test` dès qu'une de ces deux mesures s'aggrave. Quand un fichier maigrit, `npm run garde-fous:maj` enregistre le progrès. La même commande enregistre aussi une hausse : la réserver à un cas justifié, écrit dans la PR.
+
 ## Base de données et fonctions serveur
 
 Projet Supabase « Class'it » (`djodkjysovalpufgevrr`), partagé avec d'autres applications de Thomas.
