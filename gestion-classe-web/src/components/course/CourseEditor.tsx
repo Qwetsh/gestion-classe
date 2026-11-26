@@ -16,6 +16,7 @@ import { NodeSelection } from '@tiptap/pm/state';
 import { courseExtensions } from './courseExtensions';
 import { docProblem } from './courseCheck';
 import { relayoutNow } from './coursePagination';
+import { fitLegacyTables } from './courseTable';
 import { CourseRibbon } from './CourseRibbon';
 import { Icon } from './courseIcons';
 import {
@@ -1134,7 +1135,8 @@ function CourseEditorInner({ boardId, userId, loaded, startInScreens, onClose }:
     if (!editor) return;
     setSettings(doc.settings ?? {});
     settingsRef.current = doc.settings ?? {};
-    editor.commands.setContent(doc.content, { emitUpdate });
+    // Une ancienne version garde les largeurs de tableau de la colonne de 2,5 cm : on les élargit
+    editor.commands.setContent(fitLegacyTables(doc.content), { emitUpdate });
     const items = doc.layer?.items ?? [];
     layerRef.current = items;
     setLayerItems(items);

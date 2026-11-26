@@ -50,9 +50,10 @@ describe('répartition en pages', () => {
   });
 
   it('un titre en bas de page part avec le début du bloc suivant', () => {
-    const units = stack(31, 30, 0);
-    // Le 31e bloc (dernier qui tient) devient un titre suivi d'un paragraphe qui ne tient plus
-    const title = units[30];
+    const n = Math.floor(CONTENT_H / 30);
+    const units = stack(n, 30, 0);
+    // Le dernier bloc qui tient devient un titre suivi d'un paragraphe qui ne tient plus
+    const title = units[n - 1];
     title.type = 'heading';
     units.push({ pos: 999, top: title.top + title.h, h: 60, mt: 0, mb: 0, type: 'paragraph' });
     const l = paginate(units, SHEET_GAP);

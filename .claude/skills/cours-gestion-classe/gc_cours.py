@@ -21,8 +21,11 @@ final reste `npm run course:check`.
 import json
 import sys
 
-# Géométrie de la feuille (lib/course/coursePage.ts) : colonne de texte en px CSS
-COL_W = 793.7 - 2 * 94.49
+# Géométrie de la feuille (lib/course/coursePage.ts) : marges de 1,5 cm (depuis le 24/11/2026,
+# 2,5 cm avant), colonne de texte de 18 cm = 680,7 px CSS (largeurs() donne 680 px : la bordure tient)
+MARGE = 56.5
+COL_W = 793.7 - 2 * MARGE
+COL_CM = 18
 
 ARIAL = 'Arial, Helvetica, sans-serif'
 POLICES = {
@@ -206,7 +209,7 @@ def Zone(style='lignes', lignes=4):
 def Image(fichier, largeur_cm=None, legende=None, alignement='center', page_entiere=False):
     """Image du cours. Le fichier est envoyé dans l'application (jeton d'import, voir gc_envoi.py),
     puis cité par son chemin : une image déjà envoyée n'est pas renvoyée.
-    largeur_cm : largeur affichée (sinon la largeur naturelle, plafonnée à la colonne de 16 cm).
+    largeur_cm : largeur affichée (sinon la largeur naturelle, plafonnée à la colonne de 18 cm).
     legende : texte sous l'image. alignement : 'left', 'center' ou 'right'.
     page_entiere : l'image est une page A4 déjà mise en page (feuille de documents convertie depuis
     Word ou un PDF) : elle occupe toute la feuille, marges du cours comprises, seule sur sa page, et
@@ -216,7 +219,7 @@ def Image(fichier, largeur_cm=None, legende=None, alignement='center', page_enti
         return {'type': 'image', 'attrs': {'path': envoyer_image(fichier), 'page': True}}
     attrs = {'path': envoyer_image(fichier), 'align': alignement}
     if largeur_cm:
-        attrs['width'] = int(round(min(largeur_cm, 16) * 96 / 2.54))
+        attrs['width'] = int(round(min(largeur_cm, COL_CM) * 96 / 2.54))
     if legende is not None:
         attrs['caption'] = legende
     return {'type': 'image', 'attrs': attrs}
