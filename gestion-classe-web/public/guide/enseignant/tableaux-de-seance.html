@@ -1,0 +1,1661 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tableaux de séance — Guide Gestion Classe</title>
+<meta name="description" content="Préparer le tableau d'une heure de cours depuis l'emploi du temps, le copier aux autres classes, le lancer en séance, le reprendre de la bibliothèque, l'essayer et le relire après le cours.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="29">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/*TABLEAU-DEBUT*/
+/* ---- maquette du tableau blanc (charte : course.css pour le ruban, wb-theme.css pour l'habillage tactile) ---- */
+.tb { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #E7E9EE; color: #1F2937; font-size: 12px; position: relative; overflow: hidden; }
+.tb .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+/* barre de titre */
+.tb-titre { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #fff; border-bottom: 1px solid #E2E4E9; }
+.tb-logo { width: 22px; height: 22px; border-radius: 6px; background: #4F46E5; color: #fff; font-size: 9.5px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.tb-qa { display: flex; gap: 2px; color: #6B7280; }
+.tb-qa > span { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; transition: background .25s, color .25s; }
+.tb-qa > span.is-on { background: #E0E7FF; color: #3730A3; }
+.tb-nom { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 330px; }
+.tb-enr { font-size: 11.5px; color: #6B7280; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: all .25s; }
+.tb-enr::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10B981; flex: none; }
+.tb-enr--ko { color: #B45309; }
+.tb-enr--ko::before { background: #DC2626; }
+.tb-enr.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.18); border-radius: 6px; padding: 2px 6px; }
+.tb-sortie { height: 26px; padding: 0 12px; border-radius: 6px; background: #4F46E5; color: #fff; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; white-space: nowrap; flex: none; transition: box-shadow .2s, transform .15s; }
+.tb-sortie.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); transform: scale(.96); }
+/* onglets */
+.tb-onglets { flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; background: #fff; min-height: 30px; }
+.tb-onglet { padding: 6px 11px 4px; font-size: 12px; color: #374151; border-bottom: 3px solid transparent; white-space: nowrap; transition: all .25s; }
+.tb-onglet.is-actif, .tb-onglet.is-on { color: #3730A3; border-bottom-color: #4F46E5; font-weight: 600; }
+.tb-onglet--fichier { background: #4F46E5; color: #fff !important; border-radius: 6px 6px 0 0; margin-right: 4px; }
+.tb-onglet--fichier.is-actif, .tb-onglet--fichier.is-on { border-bottom-color: #312E81; }
+.tb-onglet--ctx { color: #EA580C !important; font-weight: 600; }
+.tb-onglet--ctx.is-actif, .tb-onglet--ctx.is-on { border-bottom-color: #EA580C; }
+.tb-plier { width: 28px; height: 24px; display: grid; place-items: center; color: #4B5563; border-radius: 6px; font-size: 11px; flex: none; transition: background .25s; }
+.tb-plier.is-on { background: #EEF0FF; box-shadow: 0 0 0 2px #A5B4FC; }
+/* ruban */
+.tb-ruban { height: 88px; flex: none; display: flex; align-items: stretch; padding: 4px 6px 0; background: #fff; border-bottom: 1px solid #E2E4E9; box-shadow: 0 1px 2px rgba(0,0,0,.04); overflow: hidden; position: relative; }
+.tb-ruban > .tb-rangee { position: absolute; inset: 4px 6px 0; display: flex; align-items: stretch; }
+.tb-ruban--dessus { position: absolute; left: 0; right: 0; z-index: 40; border-bottom: 1px solid #D1D5DB; box-shadow: 0 8px 24px rgba(15,23,42,.16); }
+.tb-gr { display: flex; flex-direction: column; padding: 0 6px; border-right: 1px solid #E2E4E9; flex: none; }
+.tb-gr:last-child { border-right: 0; }
+.tb-gr__c { flex: 1; display: flex; align-items: flex-start; gap: 2px; }
+.tb-gr__l { font-size: 10px; color: #6B7280; text-align: center; padding: 1px 0 3px; white-space: nowrap; }
+.tb-gb { width: 52px; min-height: 58px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 1px 3px; border: 1px solid transparent; border-radius: 6px; font-size: 10.5px; line-height: 1.1; text-align: center; transition: all .25s; }
+.tb-gb .ic { width: 24px; height: 24px; stroke-width: 1.5; }
+.tb-gb.is-on, .tb-pb.is-on, .tb-gb.is-actif, .tb-pb.is-actif { background: #E0E7FF; border-color: #A5B4FC; }
+.tb-gb--gris, .tb-pb--gris { opacity: .4; }
+.tb-pile { display: flex; flex-direction: column; gap: 2px; }
+.tb-pb { height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; border: 1px solid transparent; border-radius: 5px; font-size: 10.5px; white-space: nowrap; transition: all .25s; }
+.tb-pb .ic { width: 13px; height: 13px; }
+.tb-rang { display: flex; align-items: center; gap: 3px; height: 22px; }
+.tb-sw { width: 16px; height: 16px; border-radius: 4px; border: 2px solid #fff; box-shadow: 0 0 0 1px #D1D5DB; flex: none; transition: box-shadow .25s, background .3s; }
+.tb-sw.is-on, .tb-sw--on { box-shadow: 0 0 0 2px #4F46E5; }
+.tb-roue { width: 13px; height: 13px; border-radius: 50%; background: conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EF4444); flex: none; }
+.tb-ep { width: 24px; height: 22px; display: grid; place-items: center; border-radius: 5px; border: 1px solid transparent; transition: all .25s; }
+.tb-ep i { display: block; border-radius: 50%; }
+.tb-ep.is-on, .tb-ep--on { background: #E0E7FF; border-color: #A5B4FC; }
+.tb-mini { font-size: 10.5px; color: #374151; padding: 0 3px; white-space: nowrap; }
+.tb-liste { height: 20px; border: 1px solid #D1D5DB; border-radius: 4px; padding: 0 5px; font-size: 10.5px; display: inline-flex; align-items: center; gap: 4px; background: #fff; white-space: nowrap; }
+.tb-liste::after { content: '▾'; font-size: 8px; color: #6B7280; margin-left: auto; padding-left: 4px; }
+/* scène, page, volet, barre d'état */
+.tb-scene { flex: 1; min-height: 0; display: flex; position: relative; }
+.tb-bureau { flex: 1; min-width: 0; display: grid; place-items: center; position: relative; overflow: hidden; }
+.tb-page { width: 640px; height: 360px; flex: none; background: #fff; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06); overflow: hidden; transition: background .4s; }
+.tb-page--p { width: 560px; height: 315px; }
+.tb-vide { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; color: #9CA3AF; font-size: 15px; line-height: 1.6; }
+.tb-volet { width: 148px; flex: none; background: #F3F4F6; border-left: 1px solid #E2E4E9; display: flex; flex-direction: column; }
+.tb-volet__t { font-size: 10px; letter-spacing: .06em; color: #6B7280; font-weight: 600; padding: 8px 12px 6px; display: flex; justify-content: space-between; }
+.tb-vignettes { flex: 1; min-height: 0; padding: 2px 14px; display: flex; flex-direction: column; gap: 9px; overflow: hidden; position: relative; }
+.tb-vig { position: relative; height: 66px; flex: none; background: #fff; border-radius: 3px; box-shadow: 0 0 0 1px #D1D5DB; overflow: hidden; transition: box-shadow .3s, transform .4s; }
+.tb-vig.is-on, .tb-vig--cour { box-shadow: 0 0 0 2px #6366F1; }
+.tb-vig > b { position: absolute; left: 4px; bottom: 2px; font-size: 9px; color: #6B7280; font-weight: 600; }
+.tb-vig > em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 9px; color: #9CA3AF; font-style: normal; }
+.tb-vig svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tb-volet__pied { display: flex; justify-content: center; gap: 6px; padding: 6px; border-top: 1px solid #E2E4E9; }
+.tb-volet__pied span { width: 26px; height: 22px; border-radius: 5px; display: grid; place-items: center; background: #fff; border: 1px solid #D1D5DB; font-size: 10px; color: #4B5563; }
+.tb-volet__pied .plus { background: #4F46E5; color: #fff; border-color: #4F46E5; font-size: 13px; }
+.tb-etat { height: 26px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 10px; background: #F3F4F6; border-top: 1px solid #E2E4E9; font-size: 11px; color: #4B5563; white-space: nowrap; }
+.tb-etat .z { display: flex; align-items: center; gap: 7px; }
+.tb-etat .bt { padding: 2px 7px; border-radius: 4px; transition: background .25s; }
+.tb-etat .bt.is-on { background: #E0E7FF; color: #3730A3; }
+/* encre : un tracé SVG se dessine à son apparition (pathLength="1" sur chaque tracé) */
+.tb-encre { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 5; }
+.tb-encre path, .tb-encre line, .tb-encre ellipse, .tb-encre circle, .tb-encre rect, .tb-encre polyline, .tb-encre polygon { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.trait { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.trait[data-from], .trait[data-at], .trait[data-to] { transition: opacity .2s, visibility .2s, stroke-dashoffset 1.3s ease-in-out; }
+.trait.is-hidden { stroke-dashoffset: 1; }
+.trait--lent[data-from], .trait--lent[data-at] { transition: opacity .2s, visibility .2s, stroke-dashoffset 2s ease-in-out; }
+.surl { stroke: #FDE047; stroke-opacity: .55; }
+.laser { stroke: #EF4444; filter: drop-shadow(0 0 4px rgba(239,68,68,.9)); }
+.laser:not(.is-hidden) { animation: laser-efface 2.2s ease-out forwards; }
+@keyframes laser-efface { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+/* écriture manuscrite (texte qui « s'écrit » de gauche à droite) */
+.ecrit { position: absolute; font-family: "Segoe Print", "Comic Sans MS", "Chalkboard SE", cursive; color: #1D4ED8; line-height: 1.1; white-space: nowrap; clip-path: inset(-10px -10px -10px -10px); z-index: 5; }
+.ecrit[data-from], .ecrit[data-at] { transition: opacity .2s, visibility .2s, clip-path 1.2s ease; }
+.ecrit.is-hidden { clip-path: inset(-10px 100% -10px -10px); }
+/* objets posés sur la page */
+.tb-texte { position: absolute; font-size: 15px; line-height: 1.35; color: #111827; z-index: 3; }
+.tb-sel { outline: 1.5px solid #4F46E5; outline-offset: 3px; }
+.tb-sel-cadre { position: absolute; border: 1.5px solid #4F46E5; z-index: 6; pointer-events: none; }
+.tb-sel-cadre::before, .tb-sel-cadre::after { content: ''; position: absolute; width: 7px; height: 7px; background: #fff; border: 1.5px solid #4F46E5; border-radius: 2px; }
+.tb-sel-cadre::before { left: -5px; top: -5px; }
+.tb-sel-cadre::after { right: -5px; bottom: -5px; }
+.tb-sel-pointille { position: absolute; border: 1.5px dashed #4F46E5; background: rgba(99,102,241,.10); z-index: 6; }
+.tb-poignee { position: absolute; width: 8px; height: 8px; background: #fff; border: 1.5px solid #4F46E5; border-radius: 2px; z-index: 7; }
+/* barre flottante d'objet (sous le ruban : blanche, liseré indigo pâle) */
+.tb-flot { position: absolute; z-index: 30; display: flex; align-items: center; gap: 3px; padding: 4px 5px; background: #fff; border: 1px solid #C7D2FE; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.16); font-size: 11px; white-space: nowrap; }
+.tb-flot__l { font-size: 10px; color: #6B7280; padding: 0 5px 0 3px; font-weight: 600; }
+.tb-flot__b { min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px; display: grid; place-items: center; color: #374151; transition: all .25s; border: 1px solid transparent; }
+.tb-flot__b.is-on, .tb-flot__b--on { background: #E0E7FF; border-color: #A5B4FC; color: #3730A3; }
+.tb-flot__sep { width: 1px; height: 18px; background: #E2E4E9; margin: 0 2px; }
+/* panneau clair (sous le ruban) et panneau sombre (habillage tactile) */
+.tb-pop { position: absolute; z-index: 45; background: #fff; border: 1px solid #D1D5DB; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.16); padding: 10px; font-size: 11.5px; }
+.tb-pop__t { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #6B7280; font-weight: 600; margin: 2px 0 6px; }
+.tb-sombre { position: absolute; z-index: 45; background: #111827; color: #E5E7EB; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.45); padding: 10px; font-size: 11.5px; }
+.tb-sombre__t { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #9CA3AF; font-weight: 600; margin: 0 0 6px; }
+.tb-sombre__sec + .tb-sombre__sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1F2937; }
+.tb-sombre__grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.tb-sombre__it { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 7px; font-size: 10.5px; line-height: 1.15; color: #E5E7EB; transition: background .25s; }
+.tb-sombre__it i { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #6B7280; flex: none; font-style: normal; font-size: 9px; display: grid; place-items: center; color: #D1D5DB; }
+.tb-sombre__it.is-on, .tb-sombre__it--actif { background: #312E81; }
+.tb-sombre__it.is-on { box-shadow: 0 0 0 2px #6366F1; }
+/* menu contextuel (sombre, lignes hautes) */
+.tb-menu { position: absolute; z-index: 50; min-width: 200px; background: #111827; color: #E5E7EB; border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.4); padding: 5px; font-size: 11.5px; }
+.tb-menu__it { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 10px; border-radius: 6px; transition: background .2s; }
+.tb-menu__it kbd { margin-left: auto; background: none; color: #9CA3AF; font-size: 10px; padding: 0; }
+.tb-menu__it .fl { margin-left: auto; color: #9CA3AF; }
+.tb-menu__it.is-on { background: #4F46E5; color: #fff; }
+.tb-menu__it--danger { color: #FCA5A5; }
+.tb-menu__it--gris { opacity: .4; }
+.tb-menu__sep { height: 1px; background: #1F2937; margin: 4px 2px; }
+/* barre d'annulation et alertes */
+.tb-annul { position: absolute; z-index: 40; left: 50%; bottom: 14px; translate: -50% 0; display: flex; align-items: center; gap: 12px; padding: 7px 8px 7px 14px; border-radius: 10px; background: #1F2937; color: #F3F4F6; font-size: 11.5px; box-shadow: 0 8px 24px rgba(0,0,0,.25); white-space: nowrap; }
+.tb-annul b { color: #A5B4FC; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: rgba(165,180,252,.12); transition: all .2s; }
+.tb-annul b.is-on { background: #4F46E5; color: #fff; }
+/* habillage tactile (TBI) : bureau sombre, barre flottante, rail, pastille */
+.tb--sombre { background: #1F2937; }
+.tb--sombre .tb-bureau { background: #1F2937; }
+.tb-barre { position: absolute; z-index: 20; display: flex; align-items: center; gap: 3px; padding: 5px; border-radius: 16px; background: rgba(17,24,39,.88); box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: all .45s ease; }
+.tb-barre--bas { left: 50%; bottom: 10px; translate: -50% 0; }
+.tb-barre--gauche { left: 10px; top: 50%; translate: 0 -50%; flex-direction: column; }
+.tb-bf { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #D1D5DB; transition: all .25s; flex: none; }
+.tb-bf .ic { width: 20px; height: 20px; }
+.tb-bf.is-on, .tb-bf--on { background: #4F46E5; color: #fff; }
+.tb-bf--sortie { color: #A5B4FC; }
+.tb-bf__pt { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; }
+.tb-bf-sep { width: 1px; height: 24px; background: #374151; margin: 0 3px; flex: none; }
+.tb-barre--gauche .tb-bf-sep { width: 24px; height: 1px; margin: 3px 0; }
+.tb-ilot { position: absolute; z-index: 20; display: flex; gap: 3px; padding: 4px; border-radius: 12px; background: rgba(17,24,39,.88); box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: all .45s ease; }
+.tb-ilot .tb-bf { width: 34px; height: 34px; }
+.tb-rail { position: absolute; z-index: 20; right: 10px; top: 50%; translate: 0 -50%; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 12px; background: rgba(17,24,39,.88); color: #D1D5DB; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.tb-rail__poi { width: 18px; height: 6px; background: radial-gradient(circle, #6B7280 1px, transparent 1.5px) 0 0 / 4px 3px; margin-bottom: 2px; }
+.tb-rail .tb-bf { width: 32px; height: 30px; }
+.tb-rail__n { font: 10px var(--mono); color: #E5E7EB; padding: 2px 0; }
+.tb-pastille { position: absolute; z-index: 25; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: #171C24; color: #E7ECF3; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--pc, #111827), 0 0 0 5px #fff, 0 8px 18px rgba(0,0,0,.4); transition: left .6s ease, top .6s ease, box-shadow .3s; }
+.tb-pastille .ic { width: 22px; height: 22px; }
+.tb-pastille--blanche { background: #fff; color: #374151; box-shadow: 0 0 0 1px #D1D5DB, 0 6px 14px rgba(0,0,0,.18); }
+.tb-pastille--blanche::after { content: ''; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--pc, #111827); border: 1.5px solid #fff; }
+.tb-radial { position: absolute; z-index: 24; width: 0; height: 0; }
+.tb-radial svg { position: absolute; left: -110px; top: -110px; width: 220px; height: 220px; max-width: none; overflow: visible; filter: drop-shadow(0 10px 24px rgba(0,0,0,.4)); }
+.tb-radial .seg path { fill: #111827; stroke: #1F2937; stroke-width: 1.5; transition: fill .25s; }
+.tb-radial .seg text { font: 600 9.5px var(--font); fill: #E5E7EB; text-anchor: middle; }
+.tb-radial .seg--actif path { fill: #312E81; }
+.tb-radial .seg.is-on path { fill: #4F46E5; }
+.tb-radial .seg.is-on text { fill: #fff; }
+.tb-radial .centre { fill: #fff; }
+.tb-radial .croix { font: 700 14px var(--font); fill: #374151; text-anchor: middle; }
+.tb-radial.is-hidden svg { transform: scale(.4); }
+.tb-radial svg { transition: transform .35s cubic-bezier(.3,1.3,.5,1); transform-origin: 110px 110px; }
+/* touches de clavier affichées dans une maquette */
+.tb-touche { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 7px; background: #fff; border: 1px solid #D1D5DB; box-shadow: 0 2px 0 #D1D5DB; font: 600 13px var(--font); color: #1F2937; }
+/*TABLEAU-FIN*/
+/* ---- propre à cette page ---- */
+.fenetre--rel { position: relative; }
+.couvre { position: absolute; left: 0; right: 0; top: 34px; bottom: 0; z-index: 300; display: flex; flex-direction: column; }
+/* accueil et emploi du temps */
+.acc-eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; margin-bottom: 8px; }
+.acc-cartes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+.acc-carte { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: #fff; transition: box-shadow .25s; }
+.acc-carte i { width: 30px; height: 30px; border-radius: 8px; flex: none; display: grid; place-items: center; }
+.acc-carte b { display: block; font-size: 13px; font-weight: 600; }
+.acc-carte small { display: block; font-size: 11px; color: var(--text-dim); }
+.acc-carte--sombre { background: #18181B; border-color: #18181B; color: #fff; }
+.acc-carte--sombre small { color: #A1A1AA; }
+.acc-carte.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.edt { display: grid; grid-template-columns: 38px repeat(5, 1fr); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+.edt__j { font-size: 11px; font-weight: 600; color: var(--text-muted); padding: 6px 8px; border-bottom: 1px solid var(--border); border-left: 1px solid var(--border); }
+.edt__h { font-size: 10px; color: var(--text-dim); text-align: right; padding: 2px 6px 0 0; height: 44px; border-bottom: 1px solid #F0F0F2; }
+.edt__col { position: relative; border-left: 1px solid var(--border); grid-row: span 4; background: repeating-linear-gradient(#fff 0 43px, #F0F0F2 43px 44px); }
+.edt__cours { position: absolute; left: 4px; right: 4px; border-radius: 6px; padding: 4px 6px; font-size: 11px; line-height: 1.25; border-left: 3px solid; transition: box-shadow .25s; }
+.edt__cours b { display: block; font-size: 11.5px; }
+.edt__cours.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.edt__cours .pt-tb { position: absolute; right: 5px; top: 5px; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .7; }
+.c3 { background: var(--n3-soft); border-color: var(--n3); color: var(--n3-ink); }
+.c4 { background: var(--n4-soft); border-color: var(--n4); color: var(--n4-ink); }
+.c5 { background: var(--n5-soft); border-color: var(--n5); color: var(--n5-ink); }
+.c6 { background: var(--n6-soft); border-color: var(--n6); color: var(--n6-ink); }
+.pop { position: absolute; z-index: 200; width: 290px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 12px 14px; font-size: 12px; }
+.pop__t { font-size: 14px; font-weight: 650; }
+.pop__s { color: var(--text-dim); font-size: 11.5px; margin-bottom: 4px; }
+.pop__l { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; margin: 8px 0 5px; }
+.pop__board { display: block; border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; transition: all .25s; }
+.pop__board b { display: block; font-size: 12.5px; }
+.pop__board small { color: var(--text-dim); font-size: 11px; }
+.pop__board + .pop__board { margin-top: 5px; }
+.pop__board.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.pop__btn { display: flex; align-items: center; justify-content: center; gap: 6px; height: 30px; border: 1px solid var(--border-strong); border-radius: 6px; background: #fff; font-size: 12px; font-weight: 560; transition: all .25s; }
+.pop__btn .ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pop__btn.is-on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.pop__btn--plein { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.pop__btn--plein.is-on { background: #4338CA; color: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.pop__deux { display: flex; gap: 6px; }
+.pop__deux > * { flex: 1; }
+.pop__liens { display: flex; gap: 12px; margin-top: 6px; font-size: 11.5px; color: var(--indigo); }
+.pop__liens .is-on { text-decoration: underline; font-weight: 600; }
+.pop__muet { color: var(--text-dim); font-size: 11px; display: block; margin-top: 6px; }
+.pop__actions { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.pick__champ { height: 28px; border: 1px solid var(--border-strong); border-radius: 6px; display: flex; align-items: center; padding: 0 8px; color: var(--text-dim); font-size: 11.5px; margin-top: 6px; }
+.pick__pied { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11.5px; color: var(--indigo); }
+.dup { display: flex; align-items: center; gap: 7px; padding: 4px 0; font-size: 11.5px; }
+.dup small { color: var(--text-dim); margin-left: auto; }
+.dup--off { opacity: .5; }
+/* mode classe : onglets latéraux, verso, gros boutons de page */
+.cl-lat { position: absolute; right: 0; top: 70px; display: flex; flex-direction: column; gap: 6px; z-index: 15; }
+.cl-lat span { writing-mode: vertical-rl; background: #4F46E5; color: #fff; padding: 12px 6px; border-radius: 8px 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .02em; transition: box-shadow .25s; }
+.cl-lat span.is-on { box-shadow: 0 0 0 3px rgba(165,180,252,.8); }
+.cl-verso { position: absolute; left: 12px; bottom: 12px; z-index: 15; height: 34px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.88); border: 1px solid #C7D2FE; display: flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; color: #3730A3; transition: box-shadow .25s; }
+.cl-verso .ic { width: 15px; height: 15px; }
+.cl-verso.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.cl-nav { position: absolute; right: 40px; bottom: 12px; z-index: 15; display: flex; gap: 4px; }
+.cl-nav span { min-width: 50px; height: 42px; border-radius: 10px; background: #EEF2FF; color: #3730A3; display: grid; place-items: center; font: 600 14px var(--font); transition: box-shadow .25s; }
+.cl-nav span.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.tb-onglets--bord { border-bottom: 1px solid #E2E4E9; }
+.verrou { position: absolute; z-index: 9; width: 22px; height: 22px; border-radius: 6px; background: #fff; border: 1px solid #A5B4FC; display: grid; place-items: center; color: #3730A3; }
+.verrou .ic { width: 13px; height: 13px; }
+/* panneau Activité */
+.ab { position: absolute; top: 0; bottom: 0; right: 0; z-index: 18; width: 300px; background: #F9FAFB; border-left: 1px solid #E2E4E9; box-shadow: -8px 0 24px rgba(15,23,42,.10); display: flex; flex-direction: column; font-size: 11px; }
+.ab__tete { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid #E2E4E9; }
+.ab__tete b { flex: 1; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab__ico { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; color: #4B5563; background: #fff; border: 1px solid #E2E4E9; transition: all .25s; }
+.ab__ico.is-on { background: #E0E7FF; border-color: #A5B4FC; color: #3730A3; }
+.ab__var { display: flex; gap: 4px; padding: 7px 10px 0; }
+.ab__var span { padding: 4px 9px; border-radius: 999px; border: 1px solid #E2E4E9; background: #fff; font-weight: 600; transition: all .25s; }
+.ab__var span.is-on, .ab__var span.ab--actif { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+.ab__aide { padding: 6px 10px; color: #6B7280; font-size: 10.5px; line-height: 1.35; }
+.ab__feuille { margin: 0 12px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 12px 14px; font-size: 10px; line-height: 1.45; color: #1F2937; position: relative; flex: 1; overflow: hidden; }
+.ab__feuille h5 { margin: 0 0 6px; font-size: 12px; color: #1E3A8A; }
+.ab__bloc { border-radius: 4px; padding: 3px 4px; margin: 0 -4px 5px; transition: background .3s, box-shadow .3s; }
+.ab__bloc.is-on { background: rgba(79,70,229,.10); box-shadow: inset 0 0 0 1.5px #6366F1; }
+.ab__barre { display: flex; gap: 4px; padding: 7px 10px; border-top: 1px solid #E2E4E9; background: #fff; }
+.ab__barre span { height: 26px; min-width: 26px; padding: 0 9px; border-radius: 6px; display: grid; place-items: center; border: 1px solid #E2E4E9; font-weight: 600; transition: all .25s; }
+.ab__barre .go { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+.ab__barre .go.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.ab__msg { position: absolute; left: 12px; right: 12px; bottom: 50px; background: #ECFDF5; color: #047857; border-radius: 6px; padding: 5px 8px; font-weight: 600; }
+/* fenêtre claire (sous le ruban) : Tableaux préparés, Enregistrer dans Mes cours */
+.lib-fond { position: absolute; inset: 0; z-index: 60; background: rgba(8,10,14,.55); display: flex; justify-content: center; align-items: flex-start; padding-top: 30px; }
+.lib { width: 620px; background: #fff; border-radius: 14px; box-shadow: 0 24px 60px rgba(0,0,0,.35); overflow: hidden; font-size: 12px; }
+.lib__tete { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 12px 16px 6px; }
+.lib__tete strong { display: block; font-size: 16px; }
+.lib__tete small { display: block; color: #6B7280; font-size: 11.5px; margin-top: 2px; }
+.lib__x { width: 28px; height: 28px; border-radius: 50%; background: #F3F4F6; display: grid; place-items: center; color: #4B5563; flex: none; }
+.lib__cherche { display: flex; gap: 8px; padding: 6px 16px 10px; }
+.lib__cherche span { height: 34px; border-radius: 10px; background: #F3F4F6; display: flex; align-items: center; padding: 0 12px; color: #6B7280; transition: all .25s; }
+.lib__cherche span:first-child { flex: 1; }
+.lib__cherche span.is-on { box-shadow: 0 0 0 2px #4F46E5; color: #1F2937; }
+.lib__corps { padding: 0 16px 12px; }
+.lib__corps h3 { margin: 4px 0 4px; font-size: 13px; }
+.lib__corps h4 { margin: 6px 0 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: #6B7280; }
+.lib__ligne { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 10px; background: #F3F4F6; margin-bottom: 5px; }
+.lib__ligne > i { width: 22px; height: 22px; border-radius: 6px; background: #fff; display: grid; place-items: center; color: #4F46E5; flex: none; }
+.lib__ligne > i .ic { width: 14px; height: 14px; }
+.lib__ligne > div { flex: 1; min-width: 0; }
+.lib__ligne b { display: block; font-size: 12px; }
+.lib__ligne small { color: #6B7280; font-size: 10.5px; }
+.lib__go { height: 26px; padding: 0 10px; border-radius: 8px; background: #4F46E5; color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 11px; transition: box-shadow .25s; white-space: nowrap; }
+.lib__go.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.lib__onglet { height: 26px; padding: 0 8px; border-radius: 8px; background: #D1D5DB; color: #1F2937; display: grid; place-items: center; font-size: 11px; font-weight: 600; transition: box-shadow .25s; white-space: nowrap; }
+.lib__onglet.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.lib__eval { border-top: 1.5px dashed #D1D5DB; padding-top: 6px; margin-top: 6px; }
+.lib__pill { font-style: normal; font-size: 9.5px; font-weight: 700; background: #FEF3C7; color: #92400E; border-radius: 999px; padding: 1px 6px; margin-right: 5px; }
+.lib__pied { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px 14px; border-top: 1px solid #E5E7EB; }
+.lib__btn { height: 32px; padding: 0 14px; border-radius: 10px; background: #4F46E5; color: #fff; font-weight: 700; display: grid; place-items: center; transition: box-shadow .25s; }
+.lib__btn--gris { background: #D1D5DB; color: #1F2937; }
+.lib__btn.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.lib__form { padding: 4px 16px 12px; display: grid; gap: 10px; }
+.lib__form label { display: grid; gap: 4px; }
+.lib__form label > span:first-child { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #6B7280; font-weight: 700; }
+.lib__champ { height: 38px; border-radius: 10px; background: #F3F4F6; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: #1F2937; transition: box-shadow .25s; }
+.lib__champ.is-on { box-shadow: 0 0 0 2px #4F46E5; }
+.lib__deux { display: grid; grid-template-columns: 1fr 1.6fr; gap: 10px; }
+/* espace à onglets */
+.ws { height: 34px; flex: none; display: flex; align-items: stretch; gap: 2px; padding: 4px 6px 0; background: #0D1015; border-bottom: 1px solid #2E3846; font-size: 12px; }
+.ws__tab { display: flex; align-items: center; gap: 6px; max-width: 230px; padding: 0 6px 0 10px; border-radius: 8px 8px 0 0; background: #171C24; color: #93A0B4; transition: all .3s; white-space: nowrap; }
+.ws__tab .ic { width: 13px; height: 13px; }
+.ws__tab.is-on, .ws__tab--actif { background: #fff; color: #111827; }
+.ws__tab b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+.ws__tab .x { font-size: 10px; padding: 2px 4px; border-radius: 4px; color: inherit; opacity: .7; transition: background .25s; }
+.ws__tab .x.is-on { background: #DC2626; color: #fff; opacity: 1; }
+.ws__pt { width: 8px; height: 8px; border-radius: 50%; background: #10B981; flex: none; }
+.ws__add { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-bottom: 4px; }
+.ws__add span { height: 24px; padding: 0 10px; border: 1px solid #2E3846; border-radius: 8px; color: #93A0B4; display: flex; align-items: center; gap: 5px; font-size: 11px; transition: all .25s; }
+.ws__add span .ic { width: 12px; height: 12px; }
+.ws__add span.is-on { border-color: #A5B4FC; color: #fff; background: #312E81; }
+/* écran de classe en attente */
+.attente { position: absolute; inset: 0; background: #0F1117; color: #E5E7EB; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
+.attente h4 { margin: 0; font-size: 30px; font-weight: 600; }
+.attente p { margin: 0; color: #9CA3AF; font-size: 15px; }
+.attente__pret { color: #C7D2FE; background: #1C2130; border: 1px solid #2A3044; border-radius: 12px; padding: 9px 16px; font-size: 15px; }
+.attente__pret b { color: #fff; }
+.attente__pouls { width: 20px; height: 20px; border-radius: 50%; background: #6366F1; box-shadow: 0 0 0 10px rgba(99,102,241,.18); }
+.attente__direct { color: #10B981; font-size: 12px; margin-top: 4px; }
+/* tirage au sort (clair sous le ruban) et caméra (sombre) */
+.tir { position: absolute; z-index: 60; left: 50%; top: 50%; translate: -50% -50%; width: 470px; background: #fff; border-radius: 16px; box-shadow: 0 24px 60px rgba(0,0,0,.35); padding: 14px 16px; }
+.tir__tete { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+.tir__tete small { font-weight: 500; color: #6B7280; font-size: 11.5px; flex: 1; }
+.tir__noms { min-height: 120px; display: flex; justify-content: center; align-items: center; gap: 30px; }
+.tir__nom { text-align: center; font-size: 30px; font-weight: 700; color: #111827; }
+.tir__nom span { color: #6B7280; margin-left: 4px; }
+.tir__nom em { display: block; font-style: normal; font-size: 11px; font-weight: 600; color: #3730A3; background: #EEF0FF; border-radius: 999px; padding: 3px 9px; margin: 6px auto 0; width: max-content; transition: all .25s; }
+.tir__nom em.is-on { background: #4F46E5; color: #fff; }
+.tir__q { font-size: 54px; font-weight: 700; color: #D1D5DB; }
+.tir__barre { display: flex; align-items: center; gap: 8px; }
+.tir__seg { display: flex; background: #F3F4F6; border-radius: 10px; padding: 3px; }
+.tir__seg span { padding: 5px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 600; color: #4B5563; transition: all .25s; }
+.tir__seg span.is-on, .tir__seg span.tir--actif { background: #fff; color: #3730A3; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.tir__go { margin-left: auto; height: 32px; padding: 0 14px; border-radius: 10px; background: #4F46E5; color: #fff; font-weight: 700; display: grid; place-items: center; font-size: 12px; transition: box-shadow .25s; }
+.tir__go.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35); }
+.tir__raz { height: 32px; padding: 0 10px; border-radius: 10px; background: #F3F4F6; display: grid; place-items: center; font-size: 11.5px; color: #4B5563; }
+.cam { position: absolute; inset: 0; z-index: 62; background: rgba(8,10,14,.86); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.cam__video { width: 560px; height: 315px; border-radius: 12px; background: #2A2F3A; position: relative; overflow: hidden; }
+.cam__barre { display: flex; gap: 8px; }
+.cam__barre span { height: 34px; padding: 0 14px; border-radius: 10px; background: #1E2530; color: #E7ECF3; display: grid; place-items: center; font-weight: 600; font-size: 12px; transition: box-shadow .25s; }
+.cam__barre .prim { background: #4F46E5; color: #fff; }
+.cam__barre span.is-on { box-shadow: 0 0 0 3px rgba(165,180,252,.6); }
+/* galerie d'une séance */
+.gal { border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; }
+.gal__tete { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.gal__tete i { width: 32px; height: 32px; border-radius: 8px; background: var(--indigo-soft); display: grid; place-items: center; color: var(--indigo); }
+.gal__tete i .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.gal__tete b { flex: 1; font-size: 13.5px; }
+.gal__grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 14px; }
+.gal__vig { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; transition: border-color .25s, box-shadow .25s; }
+.gal__vig.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.gal__vig svg { display: block; width: 100%; height: auto; background: #fff; }
+.gal__vig small { display: block; padding: 6px 10px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border); }
+.grand { position: absolute; inset: 0; z-index: 80; background: rgba(0,0,0,.8); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+.grand__img { width: 620px; height: 349px; background: #fff; border-radius: 6px; }
+.grand__nav { display: flex; align-items: center; gap: 12px; color: #fff; font-size: 13px; }
+/* import */
+.imp { position: absolute; z-index: 60; left: 50%; top: 45%; translate: -50% -50%; width: 340px; background: #fff; border-radius: 12px; box-shadow: 0 16px 40px rgba(15,23,42,.25); padding: 14px 16px; }
+.imp b { display: block; font-size: 13px; margin-bottom: 3px; }
+.imp small { display: block; color: #6B7280; font-size: 11.5px; margin-bottom: 9px; }
+.imp__barre { height: 6px; border-radius: 6px; background: #E5E7EB; overflow: hidden; }
+.imp__barre span { display: block; height: 100%; width: 66%; background: #4F46E5; border-radius: 6px; }
+.depose { position: absolute; inset: 6px; z-index: 50; border: 3px dashed #6366F1; border-radius: 10px; background: rgba(99,102,241,.06); }
+.fichier { position: absolute; z-index: 55; width: 96px; padding: 8px; border-radius: 8px; background: #fff; box-shadow: 0 8px 20px rgba(0,0,0,.25); font-size: 10px; text-align: center; }
+.fichier i { display: block; height: 52px; border-radius: 4px; background: linear-gradient(135deg, #A7F3D0, #6EE7B7 50%, #34D399); margin-bottom: 5px; }
+.telech { position: absolute; z-index: 60; right: 14px; top: 10px; display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #E2E4E9; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.18); padding: 9px 12px; font-size: 11.5px; }
+.telech i { width: 28px; height: 28px; border-radius: 6px; background: #EEF0FF; color: #4F46E5; display: grid; place-items: center; }
+.telech i .ic { width: 15px; height: 15px; }
+/* mes cours (liste simplifiée) */
+.mc-ligne { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+.mc-ligne i { width: 26px; height: 26px; border-radius: 6px; background: var(--indigo-soft); display: grid; place-items: center; color: var(--indigo); flex: none; }
+.mc-ligne i .ic { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mc-ligne b { font-weight: 600; }
+.mc-ligne small { color: var(--text-dim); }
+.mc-jouer { margin-left: auto; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border-strong); display: grid; place-items: center; color: var(--indigo); transition: all .25s; }
+.mc-jouer.is-on { background: var(--indigo); color: #fff; border-color: var(--indigo); }
+.mc-jouer::before { content: ''; border-left: 8px solid currentColor; border-top: 5px solid transparent; border-bottom: 5px solid transparent; margin-left: 2px; }
+.bandeau-essai { position: absolute; z-index: 30; left: 50%; top: 10px; translate: -50% 0; width: 640px; display: flex; align-items: center; gap: 10px; background: #FFFBEB; border: 1px solid #F59E0B; border-radius: 10px; padding: 8px 12px; font-size: 11.5px; color: #78350F; box-shadow: 0 6px 16px rgba(0,0,0,.08); }
+.bandeau-essai .go { flex: none; height: 26px; padding: 0 10px; border-radius: 7px; background: #4F46E5; color: #fff; font-weight: 600; display: grid; place-items: center; white-space: nowrap; }
+.sortie-affichage { position: absolute; right: 16px; bottom: 16px; z-index: 30; height: 32px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid #D1D5DB; font-weight: 600; font-size: 12px; display: grid; place-items: center; opacity: .35; transition: opacity .3s; }
+.sortie-affichage.is-on { opacity: 1; box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.minu { position: absolute; z-index: 6; width: 150px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px #E5E7EB, 0 6px 16px rgba(0,0,0,.08); padding: 6px 10px 10px; text-align: center; }
+.minu::before { content: ''; display: block; width: 34px; height: 4px; border-radius: 2px; background: #E5E7EB; margin: 0 auto 6px; }
+.minu b { display: block; font: 700 30px var(--font); font-variant-numeric: tabular-nums; color: #111827; }
+.minu span { display: inline-block; margin-top: 4px; font-size: 10.5px; font-weight: 600; color: #fff; background: #4F46E5; border-radius: 6px; padding: 3px 9px; }
+.bouton-rep { position: absolute; z-index: 6; height: 30px; padding: 0 12px; border-radius: 8px; background: #EEF2FF; border: 1px solid #C7D2FE; color: #3730A3; font-weight: 600; font-size: 12px; display: grid; place-items: center; }
+.schema { position: absolute; z-index: 4; width: 230px; height: 150px; border-radius: 8px; background: linear-gradient(160deg, #FCE7F3, #FBCFE8); box-shadow: inset 0 0 0 1px #F9A8D4; display: grid; place-items: center; color: #9D174D; font-size: 12px; font-weight: 600; }
+
+.ws .ic { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+<!--ICONES-DEBUT-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="i-select" viewBox="0 0 24 24"><path d="M5 3l13 8.5-6 1.2 3.4 6.3-2.4 1.2-3.4-6.3L5 18z"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l4.5-1L19 8.5 15.5 5 5 15.5z"/><path d="M13.5 7l3.5 3.5"/></symbol>
+<symbol id="i-surl" viewBox="0 0 24 24"><path d="M7 14l7.5-9.5 4 3.5L11 17z"/><path d="M7 14l-1.5 4 4-1"/><path d="M4 21h9"/></symbol>
+<symbol id="i-gomme" viewBox="0 0 24 24"><path d="M4 15.5L13.5 6l5 5L11 18.5H7z"/><path d="M9 10.5l5 5"/><path d="M11 18.5h9"/></symbol>
+<symbol id="i-texte" viewBox="0 0 24 24"><path d="M5 6V4.5h14V6"/><path d="M12 4.5v15"/><path d="M9 19.5h6"/></symbol>
+<symbol id="i-formes" viewBox="0 0 24 24"><rect x="3.5" y="11" width="9" height="9" rx="1"/><circle cx="16" cy="8" r="4.5"/></symbol>
+<symbol id="i-laser" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></symbol>
+<symbol id="i-coller" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="M9 10h6M9 14h6"/></symbol>
+<symbol id="i-couper" viewBox="0 0 24 24"><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/><path d="M8.3 15.7L18 4M15.7 15.7L6 4"/></symbol>
+<symbol id="i-copier" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></symbol>
+<symbol id="i-redo" viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 000 11H13"/></symbol>
+<symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/></symbol>
+<symbol id="i-grille" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M3.5 10h17M3.5 14.5h17M9.5 5v14M15 5v14"/></symbol>
+<symbol id="i-sigma" viewBox="0 0 24 24"><path d="M17 5H7l5.5 7L7 19h10"/></symbol>
+<symbol id="i-video" viewBox="0 0 24 24"><rect x="3.5" y="6" width="12" height="12" rx="2"/><path d="M15.5 10.5l5-3v9l-5-3z"/></symbol>
+<symbol id="i-web" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3.2 3 13.8 0 17M12 3.5c-3 3.2-3 13.8 0 17"/></symbol>
+<symbol id="i-anim" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M10 9l5 3-5 3z"/></symbol>
+<symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+<symbol id="i-son" viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11"/></symbol>
+<symbol id="i-micro" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0013 0M12 18v3"/></symbol>
+<symbol id="i-postit" viewBox="0 0 24 24"><path d="M4.5 4.5h15v10l-5 5h-10z"/><path d="M14.5 19.5v-5h5"/></symbol>
+<symbol id="i-fenetre" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 8.5h17"/></symbol>
+<symbol id="i-minuteur" viewBox="0 0 24 24"><circle cx="12" cy="13" r="7.5"/><path d="M12 13V9M9.5 2.5h5"/></symbol>
+<symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="i-de" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="15" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="9" cy="15" r="1"/></symbol>
+<symbol id="i-roue" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M3.5 12h17M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-groupes" viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="9" r="3"/><path d="M3 19c.5-3 2.5-4.5 5-4.5s4.5 1.5 5 4.5M12 19c.4-2.6 2-4 4.5-4s4 1.4 4.5 4"/></symbol>
+<symbol id="i-feu" viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="19" rx="3"/><circle cx="12" cy="7" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="12" cy="17" r="1.7"/></symbol>
+<symbol id="i-cloche" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 004 0"/></symbol>
+<symbol id="i-jauge" viewBox="0 0 24 24"><path d="M4 16a8 8 0 0116 0"/><path d="M12 16l4-5"/></symbol>
+<symbol id="i-calc" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h1M11.5 11h1M15 11h1M8 14.5h1M11.5 14.5h1M15 14.5h1M8 18h1M11.5 18h4.5"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></symbol>
+<symbol id="i-biblio" viewBox="0 0 24 24"><path d="M4 5h4v15H4zM10 5h4v15h-4z"/><path d="M15.5 6l3.6-1 3 14.2-3.6.8z"/></symbol>
+<symbol id="i-eclair" viewBox="0 0 24 24"><path d="M13 2.5L5 13.5h6l-1 8 8-11h-6z"/></symbol>
+<symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5"/></symbol>
+<symbol id="i-zoomp" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M10.5 7.5v6M7.5 10.5h6"/></symbol>
+<symbol id="i-zoomm" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L20.5 20.5M7.5 10.5h6"/></symbol>
+<symbol id="i-pageplus" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M12 10v7M8.5 13.5h7"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4"/></symbol>
+<symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9 6.5V4h6v2.5M6.5 6.5l1 14h9l1-14"/></symbol>
+<symbol id="i-regle" viewBox="0 0 24 24"><rect x="2.5" y="8" width="19" height="8" rx="1"/><path d="M6 8v3M9.5 8v4M13 8v3M16.5 8v4"/></symbol>
+<symbol id="i-equerre" viewBox="0 0 24 24"><path d="M4 4v16h16z"/><path d="M8 12v4h4z"/></symbol>
+<symbol id="i-rapporteur" viewBox="0 0 24 24"><path d="M3 17a9 9 0 0118 0z"/><path d="M12 17V12"/></symbol>
+<symbol id="i-projecteur" viewBox="0 0 24 24"><path d="M3.5 3.5l6 6"/><circle cx="14.5" cy="14.5" r="6"/></symbol>
+<symbol id="i-cible" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></symbol>
+<symbol id="i-clavier" viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M7 14h10"/></symbol>
+<symbol id="i-volet" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><path d="M15 4.5v15"/></symbol>
+<symbol id="i-presenter" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="1.5"/><path d="M12 16.5v3M8 20.5h8"/></symbol>
+<symbol id="i-tactile" viewBox="0 0 24 24"><path d="M9 11V5.5a1.5 1.5 0 013 0V11"/><path d="M12 10.5a1.5 1.5 0 013 0v1a1.5 1.5 0 013 0V16a5 5 0 01-5 5h-1.5a5 5 0 01-4.2-2.3L5 15.5a1.5 1.5 0 012.4-1.8L9 15.5"/></symbol>
+<symbol id="i-plus3" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18.5" cy="12" r="1.3"/></symbol>
+<symbol id="i-inserer" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></symbol>
+<symbol id="i-ecran" viewBox="0 0 24 24"><rect x="3" y="4.5" width="18" height="12" rx="1.5"/><path d="M8 20h8"/></symbol>
+<symbol id="i-ouvrir" viewBox="0 0 24 24"><path d="M3.5 7.5V18a1.5 1.5 0 001.5 1.5h14a1.5 1.5 0 001.5-1.5V9.5A1.5 1.5 0 0019 8h-7l-2-2.5H5A1.5 1.5 0 003.5 7z"/></symbol>
+<symbol id="i-enreg" viewBox="0 0 24 24"><path d="M5 4h11l3.5 3.5V20H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></symbol>
+<symbol id="i-pdf" viewBox="0 0 24 24"><path d="M6 3.5h8l4 4v13H6z"/><path d="M14 3.5v4h4"/><path d="M9 14h6M9 17h4"/></symbol>
+<symbol id="i-rideau" viewBox="0 0 24 24"><path d="M4 4h16"/><path d="M5 4v14c2-1 3.5-3 4-8M19 4v14c-2-1-3.5-3-4-8"/></symbol>
+<symbol id="i-cache" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 12h8"/></symbol>
+<symbol id="i-allonger" viewBox="0 0 24 24"><path d="M12 4v16M8 16l4 4 4-4"/><path d="M5 4h14"/></symbol>
+<symbol id="i-ajuster" viewBox="0 0 24 24"><path d="M5 4h14M5 20h14M12 7v10M9 10l3-3 3 3M9 14l3 3 3-3"/></symbol>
+<symbol id="i-verrou" viewBox="0 0 24 24"><rect x="5.5" y="10.5" width="13" height="10" rx="2"/><path d="M8.5 10.5V7.5a3.5 3.5 0 017 0v3"/></symbol>
+<symbol id="i-avant" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="1.5"/><path d="M4 16V5a1 1 0 011-1h11"/></symbol>
+<symbol id="i-arriere" viewBox="0 0 24 24"><rect x="4" y="4" width="12" height="12" rx="1.5"/><path d="M20 8v11a1 1 0 01-1 1H8"/></symbol>
+<symbol id="i-grouper" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="8" height="8" rx="1"/><rect x="12.5" y="12.5" width="8" height="8" rx="1"/></symbol>
+<symbol id="i-selall" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2" stroke-dasharray="3 2.5"/><path d="M8.5 12l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-autoforme" viewBox="0 0 24 24"><path d="M4 18c1-5 4-11 9-11"/><rect x="13" y="12" width="7" height="7" rx="1"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l1.5-2.5h7L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+<symbol id="i-fond" viewBox="0 0 24 24"><rect x="4.5" y="3.5" width="15" height="17" rx="1"/><path d="M4.5 8.5h15M4.5 13.5h15"/></symbol>
+<symbol id="i-onglet" viewBox="0 0 24 24"><path d="M3.5 19.5V8a1 1 0 011-1H10l2 2.5h7.5a1 1 0 011 1v9z"/></symbol>
+</svg>
+<!--ICONES-FIN-->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="s-ecole" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6"/><path d="M5 10v9.5h14V10"/><path d="M10 19.5v-5h4v5"/></symbol>
+<symbol id="s-telech" viewBox="0 0 24 24"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5"/><path d="M5 19.5h14"/></symbol>
+</svg>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Tableaux de séance</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#preparer">Préparer le tableau d'un cours</a></li>
+      <li><a href="#copier-lancer">Copier, puis lancer la séance</a></li>
+      <li><a href="#improvise">Tableau improvisé depuis l'heure</a></li>
+      <li><a href="#activite">Panneau Activité</a></li>
+      <li><a href="#prepares">Tableaux préparés</a></li>
+      <li><a href="#mes-cours">Enregistrer dans Mes cours</a></li>
+      <li><a href="#onglets">Espace à onglets</a></li>
+      <li><a href="#brouillon">Brouillon</a></li>
+      <li><a href="#classe-essai">Mode classe, mode essai</a></li>
+      <li><a href="#essai">Essayer les écrans d'un cours</a></li>
+      <li><a href="#affichage">Mode affichage</a></li>
+      <li><a href="#telephone">Tirage au sort, caméra, photo</a></li>
+      <li><a href="#relire">Relire le tableau d'une séance</a></li>
+      <li><a href="#importer">Importer, fichier .gcboard</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/mini-sites-et-animations.html">◀ Boutons, animations et mini-sites</a><a href="../enseignant/classeur-virtuel-et-tp.html">Classeur virtuel, Mes TP, annales, clouds ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Tableaux</div>
+      <h1>Tableaux de séance</h1>
+      <p>Chaque heure de l'emploi du temps peut recevoir son tableau, préparé à l'avance puis versé tout seul dans la séance le jour du cours. On peut aussi improviser, reprendre un tableau de la bibliothèque, l'essayer avant la classe et relire après coup ce qui a été écrit.</p>
+      <div class="chap__resume"><span>Accueil › calendrier</span><span>Ordinateur</span><span>Relié au téléphone par « Lancer la séance »</span></div>
+    </header>
+
+    <!-- ============================================================ fiche : préparer -->
+    <section class="fiche" id="preparer">
+      <div class="fiche__texte">
+        <h2>Préparer le tableau d'un cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › calendrier › heure › Tableau du cours</span></p>
+        <p class="fiche__but">Chaque heure de l'emploi du temps peut recevoir son tableau, préparé à l'avance. Le jour du cours, il sera versé tout seul dans la séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#pr-cours" data-action="click" data-duration="3200">Sur l'accueil, cliquer une heure à venir dans le calendrier. Sans tableau, la section <b>Tableau du cours</b> propose plusieurs départs.</li>
+          <li data-cursor="#pr-rediger" data-duration="3200"><span class="btn-nom">Rédiger un cours</span> : un cours écrit comme dans un traitement de texte, imprimable en A4, avec ses écrans pour la classe.</li>
+          <li data-cursor="#pr-tb" data-duration="3000"><span class="btn-nom">Tableau blanc</span> : des pages 16:9 pour écrire en direct ; on choisit d'abord l'activité.</li>
+          <li data-cursor="#pr-sugg" data-action="click" data-duration="3600"><span class="btn-nom">Lier une activité</span> déroule la bibliothèque : choisir l'activité parmi les suggestions, par la recherche ou dans la liste par séquence.</li>
+          <li data-cursor="#pr-corr" data-action="click" data-duration="3800">Choisir <span class="btn-nom">Activité</span> (la fiche) ou <span class="btn-nom">Correction</span> : le cours reçoit sa propre copie, écrans compris ; la bibliothèque n'est pas touchée.</li>
+          <li data-cursor="#pr-copie" data-duration="3400">Ou, sous « ou partir d'une copie du tableau de : », reprendre le tableau déjà préparé pour une autre heure.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ces choix ne s'affichent que pour une heure à venir et non annulée. Une fois le tableau créé, la section montre son titre et « modifié le … » : un clic l'ouvre pour le modifier (« Consulter le tableau préparé » pour une heure passée).</li>
+            <li>Un cours rédigé qui a des écrans s'essaie depuis la même fenêtre (<b>▶ Essayer</b>). <b>Supprimer</b> retire le tableau de l'heure.</li>
+            <li>Quand l'heure n'a pas de tableau, la section <b>Dernier tableau projeté</b> rouvre le dernier tableau montré à cette classe.</li>
+            <li>Le texte et les écrans d'un cours rédigé s'écrivent dans l'éditeur de cours.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#improvise">Tableau improvisé</a> · <a href="editeur-de-cours.html">Éditeur de cours</a> · <a href="tableau-blanc.html#ouvrir">Ouvrir un tableau</a> · <a href="mes-cours.html">Mes cours</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it"><span class="ico"></span>Classes</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Accueil</span><span class="esp"></span><span class="muet">Semaine du 23 novembre</span></div>
+                  <div class="app__corps" style="position:relative">
+                    <div class="acc-eyebrow">Cette semaine</div>
+                    <div class="edt">
+                      <div></div><div class="edt__j">Lun. 23</div><div class="edt__j">Mar. 24</div><div class="edt__j">Mer. 25</div><div class="edt__j">Jeu. 26</div><div class="edt__j">Ven. 27</div>
+                      <div class="edt__h">8 h</div>
+                      <div class="edt__col"><div class="edt__cours c5" style="top:2px;height:84px"><b>5E</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c4" style="top:90px;height:40px"><i class="pt-tb"></i><b>4B</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c3" style="top:46px;height:40px"><b>3A</b>SVT · salle 210</div></div>
+                      <div class="edt__col"><div class="edt__cours c6" style="top:2px;height:40px"><b>6C</b>SVT · salle 310</div><div class="edt__cours c4" id="pr-cours" data-on="1-6" style="top:134px;height:40px"><b>4A</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c3" style="top:90px;height:84px"><b>3B</b>SVT · salle 210</div></div>
+                      <div class="edt__h">9 h</div><div class="edt__h">10 h</div><div class="edt__h">11 h</div>
+                    </div>
+                    <div class="pop glisse-haut" style="left:180px;top:6px" data-from="1">
+                      <div class="pop__t"><span class="puce puce--4">4A</span> 4A · SVT</div>
+                      <div class="pop__s">jeu. 26 novembre · 11:00 – 12:00 · salle 310</div>
+                      <div class="pop__l">Tableau du cours</div>
+                      <div class="pop__deux">
+                        <span class="pop__btn" id="pr-rediger" data-on="2"><svg class="ic"><use href="#i-doc"/></svg>Rédiger un cours</span>
+                        <span class="pop__btn" id="pr-tb" data-on="3"><svg class="ic"><use href="#i-grille"/></svg>Tableau blanc</span>
+                      </div>
+                      <div class="repli" data-at="1-3,6" style="margin-top:6px"><span class="pop__btn" id="pr-lier">Lier une activité</span></div>
+                      <div class="repli" data-at="4" style="margin-top:8px">
+                        <div class="ligne" style="justify-content:space-between"><span class="pop__l" style="margin:0">Quelle activité lier ?</span><span class="muet">Annuler</span></div>
+                        <div style="margin-top:6px">
+                          <span class="pop__board" id="pr-sugg" data-on="4"><b>Activité 2 — Les séismes</b><small>Séquence 2 — La Terre bouge</small></span>
+                          <span class="pop__board"><b>Activité 3 — Les volcans</b><small>Séquence 2 — La Terre bouge</small></span>
+                        </div>
+                        <div class="pick__champ">Chercher une activité…</div>
+                        <div class="pick__pied"><span>Toutes les activités</span></div>
+                      </div>
+                      <div class="repli" data-at="5" style="margin-top:8px">
+                        <div class="ligne" style="justify-content:space-between"><span class="pop__l" style="margin:0">Quel tableau ?</span><span class="muet">Annuler</span></div>
+                        <div style="margin:6px 0"><b style="font-size:12.5px">Activité 2 — Les séismes</b><span class="pop__muet" style="margin:0">Séquence 2 — La Terre bouge</span></div>
+                        <div class="pop__deux"><span class="pop__btn pop__btn--plein">Activité</span><span class="pop__btn" id="pr-corr" data-on="5">Correction</span></div>
+                        <span class="pop__muet">Le cours reçoit sa propre copie, écrans compris : la bibliothèque n'est pas touchée.</span>
+                        <div class="pick__pied"><span>◀ Autre activité</span></div>
+                      </div>
+                      <div class="repli" data-at="1-3,6">
+                        <span class="pop__muet">ou partir d'une copie du tableau de :</span>
+                        <div class="pop__liens"><span id="pr-copie" data-on="6">Activité 2 — Les séismes</span></div>
+                      </div>
+                      <div class="pop__actions"><span class="b b--fantome b--petit">Plan de classe</span><span class="b b--fantome b--petit">Élèves</span></div>
+                    </div>
+                    <div class="bulle bulle--haut" data-at="6" style="left:190px;top:266px">Tableau déjà préparé pour la 4B mardi : la 4A en part, puis le modifie à part</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : copier et lancer -->
+    <section class="fiche" id="copier-lancer">
+      <div class="fiche__texte">
+        <h2>Copier pour les autres classes, puis lancer la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Accueil › calendrier › heure</span></p>
+        <p class="fiche__but">Un tableau préparé pour une classe se copie aux heures des autres classes du même niveau. Le jour J, l'écran de classe l'attend et le verse dans la séance dès qu'elle démarre sur le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#cl-copier" data-action="click" data-duration="3200">Dans la fenêtre de l'heure, sous le titre du tableau, cliquer <span class="btn-nom">Copier pour les autres 4e…</span>.</li>
+          <li data-cursor="#cl-ok" data-action="click" data-duration="3800">Cocher les cours voulus, puis <span class="btn-nom">Copier</span>. Un cours qui « a déjà un tableau » ne se coche pas. Chaque copie se modifie ensuite à part.</li>
+          <li data-cursor="#cl-lancer" data-action="click">Le jour du cours, <span class="btn-nom">Lancer la séance</span> ouvre l'écran de classe.</li>
+          <li data-cursor="#cl-pret" data-duration="3600">L'écran attend : « Tableau prêt : … », et rappelle de démarrer la séance sur le téléphone : le tableau s'ouvrira tout seul.</li>
+          <li data-cursor="#cl-page" data-duration="4000">Dès que la séance démarre sur le téléphone, l'écran passe au tableau et y verse les pages préparées : ruban replié, pastille, onglets sur le bord, pages verrouillées.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le versement n'a lieu qu'une fois par séance, et seulement si le tableau de la séance est vide : un tableau effacé en classe n'est pas rempli de nouveau.</li>
+            <li>L'original n'est jamais modifié : la séance garde sa propre copie, avec ce qui y est écrit en classe.</li>
+            <li>Un cours rédigé qui a des écrans ne verse que ses écrans, dans l'ordre ; un cours rédigé sans écran s'affiche en bande, hors du tableau blanc.</li>
+            <li>Sans tableau préparé, la séance s'ouvre sur un tableau vide et propose une seule fois <b>Tableaux préparés</b>, avec « Tableau vierge ».</li>
+            <li>Seul <b>Lancer la séance</b> est relié au téléphone. <b>▶ Essayer</b> est un essai sans séance : ni télécommande, ni plan de classe, rien n'est gardé.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/demarrer-une-seance.html">Démarrer une séance sur le téléphone</a> · <a href="../classe/seance-au-tableau.html">L'écran de classe</a> · <a href="../classe/cours-et-tableau-blanc.html">Le tableau projeté</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre fenetre--rel">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url repli" data-to="3">qwetsh.github.io/gestion-classe/</div><div class="fenetre__url repli" data-from="4">qwetsh.github.io/gestion-classe/classe</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it"><span class="ico"></span>Classes</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Accueil</span><span class="esp"></span><span class="muet">Semaine du 23 novembre</span></div>
+                  <div class="app__corps" style="position:relative">
+                    <div class="acc-eyebrow">Cette semaine</div>
+                    <div class="edt">
+                      <div></div><div class="edt__j">Lun. 23</div><div class="edt__j">Mar. 24</div><div class="edt__j">Mer. 25</div><div class="edt__j">Jeu. 26</div><div class="edt__j">Ven. 27</div>
+                      <div class="edt__h">8 h</div>
+                      <div class="edt__col"><div class="edt__cours c5" style="top:2px;height:84px"><b>5E</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c4" data-on="1-3" style="top:90px;height:40px"><i class="pt-tb"></i><b>4B</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c3" style="top:46px;height:40px"><b>3A</b>SVT · salle 210</div></div>
+                      <div class="edt__col"><div class="edt__cours c6" style="top:2px;height:40px"><b>6C</b>SVT · salle 310</div><div class="edt__cours c4" style="top:134px;height:40px"><i class="pt-tb" data-from="3"></i><b>4A</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c3" style="top:90px;height:84px"><b>3B</b>SVT · salle 210</div></div>
+                      <div class="edt__h">9 h</div><div class="edt__h">10 h</div><div class="edt__h">11 h</div>
+                    </div>
+                    <div class="pop" style="left:300px;top:20px">
+                      <div class="pop__t"><span class="puce puce--4">4B</span> 4B · SVT</div>
+                      <div class="pop__s repli" data-to="2">mar. 24 novembre · 10:00 – 11:00 · salle 310</div>
+                      <div class="pop__s repli" data-from="3">aujourd'hui · 10:00 – 11:00 · salle 310</div>
+                      <div class="pop__l">Tableau du cours</div>
+                      <span class="pop__board"><b>Activité 2 — Les séismes</b><small>modifié le 22 nov.</small></span>
+                      <div class="pop__liens repli" data-at="1,3"><span id="cl-copier" data-on="1">Copier pour les autres 4e…</span><span style="color:var(--text-dim)">Supprimer</span></div>
+                      <div class="repli" data-at="2" style="margin-top:6px">
+                        <span class="pop__muet" style="margin:0 0 4px">Même base pour ces cours ; chaque copie se modifie ensuite à part.</span>
+                        <div class="dup"><i class="case case--on"></i>4A · SVT<small>jeu. 26 · 11:00</small></div>
+                        <div class="dup"><i class="case case--on"></i>4D · SVT<small>ven. 27 · 14:00</small></div>
+                        <div class="dup dup--off"><i class="case"></i>4C · SVT<small>a déjà un tableau</small></div>
+                        <div class="ligne" style="justify-content:flex-end;gap:6px;margin-top:4px"><span class="pop__btn" style="padding:0 10px">Annuler</span><span class="pop__btn pop__btn--plein" id="cl-ok" data-on="2" style="padding:0 12px">Copier</span></div>
+                      </div>
+                      <div class="pop__actions">
+                        <span class="pop__btn pop__btn--plein repli" id="cl-lancer" data-at="3" data-on="3" style="padding:0 12px">Lancer la séance</span>
+                        <span class="b b--fantome b--petit">Plan de classe</span><span class="b b--fantome b--petit">Élèves</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="couvre zoom" data-at="4">
+                <div class="attente">
+                  <div class="attente__pouls"></div>
+                  <h4>En attente d'une séance</h4>
+                  <div class="attente__pret" id="cl-pret">Tableau prêt : <b>Activité 2 — Les séismes</b></div>
+                  <p>Démarre la séance sur ton téléphone : le tableau s'ouvrira tout seul.</p>
+                  <div class="attente__direct">Connecté en direct</div>
+                </div>
+              </div>
+
+              <div class="couvre zoom" data-at="5">
+                <div class="tb">
+                  <div class="tb-onglets tb-onglets--bord"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie" style="margin-left:6px">Plan de classe</span></div>
+                  <div class="tb-scene"><div class="tb-bureau">
+                    <div class="tb-page" id="cl-page" style="width:720px;height:405px">
+                      <div class="tb-texte" style="left:36px;top:26px;font-size:26px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                      <div class="tb-texte" style="left:36px;top:70px;font-size:15px;color:#4B5563">Document 2 : un sismogramme</div>
+                      <svg class="tb-encre" viewBox="0 0 720 405"><path stroke="#1D4ED8" stroke-width="3" d="M40 250 H190 L200 240 L208 262 L216 226 L225 278 L234 198 L244 306 L254 180 L264 292 L274 216 L284 270 L294 234 L304 258 L316 242 L330 252 L350 246 L370 250 H680"/></svg>
+                      <span class="bouton-rep" style="left:560px;top:330px">Réponse</span>
+                      <span class="verrou" style="left:545px;top:322px"><svg class="ic"><use href="#i-verrou"/></svg></span>
+                    </div>
+                    <div class="cl-lat"><span>Activité</span><span>Internet</span><span>Vidéo</span></div>
+                    <div class="cl-verso"><svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                    <div class="cl-nav"><span>‹</span><span>1 / 4</span><span>›</span></div>
+                    <div class="tb-pastille tb-pastille--blanche" style="left:915px;top:300px;--pc:#1D4ED8"><svg class="ic"><use href="#i-pen"/></svg></div>
+                    <div class="bulle bulle--bas" style="left:150px;top:20px">Pages copiées depuis le tableau préparé : les objets préparés sont verrouillés</div>
+                  </div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : improvisé -->
+    <section class="fiche" id="improvise">
+      <div class="fiche__texte">
+        <h2>Tableau blanc improvisé depuis l'heure</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › calendrier › heure › Tableau blanc</span></p>
+        <p class="fiche__but">Faire cours sans préparation, avec la fiche, les documents et la correction de l'activité à portée de main.</p>
+        <ol class="etapes">
+          <li data-cursor="#im-tb" data-action="click" data-duration="3200">Dans la fenêtre d'une heure sans tableau, cliquer <span class="btn-nom">Tableau blanc</span> (« Pages 16:9 pour écrire en direct : on choisit d'abord l'activité »).</li>
+          <li data-cursor="#im-sugg" data-action="click" data-duration="4000">Choisir l'activité : les suggestions du niveau viennent en tête ; <b>Chercher une activité…</b> et <b>Toutes les activités</b> parcourent la bibliothèque. <span class="btn-nom">Tableau vide</span> part de rien.</li>
+          <li data-cursor="#im-page" data-duration="3600">Le tableau du cours est créé au titre de l'activité et s'ouvre en mode classe : page vide, ruban replié, pastille.</li>
+          <li data-cursor="#im-act" data-action="click" data-duration="3600">L'onglet <b>Activité</b>, au bord droit, ouvre la fiche, les documents et la correction pour en prélever des morceaux ; <b>Internet</b> et <b>Vidéo</b> sont juste en dessous.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le tableau retrouve son activité par son titre et sa séquence : un tableau renommé demande de choisir l'activité à l'ouverture du panneau.</li>
+            <li>En préparation : verser tout seul les écrans de la correction dans ce tableau. Pour l'instant, on prélève à la main dans le panneau Activité, ou on lie la correction (fiche précédente).</li>
+            <li>Si la bibliothèque ne se lit pas : « Bibliothèque illisible : vous pouvez ouvrir un tableau vide. »</li>
+            <li>Le tableau reste attaché à l'heure : la fenêtre du cours le montre ensuite sous <b>Tableau du cours</b>.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#activite">Panneau Activité</a> · <a href="tableau-blanc-objets.html">Panneaux Internet et Vidéo</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre fenetre--rel">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it"><span class="ico"></span>Classes</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Accueil</span><span class="esp"></span><span class="muet">Semaine du 23 novembre</span></div>
+                  <div class="app__corps" style="position:relative">
+                    <div class="acc-eyebrow">Cette semaine</div>
+                    <div class="edt">
+                      <div></div><div class="edt__j">Lun. 23</div><div class="edt__j">Mar. 24</div><div class="edt__j">Mer. 25</div><div class="edt__j">Jeu. 26</div><div class="edt__j">Ven. 27</div>
+                      <div class="edt__h">8 h</div>
+                      <div class="edt__col"><div class="edt__cours c5" style="top:2px;height:84px"><b>5E</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c4" style="top:90px;height:40px"><b>4B</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c3" data-on="1-2" style="top:46px;height:40px"><b>3A</b>SVT · salle 210</div></div>
+                      <div class="edt__col"><div class="edt__cours c6" style="top:2px;height:40px"><b>6C</b>SVT · salle 310</div></div>
+                      <div class="edt__col"><div class="edt__cours c3" style="top:90px;height:84px"><b>3B</b>SVT · salle 210</div></div>
+                      <div class="edt__h">9 h</div><div class="edt__h">10 h</div><div class="edt__h">11 h</div>
+                    </div>
+                    <div class="pop" style="left:440px;top:10px">
+                      <div class="pop__t"><span class="puce puce--3">3A</span> 3A · SVT</div>
+                      <div class="pop__s">mer. 25 novembre · 9:00 – 10:00 · salle 210</div>
+                      <div class="pop__l">Tableau du cours</div>
+                      <div class="pop__deux">
+                        <span class="pop__btn"><svg class="ic"><use href="#i-doc"/></svg>Rédiger un cours</span>
+                        <span class="pop__btn" id="im-tb" data-on="1-2"><svg class="ic"><use href="#i-grille"/></svg>Tableau blanc</span>
+                      </div>
+                      <div class="repli" data-at="1" style="margin-top:6px"><span class="pop__btn">Lier une activité</span></div>
+                      <div class="repli" data-from="2" style="margin-top:8px">
+                        <div class="ligne" style="justify-content:space-between"><span class="pop__l" style="margin:0">Quelle activité ?</span><span class="muet">Annuler</span></div>
+                        <div style="margin-top:6px">
+                          <span class="pop__board" id="im-sugg" data-on="2"><b>Activité 4 — Le système immunitaire</b><small>Séquence 3 — Le corps se défend</small></span>
+                          <span class="pop__board"><b>Activité 3 — Les vaccins</b><small>Séquence 3 — Le corps se défend</small></span>
+                        </div>
+                        <div class="pick__champ">Chercher une activité…</div>
+                        <div class="pick__pied"><span>Toutes les activités</span><span>Tableau vide</span></div>
+                      </div>
+                      <div class="pop__actions"><span class="b b--fantome b--petit">Plan de classe</span><span class="b b--fantome b--petit">Élèves</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="couvre zoom" data-from="3">
+                <div class="tb">
+                  <div class="tb-onglets tb-onglets--bord"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie" style="margin-left:6px">Fermer</span></div>
+                  <div class="tb-scene"><div class="tb-bureau">
+                    <div class="tb-page" id="im-page" style="width:720px;height:405px"><div class="tb-vide"><div>Écrivez.</div><div style="font-size:13px">Les outils sont dans le ruban, en haut.</div></div></div>
+                    <div class="cl-lat"><span id="im-act" data-on="4">Activité</span><span>Internet</span><span>Vidéo</span></div>
+                    <div class="cl-verso"><svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                    <div class="tb-pastille tb-pastille--blanche" style="left:915px;top:330px;--pc:#111827"><svg class="ic"><use href="#i-pen"/></svg></div>
+                    <div class="ab glisse-gauche" data-at="4" style="right:28px">
+                      <div class="ab__tete"><b>Activité 4 — Le système immunitaire</b><span class="ab__ico">⇆</span><span class="ab__ico">↔</span><span class="ab__ico">×</span></div>
+                      <div class="ab__var"><span class="ab--actif">Fiche</span><span>Documents</span><span>Correction</span></div>
+                      <div class="ab__aide">Touchez un paragraphe, une question, une image ou un tableau ; touchez encore pour élargir.</div>
+                      <div class="ab__feuille">
+                        <h5>Activité 4 — Le système immunitaire</h5>
+                        <div class="ab__bloc">Consigne : à l'aide des documents, expliquer comment l'organisme se débarrasse d'un microbe.</div>
+                        <div class="ab__bloc">1. Nommer les cellules visibles sur le document 1.</div>
+                        <div class="ab__bloc">2. Décrire les étapes de la phagocytose.</div>
+                      </div>
+                    </div>
+                  </div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : panneau Activité -->
+    <section class="fiche" id="activite">
+      <div class="fiche__texte">
+        <h2>Panneau « Activité » : fiche, documents, correction</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">En classe › onglet Activité · Plus › Séance › Activité</span></p>
+        <p class="fiche__but">Avoir sous la main la fiche donnée aux élèves, ses documents et sa correction, et en prélever un morceau à poser sur la page, en direct.</p>
+        <ol class="etapes">
+          <li data-cursor="#ac-onglet" data-action="click">Toucher l'onglet <b>Activité</b> au bord droit : le panneau s'ouvre sur la fiche, en feuilles A4 réduites.</li>
+          <li data-cursor="#ac-doc" data-action="click">Les pastilles en tête changent d'original : <span class="btn-nom">Fiche</span>, <span class="btn-nom">Documents</span>, <span class="btn-nom">Correction</span>…</li>
+          <li data-cursor="#ac-bloc" data-action="click">Toucher un paragraphe, une question, une image ou un tableau : le plus petit bloc utile se surligne.</li>
+          <li data-cursor="#ac-bloc" data-action="click" data-duration="3200">Toucher encore élargit la sélection. Les boutons ▲ ▼ font de même, ＋ ajoute le bloc suivant, × efface la sélection.</li>
+          <li data-cursor="#ac-texte" data-action="click" data-duration="3600"><span class="btn-nom">Texte</span> pose le texte, modifiable, sur la page ; <span class="btn-nom">Image</span> pose une image fidèle à la mise en page. Le panneau confirme : « Posé sur le tableau. »</li>
+          <li data-cursor="#ac-autre" data-duration="3200">En tête : ⇆ choisit une autre activité, ↔ passe le panneau de l'autre côté de l'écran, × le ferme.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'activité est retrouvée par le titre et la séquence du tableau. Sinon : « Ce tableau n'est pas rattaché à une activité. Choisissez-la : », avec une recherche et la liste du niveau par séquence. Le choix est gardé pour ce tableau.</li>
+            <li>L'objet posé tombe à côté du panneau, jamais dessous. Un seul panneau latéral à la fois : Activité, Internet ou Vidéo. Le côté choisi est retenu sur l'appareil.</li>
+            <li>Si l'image ne se fait pas : « Image impossible : essayez « Texte ». » Un document sans feuille (tableau blanc) n'a rien à montrer.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#improvise">Tableau improvisé</a> · <a href="tableau-blanc-objets.html">Panneaux Internet et Vidéo</a> · <a href="mes-cours.html">Bibliothèque de Mes cours</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classe</div></div>
+              <div class="tb">
+                <div class="tb-onglets tb-onglets--bord"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie" style="margin-left:6px">Plan de classe</span></div>
+                <div class="tb-scene"><div class="tb-bureau">
+                  <div class="tb-page" style="width:720px;height:405px">
+                    <div class="tb-texte" style="left:30px;top:22px;font-size:24px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                    <svg class="tb-encre" viewBox="0 0 720 405"><path class="trait" data-from="1" pathLength="1" stroke="#DC2626" stroke-width="3" d="M34 300 Q120 270 200 300 T360 300"/></svg>
+                    <div class="tb-texte glisse-haut" data-from="5" style="left:30px;top:80px;width:330px;font-size:15px;padding:6px 8px;outline:1.5px solid #4F46E5;outline-offset:2px;background:#fff">Document 2 — Un sismogramme. Enregistrement des ondes par une station située à 300 km de l'épicentre.</div>
+                  </div>
+                  <div class="cl-lat"><span id="ac-onglet" data-on="1">Activité</span><span>Internet</span><span>Vidéo</span></div>
+                  <div class="cl-verso"><svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                  <div class="ab glisse-gauche" data-from="1" style="right:28px">
+                    <div class="ab__tete"><b>Activité 2 — Les séismes</b><span class="ab__ico" id="ac-autre" data-on="6">⇆</span><span class="ab__ico" data-on="6">↔</span><span class="ab__ico">×</span></div>
+                    <div class="ab__var"><span class="repli" data-at="1">Fiche</span><span class="repli" data-from="2" style="background:#fff;color:#1F2937">Fiche</span><span id="ac-doc" data-on="2-6">Documents</span><span>Correction</span></div>
+                    <div class="ab__aide">Touchez un paragraphe, une question, une image ou un tableau ; touchez encore pour élargir.</div>
+                    <div class="ab__feuille repli" data-at="1">
+                      <h5>Activité 2 — Les séismes</h5>
+                      <div class="ab__bloc">Consigne : à l'aide des documents, expliquer comment on localise un séisme.</div>
+                      <div class="ab__bloc">1. Repérer sur le document 1 les régions où les séismes sont nombreux.</div>
+                      <div class="ab__bloc">2. Décrire le sismogramme du document 2.</div>
+                    </div>
+                    <div class="ab__feuille repli" data-from="2">
+                      <h5>Documents</h5>
+                      <div class="ab__bloc" style="color:#6B7280">Document 1 — Répartition des séismes dans le monde (carte).</div>
+                      <div class="ab__bloc" data-on="4-5">
+                        <div style="font-weight:700;color:#1E3A8A">Document 2 — Un sismogramme</div>
+                        <svg viewBox="0 0 240 50" style="width:100%;height:42px;display:block"><path d="M4 30 H80 l4-6 4 12 4-18 4 22 4-14 4 8 4-4 H236" stroke="#1D4ED8" stroke-width="1.5" fill="none"/></svg>
+                        <div class="ab__bloc" id="ac-bloc" data-on="3" style="margin:0">Enregistrement des ondes par une station située à 300 km de l'épicentre.</div>
+                      </div>
+                      <div class="ab__bloc">Document 3 — Échelle des intensités.</div>
+                    </div>
+                    <div class="ab__msg repli" data-from="5">Posé sur le tableau.</div>
+                    <div class="ab__barre repli" data-from="3"><span class="go" id="ac-texte" data-on="5">Texte</span><span class="go">Image</span><span>▲</span><span>▼</span><span>＋</span><span>×</span></div>
+                  </div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : tableaux préparés -->
+    <section class="fiche" id="prepares">
+      <div class="fiche__texte">
+        <h2>Tableaux préparés : copier ici ou ouvrir dans un onglet</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fichier › Tableau préparé</span></p>
+        <p class="fiche__but">Reprendre les pages d'un tableau de la bibliothèque (Mes cours) dans le tableau ouvert, ou l'ouvrir à côté sans rien toucher.</p>
+        <ol class="etapes">
+          <li data-cursor="#tp-ouvrir" data-action="click">Ruban › <b>Fichier</b> › <span class="btn-nom">Tableau préparé</span> (« Copier ici les pages d'un tableau de Mes cours »).</li>
+          <li data-cursor="#tp-cherche" data-duration="3600">Chercher un titre ou un chapitre, ou filtrer le niveau (celui de la classe est choisi d'office). Les tableaux sont rangés par niveau, puis par chapitre.</li>
+          <li data-cursor="#tp-corr" data-action="click" data-duration="4000">Une activité à plusieurs originaux montre un bouton par original : Fiche, Documents, Correction… Une évaluation porte la pastille « Évaluation », après un trait pointillé. Cliquer <span class="btn-nom">Correction</span>.</li>
+          <li data-cursor="#tp-v3" data-duration="3600">Les pages sont copiées après la page courante ; sur un tableau vide, elles remplacent la page blanche. L'original ne bouge pas.</li>
+          <li data-cursor="#tp-onglet" data-action="click" data-duration="3400"><span class="btn-nom">↗ Onglet</span> (ou ↗ à côté d'un original) ouvre le tableau dans un nouvel onglet, sans toucher au tableau courant.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>En classe, les objets copiés arrivent verrouillés. Pour une séance, l'origine est retenue (lien entre la séance et le tableau préparé).</li>
+            <li>Au début d'une séance sans tableau préparé, cette fenêtre s'ouvre seule une fois : « Partir d'un tableau préparé, ou commencer sur une page vierge. », avec le bouton <b>Tableau vierge</b>.</li>
+            <li>Le tableau ouvert n'est pas proposé. « Ce tableau préparé est vide. » s'il n'y a rien à copier ; sans aucun tableau, la fenêtre invite à préparer ses cours depuis Mes cours.</li>
+            <li>Aussi par Plus › Fichier en habillage tactile, et par « Tableau préparé… » dans la barre d'onglets.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#onglets">Espace à onglets</a> · <a href="mes-cours.html">Mes cours</a> · <a href="#mes-cours">Enregistrer dans Mes cours</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="tb">
+                <div class="tb-titre"><span class="tb-logo">GC</span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-nom">Activité 2 — Les séismes</span><span class="tb-enr">Enregistré automatiquement</span><span class="esp"></span><span class="tb-sortie">Fermer</span></div>
+                <div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier is-actif">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-plier">▴</span></div>
+                <div class="tb-ruban">
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-ouvrir"/></svg>Importer</span><span class="tb-gb" id="tp-ouvrir" data-on="1"><svg class="ic"><use href="#i-biblio"/></svg>Tableau préparé</span><span class="tb-gb"><svg class="ic"><use href="#i-doc"/></svg>Brouillon</span></div><div class="tb-gr__l">Ouvrir</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Dans Mes cours</span><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Fichier .gcboard</span></div><div class="tb-gr__l">Enregistrer</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-pdf"/></svg>PDF / page web</span><span class="tb-gb"><svg class="ic"><use href="#i-image"/></svg>Image de la page</span></div><div class="tb-gr__l">Exporter</div></div>
+                </div>
+                <div class="tb-scene">
+                  <div class="tb-bureau">
+                    <div class="tb-page">
+                      <div class="tb-texte" style="left:36px;top:24px;font-size:24px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                      <svg class="tb-encre" viewBox="0 0 640 360"><path stroke="#1D4ED8" stroke-width="3" d="M40 220 H170 L180 210 L188 232 L196 196 L205 248 L214 168 L224 276 L234 150 L244 262 L254 186 L264 240 L274 204 L284 228 L296 212 L310 222 L330 216 L350 220 H600"/></svg>
+                    </div>
+                    <div class="lib-fond" data-at="2-3,5">
+                      <div class="lib">
+                        <div class="lib__tete"><div><strong>Tableaux préparés</strong><small>Les pages du tableau choisi sont copiées ici ; l'original ne bouge pas.</small></div><span class="lib__x">×</span></div>
+                        <div class="lib__cherche"><span id="tp-cherche" data-on="2">Rechercher un titre ou un chapitre…</span><span>4e ▾</span></div>
+                        <div class="lib__corps">
+                          <h3>4e</h3>
+                          <h4>Séquence 2 — La Terre bouge</h4>
+                          <div class="lib__ligne"><i><svg class="ic"><use href="#i-grille"/></svg></i><div><b>Activité 3 — Les volcans</b><small>modifié le 20 nov.</small></div><span class="lib__go">Fiche</span><span class="lib__onglet">↗</span><span class="lib__go" id="tp-corr" data-on="3">Correction</span><span class="lib__onglet">↗</span></div>
+                          <div class="lib__ligne"><i><svg class="ic"><use href="#i-grille"/></svg></i><div><b>Les plaques lithosphériques</b><small>modifié le 18 nov.</small></div><span class="lib__go">Copier ici</span><span class="lib__onglet" id="tp-onglet" data-on="5">↗ Onglet</span></div>
+                          <div class="lib__eval"><div class="lib__ligne"><i><svg class="ic"><use href="#i-doc"/></svg></i><div><b><em class="lib__pill">Évaluation</em>La Terre bouge</b><small>modifié le 12 nov.</small></div><span class="lib__go">Sujet</span><span class="lib__onglet">↗</span><span class="lib__go">Correction</span><span class="lib__onglet">↗</span></div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tb-volet">
+                    <div class="tb-volet__t"><span>PAGES</span><span class="repli" data-to="3">2</span><span class="repli" data-from="4">4</span></div>
+                    <div class="tb-vignettes">
+                      <div class="tb-vig tb-vig--cour"><svg viewBox="0 0 120 66"><rect x="7" y="6" width="44" height="5" rx="1" fill="#1E3A8A"/><path d="M8 42h24l3-6 3 10 3-14 3 18 3-10 3 4h50" stroke="#1D4ED8" stroke-width="1.4" fill="none"/></svg><b>1</b></div>
+                      <div class="tb-vig zoom repli" id="tp-v3" data-from="4" data-on="4"><svg viewBox="0 0 120 66"><rect x="7" y="6" width="60" height="5" rx="1" fill="#C00000"/><path d="M40 56 L60 22 L80 56 Z" stroke="#B45309" stroke-width="1.4" fill="#FDE68A"/></svg><b>2</b></div>
+                      <div class="tb-vig zoom repli" data-from="4"><svg viewBox="0 0 120 66"><rect x="7" y="6" width="60" height="5" rx="1" fill="#C00000"/><rect x="10" y="18" width="100" height="5" rx="1" fill="#E5E7EB"/><rect x="10" y="28" width="80" height="5" rx="1" fill="#E5E7EB"/></svg><b>3</b></div>
+                      <div class="tb-vig"><svg viewBox="0 0 120 66"><rect x="7" y="6" width="40" height="5" rx="1" fill="#1E3A8A"/></svg><b class="repli" data-to="3">2</b><b class="repli" data-from="4">4</b></div>
+                    </div>
+                    <div class="tb-volet__pied"><span>▲</span><span>▼</span><span class="plus">+</span></div>
+                  </div>
+                </div>
+                <div class="tb-etat"><span class="z"><span>‹</span><span class="repli" data-to="3">Page 1 sur 2</span><span class="repli" data-from="4">Page 1 sur 4</span><span>›</span></span><span>＋ Nouvelle page</span><span class="esp"></span><span class="z"><span>−</span><span>100 %</span><span>+</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : enregistrer dans Mes cours -->
+    <section class="fiche" id="mes-cours">
+      <div class="fiche__texte">
+        <h2>Enregistrer dans Mes cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fichier › Dans Mes cours</span></p>
+        <p class="fiche__but">Faire du tableau ouvert, par exemple celui d'une séance réussie, un tableau préparé que l'on réutilisera avec d'autres classes.</p>
+        <ol class="etapes">
+          <li data-cursor="#mc-btn" data-action="click">Ruban › <b>Fichier</b> › <span class="btn-nom">Dans Mes cours</span> (Plus › Fichier › Enregistrer dans Mes cours… en habillage tactile).</li>
+          <li data-cursor="#mc-titre" data-duration="3600">Un titre est proposé (en séance : la classe et la date) ; le remplacer au besoin.</li>
+          <li data-cursor="#mc-niveau" data-duration="3400">Le <b>Niveau</b> est déduit du nom de la classe (Sans niveau, 6e, 5e, 4e, 3e, Autre). Le <b>Chapitre</b> sert au rangement.</li>
+          <li data-cursor="#mc-ok" data-action="click"><span class="btn-nom">Enregistrer</span> : une copie des pages actuelles devient un tableau préparé, rangé dans Mes cours au niveau et au chapitre choisis.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>C'est une copie : le tableau ouvert (celui de la séance, le brouillon…) reste tel quel.</li>
+            <li>Réservé à un compte connecté. En cas d'échec : « Enregistrement impossible ».</li>
+            <li>Le tableau d'une séance passée se rouvre depuis le détail de la séance, puis s'enregistre ici.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#relire">Relire le tableau d'une séance</a> · <a href="#prepares">Tableaux préparés</a> · <a href="mes-cours.html">Mes cours</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="tb">
+                <div class="tb-titre"><span class="tb-logo">GC</span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-nom">Séance 4B</span><span class="tb-enr">Enregistré automatiquement</span><span class="esp"></span><span class="tb-sortie">Fermer</span></div>
+                <div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier is-actif">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-plier">▴</span></div>
+                <div class="tb-ruban">
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-ouvrir"/></svg>Importer</span><span class="tb-gb"><svg class="ic"><use href="#i-biblio"/></svg>Tableau préparé</span><span class="tb-gb"><svg class="ic"><use href="#i-doc"/></svg>Brouillon</span></div><div class="tb-gr__l">Ouvrir</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb" id="mc-btn" data-on="1"><svg class="ic"><use href="#i-enreg"/></svg>Dans Mes cours</span><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Fichier .gcboard</span></div><div class="tb-gr__l">Enregistrer</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-pdf"/></svg>PDF / page web</span><span class="tb-gb"><svg class="ic"><use href="#i-image"/></svg>Image de la page</span></div><div class="tb-gr__l">Exporter</div></div>
+                </div>
+                <div class="tb-scene">
+                  <div class="tb-bureau">
+                    <div class="tb-page">
+                      <div class="tb-texte" style="left:36px;top:24px;font-size:24px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                      <svg class="tb-encre" viewBox="0 0 640 360"><path stroke="#1D4ED8" stroke-width="3" d="M40 220 H170 L180 210 L188 232 L196 196 L205 248 L214 168 L224 276 L234 150 L244 262 L254 186 L264 240 L274 204 L284 228 L296 212 L310 222 L330 216 L350 220 H600"/><path stroke="#DC2626" stroke-width="3" d="M234 132 Q236 108 262 100 Q300 92 330 96"/></svg>
+                      <div class="ecrit" style="left:340px;top:78px;font-size:22px;color:#DC2626">arrivée des ondes</div>
+                    </div>
+                    <div class="lib-fond" data-from="2">
+                      <div class="lib" style="width:520px;margin-top:40px">
+                        <div class="lib__tete"><div><strong>Enregistrer dans Mes cours</strong><small>Une copie des pages actuelles devient un tableau préparé, réutilisable dans d'autres séances.</small></div><span class="lib__x">×</span></div>
+                        <div class="lib__form">
+                          <label><span>Titre</span><span class="lib__champ" id="mc-titre" data-on="2"><span data-type="Les séismes — le sismogramme" data-type-at="2"></span></span></label>
+                          <div class="lib__deux">
+                            <label><span>Niveau</span><span class="lib__champ" id="mc-niveau" data-on="3" style="justify-content:space-between">4e<small style="color:#6B7280">▾</small></span></label>
+                            <label><span>Chapitre</span><span class="lib__champ"><span class="repli" data-to="2" style="color:#9CA3AF">Nombres, Thalès, Volcans…</span><span data-type="Séquence 2 — La Terre bouge" data-type-at="3"></span></span></label>
+                          </div>
+                        </div>
+                        <div class="lib__pied"><span class="lib__btn lib__btn--gris">Annuler</span><span class="lib__btn" id="mc-ok" data-on="4"><span class="repli" data-to="3">Enregistrer</span><span class="repli" data-from="4">Enregistrement…</span></span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="tb-volet"><div class="tb-volet__t"><span>PAGES</span><span>2</span></div><div class="tb-vignettes"><div class="tb-vig tb-vig--cour"><svg viewBox="0 0 120 66"><rect x="7" y="6" width="44" height="5" rx="1" fill="#1E3A8A"/><path d="M8 42h24l3-6 3 10 3-14 3 18 3-10 3 4h50" stroke="#1D4ED8" stroke-width="1.4" fill="none"/></svg><b>1</b></div><div class="tb-vig"><em>vide</em><b>2</b></div></div><div class="tb-volet__pied"><span>▲</span><span>▼</span><span class="plus">+</span></div></div>
+                </div>
+                <div class="tb-etat"><span class="z"><span>‹</span><span>Page 1 sur 2</span><span>›</span></span><span>＋ Nouvelle page</span><span class="esp"></span><span class="z"><span>−</span><span>100 %</span><span>+</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : onglets -->
+    <section class="fiche" id="onglets">
+      <div class="fiche__texte">
+        <h2>Espace de travail à onglets</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Barre d'onglets, en haut du tableau</span></p>
+        <p class="fiche__but">Garder plusieurs tableaux ouverts en même temps, par exemple le tableau de la séance et, à côté, un tableau préparé ou le brouillon.</p>
+        <ol class="etapes">
+          <li data-cursor="#on-fichier" data-action="click" data-duration="3400">Dans le tableau de la séance : Fichier › Tableau préparé, puis <span class="btn-nom">↗ Onglet</span> sur le tableau voulu.</li>
+          <li data-cursor="#on-t2" data-duration="3600">La barre d'onglets apparaît : l'onglet de la séance, marqué d'un point vert (« Suivi par le téléphone »), et le tableau préparé, ouvert à côté.</li>
+          <li data-cursor="#on-t1" data-action="click" data-duration="3400">Cliquer un onglet pour l'afficher (Ctrl+Alt+← / →). Chaque onglet garde sa page, son zoom et ses minuteurs.</li>
+          <li data-cursor="#on-brou" data-action="click"><span class="btn-nom">Brouillon</span>, à droite de la barre, ouvre l'ardoise libre dans un troisième onglet ; <b>Tableau préparé…</b> en ajoute un autre.</li>
+          <li data-cursor="#on-x" data-action="click" data-duration="3400">La croix d'un onglet le ferme (« Fermer cet onglet »). Le dernier onglet se ferme par le bouton de sortie.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Six tableaux au plus : « Au plus 6 tableaux ouverts à la fois : fermez-en un d'abord. »</li>
+            <li>Seul l'onglet affiché reçoit le clavier, le collage et les commandes du téléphone. En classe, ce que voit la classe est l'onglet affiché.</li>
+            <li>Chaque onglet s'enregistre de son côté ; les onglets ouverts sont retrouvés après un rechargement de la page.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#prepares">Tableaux préparés</a> · <a href="#brouillon">Brouillon</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classe</div></div>
+              <div class="ws repli" data-from="2">
+                <div class="ws__tab" id="on-t1" data-on="3"><svg class="ic"><use href="#s-ecole"/></svg><b>Séance 4B</b><i class="ws__pt"></i><span class="x">×</span></div>
+                <div class="ws__tab" id="on-t2" data-on="2,5"><svg class="ic"><use href="#i-grille"/></svg><b>Activité 3 — Les volcans</b><span class="x" id="on-x" data-on="5">×</span></div>
+                <div class="ws__tab repli" data-from="4" data-on="4"><svg class="ic"><use href="#i-pen"/></svg><b>Brouillon</b><span class="x">×</span></div>
+                <div class="ws__add"><span><svg class="ic"><use href="#i-biblio"/></svg>Tableau préparé…</span><span class="repli" id="on-brou" data-to="4" data-on="4"><svg class="ic"><use href="#i-pen"/></svg>Brouillon</span></div>
+              </div>
+              <div class="tb">
+                <div class="tb-onglets tb-onglets--bord" style="position:relative"><span class="tb-onglet tb-onglet--fichier" id="on-fichier" data-on="1">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie" style="margin-left:6px">Plan de classe</span>
+                  <div class="tb-ruban tb-ruban--dessus glisse-bas" data-at="1" style="top:100%">
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-ouvrir"/></svg>Importer</span><span class="tb-gb is-actif"><svg class="ic"><use href="#i-biblio"/></svg>Tableau préparé</span><span class="tb-gb"><svg class="ic"><use href="#i-doc"/></svg>Brouillon</span></div><div class="tb-gr__l">Ouvrir</div></div>
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Dans Mes cours</span><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Fichier .gcboard</span></div><div class="tb-gr__l">Enregistrer</div></div>
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-pdf"/></svg>PDF / page web</span><span class="tb-gb"><svg class="ic"><use href="#i-image"/></svg>Image de la page</span></div><div class="tb-gr__l">Exporter</div></div>
+                  </div>
+                </div>
+                <div class="tb-scene"><div class="tb-bureau">
+                  <div class="tb-page" style="width:700px;height:394px">
+                    <div class="repli" data-at="1,3,5" style="position:absolute;inset:0">
+                      <div class="tb-texte" style="left:34px;top:24px;font-size:26px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                      <svg class="tb-encre" viewBox="0 0 700 394"><path stroke="#1D4ED8" stroke-width="3" d="M40 240 H190 L200 230 L208 252 L216 216 L225 268 L234 188 L244 296 L254 170 L264 282 L274 206 L284 260 L294 224 L304 248 L316 232 L330 242 L350 236 L370 240 H660"/></svg>
+                    </div>
+                    <div class="repli" data-at="2" style="position:absolute;inset:0">
+                      <div class="tb-texte" style="left:34px;top:24px;font-size:26px;font-weight:700;color:#C00000">Correction — Les volcans</div>
+                      <svg class="tb-encre" viewBox="0 0 700 394"><path d="M230 330 L350 120 L470 330 Z" fill="#FDE68A" stroke="#B45309" stroke-width="3"/><path d="M350 120 Q340 80 360 50" stroke="#DC2626" stroke-width="5"/></svg>
+                    </div>
+                    <div class="repli" data-at="4" style="position:absolute;inset:0"><div class="tb-vide"><div>Écrivez.</div><div style="font-size:13px">Les outils sont dans le ruban, en haut.</div></div></div>
+                  </div>
+                  <div class="cl-lat"><span>Activité</span><span>Internet</span><span>Vidéo</span></div>
+                  <div class="tb-pastille tb-pastille--blanche" style="left:915px;top:320px;--pc:#1D4ED8"><svg class="ic"><use href="#i-pen"/></svg></div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : brouillon -->
+    <section class="fiche" id="brouillon">
+      <div class="fiche__texte">
+        <h2>Brouillon : l'ardoise libre</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › Tableau blanc · Mes cours › Brouillon</span></p>
+        <p class="fiche__but">Une ardoise sans séance ni cours, gardée sur l'ordinateur où l'on écrit : pour une explication au vol, un schéma d'essai.</p>
+        <ol class="etapes">
+          <li data-cursor="#br-carte" data-action="click">Sur l'accueil, la carte <span class="btn-nom">Tableau blanc</span> (« Ardoise libre, sans séance »). Dans Mes cours : le bouton <b>Brouillon</b>.</li>
+          <li data-cursor="#br-page" data-duration="3400">Le tableau s'ouvre, titré « Brouillon » : on écrit, on pose des objets comme ailleurs.</li>
+          <li data-cursor="#br-fermer" data-action="click">Fermer : rien ne part au serveur, tout reste dans ce navigateur.</li>
+          <li data-cursor="#br-carte" data-action="click" data-duration="3200">Rouvert plus tard sur le même ordinateur, le brouillon retrouve ce qui y était.</li>
+          <li data-cursor="#br-garder" data-action="click" data-duration="3600">Pour le garder pour de bon : Fichier › <span class="btn-nom">Dans Mes cours</span>, ou <b>Fichier .gcboard</b> pour un fichier.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Le brouillon est perdu si l'on change d'ordinateur ou si l'on vide les données du navigateur.</li>
+            <li>Depuis un autre tableau : Fichier › Brouillon l'ouvre dans un onglet à côté.</li>
+            <li>Le brouillon n'a pas de verso « Tableau blanc ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#mes-cours">Enregistrer dans Mes cours</a> · <a href="#importer">Fichier .gcboard</a> · <a href="#onglets">Espace à onglets</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre fenetre--rel">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it"><span class="ico"></span>Classes</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Accueil</span></div>
+                  <div class="app__corps">
+                    <div class="acc-eyebrow">Raccourcis</div>
+                    <div class="acc-cartes">
+                      <div class="acc-carte"><i style="background:#EEF0FF"></i><span><b>Évaluations</b><small>Carnet, TP de groupe…</small></span></div>
+                      <div class="acc-carte acc-carte--sombre" id="br-carte" data-on="1,4"><i style="background:#3F3F46"><svg class="ic" style="width:16px;height:16px;fill:none;stroke:#fff;stroke-width:1.8"><use href="#i-pen"/></svg></i><span><b>Tableau blanc</b><small>Ardoise libre, sans séance</small></span></div>
+                      <div class="acc-carte"><i style="background:#FCE1EC"></i><span><b>Outils</b><small>Boîte à outils</small></span></div>
+                      <div class="acc-carte"><i style="background:#EAF6EE"></i><span><b>Suivi élèves</b><small>Notes d'implication</small></span></div>
+                    </div>
+                    <div class="bulle bulle--haut" data-at="4" style="left:210px;top:96px">Le lendemain, sur le même ordinateur</div>
+                  </div>
+                </div>
+              </div>
+              <div class="couvre zoom" data-at="2-3,5">
+                <div class="tb">
+                  <div class="tb-titre"><span class="tb-logo">GC</span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-nom">Brouillon</span><span class="tb-enr">Enregistré automatiquement</span><span class="esp"></span><span class="tb-sortie" id="br-fermer" data-on="3">Fermer</span></div>
+                  <div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier" data-on="5">Fichier</span><span class="tb-onglet" data-on="2-3">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-plier">▴</span></div>
+                  <div class="tb-ruban">
+                    <div class="tb-rangee" data-at="2-3">
+                      <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-coller"/></svg>Coller</span></div><div class="tb-gr__l">Presse-papiers</div></div>
+                      <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-select"/></svg>Sélection</span><span class="tb-gb is-actif"><svg class="ic"><use href="#i-pen"/></svg>Stylo</span><span class="tb-gb"><svg class="ic"><use href="#i-surl"/></svg>Surligneur</span><span class="tb-gb"><svg class="ic"><use href="#i-gomme"/></svg>Gomme</span><span class="tb-gb"><svg class="ic"><use href="#i-texte"/></svg>Texte</span><span class="tb-gb"><svg class="ic"><use href="#i-formes"/></svg>Formes</span><span class="tb-gb"><svg class="ic"><use href="#i-laser"/></svg>Laser</span></div><div class="tb-gr__l">Outils</div></div>
+                    </div>
+                    <div class="tb-rangee" data-at="5">
+                      <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-ouvrir"/></svg>Importer</span><span class="tb-gb"><svg class="ic"><use href="#i-biblio"/></svg>Tableau préparé</span></div><div class="tb-gr__l">Ouvrir</div></div>
+                      <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb is-on" id="br-garder"><svg class="ic"><use href="#i-enreg"/></svg>Dans Mes cours</span><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Fichier .gcboard</span></div><div class="tb-gr__l">Enregistrer</div></div>
+                      <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-pdf"/></svg>PDF / page web</span><span class="tb-gb"><svg class="ic"><use href="#i-image"/></svg>Image de la page</span></div><div class="tb-gr__l">Exporter</div></div>
+                    </div>
+                  </div>
+                  <div class="tb-scene">
+                    <div class="tb-bureau">
+                      <div class="tb-page" id="br-page">
+                        <svg class="tb-encre" viewBox="0 0 640 360">
+                          <circle class="trait" data-from="2" pathLength="1" cx="230" cy="180" r="110" stroke="#059669" stroke-width="3"/>
+                          <circle class="trait" data-from="2" pathLength="1" cx="250" cy="170" r="34" stroke="#7C3AED" stroke-width="3"/>
+                          <path class="trait" data-from="2" pathLength="1" d="M284 170 L420 120" stroke="#111827" stroke-width="2.5"/>
+                          <path class="trait" data-from="2" pathLength="1" d="M330 250 L420 280" stroke="#111827" stroke-width="2.5"/>
+                        </svg>
+                        <div class="ecrit" data-from="2" style="left:428px;top:100px;font-size:22px;color:#111827">noyau</div>
+                        <div class="ecrit" data-from="2" style="left:428px;top:266px;font-size:22px;color:#111827">membrane</div>
+                      </div>
+                    </div>
+                    <div class="tb-volet"><div class="tb-volet__t"><span>PAGES</span><span>1</span></div><div class="tb-vignettes"><div class="tb-vig tb-vig--cour"><svg viewBox="0 0 120 66"><circle cx="43" cy="33" r="20" stroke="#059669" stroke-width="1.3" fill="none"/><circle cx="47" cy="31" r="6" stroke="#7C3AED" stroke-width="1.3" fill="none"/></svg><b>1</b></div></div><div class="tb-volet__pied"><span>▲</span><span>▼</span><span class="plus">+</span></div></div>
+                  </div>
+                  <div class="tb-etat"><span class="z"><span>‹</span><span>Page 1 sur 1</span><span>›</span></span><span>＋ Nouvelle page</span><span class="esp"></span><span class="z"><span>−</span><span>100 %</span><span>+</span></span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : mode classe, mode essai -->
+    <section class="fiche" id="classe-essai">
+      <div class="fiche__texte">
+        <h2>Mode classe, mode essai, verrouillage du préparé</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Écran de classe · ▶ Essayer · Essayer en classe</span></p>
+        <p class="fiche__but">Le vrai cours est relié au téléphone et enregistré avec la séance ; l'essai ne garde rien. Dans les deux cas, ce qui a été préparé est protégé des fausses manœuvres.</p>
+        <ol class="etapes">
+          <li data-cursor="#ce-page" data-duration="4000">En classe : ruban replié, pastille, gros boutons de page, onglets <b>Activité</b>, <b>Internet</b>, <b>Vidéo</b> sur le bord, bouton <b>Tableau blanc</b> en bas à gauche. La sortie s'appelle « Plan de classe ».</li>
+          <li data-cursor="#ce-obj" data-action="drag" data-drag-to="#ce-dest" data-duration="3600">Un objet copié du tableau préparé est verrouillé : il ne bouge pas et ne se supprime pas, mais il reste jouable (bouton, rideau, trou).</li>
+          <li data-cursor="#ce-verr" data-action="click" data-duration="3400">Pour le modifier quand même : Accueil › Disposition › <span class="btn-nom">Verrouiller</span> (Ctrl+Maj+K) le déverrouille.</li>
+          <li data-cursor="#ce-ajout" data-duration="3600">Ce qui est ajouté pendant le cours n'est pas verrouillé. Les traits préparés ne sont pas protégés : la gomme et « Effacer la page » les enlèvent.</li>
+          <li data-cursor="#ce-bandeau" data-duration="4400">En essai, la sortie s'appelle « Quitter l'essai ». Si une séance tourne sur le téléphone, un bandeau jaune le rappelle, avec <span class="btn-nom">Ouvrir l'écran de classe</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>En classe, les boutons se jouent quel que soit l'outil, les objets cachés au départ n'apparaissent pas, rideaux et trous se découvrent au toucher.</li>
+            <li>Un essai repart toujours de zéro (rien de révélé, rien de joué) et ne garde rien en quittant : ni télécommande, ni plan de classe. Ses versos vivent le temps de l'essai.</li>
+            <li>En préparation : un calque qui protégerait aussi l'encre préparée. Aujourd'hui, pour écrire sans rien abîmer, ouvrir le verso <b>Tableau blanc</b> de la page.</li>
+            <li>Un tableau neuf créé depuis l'heure s'ouvre aussi en mode classe, sans séance.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="mini-sites-et-animations.html">Verso « Tableau blanc »</a> · <a href="#essai">Essayer les écrans d'un cours</a> · <a href="../classe/cours-et-tableau-blanc.html">Le tableau projeté</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classe</div></div>
+              <div class="tb">
+                <div class="tb-onglets tb-onglets--bord" style="position:relative"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet" data-on="3">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie repli" data-to="4" style="margin-left:6px">Plan de classe</span><span class="tb-sortie repli" data-from="5" style="margin-left:6px">Quitter l'essai</span>
+                  <div class="tb-ruban tb-ruban--dessus glisse-bas" data-at="3" style="top:100%">
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-coller"/></svg>Coller</span><span class="tb-pile"><span class="tb-pb"><svg class="ic"><use href="#i-couper"/></svg>Couper</span><span class="tb-pb"><svg class="ic"><use href="#i-copier"/></svg>Copier</span><span class="tb-pb"><svg class="ic"><use href="#i-copier"/></svg>Dupliquer</span></span></div><div class="tb-gr__l">Presse-papiers</div></div>
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb is-actif"><svg class="ic"><use href="#i-select"/></svg>Sélection</span><span class="tb-gb"><svg class="ic"><use href="#i-pen"/></svg>Stylo</span><span class="tb-gb"><svg class="ic"><use href="#i-gomme"/></svg>Gomme</span></div><div class="tb-gr__l">Outils</div></div>
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-pile"><span class="tb-pb"><svg class="ic"><use href="#i-avant"/></svg>Premier plan</span><span class="tb-pb"><svg class="ic"><use href="#i-arriere"/></svg>Arrière-plan</span><span class="tb-pb is-on" id="ce-verr"><svg class="ic"><use href="#i-verrou"/></svg>Verrouiller</span></span><span class="tb-pile"><span class="tb-pb tb-pb--gris"><svg class="ic"><use href="#i-grouper"/></svg>Grouper</span><span class="tb-pb"><svg class="ic"><use href="#i-grouper"/></svg>Dissocier</span><span class="tb-pb"><svg class="ic"><use href="#i-corbeille"/></svg>Supprimer</span></span></div><div class="tb-gr__l">Disposition</div></div>
+                  </div>
+                </div>
+                <div class="tb-scene"><div class="tb-bureau">
+                  <div class="tb-page" id="ce-page" style="width:720px;height:405px">
+                    <div class="tb-texte" style="left:36px;top:26px;font-size:26px;font-weight:700;color:#1E3A8A">La digestion</div>
+                    <div class="schema repli" id="ce-obj" data-to="3" style="left:60px;top:90px">Schéma du tube digestif</div>
+                    <div class="schema repli" data-from="4" style="left:330px;top:150px;outline:1.5px solid #4F46E5;outline-offset:3px">Schéma du tube digestif</div>
+                    <span class="verrou repli" data-to="3" style="left:270px;top:80px"><svg class="ic"><use href="#i-verrou"/></svg></span>
+                    <div id="ce-dest" style="position:absolute;left:430px;top:220px;width:10px;height:10px"></div>
+                    <div class="bulle bulle--gauche" data-at="2" style="left:304px;top:100px">Objet verrouillé : il reste en place</div>
+                    <span class="bouton-rep" style="left:60px;top:300px">Réponse</span>
+                    <svg class="tb-encre" viewBox="0 0 720 405"><path class="trait" data-from="4" pathLength="1" d="M60 350 Q160 330 260 360" stroke="#DC2626" stroke-width="3.5"/></svg>
+                    <div class="ecrit" id="ce-ajout" data-from="4" style="left:420px;top:70px;font-size:22px;color:#DC2626">estomac ?</div>
+                  </div>
+                  <div class="cl-lat"><span>Activité</span><span>Internet</span><span>Vidéo</span></div>
+                  <div class="cl-verso"><svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                  <div class="cl-nav"><span>‹</span><span>2 / 5</span><span>›</span></div>
+                  <div class="tb-pastille tb-pastille--blanche" style="left:915px;top:300px;--pc:#DC2626"><svg class="ic"><use href="#i-pen"/></svg></div>
+                  <div class="bandeau-essai glisse-bas" id="ce-bandeau" data-at="5"><span><b>Séance en cours sur le téléphone (4B).</b> Cet essai n'y est pas relié : ni télécommande, ni plan de classe, et rien n'est gardé.</span><span class="go">Ouvrir l'écran de classe</span><span>×</span></div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : essayer les écrans -->
+    <section class="fiche" id="essai">
+      <div class="fiche__texte">
+        <h2>Essayer les écrans d'un cours</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Essayer en classe · calendrier › ▶ Essayer</span></p>
+        <p class="fiche__but">Voir les écrans d'un cours rédigé comme en classe, avant la séance : avancer, jouer les boutons, écrire, sans rien abîmer.</p>
+        <ol class="etapes">
+          <li data-cursor="#es-jouer" data-action="click" data-duration="3400">Dans Mes cours, le bouton rond ▶ d'un cours rédigé : « Essayer en classe (rien n'est gardé en quittant) ». Depuis le calendrier : <b>▶ Essayer</b>.</li>
+          <li data-cursor="#es-page" data-duration="3400">Le tableau s'ouvre en mode classe sur les écrans du cours, verrouillés, comme le jour J.</li>
+          <li data-cursor="#es-suiv" data-action="click">Avancer avec les gros boutons ‹ › ; jouer les boutons, écrire, comme en classe.</li>
+          <li data-cursor="#es-verso" data-action="click" data-duration="3400">Le bouton <b>Tableau blanc</b> ouvre le verso de l'écran ; les versos écrits lors des séances précédentes restent consultables.</li>
+          <li data-cursor="#es-quitter" data-action="click"><span class="btn-nom">Quitter l'essai</span> : rien de ce qui a été fait n'est gardé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Si le cours n'a pas encore d'écran enregistré : « Le tableau de ce cours n'est pas encore enregistré. » Un cours sans écran s'essaie en présentation de la feuille, depuis l'éditeur de cours.</li>
+            <li>L'essai n'est relié à aucun téléphone : pas de télécommande, pas de plan de classe. Pour faire cours : <b>Lancer la séance</b>.</li>
+            <li>L'éditeur de cours propose aussi l'essai, par son mode « En classe ».</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#classe-essai">Mode classe, mode essai</a> · <a href="editeur-de-cours.html">Éditeur de cours</a> · <a href="mini-sites-et-animations.html">Verso et séances précédentes</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre fenetre--rel">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it"><span class="ico"></span>Accueil</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it"><span class="ico"></span>Classes</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit">Brouillon</span></div>
+                  <div class="app__corps">
+                    <div class="acc-eyebrow">4e · Séquence 2 — La Terre bouge</div>
+                    <div style="border:1px solid var(--border);border-radius:8px;background:#fff">
+                      <div class="mc-ligne"><i><svg class="ic"><use href="#i-doc"/></svg></i><span><b>Activité 2 — Les séismes</b><br><small>6 écrans · modifié le 22 nov.</small></span><span class="mc-jouer" id="es-jouer" data-on="1"></span></div>
+                      <div class="mc-ligne"><i><svg class="ic"><use href="#i-doc"/></svg></i><span><b>Activité 3 — Les volcans</b><br><small>4 écrans · modifié le 20 nov.</small></span><span class="mc-jouer"></span></div>
+                      <div class="mc-ligne" style="border-bottom:0"><i><svg class="ic"><use href="#i-doc"/></svg></i><span><b>Activité 4 — Les plaques</b><br><small>modifié le 18 nov.</small></span><span class="mc-jouer"></span></div>
+                    </div>
+                    <div class="bulle bulle--droite" data-at="1" style="left:330px;top:44px">Essayer en classe (rien n'est gardé en quittant)</div>
+                  </div>
+                </div>
+              </div>
+              <div class="couvre zoom" data-from="2">
+                <div class="tb">
+                  <div class="tb-onglets tb-onglets--bord"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie repli" data-to="3" style="margin-left:6px">Quitter l'essai</span><span class="tb-sortie repli" data-at="4" style="margin-left:6px">Revenir à la page</span><span class="tb-sortie repli" id="es-quitter" data-from="5" data-on="5" style="margin-left:6px">Quitter l'essai</span></div>
+                  <div class="tb-scene"><div class="tb-bureau">
+                    <div class="tb-page" id="es-page" style="width:720px;height:405px">
+                      <div class="repli" data-at="2,5" style="position:absolute;inset:0">
+                        <div class="tb-texte" style="left:36px;top:26px;font-size:26px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                        <div class="tb-texte" style="left:36px;top:90px;font-size:18px;color:#374151">Pourquoi la Terre tremble-t-elle ?</div>
+                        <span class="bouton-rep" style="left:36px;top:150px">Hypothèses</span>
+                      </div>
+                      <div class="repli" data-at="3" style="position:absolute;inset:0">
+                        <div class="tb-texte" style="left:36px;top:26px;font-size:26px;font-weight:700;color:#1E3A8A">Un sismogramme</div>
+                        <svg class="tb-encre" viewBox="0 0 720 405"><path stroke="#1D4ED8" stroke-width="3" d="M40 250 H190 L200 240 L208 262 L216 226 L225 278 L234 198 L244 306 L254 180 L264 292 L274 216 L284 270 L294 234 L304 258 L316 242 L330 252 L350 246 L370 250 H680"/></svg>
+                        <span class="bouton-rep" style="left:560px;top:340px">Réponse</span>
+                      </div>
+                      <div class="repli" data-at="4" style="position:absolute;inset:0">
+                        <svg class="tb-encre" viewBox="0 0 720 405"><path class="trait" data-at="4" pathLength="1" d="M300 200 Q360 120 440 190 T560 180" stroke="#059669" stroke-width="3.5"/></svg>
+                        <div class="ecrit" data-at="4" style="left:300px;top:230px;font-size:22px;color:#059669">ondes sismiques</div>
+                      </div>
+                    </div>
+                    <div class="repli" id="es-verso" data-at="4" style="position:absolute;left:12px;bottom:12px;z-index:16;width:150px;background:#fff;border-radius:8px;box-shadow:0 6px 16px rgba(0,0,0,.18);padding:6px;font-size:10.5px;color:#3730A3;font-weight:600"><div style="height:62px;border-radius:4px;background:#F3F4F6;margin-bottom:5px;position:relative"><div style="position:absolute;left:8px;top:8px;width:70px;height:6px;border-radius:2px;background:#1E3A8A"></div></div>↩ Revenir à la page</div>
+                    <div class="cl-lat"><span>Activité</span><span>Internet</span><span>Vidéo</span></div>
+                    <div class="cl-verso repli" data-to="3">
+                      <svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                    <div class="cl-verso repli" data-from="5"><svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                    <div class="cl-nav repli" data-to="3"><span>‹</span><span><i class="repli" data-at="2" style="font-style:normal">1 / 6</i><i class="repli" data-at="3" style="font-style:normal">2 / 6</i></span><span id="es-suiv" data-on="3">›</span></div>
+                    <div class="cl-nav repli" data-from="5"><span>‹</span><span>1 / 6</span><span>›</span></div>
+                    <div class="tb-pastille tb-pastille--blanche" style="left:915px;top:300px;--pc:#059669"><svg class="ic"><use href="#i-pen"/></svg></div>
+                  </div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : mode affichage -->
+    <section class="fiche" id="affichage">
+      <div class="fiche__texte">
+        <h2>Mode affichage</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Affichage › Présenter › Mode affichage</span></p>
+        <p class="fiche__but">Montrer la page en plein écran, sans aucun outil autour, en gardant les widgets et les boutons manipulables.</p>
+        <ol class="etapes">
+          <li data-cursor="#af-onglet" data-action="click">Dans le ruban, ouvrir l'onglet <b>Affichage</b>.</li>
+          <li data-cursor="#af-btn" data-action="click" data-duration="3200"><span class="btn-nom">Mode affichage</span> : « Plein écran sans outils, comme en classe (Échap pour sortir) ».</li>
+          <li data-cursor="#af-page" data-duration="4000">La page s'affiche seule, en plein écran : ni ruban, ni volet, ni pastille, ni panneaux. Le minuteur et les boutons marchent ; les objets cachés au départ n'apparaissent pas.</li>
+          <li data-cursor="#af-sortie" data-action="click" data-duration="3400">Pour sortir : Échap, ou le bouton <span class="btn-nom">Quitter l'affichage</span> en bas à droite, presque transparent tant que la souris n'est pas dessus.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le plein écran est demandé au navigateur ; l'outil passe en Sélection.</li>
+            <li>Le correcteur et les messages d'erreur sont masqués eux aussi ; l'extracteur de mots est sans effet.</li>
+            <li>Aussi par Plus › Séance › Mode affichage en habillage tactile, ou par la pastille si ce raccourci y est placé.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tableau-blanc.html#ruban">Le ruban</a> · <a href="mini-sites-et-animations.html">Boutons et interactions</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre fenetre--rel">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="tb">
+                <div class="tb-titre"><span class="tb-logo">GC</span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-nom">Activité 3 — Les volcans</span><span class="tb-enr">Enregistré automatiquement</span><span class="esp"></span><span class="tb-sortie">Fermer</span></div>
+                <div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet repli" data-at="1" >Accueil</span><span class="tb-onglet repli is-actif" data-from="2">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet" id="af-onglet" data-on="1-4">Affichage</span><span class="esp"></span><span class="tb-plier">▴</span></div>
+                <div class="tb-ruban">
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb tb-gb--gris"><svg class="ic"><use href="#i-zoomm"/></svg>Zoom −</span><span class="tb-gb"><svg class="ic"><use href="#i-ecran"/></svg>Page entière</span><span class="tb-gb"><svg class="ic"><use href="#i-zoomp"/></svg>Zoom +</span></div><div class="tb-gr__l">Zoom</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb is-actif"><svg class="ic"><use href="#i-volet"/></svg>Volet des pages</span></div><div class="tb-gr__l">Afficher</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb" id="af-btn" data-on="2"><svg class="ic"><use href="#i-presenter"/></svg>Mode affichage</span></div><div class="tb-gr__l">Présenter</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-tactile"/></svg>Tactile (TBI)</span></div><div class="tb-gr__l">Interface</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-pile"><span class="tb-pb"><svg class="ic"><use href="#i-allonger"/></svg>Documents importés en pleine largeur</span><span class="tb-pb is-actif"><svg class="ic"><use href="#i-ajuster"/></svg>Documents importés réduits à la page</span><span class="tb-pb is-actif"><svg class="ic"><use href="#i-tactile"/></svg>Pincer pour zoomer</span></span></div><div class="tb-gr__l">Réglages</div></div>
+                </div>
+                <div class="tb-scene">
+                  <div class="tb-bureau">
+                    <div class="tb-page">
+                      <div class="tb-texte" style="left:36px;top:24px;font-size:24px;font-weight:700;color:#1E3A8A">Les volcans</div>
+                      <svg class="tb-encre" viewBox="0 0 640 360"><path d="M180 320 L300 120 L420 320 Z" fill="#FDE68A" stroke="#B45309" stroke-width="3"/></svg>
+                      <div class="minu" style="left:470px;top:70px"><b>5:00</b><span>Démarrer</span></div>
+                      <span class="bouton-rep" style="left:36px;top:300px">Réponse</span>
+                      <span class="bouton-rep" style="left:440px;top:220px;opacity:.45;border-style:dashed">Lave</span>
+                    </div>
+                  </div>
+                  <div class="tb-volet"><div class="tb-volet__t"><span>PAGES</span><span>2</span></div><div class="tb-vignettes"><div class="tb-vig tb-vig--cour"><svg viewBox="0 0 120 66"><path d="M34 60 L56 22 L78 60 Z" fill="#FDE68A" stroke="#B45309" stroke-width="1.2"/></svg><b>1</b></div><div class="tb-vig"><em>vide</em><b>2</b></div></div><div class="tb-volet__pied"><span>▲</span><span>▼</span><span class="plus">+</span></div></div>
+                </div>
+                <div class="tb-etat"><span class="z"><span>‹</span><span>Page 1 sur 2</span><span>›</span></span><span>＋ Nouvelle page</span><span class="esp"></span><span class="z"><span>−</span><span>100 %</span><span>+</span></span></div>
+              </div>
+              <div class="zoom" data-from="3" style="position:absolute;inset:0;z-index:400;background:#E7E9EE;display:grid;place-items:center;border-radius:10px;overflow:hidden">
+                <div class="tb-page" id="af-page" style="width:900px;height:506px">
+                  <div class="tb-texte" style="left:50px;top:34px;font-size:34px;font-weight:700;color:#1E3A8A">Les volcans</div>
+                  <svg class="tb-encre" viewBox="0 0 640 360"><path d="M180 320 L300 120 L420 320 Z" fill="#FDE68A" stroke="#B45309" stroke-width="3"/></svg>
+                  <div class="minu" style="left:662px;top:98px;transform:scale(1.4);transform-origin:0 0"><b>4:37</b><span style="background:#6B7280">Pause</span></div>
+                  <span class="bouton-rep" style="left:50px;top:420px;font-size:15px;height:38px">Réponse</span>
+                </div>
+                <span class="sortie-affichage" id="af-sortie" data-on="4">Quitter l'affichage</span>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : tirage, caméra, photo -->
+    <section class="fiche" id="telephone">
+      <div class="fiche__texte">
+        <h2>Tirage au sort, caméra et photo du téléphone</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">En séance › Outils › Tirage au sort</span></p>
+        <p class="fiche__but">Dans le tableau d'une séance, désigner des élèves au hasard, et recevoir ce que le téléphone filme ou photographie.</p>
+        <ol class="etapes">
+          <li data-cursor="#tf-tirage" data-action="click" data-duration="3200">En séance seulement : Outils › <span class="btn-nom">Tirage au sort</span> (aussi dans Plus › Séance et dans la pastille).</li>
+          <li data-cursor="#tf-binome" data-action="click" data-duration="3400">Choisir <b>1 élève</b>, <b>Binôme</b> ou <b>Trio</b>. Le compteur dit combien d'élèves restent et combien d'absents sont exclus.</li>
+          <li data-cursor="#tf-tirer" data-action="click" data-duration="3400"><span class="btn-nom">Tirer (Espace)</span> : les noms défilent puis s'arrêtent, sous leur pseudonyme. <b>Encore (Espace)</b> tire la suite, sans remise.</li>
+          <li data-cursor="#tf-tampon" data-action="click" data-duration="3200"><span class="btn-nom">+1 tampon</span> sous un élève tiré : le tampon part au téléphone, qui l'enregistre.</li>
+          <li data-cursor="#tf-capt" data-action="click" data-duration="4200">Quand le téléphone lance sa caméra, sa vidéo s'ouvre en grand sur le tableau : <b>Figer</b> / <b>Reprendre</b>, <span class="btn-nom">Capturer sur la page</span>, <b>Fermer</b>.</li>
+          <li data-cursor="#tf-photo" data-duration="3800">La capture, comme une photo prise sur le téléphone, se pose au centre de la page, sélectionnée, prête à être annotée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le tirage ne montre que le prénom et les deux lettres de l'élève : les vrais noms restent sur le téléphone. Les absents sont exclus ; les élèves déjà tirés sont retenus pour la séance sur cet ordinateur. <b>Remise à zéro</b> remet tout le monde dans le chapeau.</li>
+            <li>Le résultat du tirage est aussi envoyé au téléphone.</li>
+            <li>La caméra passe par une liaison directe entre les appareils, au mieux sur le même Wi-Fi ; elle ne s'ouvre que dans l'écran de classe d'une séance. États : « Connexion à la caméra du téléphone… », « Connexion impossible (réseau ?) », « Caméra arrêtée ».</li>
+            <li>Seul l'onglet affiché reçoit ce que le téléphone envoie ; l'écran de classe passe au tableau s'il montrait autre chose.</li>
+            <li>Limite actuelle : ces échanges avec le téléphone sont décrits d'après le logiciel, ils n'ont pas encore été essayés en vraie séance.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/pendant-la-seance.html">Pendant la séance (téléphone)</a> · <a href="../classe/seance-au-tableau.html">L'écran de classe</a> · <a href="recompenses.html">Récompenses</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classe</div></div>
+              <div class="tb">
+                <div class="tb-onglets tb-onglets--bord" style="position:relative"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet" data-on="1">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-plier">▾</span><span class="tb-sortie" style="margin-left:6px">Plan de classe</span>
+                  <div class="tb-ruban tb-ruban--dessus glisse-bas" data-at="1" style="top:100%">
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-regle"/></svg>Règle</span><span class="tb-gb"><svg class="ic"><use href="#i-equerre"/></svg>Équerre</span><span class="tb-gb"><svg class="ic"><use href="#i-rapporteur"/></svg>Rapporteur</span></div><div class="tb-gr__l">Instruments</div></div>
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-projecteur"/></svg>Projecteur</span><span class="tb-gb"><svg class="ic"><use href="#i-laser"/></svg>Laser</span></div><div class="tb-gr__l">Attention</div></div>
+                    <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb" id="tf-tirage" data-on="1"><svg class="ic"><use href="#i-cible"/></svg>Tirage au sort</span><span class="tb-gb"><svg class="ic"><use href="#i-clavier"/></svg>Clavier virtuel</span></div><div class="tb-gr__l">Classe</div></div>
+                  </div>
+                </div>
+                <div class="tb-scene"><div class="tb-bureau">
+                  <div class="tb-page" style="width:720px;height:405px">
+                    <div class="tb-texte" style="left:36px;top:26px;font-size:26px;font-weight:700;color:#1E3A8A">Observer des cellules</div>
+                    <div class="tb-texte" style="left:36px;top:70px;font-size:15px;color:#4B5563">Qui vient dessiner ce qu'il voit au microscope ?</div>
+                    <div class="zoom tb-sel" id="tf-photo" data-at="6" style="position:absolute;left:230px;top:110px;width:260px;height:260px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 50%, #FEF3C7, #FDE68A 70%, #92400E 71%)">
+                      <svg viewBox="0 0 260 260" style="width:100%;height:100%"><g fill="none" stroke="#7C2D12" stroke-width="2"><path d="M30 90 L110 70 L130 140 L50 160 Z"/><path d="M110 70 L190 60 L210 130 L130 140 Z"/><path d="M50 160 L130 140 L150 210 L70 228 Z"/><path d="M130 140 L210 130 L230 200 L150 210 Z"/></g><g fill="#7C3AED" opacity=".7"><circle cx="80" cy="115" r="9"/><circle cx="160" cy="102" r="9"/><circle cx="100" cy="185" r="9"/><circle cx="180" cy="172" r="9"/></g></svg>
+                    </div>
+                  </div>
+                  <div class="cl-lat"><span>Activité</span><span>Internet</span><span>Vidéo</span></div>
+                  <div class="cl-verso"><svg class="ic"><use href="#i-pen"/></svg>Tableau blanc</div>
+                  <div class="cl-nav"><span>‹</span><span>3 / 5</span><span>›</span></div>
+                  <div class="tb-pastille tb-pastille--blanche" style="left:915px;top:300px;--pc:#111827"><svg class="ic"><use href="#i-select"/></svg></div>
+                  <div class="tir zoom" data-at="2-4">
+                    <div class="tir__tete">Tirage au sort<small class="repli" data-at="2">23 / 23 restants · 2 absents exclus</small><small class="repli" data-from="3">21 / 23 restants · 2 absents exclus</small><span class="lib__x">×</span></div>
+                    <div class="tir__noms">
+                      <div class="tir__q repli" data-at="2">?</div>
+                      <div class="tir__nom repli" data-from="3">Lina<span>BO</span><em id="tf-tampon" data-on="4"><i class="repli" data-at="3" style="font-style:normal">+1 tampon</i><i class="repli" data-at="4" style="font-style:normal">envoyé</i></em></div>
+                      <div class="tir__nom repli" data-from="3">Noé<span>MA</span><em>+1 tampon</em></div>
+                    </div>
+                    <div class="tir__barre">
+                      <div class="tir__seg"><span>1 élève</span><span id="tf-binome" data-on="2-4">Binôme</span><span>Trio</span></div>
+                      <span class="tir__go" id="tf-tirer" data-on="3"><i class="repli" data-at="2" style="font-style:normal">Tirer (Espace)</i><i class="repli" data-from="3" style="font-style:normal">Encore (Espace)</i></span>
+                      <span class="tir__raz">Remise à zéro</span>
+                    </div>
+                  </div>
+                  <div class="cam zoom" data-at="5">
+                    <div class="cam__video">
+                      <svg viewBox="0 0 560 315" style="width:100%;height:100%"><rect width="560" height="315" fill="#1F2937"/><circle cx="280" cy="158" r="130" fill="#FDE68A"/><g fill="none" stroke="#7C2D12" stroke-width="2"><path d="M180 120 L260 100 L280 170 L200 190 Z"/><path d="M260 100 L340 90 L360 160 L280 170 Z"/><path d="M200 190 L280 170 L300 240 L220 258 Z"/><path d="M280 170 L360 160 L380 230 L300 240 Z"/></g><g fill="#7C3AED" opacity=".7"><circle cx="230" cy="145" r="9"/><circle cx="310" cy="132" r="9"/><circle cx="250" cy="215" r="9"/><circle cx="330" cy="202" r="9"/></g></svg>
+                    </div>
+                    <div class="cam__barre"><span>Figer</span><span class="prim" id="tf-capt" data-on="5">Capturer sur la page</span><span>Fermer</span></div>
+                  </div>
+                </div></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : relire -->
+    <section class="fiche" id="relire">
+      <div class="fiche__texte">
+        <h2>Relire le tableau d'une séance</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Séances › une séance</span></p>
+        <p class="fiche__but">Revoir ce qui a été écrit en classe, l'exporter en PDF pour les absents, ou le rouvrir pour le corriger et le garder dans Mes cours.</p>
+        <ol class="etapes">
+          <li data-cursor="#re-carte" data-duration="3400">Dans Classes › Séances, ouvrir la séance : la carte <b>Tableau (3 pages)</b> montre en vignettes les pages écrites en classe.</li>
+          <li data-cursor="#re-v2" data-action="click">Cliquer une vignette (« Agrandir ») : la page s'affiche en grand.</li>
+          <li data-cursor="#re-suiv" data-action="click" data-duration="3200"><b>← Précédente</b> et <b>Suivante →</b> font défiler les pages ; un clic hors de l'image referme.</li>
+          <li data-cursor="#re-pdf" data-action="click" data-duration="3400"><span class="btn-nom">PDF</span> (« Télécharger les pages en PDF (pour les absents) ») ouvre la fenêtre Exporter.</li>
+          <li data-cursor="#re-ouvrir" data-action="click" data-duration="3600"><span class="btn-nom">Ouvrir</span> rouvre le tableau pour corriger, compléter, ou l'enregistrer dans Mes cours.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seules les pages non vides sont montrées ; une séance sans page n'a pas de carte Tableau.</li>
+            <li>Mes cours › classes (cours placé déplié) montre la même galerie, ou « Cette séance n'a laissé aucune page de tableau. »</li>
+            <li>Le tableau rouvert depuis le détail d'une séance prend l'habillage tactile (barre flottante, sans ruban).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html">Séances</a> · <a href="#mes-cours">Enregistrer dans Mes cours</a> · <a href="mini-sites-et-animations.html">Exporter en PDF ou en page web</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre fenetre--rel">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/sessions</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Classes</div>
+                  <div class="side__it side__sous">Classes et plans</div>
+                  <div class="side__it side__sous">Suivi élèves</div>
+                  <div class="side__it side__sous is-actif">Séances</div>
+                  <div class="side__it side__sous">Cahier de texte</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main" style="position:relative">
+                  <div class="app__entete"><span class="app__titre"><span class="puce puce--4">4B</span> Séance du 24 novembre</span></div>
+                  <div class="app__corps">
+                    <div class="gal" id="re-carte">
+                      <div class="gal__tete"><i><svg class="ic"><use href="#i-pen"/></svg></i><b>Tableau (3 pages)</b><span class="b b--fantome b--petit" id="re-ouvrir" data-on="5">Ouvrir</span><span class="b b--fantome b--petit" id="re-pdf" data-on="4">PDF</span></div>
+                      <div class="gal__grille">
+                        <div class="gal__vig"><svg viewBox="0 0 160 90"><rect x="10" y="8" width="60" height="7" rx="1" fill="#1E3A8A"/><path d="M10 60h40l4-8 4 14 4-20 4 24 4-14 4 6h66" stroke="#1D4ED8" stroke-width="1.6" fill="none"/></svg><small>Page 1</small></div>
+                        <div class="gal__vig" id="re-v2" data-on="2"><svg viewBox="0 0 160 90"><rect x="10" y="8" width="70" height="7" rx="1" fill="#1E3A8A"/><path d="M30 70 Q60 30 90 60 T140 50" stroke="#059669" stroke-width="2" fill="none"/><path d="M20 80 L70 80" stroke="#DC2626" stroke-width="2"/></svg><small>Page 2</small></div>
+                        <div class="gal__vig"><svg viewBox="0 0 160 90"><rect x="10" y="8" width="50" height="7" rx="1" fill="#1E3A8A"/><circle cx="80" cy="52" r="22" stroke="#7C3AED" stroke-width="2" fill="none"/></svg><small>Page 3</small></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="grand zoom" data-at="2-3">
+                    <div class="grand__img">
+                      <svg viewBox="0 0 160 90" class="repli" data-at="2" style="width:100%;height:100%"><rect x="10" y="8" width="70" height="7" rx="1" fill="#1E3A8A"/><path d="M30 70 Q60 30 90 60 T140 50" stroke="#059669" stroke-width="1.6" fill="none"/><path d="M20 80 L70 80" stroke="#DC2626" stroke-width="1.6"/></svg>
+                      <svg viewBox="0 0 160 90" class="repli" data-at="3" style="width:100%;height:100%"><rect x="10" y="8" width="50" height="7" rx="1" fill="#1E3A8A"/><circle cx="80" cy="52" r="22" stroke="#7C3AED" stroke-width="1.6" fill="none"/></svg>
+                    </div>
+                    <div class="grand__nav"><span class="b b--fantome b--petit">← Précédente</span><span class="repli" data-at="2">Page 2 / 3</span><span class="repli" data-at="3">Page 3 / 3</span><span class="b b--fantome b--petit" id="re-suiv" data-on="3">Suivante →</span></div>
+                  </div>
+                  <div class="modale-fond zoom" data-at="4">
+                    <div class="modale" style="width:440px;background:#111827;color:#E5E7EB">
+                      <div class="modale__t">Exporter</div>
+                      <div class="grille2">
+                        <div style="border:2px solid #6366F1;border-radius:10px;padding:10px;font-size:12px"><b>PDF</b><br><span style="color:#9CA3AF">à imprimer ou à projeter</span></div>
+                        <div style="border:1px solid #374151;border-radius:10px;padding:10px;font-size:12px"><b>Page web pour les élèves</b><br><span style="color:#9CA3AF">corrigé, animations jouables</span></div>
+                      </div>
+                      <div class="ligne" style="justify-content:flex-end;margin-top:14px"><span class="b b--petit" style="background:#374151;border-color:#374151">Annuler</span><span class="b b--petit">Exporter 3 pages</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="couvre zoom" data-at="5">
+                <div class="tb tb--sombre">
+                  <div class="tb-bureau">
+                    <div class="tb-page" style="width:760px;height:428px">
+                      <div class="tb-texte" style="left:40px;top:30px;font-size:26px;font-weight:700;color:#1E3A8A">Les séismes</div>
+                      <svg class="tb-encre" viewBox="0 0 760 428"><path d="M40 270 H200 L210 260 L218 282 L226 246 L235 298 L244 218 L254 326 L264 200 L274 312 L284 236 L294 290 L304 254 L314 278 L326 262 L340 272 L360 266 L380 270 H720" stroke="#1D4ED8" stroke-width="3"/></svg>
+                    </div>
+                    <div class="tb-ilot" style="left:12px;bottom:12px"><span class="tb-bf"><svg class="ic"><use href="#i-undo"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-redo"/></svg></span></div>
+                    <div class="tb-rail"><i class="tb-rail__poi"></i><span class="tb-bf">‹</span><span class="tb-rail__n">1/3</span><span class="tb-bf">›</span><span class="tb-bf"><svg class="ic"><use href="#i-pageplus"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-volet"/></svg></span></div>
+                    <div class="tb-barre tb-barre--bas"><span class="tb-bf"><svg class="ic"><use href="#i-select"/></svg></span><span class="tb-bf tb-bf--on"><svg class="ic"><use href="#i-pen"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-surl"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-gomme"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-texte"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-formes"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-laser"/></svg></span><span class="tb-bf-sep"></span><span class="tb-bf"><svg class="ic"><use href="#i-inserer"/></svg></span><span class="tb-bf"><svg class="ic"><use href="#i-plus3"/></svg></span><span class="tb-bf tb-bf--sortie"><svg class="ic"><use href="#i-ecran"/></svg></span></div>
+                    <div class="bulle bulle--bas" style="left:320px;top:22px">Tableau rouvert : habillage tactile</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : importer, .gcboard -->
+    <section class="fiche" id="importer">
+      <div class="fiche__texte">
+        <h2>Importer un document, garder un fichier .gcboard</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Fichier › Importer · Fichier .gcboard</span></p>
+        <p class="fiche__but">Faire entrer un PDF, des images ou un tableau enregistré dans le tableau ouvert ; et à l'inverse, enregistrer le tableau dans un fichier qui se rouvre, images comprises.</p>
+        <ol class="etapes">
+          <li data-cursor="#ip-imp" data-action="click">Ruban › <b>Fichier</b> › <span class="btn-nom">Importer</span> : choisir un ou plusieurs fichiers (PDF, image, .gcboard).</li>
+          <li data-cursor="#ip-prog" data-duration="3000">La fenêtre « Import en cours » montre le nom du fichier et la progression.</li>
+          <li data-cursor="#ip-v2" data-duration="3600">Chaque page d'un PDF devient une page du tableau, le document en fond. Un fichier .gcboard insère ses pages après la page courante.</li>
+          <li data-cursor="#ip-fichier" data-action="drag" data-drag-to="#ip-depot" data-duration="3800">Glisser des images depuis l'ordinateur : un contour pointillé indigo entoure la zone ; l'image se pose là où on la lâche. Ctrl+V colle une image copiée.</li>
+          <li data-cursor="#ip-gc" data-action="click" data-duration="3800">Fichier › <span class="btn-nom">Fichier .gcboard</span> : « Préparation du fichier… », puis le fichier au titre du tableau se télécharge, images comprises.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un PDF se met en page selon le réglage : en pleine largeur (page allongée) ou réduit pour tenir dans la page (Affichage › Réglages).</li>
+            <li>À l'import d'un .gcboard, tout reçoit de nouveaux identifiants et les images sont rangées dans l'espace de l'enseignant : le même fichier peut s'importer deux fois.</li>
+            <li>Erreurs : « Import impossible : … », « Enregistrement impossible : … ».</li>
+            <li>Aussi par Plus › Fichier en habillage tactile, et par un clic droit sur le fond › Fichier et export.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tableau-blanc.html#fond">Page allongée</a> · <a href="tableau-blanc-objets.html">Images</a> · <a href="#brouillon">Brouillon</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="tb">
+                <div class="tb-titre"><span class="tb-logo">GC</span><span class="tb-qa"><span><svg class="ic"><use href="#i-undo"/></svg></span><span><svg class="ic"><use href="#i-redo"/></svg></span></span><span class="tb-nom">Les volcans</span><span class="tb-enr">Enregistré automatiquement</span><span class="esp"></span><span class="tb-sortie">Fermer</span></div>
+                <div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier is-actif">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-plier">▴</span></div>
+                <div class="tb-ruban">
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb" id="ip-imp" data-on="1"><svg class="ic"><use href="#i-ouvrir"/></svg>Importer</span><span class="tb-gb"><svg class="ic"><use href="#i-biblio"/></svg>Tableau préparé</span><span class="tb-gb"><svg class="ic"><use href="#i-doc"/></svg>Brouillon</span></div><div class="tb-gr__l">Ouvrir</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-enreg"/></svg>Dans Mes cours</span><span class="tb-gb" id="ip-gc" data-on="5"><svg class="ic"><use href="#i-enreg"/></svg>Fichier .gcboard</span></div><div class="tb-gr__l">Enregistrer</div></div>
+                  <div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><svg class="ic"><use href="#i-pdf"/></svg>PDF / page web</span><span class="tb-gb"><svg class="ic"><use href="#i-image"/></svg>Image de la page</span></div><div class="tb-gr__l">Exporter</div></div>
+                </div>
+                <div class="tb-scene">
+                  <div class="tb-bureau">
+                    <div class="tb-page">
+                      <div class="repli" data-to="2" style="position:absolute;inset:0"><div class="tb-vide"><div>Écrivez.</div><div style="font-size:13px">Les outils sont dans le ruban, en haut.</div></div></div>
+                      <div class="repli" data-from="3" style="position:absolute;inset:0;background:#FAFAF9">
+                        <div style="position:absolute;left:150px;top:10px;width:340px;height:340px;background:#fff;box-shadow:0 0 0 1px #E5E7EB;padding:22px 26px;font-size:11px;color:#374151;line-height:1.5">
+                          <div style="font-weight:700;font-size:15px;color:#1E3A8A;margin-bottom:8px">Document 1 — Une éruption</div>
+                          <div style="height:120px;border-radius:4px;background:linear-gradient(180deg,#FCA5A5,#F97316 60%,#7C2D12);margin-bottom:10px"></div>
+                          <div style="height:6px;background:#E5E7EB;border-radius:3px;margin-bottom:6px"></div>
+                          <div style="height:6px;background:#E5E7EB;border-radius:3px;margin-bottom:6px;width:80%"></div>
+                          <div style="height:6px;background:#E5E7EB;border-radius:3px;width:60%"></div>
+                        </div>
+                        <div class="zoom tb-sel" data-from="4" style="position:absolute;left:470px;top:190px;width:130px;height:90px;border-radius:4px;background:linear-gradient(135deg,#A7F3D0,#6EE7B7 50%,#34D399)"></div>
+                      </div>
+                      <div id="ip-depot" style="position:absolute;left:530px;top:230px;width:10px;height:10px"></div>
+                    </div>
+                    <div class="depose" data-at="4"></div>
+                    <div class="fichier glisse-droite" id="ip-fichier" data-at="4" style="left:30px;top:60px"><i></i>lave.jpg</div>
+                    <div class="imp zoom" id="ip-prog" data-at="2"><b>Import en cours</b><small>volcans-documents.pdf</small><div class="imp__barre"><span></span></div></div>
+                    <div class="imp zoom" data-at="5"><b>Import en cours</b><small>Préparation du fichier…</small><div class="imp__barre"><span style="width:40%"></span></div></div>
+                    <div class="telech glisse-bas" data-at="5"><i><svg class="ic"><use href="#s-telech"/></svg></i><span><b>Les volcans.gcboard</b><br><small style="color:#6B7280">Téléchargement</small></span></div>
+                  </div>
+                  <div class="tb-volet">
+                    <div class="tb-volet__t"><span>PAGES</span><span class="repli" data-to="2">1</span><span class="repli" data-from="3">3</span></div>
+                    <div class="tb-vignettes">
+                      <div class="tb-vig tb-vig--cour"><em class="repli" data-to="2">vide</em><svg class="repli" data-from="3" viewBox="0 0 120 66"><rect x="38" y="3" width="44" height="60" fill="#fff" stroke="#E5E7EB"/><rect x="42" y="12" width="36" height="16" fill="#F97316"/></svg><b>1</b></div>
+                      <div class="tb-vig zoom repli" id="ip-v2" data-from="3" data-on="3"><svg viewBox="0 0 120 66"><rect x="38" y="3" width="44" height="60" fill="#fff" stroke="#E5E7EB"/><rect x="42" y="10" width="36" height="4" fill="#1E3A8A"/><rect x="42" y="20" width="30" height="3" fill="#E5E7EB"/><rect x="42" y="27" width="34" height="3" fill="#E5E7EB"/></svg><b>2</b></div>
+                      <div class="tb-vig zoom repli" data-from="3"><svg viewBox="0 0 120 66"><rect x="38" y="3" width="44" height="60" fill="#fff" stroke="#E5E7EB"/><rect x="42" y="10" width="36" height="4" fill="#1E3A8A"/><rect x="44" y="20" width="32" height="22" fill="#FDE68A"/></svg><b>3</b></div>
+                    </div>
+                    <div class="tb-volet__pied"><span>▲</span><span>▼</span><span class="plus">+</span></div>
+                  </div>
+                </div>
+                <div class="tb-etat"><span class="z"><span>‹</span><span class="repli" data-to="2">Page 1 sur 1</span><span class="repli" data-from="3">Page 1 sur 3</span><span>›</span></span><span>＋ Nouvelle page</span><span class="esp"></span><span class="z"><span>−</span><span>100 %</span><span>+</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

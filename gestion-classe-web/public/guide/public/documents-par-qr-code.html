@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documents par QR code — Guide Gestion Classe</title>
+<meta name="description" content="Le QR code « Version couleur » imprimé sur les fiches : ce que l'élève voit en le scannant, la version sur mesure, et ce qui ne sort jamais.">
+<meta name="guide-partie" content="public">
+<meta name="guide-ordre" content="10">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+  /* ---------- éditeur de cours (ordinateur) */
+  .ed { height: 100%; display: flex; flex-direction: column; background: #E9EAEE; position: relative; }
+  .ed-titre { height: 46px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #fff; border-bottom: 1px solid var(--border); }
+  .ed-logo { width: 24px; height: 24px; border-radius: 6px; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .ed-nom { font-size: 14px; font-weight: 600; }
+  .ed-chip { font-size: 11.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); background: #fff; white-space: nowrap; transition: all .25s; }
+  .ed-chip--ok { background: #EAF6EE; color: #166534; border-color: #CDE9D6; }
+  .ed-chip--warn { background: #FDF1E3; color: #9A4A07; border-color: #F2D3AE; }
+  .ed-chip.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.2); }
+  .ed-saved { font-size: 12px; color: var(--text-dim); }
+  .ed-onglets { flex: none; display: flex; gap: 2px; padding: 4px 10px 0; background: #fff; }
+  .ed-onglet { padding: 6px 12px; font-size: 12.5px; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all .25s; }
+  .ed-onglet.is-on { color: var(--indigo); border-bottom-color: var(--indigo); font-weight: 600; }
+  .ed-ruban { flex: none; height: 80px; display: flex; padding: 8px 6px 6px; background: #fff; border-bottom: 1px solid var(--border); }
+  .ed-groupe { display: flex; flex-direction: column; padding: 0 10px; border-right: 1px solid var(--surface-3); }
+  .ed-groupe__b { display: flex; gap: 4px; flex: 1; }
+  .ed-groupe__n { font-size: 10.5px; color: var(--text-dim); text-align: center; }
+  .ed-gros { width: 74px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 2px; border-radius: 6px; font-size: 11px; text-align: center; line-height: 1.15; color: var(--text); transition: all .25s; }
+  .ed-gros i { width: 24px; height: 22px; border-radius: 5px; border: 1.8px solid var(--text-muted); display: block; }
+  .ed-gros.is-on { background: var(--indigo-soft); color: var(--indigo); }
+  .ed-bureau { flex: 1; min-height: 0; overflow: hidden; display: flex; justify-content: center; padding-top: 18px; position: relative; }
+  .ed-feuille { width: 430px; height: 560px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 34px 40px; position: relative; }
+  /* ---------- contenu d'un document (rendu de l'éditeur) */
+  .doc-h { font-size: 15px; font-weight: 700; color: #1F3A93; margin: 0 0 8px; line-height: 1.25; }
+  .doc-p { font-size: 11px; line-height: 1.5; margin: 0 0 8px; color: #1F2433; }
+  .doc-encadre { border-left: 4px solid #2563EB; background: #EFF5FF; border-radius: 4px; padding: 7px 10px; margin: 0 0 10px; font-size: 11px; line-height: 1.45; }
+  .doc-encadre b { color: #1D4ED8; }
+  .doc-fig { border: 1px solid #E5E7EB; border-radius: 4px; overflow: hidden; margin: 0 0 6px; }
+  .doc-fig svg { display: block; width: 100%; height: auto; }
+  .doc-leg { font-size: 10px; color: #6B7280; margin: 0 0 10px; font-style: italic; }
+  .doc-ligne { height: 7px; border-radius: 3px; background: #E5E7EB; margin: 0 0 7px; }
+  /* ---------- modale d'impression */
+  .imp { width: 420px; }
+  .imp__lab { font-size: 11px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; margin: 10px 0 5px; }
+  .imp__choix { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .imp__choix--2 { grid-template-columns: repeat(2, 1fr); }
+  .imp__c { border: 1px solid var(--border-strong); border-radius: 8px; padding: 6px 8px; font-size: 11px; color: var(--text-dim); line-height: 1.3; transition: all .25s; }
+  .imp__c b { display: block; font-size: 12px; color: var(--text); }
+  .imp__c--on, .imp__c.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+  .imp__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+  /* ---------- feuille imprimée (photocopie noir et blanc) */
+  .papier { position: absolute; z-index: 620; left: 300px; top: 30px; width: 400px; height: 540px; background: #FDFDFB; box-shadow: 0 18px 50px rgba(0,0,0,.28); padding: 46px 36px 30px; rotate: -2deg; }
+  .papier__contenu { filter: grayscale(1) contrast(1.05); }
+  .qr-print { position: absolute; top: 12px; right: 12px; display: flex; align-items: center; gap: 6px; }
+  .qr-print span { font-size: 8.5px; line-height: 1.1; text-align: right; color: #111; font-weight: 600; }
+  .qr-print svg { width: 40px; height: 40px; display: block; }
+  /* ---------- page du téléphone (/d/...) */
+  .md { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: #fff; color: #111827; display: flex; flex-direction: column; }
+  .md-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 8px; padding: 8px 14px 10px; border-bottom: 1px solid #E5E7EB; background: rgba(255,255,255,.96); }
+  .md-titre { flex-basis: 100%; font-size: 15px; font-weight: 600; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .md-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #F3F4F6; }
+  .md-seg span { height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12px; font-weight: 600; line-height: 28px; color: #374151; transition: all .25s; }
+  .md-seg span.is-on { background: #fff; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+  .md-print { margin-left: auto; flex: none; white-space: nowrap; height: 32px; padding: 0 9px; border-radius: 8px; background: #4F46E5; color: #fff; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all .25s; }
+  .md-print.is-on { opacity: .65; }
+  .ico-imp { width: 13px; height: 10px; border: 1.6px solid currentColor; border-radius: 2px; position: relative; display: inline-block; }
+  .ico-imp::before { content: ''; position: absolute; left: 2px; right: 2px; top: -5px; height: 4px; border: 1.6px solid currentColor; border-bottom: 0; }
+  .md-sur { height: 28px; padding: 0 9px; border: 1px solid #C7D2FE; border-radius: 8px; background: #EEF2FF; color: #4338CA; font-size: 11.5px; font-weight: 600; line-height: 26px; transition: all .25s; }
+  .md-sur.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+  .md-corps { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+  .md-doc { padding: 14px 16px; transition: transform 1.1s ease; }
+  .md-doc.is-on { transform: translateY(-250px); }
+  .md-doc .doc-h { font-size: 18px; }
+  .md-doc .doc-p, .md-doc .doc-encadre { font-size: 13px; }
+  .md-a4 { position: absolute; inset: 0; background: #E7E9EE; padding: 14px 18px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
+  .md-a4__f { flex: none; width: 100%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.12); padding: 16px 18px; aspect-ratio: 210 / 297; overflow: hidden; }
+  .md-a4__f .doc-h { font-size: 10px; margin-bottom: 5px; }
+  .md-a4__f .doc-p, .md-a4__f .doc-encadre { font-size: 6.5px; padding: 4px 6px; margin-bottom: 5px; }
+  .md-a4__f .doc-ligne { height: 4px; margin-bottom: 4px; }
+  /* ---------- appareil photo */
+  .cam { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: #1B1B1F; overflow: hidden; z-index: 5; }
+  .cam__papier { position: absolute; left: 30px; top: 90px; width: 330px; height: 440px; background: #F4F4F0; rotate: -6deg; padding: 34px 26px; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+  .cam__papier .qr-print { top: 10px; right: 12px; }
+  .cam__papier .qr-print svg { width: 56px; height: 56px; }
+  .cam__papier .qr-print span { font-size: 10px; }
+  .cam__visee { position: absolute; left: 238px; top: 82px; width: 88px; height: 88px; }
+  .cam__visee i { position: absolute; width: 18px; height: 18px; border: 3px solid #FACC15; }
+  .cam__visee i:nth-child(1) { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+  .cam__visee i:nth-child(2) { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+  .cam__visee i:nth-child(3) { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+  .cam__visee i:nth-child(4) { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+  .cam__lien { position: absolute; left: 40px; right: 40px; bottom: 150px; height: 40px; border-radius: 20px; background: #fff; color: #18181B; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+  .cam__lien b { width: 16px; height: 16px; border-radius: 4px; border: 2px solid #18181B; }
+  .cam__declencheur { position: absolute; left: 50%; bottom: 40px; width: 62px; height: 62px; margin-left: -31px; border-radius: 50%; border: 4px solid #fff; }
+  .tel__statut--sombre { color: #fff; background: #1B1B1F; }
+  .md-msg { text-align: center; color: #374151; font-size: 14px; padding: 180px 26px 0; }
+  /* ---------- version sur mesure (page propre au document) */
+  .sm { position: absolute; left: 0; right: 0; top: 30px; bottom: 0; background: linear-gradient(180deg, #1E1B4B, #312E81 60%, #3B2F6B); color: #F5F3FF; overflow: hidden; padding: 18px 18px 0; }
+  .sm__sur { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #FDBA74; font-weight: 700; }
+  .sm__t { font-size: 25px; font-weight: 800; line-height: 1.1; margin: 6px 0 14px; letter-spacing: -.01em; }
+  .sm__schema { background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.15); border-radius: 16px; padding: 10px; position: relative; }
+  .sm__schema svg { display: block; width: 100%; height: auto; border-radius: 10px; }
+  .sm__point { position: absolute; width: 26px; height: 26px; border-radius: 50%; background: #F97316; color: #fff; font-size: 12px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 5px rgba(249,115,22,.3); transition: transform .3s; }
+  .sm__point.is-on { transform: scale(1.2); }
+  .sm__info { margin-top: 12px; background: #fff; color: #1E1B4B; border-radius: 14px; padding: 11px 13px; font-size: 13px; line-height: 1.4; }
+  .sm__info b { color: #C2410C; }
+  .sm__revele { margin-top: 10px; border: 1.5px dashed rgba(255,255,255,.45); border-radius: 14px; padding: 11px 13px; font-size: 13px; color: #E0E7FF; }
+  .sm-simple { position: absolute; right: 10px; bottom: 12px; z-index: 6; height: 30px; padding: 0 12px; border: 1px solid rgba(17,24,39,.14); border-radius: 15px; background: rgba(255,255,255,.88); color: #374151; font-size: 12px; font-weight: 600; line-height: 28px; box-shadow: 0 1px 4px rgba(0,0,0,.12); opacity: .9; transition: all .25s; }
+  .sm-simple.is-on { opacity: 1; transform: scale(.95); }
+  /* ---------- fenêtre de version mobile dans l'éditeur */
+  .vm-pop { position: absolute; z-index: 640; left: 250px; top: 44px; width: 330px; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 12px 14px; font-size: 12.5px; }
+  .vm-pop p { margin: 0 0 8px; }
+  .vm-pop__warn { color: #9A4A07; background: #FDF1E3; border-radius: 6px; padding: 6px 8px; }
+  .vm-pop__b { display: flex; gap: 6px; flex-wrap: wrap; }
+  /* un libellé remplacé par un autre ne garde pas sa place */
+  .ecran span.is-hidden { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <path id="faux-qr" d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM19 16h6v1h-6zM11 17h1v1h-1zM14 17h1v1h-1zM17 17h1v1h-1zM19 17h2v1h-2zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h3v1h-3zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h2v1h-2zM21 19h2v1h-2zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h2v1h-2zM20 20h2v1h-2zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z"/>
+    <g id="volcan">
+      <rect width="240" height="130" fill="#DBEAFE"/>
+      <circle cx="132" cy="22" r="13" fill="#9CA3AF"/><circle cx="148" cy="16" r="11" fill="#9CA3AF"/><circle cx="118" cy="14" r="9" fill="#A1A1AA"/>
+      <rect y="96" width="240" height="34" fill="#A8A29E"/>
+      <polygon points="40,100 112,34 128,34 200,100" fill="#92400E"/>
+      <path d="M112 34 C108 50 96 62 84 84 L90 86 C102 66 114 52 116 36Z" fill="#F97316"/>
+      <rect x="117" y="34" width="6" height="74" fill="#DC2626"/>
+      <ellipse cx="120" cy="114" rx="34" ry="11" fill="#DC2626"/>
+      <text x="160" y="118" font-size="8" fill="#7F1D1D" font-family="Inter, sans-serif">chambre magmatique</text>
+      <text x="128" y="66" font-size="8" fill="#fff" font-family="Inter, sans-serif">cheminée</text>
+      <text x="60" y="58" font-size="8" fill="#9A3412" font-family="Inter, sans-serif">coulée</text>
+    </g>
+  </defs>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Pages sans compte</a> › Documents par QR code</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#qr-feuille">Le QR code sur la feuille</a></li>
+      <li><a href="#qr-scanner">Scanner et lire en couleur</a></li>
+      <li><a href="#qr-sur-mesure">La version sur mesure</a></li>
+      <li><a href="#qr-editeur">Quelle version ouvre le QR</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../eleve/maison.html">◀ Maison</a><a href="../public/cahier-de-texte-en-lecture-seule.html">Cahier de texte en lecture seule ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Pages sans compte · QR code</div>
+      <h1>Documents par QR code</h1>
+      <p>Chaque fiche imprimée depuis l'éditeur de cours porte en haut à droite un petit QR code « Version couleur ». L'élève le scanne avec son téléphone et lit la fiche en couleur, toujours à jour, sans compte ni code.</p>
+      <div class="chap__resume"><span>Éditeur de cours › Fichier › Imprimer</span><span>Ordinateur</span><span>Téléphone de l'élève</span><span>Sans compte</span></div>
+    </header>
+
+    <!-- ============================================================ fiche : le QR sur la feuille -->
+    <section class="fiche" id="qr-feuille">
+      <div class="fiche__texte">
+        <h2>Le QR code « Version couleur » sur la feuille</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › document › Fichier › Imprimer</span></p>
+        <p class="fiche__but">Une fiche photocopiée en noir et blanc perd ses couleurs et ses schémas. Le QR code imprimé dessus ramène l'élève à la version en couleur, sur son téléphone. Rien à régler : il se pose tout seul.</p>
+        <ol class="etapes">
+          <li data-cursor="#qf-fichier" data-action="click">Ouvrir la fiche dans l'éditeur de cours et choisir l'onglet <b>Fichier</b> du ruban.</li>
+          <li data-cursor="#qf-imprimer" data-action="click">Cliquer <span class="btn-nom">Imprimer</span> (ou <span class="btn-nom">Exporter en PDF</span>). La fenêtre « Imprimer le cours » s'ouvre.</li>
+          <li data-cursor="#qf-nb" data-action="click">Choisir la version, le nombre de pages par feuille et les couleurs : <b>Noir et blanc</b> convient à la photocopieuse.</li>
+          <li data-cursor="#qf-go" data-action="click">Cliquer <span class="btn-nom">Imprimer</span>. À la première impression, le lien du QR code est créé juste avant.</li>
+          <li data-cursor="#qf-qr" data-duration="3800">La première feuille porte, en haut à droite dans la marge, le QR code et la légende <b>Version couleur</b>. Il résiste à la photocopie.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le QR code n'existe que sur le papier et dans le PDF : on ne le voit jamais à l'écran de l'éditeur.</li>
+            <li>Une fiche posée sur un cours de l'emploi du temps ouvre toujours l'original de la bibliothèque.</li>
+            <li>Une correction, un corrigé, une copie modèle, une évaluation ou un devoir noté (titre commençant par Entraînement noté, Contrôle, Interro, Devoir surveillé ou DS) n'ont <b>jamais</b> de QR code.</li>
+            <li>Le lien ne change plus une fois créé : les feuilles déjà distribuées restent valables, même après des retouches du document.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#qr-scanner">Ce que voit l'élève</a> · <a href="cahier-de-texte-en-lecture-seule.html#ls-creer">Lien lecture seule</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="ed">
+                <div class="ed-titre">
+                  <span class="ed-logo">GC</span>
+                  <span class="ed-nom">Activité 4 — Les éruptions volcaniques</span>
+                  <span class="ed-chip">Version mobile : automatique</span>
+                  <span class="ed-saved">Enregistré</span>
+                  <span class="esp"></span>
+                  <span class="b b--petit">Fermer</span>
+                </div>
+                <div class="ed-onglets">
+                  <span class="ed-onglet" id="qf-fichier" data-on="1-5">Fichier</span>
+                  <span class="ed-onglet">Accueil</span>
+                  <span class="ed-onglet">Insertion</span>
+                  <span class="ed-onglet">Mise en page</span>
+                  <span class="ed-onglet">Révision</span>
+                  <span class="ed-onglet">Affichage</span>
+                </div>
+                <div class="ed-ruban">
+                  <div class="ed-groupe"><div class="ed-groupe__b">
+                    <span class="ed-gros" id="qf-imprimer" data-on="2-4"><i></i>Imprimer</span>
+                    <span class="ed-gros"><i></i>Exporter en PDF</span>
+                  </div><div class="ed-groupe__n">Imprimer</div></div>
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Lien lecture seule</span></div><div class="ed-groupe__n">Partager</div></div>
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Word ou PDF…</span></div><div class="ed-groupe__n">Importer</div></div>
+                </div>
+                <div class="ed-bureau">
+                  <div class="ed-feuille">
+                    <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                    <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                    <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                    <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                    <div class="doc-ligne" style="width:94%"></div><div class="doc-ligne" style="width:88%"></div><div class="doc-ligne" style="width:70%"></div>
+                  </div>
+                </div>
+
+                <div class="modale-fond" data-at="2-4">
+                  <div class="modale imp">
+                    <div class="modale__t">Imprimer le cours</div>
+                    <div class="imp__lab">Version</div>
+                    <div class="imp__choix imp__choix--2">
+                      <div class="imp__c imp__c--on"><b>Normale</b>Le cours tel qu'à l'écran</div>
+                      <div class="imp__c"><b>Adaptée (dys)</b>Texte plus grand, plus espacé</div>
+                    </div>
+                    <div class="imp__lab">Par feuille</div>
+                    <div class="imp__choix imp__choix--2">
+                      <div class="imp__c imp__c--on"><b>Une page A4</b>Comme d'habitude</div>
+                      <div class="imp__c"><b>Deux demi-feuilles</b>En A5, à coller dans le cahier</div>
+                    </div>
+                    <div class="imp__lab">Couleurs</div>
+                    <div class="imp__choix">
+                      <div class="imp__c" data-on="2"><b>Couleur</b>Encadrés et titres en couleur</div>
+                      <div class="imp__c" id="qf-nb" data-on="3-4"><b>Noir et blanc</b>Propre à la photocopieuse</div>
+                      <div class="imp__c"><b>Économie d'encre</b>Sans fonds colorés</div>
+                    </div>
+                    <div class="imp__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="qf-go" data-on="4">Imprimer</span></div>
+                  </div>
+                </div>
+
+                <div class="papier glisse-haut" data-from="5">
+                  <div class="qr-print" id="qf-qr"><span>Version<br>couleur</span><svg viewBox="-1 -1 27 27"><rect x="-1" y="-1" width="27" height="27" fill="#fff"/><use href="#faux-qr" fill="#000"/></svg></div>
+                  <div class="papier__contenu">
+                    <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                    <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                    <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                    <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                    <div class="doc-ligne" style="width:94%"></div><div class="doc-ligne" style="width:88%"></div><div class="doc-ligne" style="width:76%"></div><div class="doc-ligne" style="width:90%"></div>
+                  </div>
+                </div>
+                <div class="halo" data-at="5" style="left:598px;top:34px;width:100px;height:58px"></div>
+                <div class="bulle bulle--droite" data-at="5" style="left:96px;top:120px;width:190px">La photocopie est en noir et blanc ; le QR code mène à la version en couleur</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : scanner -->
+    <section class="fiche fiche--etroite" id="qr-scanner">
+      <div class="fiche__texte">
+        <h2>Scanner la feuille et lire en couleur</h2>
+        <p class="fiche__ou"><span class="qui qui--public">Sans compte</span><span class="qui qui--eleve">Élève</span><span class="chemin">Appareil photo du téléphone › QR code</span></p>
+        <p class="fiche__but">L'élève vise le QR code de sa feuille : la fiche s'ouvre sur son téléphone, en couleur, sur une seule colonne. Aucune application à installer, aucun code à taper.</p>
+        <ol class="etapes">
+          <li data-cursor="#qs-lien" data-action="tap" data-duration="3200">Ouvrir l'appareil photo et viser le QR code en haut à droite de la feuille, puis toucher le lien qui apparaît.</li>
+          <li data-cursor="#qs-titre" data-duration="3200">La page s'ouvre (« Ouverture du document… ») sur la vue <b>Téléphone</b> : la fiche en une colonne, avec ses couleurs, ses encadrés et ses images.</li>
+          <li data-cursor="#qs-a" data-action="drag" data-drag-to="#qs-b" data-duration="3200">Faire défiler du doigt. On peut zoomer à deux doigts ; un tableau trop large défile de côté.</li>
+          <li data-cursor="#qs-a4" data-action="tap">Toucher <span class="btn-nom">Pages A4</span> pour voir les feuilles telles qu'elles ont été imprimées.</li>
+          <li data-cursor="#qs-print" data-action="tap" data-duration="3200"><span class="btn-nom">Imprimer / PDF</span> prépare les feuilles A4 (« Préparation… ») puis ouvre la fenêtre d'impression du téléphone.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Ce que voit qui a la feuille</b> : le texte et les images de cette fiche, dans sa dernière version. Rien d'autre : aucun élève, aucune note, aucun autre document.</li>
+            <li><b>Ce qui ne sort jamais</b> : corrections, corrigés, copies modèles et évaluations (le titre est relu à chaque scan : une fiche renommée « (correction) » après coup n'est plus servie), écrans projetés, liens vers des sites, annotations de l'enseignant, encarts de tableau blanc.</li>
+            <li>Les zones d'écriture et les pointillés de réponse sont retirés : ils ne servent à rien sur un téléphone.</li>
+            <li>Si l'enseignant modifie la fiche, l'élève voit la nouvelle version : la page se relit quand on y revient après une minute.</li>
+            <li>Messages possibles : « Ce lien ne fonctionne plus. » (document supprimé ou devenu une correction), « Pas de connexion. », « Le document ne répond pas pour le moment. ».</li>
+            <li>La page demande aux moteurs de recherche de ne pas l'indexer.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:12</span><span>4G</span></div>
+
+              <div class="md">
+                <div class="md-bar">
+                  <div class="md-titre" id="qs-titre">Activité 4 — Les éruptions volcaniques</div>
+                  <div class="md-seg"><span data-on="1-3">Téléphone</span><span id="qs-a4" data-on="4-5">Pages A4</span></div>
+                  <span class="md-print" id="qs-print" data-on="5"><i class="ico-imp"></i><span data-to="4">Imprimer / PDF</span><span data-from="5">Préparation…</span></span>
+                </div>
+                <div class="md-corps">
+                  <div class="md-doc" data-on="3">
+                    <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                    <div class="doc-encadre" id="qs-b"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                    <div class="doc-fig" id="qs-a"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                    <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                    <p class="doc-p">Le magma se forme en profondeur. Moins dense que les roches qui l'entourent, il monte et s'accumule dans la chambre magmatique.</p>
+                    <p class="doc-p">Lors d'une éruption, il remonte par la cheminée et sort au cratère : on parle alors de lave.</p>
+                    <div class="doc-encadre"><b>Document 2.</b> Deux types d'éruptions : effusives (coulées de lave fluide) et explosives (nuées et projections).</div>
+                    <p class="doc-p">1. Nomme les trois parties du volcan visibles sur le document 1.</p>
+                    <p class="doc-p">2. Explique pourquoi le magma remonte vers la surface.</p>
+                  </div>
+                  <div class="md-a4 repli" data-from="4">
+                    <div class="md-a4__f">
+                      <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                      <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma.</div>
+                      <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                      <div class="doc-ligne" style="width:94%"></div><div class="doc-ligne" style="width:86%"></div><div class="doc-ligne" style="width:90%"></div><div class="doc-ligne" style="width:60%"></div>
+                      <div class="doc-ligne" style="width:92%"></div><div class="doc-ligne" style="width:80%"></div>
+                    </div>
+                    <div class="md-a4__f" style="flex:none">
+                      <div class="doc-ligne" style="width:90%"></div><div class="doc-ligne" style="width:70%"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cam" data-at="1">
+                <div class="cam__papier">
+                  <div class="qr-print"><span>Version<br>couleur</span><svg viewBox="-1 -1 27 27"><rect x="-1" y="-1" width="27" height="27" fill="#fff"/><use href="#faux-qr" fill="#000"/></svg></div>
+                  <div class="papier__contenu">
+                    <p class="doc-h" style="font-size:13px">Activité 4 — Les éruptions volcaniques</p>
+                    <div class="doc-encadre" style="font-size:9px">Consigne. Observe le schéma du volcan…</div>
+                    <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                    <div class="doc-ligne" style="width:90%"></div><div class="doc-ligne" style="width:80%"></div>
+                  </div>
+                </div>
+                <div class="cam__visee"><i></i><i></i><i></i><i></i></div>
+                <div class="cam__lien" id="qs-lien"><b></b>qwetsh.github.io/gestion-classe/d/…</div>
+                <div class="cam__declencheur"></div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : version sur mesure -->
+    <section class="fiche fiche--etroite" id="qr-sur-mesure">
+      <div class="fiche__texte">
+        <h2>La version « sur mesure »</h2>
+        <p class="fiche__ou"><span class="qui qui--public">Sans compte</span><span class="qui qui--eleve">Élève</span><span class="chemin">QR code de la feuille</span></p>
+        <p class="fiche__but">Pour certaines fiches, l'enseignant fait écrire par Claude une page pensée pour le téléphone : schémas à toucher, réponses à révéler, animations. Le même QR code l'ouvre à la place de la version automatique, sans réimprimer la feuille.</p>
+        <ol class="etapes">
+          <li data-cursor="#qm-titre" data-duration="3000">Scanner le QR code : la page sur mesure s'ouvre en plein écran, avec son propre graphisme.</li>
+          <li data-cursor="#qm-point2" data-action="tap" data-duration="3400">Toucher les éléments de la page : ici, un repère du schéma affiche son explication.</li>
+          <li data-cursor="#qm-simple" data-action="tap">Le petit bouton <span class="btn-nom">Version simple</span>, en bas à droite, ramène à la version automatique, en une colonne.</li>
+          <li data-cursor="#qm-retour" data-action="tap">La version simple s'affiche, avec ses boutons habituels. <span class="btn-nom">Version sur mesure</span> y retourne.</li>
+          <li data-cursor="#qm-titre2">La page sur mesure se rouvre, depuis le début.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La page sur mesure tourne dans un cadre isolé : elle ne peut rien lire de l'application, ni rien envoyer sur Internet. Elle ne contient que la fiche.</li>
+            <li>Elle s'ouvre seulement par le QR code de la feuille, jamais par le lien lecture seule du cahier de texte.</li>
+            <li>Mêmes interdits que la version automatique : une correction ou une évaluation n'a jamais de page sur mesure.</li>
+            <li>Elle ne se fabrique pas dans le site : c'est Claude qui l'écrit à la demande de l'enseignant, puis la dépose.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>10:14</span><span>4G</span></div>
+
+              <div class="md">
+                <div class="md-bar">
+                  <div class="md-titre">Activité 4 — Les éruptions volcaniques</div>
+                  <span class="md-sur" id="qm-retour" data-on="4">Version sur mesure</span>
+                  <div class="md-seg"><span class="is-on">Téléphone</span><span>Pages A4</span></div>
+                  <span class="md-print"><i class="ico-imp"></i>Imprimer / PDF</span>
+                </div>
+                <div class="md-corps"><div class="md-doc">
+                  <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                  <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                  <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                  <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                  <p class="doc-p">Le magma se forme en profondeur. Moins dense que les roches qui l'entourent, il monte et s'accumule dans la chambre magmatique.</p>
+                </div></div>
+              </div>
+
+              <div class="sm" data-to="3">
+                <div class="sm__sur">4e · Séquence 2</div>
+                <div class="sm__t" id="qm-titre">Le voyage du magma</div>
+                <div class="sm__schema">
+                  <svg viewBox="0 0 240 130"><use href="#volcan"/></svg>
+                  <span class="sm__point" style="left:116px;top:112px">1</span>
+                  <span class="sm__point" id="qm-point2" data-on="2" style="left:146px;top:60px">2</span>
+                  <span class="sm__point" style="left:126px;top:28px">3</span>
+                </div>
+                <div class="sm__info" data-to="1">Touche les repères du schéma pour suivre le magma, de la profondeur jusqu'au cratère.</div>
+                <div class="sm__info glisse-haut" data-at="2-3"><b>2. La cheminée</b> — le magma, moins dense que les roches, remonte par ce conduit vers la surface.</div>
+                <div class="sm__revele">Ta réponse à la question 1, puis touche ici pour comparer.</div>
+              </div>
+              <div class="sm" data-from="5">
+                <div class="sm__sur">4e · Séquence 2</div>
+                <div class="sm__t" id="qm-titre2">Le voyage du magma</div>
+                <div class="sm__schema">
+                  <svg viewBox="0 0 240 130"><use href="#volcan"/></svg>
+                  <span class="sm__point" style="left:116px;top:112px">1</span>
+                  <span class="sm__point" style="left:146px;top:60px">2</span>
+                  <span class="sm__point" style="left:126px;top:28px">3</span>
+                </div>
+                <div class="sm__info">Touche les repères du schéma pour suivre le magma, de la profondeur jusqu'au cratère.</div>
+              </div>
+              <span class="sm-simple" id="qm-simple" data-on="3" data-to="3">Version simple</span>
+              <span class="sm-simple" data-from="5">Version simple</span>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : quelle version ouvre le QR -->
+    <section class="fiche" id="qr-editeur">
+      <div class="fiche__texte">
+        <h2>Savoir quelle version ouvre le QR code</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Éditeur de cours › barre de titre</span></p>
+        <p class="fiche__but">Une étiquette, à côté du titre du document, dit ce que voient les élèves qui scannent la feuille : la version automatique ou une version sur mesure, et si celle-ci est encore à jour.</p>
+        <ol class="etapes">
+          <li data-cursor="#qv-auto" data-duration="3200"><b>Version mobile : automatique</b> : le QR code ouvre la version faite par l'application, qui suit chaque retouche du document.</li>
+          <li data-cursor="#qv-sur" data-duration="3200">Quand Claude a déposé une page sur mesure, l'étiquette devient <b>Version mobile : sur mesure</b>.</li>
+          <li data-cursor="#qv-vieux" data-action="click" data-duration="3400">Après une retouche du document, elle passe à <b>Version mobile : plus ancienne que le document</b> : la page sur mesure ne suit pas les retouches. Cliquer dessus.</li>
+          <li data-cursor="#qv-garder" data-action="click" data-duration="3400"><span class="btn-nom">Voir</span> ouvre la page du QR code ; <span class="btn-nom">Garder</span> dit qu'elle convient encore au document.</li>
+          <li data-cursor="#qv-confirmer" data-action="click" data-duration="3600"><span class="btn-nom">Revenir à l'automatique</span> retire la page sur mesure, après confirmation : le QR code ouvre de nouveau la version de l'application.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Rien n'est affiché pour une correction ou une évaluation : elles n'ont pas de QR code.</li>
+            <li>Une copie posée sur l'emploi du temps montre la version de son original, celle que sert le QR code.</li>
+            <li>Une page retirée ne se récupère pas : il faut la faire déposer de nouveau par Claude.</li>
+            <li>Le QR code d'une feuille déjà imprimée ne se coupe pas depuis le site ; il ne mène plus à rien si le document est supprimé.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="ed">
+                <div class="ed-titre">
+                  <span class="ed-logo">GC</span>
+                  <span class="ed-nom">Activité 4 — Les éruptions volcaniques</span>
+                  <span class="ed-chip" id="qv-auto" data-at="1">Version mobile : automatique</span>
+                  <span class="ed-chip ed-chip--ok repli" id="qv-sur" data-at="2">Version mobile : sur mesure</span>
+                  <span class="ed-chip ed-chip--warn repli" id="qv-vieux" data-from="3" data-on="3">Version mobile : plus ancienne que le document</span>
+                  <span class="ed-saved">Enregistré</span>
+                  <span class="esp"></span>
+                  <span class="b b--petit">Fermer</span>
+                </div>
+                <div class="ed-onglets">
+                  <span class="ed-onglet">Fichier</span>
+                  <span class="ed-onglet is-on">Accueil</span>
+                  <span class="ed-onglet">Insertion</span>
+                  <span class="ed-onglet">Mise en page</span>
+                  <span class="ed-onglet">Révision</span>
+                  <span class="ed-onglet">Affichage</span>
+                </div>
+                <div class="ed-ruban">
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Coller</span></div><div class="ed-groupe__n">Presse-papiers</div></div>
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Gras</span><span class="ed-gros"><i></i>Couleur</span></div><div class="ed-groupe__n">Police</div></div>
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Titre</span><span class="ed-gros"><i></i>Encadré</span></div><div class="ed-groupe__n">Styles</div></div>
+                </div>
+                <div class="ed-bureau">
+                  <div class="ed-feuille">
+                    <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                    <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                    <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                    <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                    <p class="doc-p" data-from="3" style="background:#FEF3C7">Ajout : les gaz dissous jouent un rôle dans le caractère explosif de l'éruption.</p>
+                    <div class="doc-ligne" style="width:94%"></div><div class="doc-ligne" style="width:80%"></div>
+                  </div>
+                </div>
+
+                <div class="vm-pop zoom" data-at="4">
+                  <p>Sur mesure, déposée le 12 novembre 2026 à 18:40.</p>
+                  <p class="vm-pop__warn">Le document a été modifié depuis : la page du téléphone ne suit pas les retouches.</p>
+                  <div class="vm-pop__b"><span class="b b--fantome b--petit">Voir</span><span class="b b--petit" id="qv-garder" data-on="4">Garder</span><span class="b b--fantome b--petit">Revenir à l'automatique</span></div>
+                </div>
+                <div class="modale-fond" data-at="5">
+                  <div class="modale">
+                    <div class="modale__t">Revenir à la version automatique ?</div>
+                    <p style="font-size:13px;color:var(--text-muted);margin:0 0 14px">La page sur mesure est retirée : le QR code des feuilles imprimées ouvrira de nouveau la version faite par l'application. Pour la retrouver, il faudra la déposer à nouveau.</p>
+                    <div class="imp__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--orange b--petit" id="qv-confirmer" data-on="5">Revenir à l'automatique</span></div>
+                  </div>
+                </div>
+                <div class="bulle bulle--haut" data-at="3" style="left:330px;top:52px;width:220px">La feuille a changé, la page sur mesure non</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

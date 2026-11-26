@@ -232,12 +232,14 @@
     var p = this.pointer;
     var self = this;
     clearTimeout(this.moveTimer);
+    var token = this.moveToken = (this.moveToken || 0) + 1;
     p.classList.remove('is-click', 'is-long');
     var sel = li.dataset.cursor;
     var target = sel ? this.screen.querySelector(sel) : null;
     if (!target) { p.classList.add('is-away'); return; }
     // laisser la scène se mettre en place (éléments qui apparaissent) avant de viser
     requestAnimationFrame(function () {
+      if (token !== self.moveToken) return;
       var pt = self.pointAt(target);
       p.classList.remove('is-away');
       p.style.transitionDuration = (animate && !reduceMotion) ? '' : '0s';

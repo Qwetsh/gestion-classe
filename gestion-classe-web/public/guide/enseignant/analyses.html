@@ -1,0 +1,497 @@
+
+
+
+
+
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyses — Guide Gestion Classe</title>
+<meta name="description" content="Prendre du recul sur le comportement des classes : implications, malus, absences, sorties, notes d'oral, équité filles-garçons, comparaison des classes et rapport PDF.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="66">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* page Analyses (pages/Analytics.tsx) : cartes blanches ombrées, graphiques */
+.ecran div.is-hidden:not(.bulle):not(.modale-fond):not(.toast):not(.infob):not(.pdf),.ecran span.is-hidden,.ecran b.is-hidden{display:none}
+.an{background:#F6F6F7;padding:14px 18px}
+.an-t{display:flex;align-items:center;margin-bottom:10px}
+.an-t h3{margin:0;font-size:19px;font-weight:650}
+.ac{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(20,25,40,.08),0 1px 2px rgba(20,25,40,.04);padding:12px 14px;margin-bottom:10px;transition:box-shadow .25s}
+.ac.is-on{box-shadow:0 0 0 2px rgba(79,70,229,.45)}
+.ac h4{margin:0 0 8px;font-size:13px;font-weight:650}
+.flt{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px}
+.flt>b{font-weight:500;color:var(--text-muted);width:58px}
+.pu{padding:3px 10px;border-radius:6px;font-size:11.5px;font-weight:600;background:var(--surface-3);color:var(--text-muted);transition:all .25s}
+.pu.on,.pu.is-on{background:var(--indigo);color:#fff}
+.lnk{font-size:11.5px;color:var(--indigo);font-weight:600;padding:2px 5px;border-radius:5px;transition:background .25s}
+.lnk.is-on{background:var(--indigo-soft)}
+.kpi{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:10px}
+.kpi>div{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(20,25,40,.08);padding:10px;display:flex;align-items:center;gap:9px}
+.sq{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px;flex:none}
+.kpi b{display:block;font-size:19px;font-variant-numeric:tabular-nums}
+.kpi small{font-size:10.5px;color:var(--text-muted)}
+.vide{text-align:center;padding:40px 10px;color:var(--text-muted);font-size:13px}
+.vide i{display:block;width:44px;height:36px;margin:0 auto 10px;background:linear-gradient(to top,#C7D2FE 0 40%,transparent 40%) 0 0/10px 100% no-repeat,linear-gradient(to top,#A5B4FC 0 80%,transparent 80%) 16px 0/10px 100% no-repeat,linear-gradient(to top,#818CF8 0 60%,transparent 60%) 32px 0/10px 100% no-repeat}
+svg.ch{display:block;width:100%;height:auto;font-family:var(--font)}
+svg.ch text{font-size:10px;fill:#71717A}
+.ecran .tr{stroke-dasharray:1200;stroke-dashoffset:0;transition:stroke-dashoffset 1.6s ease,opacity .3s}
+.ecran .tr.is-hidden{stroke-dashoffset:1200}
+.ecran .bar{transform-box:fill-box;transform-origin:50% 100%;transition:transform .9s cubic-bezier(.2,.8,.3,1),opacity .3s}
+.ecran .bar.is-hidden{transform:scaleY(0)}
+.ecran .arc{transition:stroke-dasharray 1.2s ease,opacity .3s}
+.ecran .arc.is-hidden{stroke-dasharray:0 252!important}
+.ecran .bh{transform-origin:0 50%;transition:transform .9s ease,opacity .3s}
+.ecran .bh.is-hidden{transform:scaleX(0)}
+.infob{position:absolute;z-index:700;background:#fff;border:1px solid var(--border);color:var(--text);font-size:11.5px;padding:6px 9px;border-radius:6px;white-space:nowrap;box-shadow:var(--shadow-lg)}
+.leg{display:flex;gap:12px;justify-content:center;font-size:11px;color:var(--text-muted);margin-top:4px}
+.leg span::before{content:'';display:inline-block;width:9px;height:9px;border-radius:2px;background:var(--c);margin-right:5px;vertical-align:-1px}
+.rk{width:20px;height:20px;border-radius:5px;display:inline-grid;place-items:center;color:#fff;font-size:10.5px;font-weight:700}
+.p-pill{padding:1px 7px;border-radius:999px;font-size:11px;font-weight:650}
+.oral{display:flex;gap:14px;align-items:center}
+.ormoy{width:56px;height:56px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:19px;font-weight:700}
+.orl div{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12px}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;font-size:11px;font-weight:600;color:var(--text-muted);background:var(--surface-2);padding:6px 8px}
+.tbl td{padding:7px 8px;border-top:1px solid var(--border)}
+.rbar{display:inline-block;width:64px;height:7px;border-radius:4px;background:var(--surface-3);vertical-align:middle;margin-right:6px;overflow:hidden}
+.rbar i{display:block;height:100%;border-radius:4px}
+.pdf{position:absolute;z-index:620;left:330px;top:44px;width:420px;height:560px;background:#fff;box-shadow:0 12px 40px rgba(0,0,0,.25);border-radius:3px;padding:24px 26px;font-size:9px;color:#27272A;transition:transform .4s,opacity .35s}
+.pdf.is-hidden{transform:translateY(20px)}
+.pdf h5{margin:0;font-size:15px;color:rgb(99,102,241)}
+.pdf h6{margin:10px 0 4px;font-size:10.5px}
+.pdf table{width:100%;border-collapse:collapse;font-size:8.5px}
+.pdf th{background:rgb(99,102,241);color:#fff;padding:3px 4px;text-align:left}
+.pdf td{padding:3px 4px;border-bottom:1px solid #E4E4E7}
+.pdf .or th{background:#F97316}
+.pv{color:#15803D}.pr{color:#B91C1C}
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Analyses</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#page">Période, classes et chiffres clés</a></li>
+    <li><a href="#oral">Notes d'oral</a></li>
+    <li><a href="#filles-garcons">Comparaison filles / garçons</a></li>
+    <li><a href="#evolution">Évolution dans le temps</a></li>
+    <li><a href="#repartition">Répartition des événements</a></li>
+    <li><a href="#comparaison">Comparaison par classe</a></li>
+    <li><a href="#classement">Classement par ratio participation / malus</a></li>
+    <li><a href="#rapport">Le rapport PDF</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/cahier-de-texte.html">◀ Cahier de texte</a><a href="../enseignant/analyses-des-notes.html">Analyses des notes ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Analyses</h1>
+      <p>Tout ce qui a été noté en séance, au téléphone ou sur le site, rassemblé en chiffres et en graphiques : pour préparer un conseil de classe, comparer ses classes ou repérer un climat qui se dégrade. Les notes du carnet ont leur propre chapitre.</p>
+      <div class="chap__resume"><span>Menu Classes › Analyses</span><span>Ordinateur</span><span>Données des séances</span></div>
+    </header>
+
+
+    <!-- ============================================================ filtres et chiffres -->
+    <section class="fiche" id="page">
+      <div class="fiche__texte">
+        <h2>Période, classes et chiffres clés</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Analyses</span></p>
+        <p class="fiche__but">Choisir la fenêtre de temps et les classes : les cinq chiffres du haut, et tous les graphiques dessous, se recalculent aussitôt.</p>
+        <ol class="etapes">
+          <li data-cursor="#pa-menu" data-action="click" data-duration="3200">Dans le menu, ouvrir <b>Classes</b> puis <span class="btn-nom">Analyses</span>. Par défaut : 30 jours, toutes les classes.</li>
+          <li data-cursor="#pa-90" data-action="click">Dans <b>Periode:</b>, choisir 7 jours, 30 jours, 90 jours ou Tout.</li>
+          <li data-cursor="#pa-4b" data-action="click" data-duration="3200">Dans <b>Classes:</b>, cliquer une classe pour la retirer (ou la remettre) : les chiffres suivent.</li>
+          <li data-cursor="#pa-aucune" data-action="click"><b>Aucune</b> décoche tout : la page demande de choisir au moins une classe.</li>
+          <li data-cursor="#pa-toutes" data-action="click"><b>Toutes</b> recoche toutes les classes.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les cinq cartes : <b>Participations</b> (implications), <b>Malus</b>, <b>Absences</b>, <b>Sorties</b>, et <b>Ratio +/-</b>, la part des implications parmi implications et malus.</li>
+            <li>La période ne s'applique qu'aux événements de séance. Les notes d'oral l'ignorent ; les notes du carnet ont leur propre choix (Année, T1, T2, T3).</li>
+            <li>Les classes cochées s'appliquent partout, notes d'oral et notes du carnet comprises.</li>
+            <li>Plusieurs libellés de la page sont sans accents (« Periode », « Evolution »…), tels qu'ils sont dans l'application.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html">Séances</a> · <a href="../telephone/seance-et-menu-radial.html">Noter en séance au téléphone</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous" id="pa-menu" data-on="1">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          <div class="ac">
+            <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu" data-on="1">30 jours</span><span class="pu" id="pa-90" data-on="2-5">90 jours</span><span class="pu">Tout</span></div>
+            <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk" id="pa-toutes" data-on="5">Toutes</span><span class="lnk" id="pa-aucune" data-on="4">Aucune</span><span class="pu" data-on="1-3,5">3A</span><span class="pu" id="pa-4b" data-on="1-2,5">4B</span><span class="pu" data-on="1-3,5">5B</span><span class="pu" data-on="1-3,5">6A</span></div>
+          </div>
+          <div class="kpi" data-at="1-3,5">
+            <div><span class="sq" style="background:#22c55e">+</span><span><b><span data-at="1">412</span><span data-at="2,5">1130</span><span data-at="3">830</span></b><small>Participations</small></span></div>
+            <div><span class="sq" style="background:#ef4444">-</span><span><b><span data-at="1">118</span><span data-at="2,5">342</span><span data-at="3">280</span></b><small>Malus</small></span></div>
+            <div><span class="sq" style="background:#f59e0b">A</span><span><b><span data-at="1">37</span><span data-at="2,5">101</span><span data-at="3">79</span></b><small>Absences</small></span></div>
+            <div><span class="sq" style="background:#3b82f6">S</span><span><b><span data-at="1">52</span><span data-at="2,5">140</span><span data-at="3">108</span></b><small>Sorties</small></span></div>
+            <div><span class="sq" style="background:#6366f1">%</span><span><b><span data-at="1">78%</span><span data-at="2,5">77%</span><span data-at="3">75%</span></b><small>Ratio +/-</small></span></div>
+          </div>
+          <div class="ac" data-at="1-3,5">
+            <h4>Evolution dans le temps</h4>
+            <svg class="ch" viewBox="0 0 580 150"><path d="M50 30h510M50 70h510M50 110h510" stroke="#E6E6E9" stroke-dasharray="3 3"/>
+              <path class="tr" data-at="1-3,5" fill="none" stroke="#22c55e" stroke-width="2.5" transform="translate(0,-30) scale(1,.9)" d="M50 99 C56 97 74 85 86 88 C98 92 110 123 122 121 C134 118 146 79 158 74 C170 69 182 87 194 92 C206 97 218 111 230 106 C242 102 254 67 266 63 C278 59 290 76 302 81 C314 87 326 90 338 96 C350 101 362 118 374 114 C386 109 398 75 410 70 C422 66 434 79 446 85 C458 90 470 104 482 103 C494 102 506 79 518 78 C530 76 548 90 554 92"/>
+              <path class="tr" data-at="1-3,5" fill="none" stroke="#ef4444" stroke-width="2.5" transform="translate(0,-30) scale(1,.9)" d="M50 168 C56 169 74 175 86 175 C98 174 110 163 122 164 C134 165 146 177 158 178 C170 180 182 174 194 171 C206 168 218 160 230 160 C242 161 254 174 266 175 C278 176 290 167 302 168 C314 168 326 179 338 178 C350 178 362 165 374 164 C386 163 398 169 410 171 C422 173 434 175 446 175 C458 174 470 167 482 168 C494 168 506 178 518 178 C530 179 548 172 554 171"/>
+            </svg>
+          </div>
+          <div class="ac vide" data-at="4"><i></i>Selectionnez au moins une classe pour afficher les statistiques</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ oral -->
+    <section class="fiche" id="oral">
+      <div class="fiche__texte">
+        <h2>Notes d'oral</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Notes d'oral</span></p>
+        <p class="fiche__but">La moyenne des évaluations orales notées sur 5 en séance, pour toutes les classes cochées et classe par classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#or-moy" data-duration="3200">À gauche, la moyenne générale sur 5, dans un carré coloré : vert à partir de 3,5, orange à partir de 2,5, rouge en dessous.</li>
+          <li data-cursor="#or-liste" data-duration="3400">À droite, les classes classées de la meilleure à la moins bonne : or, argent, bronze, puis indigo.</li>
+          <li data-cursor="#or-der" data-duration="3000">Au-delà de trois classes, la liste défile.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La carte n'apparaît que si les classes cochées ont au moins une note d'oral.</li>
+            <li>Limite actuelle : toutes les notes d'oral sont prises, toutes années et tous trimestres confondus, sans tenir compte de la période choisie. Le nombre affiché sous la moyenne (« eleves ») compte en fait des évaluations, pas des élèves différents.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seance-sur-tablette.html#oral">Évaluer l'oral en séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Notes d'oral</h4>
+            <div class="oral">
+              <div style="text-align:center" id="or-moy"><div class="ormoy" style="background:#f59e0b">3.4</div><div style="font-size:11px;color:var(--text-muted);margin-top:4px">Moyenne /5</div><div style="font-size:10.5px;color:var(--text-dim)">48 eleves</div></div>
+              <div class="orl" id="or-liste" style="flex:1;height:120px;overflow:hidden;position:relative">
+                <div><span class="rk" style="background:var(--warn)">1</span><b style="flex:1">6A</b><span class="p-pill" style="background:#DCFCE7;color:#15803D">3.8/5</span></div>
+                <div><span class="rk" style="background:var(--text-dim)">2</span><b style="flex:1">3A</b><span class="p-pill" style="background:#DCFCE7;color:#15803D">3.5/5</span></div>
+                <div><span class="rk" style="background:#cd7f32">3</span><b style="flex:1">4B</b><span class="p-pill" style="background:#FEF3C7;color:#B45309">3.3/5</span></div>
+                <div id="or-der"><span class="rk" style="background:var(--indigo)">4</span><b style="flex:1">5B</b><span class="p-pill" style="background:#FEF3C7;color:#B45309">2.9/5</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="kpi" style="opacity:.55"><div><span class="sq" style="background:#22c55e">+</span><span><b>412</b><small>Participations</small></span></div><div><span class="sq" style="background:#ef4444">-</span><span><b>118</b><small>Malus</small></span></div><div><span class="sq" style="background:#f59e0b">A</span><span><b>37</b><small>Absences</small></span></div><div><span class="sq" style="background:#3b82f6">S</span><span><b>52</b><small>Sorties</small></span></div><div><span class="sq" style="background:#6366f1">%</span><span><b>78%</b><small>Ratio +/-</small></span></div></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ filles garçons -->
+    <section class="fiche" id="filles-garcons">
+      <div class="fiche__texte">
+        <h2>Comparaison filles / garçons</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Comparaison Filles / Garcons</span></p>
+        <p class="fiche__but">Vérifier l'équité de la sollicitation : combien d'implications, de malus ou d'absences par élève, chez les filles et chez les garçons.</p>
+        <ol class="etapes">
+          <li data-cursor="#fg-barres" data-duration="3200">Deux barres, filles et garçons, avec l'effectif entre parenthèses : le nombre moyen d'implications par élève.</li>
+          <li data-cursor="#fg-malus" data-action="click">Cliquer <b>Malus</b> : les barres passent au rouge et montrent les malus par élève.</li>
+          <li data-cursor="#fg-abs" data-action="click">Cliquer <b>Absences</b> pour les absences.</li>
+          <li data-cursor="#fg-b1" data-duration="3000">Survoler une barre donne la valeur exacte, « par élève ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seuls les élèves qui ont au moins un événement sur la période entrent dans l'effectif.</li>
+            <li>Limite actuelle : un élève dont le genre n'est pas renseigné est compté avec les garçons dans cette carte (le bloc des notes, lui, l'écarte). Renseigner le genre dans la liste des élèves de la classe.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="analyses-des-notes.html#filles-garcons-notes">Filles / garçons dans les notes</a> · <a href="classes.html">Élèves d'une classe</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="ac" style="position:relative">
+            <div class="ligne"><h4 style="margin:0">Comparaison Filles / Garcons</h4><span class="esp"></span><span class="pu" data-on="1">Implic.</span><span class="pu" id="fg-malus" data-on="2,4">Malus</span><span class="pu" id="fg-abs" data-on="3">Absences</span></div>
+            <svg class="ch" viewBox="0 0 580 230" id="fg-barres"><path d="M60 20h500M60 70h500M60 120h500M60 170h500" stroke="#E6E6E9" stroke-dasharray="3 3"/><path d="M60 200h500" stroke="#D4D4D8"/>
+              <text x="40" y="24">4</text><text x="40" y="74">3</text><text x="40" y="124">2</text><text x="40" y="174">1</text><text x="40" y="204">0</text>
+              <rect class="bar" data-at="1" x="140" y="25" width="110" height="175" rx="4" fill="#22c55e"/><rect class="bar" data-at="1" x="370" y="65" width="110" height="135" rx="4" fill="#22c55e"/>
+              <rect class="bar" data-at="2,4" id="fg-b1" x="140" y="160" width="110" height="40" rx="4" fill="#ef4444"/><rect class="bar" data-at="2,4" x="370" y="135" width="110" height="65" rx="4" fill="#ef4444"/>
+              <rect class="bar" data-at="3" x="140" y="185" width="110" height="15" rx="4" fill="#f59e0b"/><rect class="bar" data-at="3" x="370" y="182" width="110" height="18" rx="4" fill="#f59e0b"/>
+              <text x="160" y="220" style="font-size:11px;fill:#52525B">Filles (54)</text><text x="385" y="220" style="font-size:11px;fill:#52525B">Garcons (58)</text>
+            </svg>
+            <div class="infob" data-at="4" style="left:250px;top:150px"><b>Filles (54)</b><br><span style="color:#ef4444">Malus : 0.8 / élève</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ évolution -->
+    <section class="fiche" id="evolution">
+      <div class="fiche__texte">
+        <h2>Évolution dans le temps</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Evolution dans le temps</span></p>
+        <p class="fiche__but">Voir, jour après jour, comment évoluent implications, malus et absences sur la période choisie.</p>
+        <ol class="etapes">
+          <li data-cursor="#ev-p" data-duration="3200">Trois courbes : vert pour les participations, rouge pour les malus, orange pour les absences.</li>
+          <li data-cursor="#ev-axe" data-duration="3000">En bas, les dates ; un point par jour où des événements ont été notés.</li>
+          <li data-cursor="#ev-pt" data-duration="3400">Survoler une date : la bulle donne la date complète et les trois valeurs du jour.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les jours sans cours (week-ends, vacances) ne sont pas à zéro : ils n'apparaissent pas.</li>
+            <li>Sans événement sur la période : « Aucune donnee pour cette periode ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="ac" style="position:relative">
+            <h4>Evolution dans le temps</h4>
+            <svg class="ch" viewBox="0 0 580 230"><path d="M50 20h510M50 65h510M50 110h510M50 155h510M50 200h510" stroke="#E6E6E9" stroke-dasharray="3 3"/>
+              <text x="26" y="24">50</text><text x="26" y="69">38</text><text x="26" y="114">25</text><text x="26" y="159">13</text><text x="30" y="204">0</text>
+              <path class="tr" id="ev-p" data-from="1" fill="none" stroke="#22c55e" stroke-width="2.5" d="M50 99 C56 97 74 85 86 88 C98 92 110 123 122 121 C134 118 146 79 158 74 C170 69 182 87 194 92 C206 97 218 111 230 106 C242 102 254 67 266 63 C278 59 290 76 302 81 C314 87 326 90 338 96 C350 101 362 118 374 114 C386 109 398 75 410 70 C422 66 434 79 446 85 C458 90 470 104 482 103 C494 102 506 79 518 78 C530 76 548 90 554 92"/>
+              <path class="tr" data-from="1" fill="none" stroke="#ef4444" stroke-width="2.5" d="M50 168 C56 169 74 175 86 175 C98 174 110 163 122 164 C134 165 146 177 158 178 C170 180 182 174 194 171 C206 168 218 160 230 160 C242 161 254 174 266 175 C278 176 290 167 302 168 C314 168 326 179 338 178 C350 178 362 165 374 164 C386 163 398 169 410 171 C422 173 434 175 446 175 C458 174 470 167 482 168 C494 168 506 178 518 178 C530 179 548 172 554 171"/>
+              <path class="tr" data-from="1" fill="none" stroke="#f59e0b" stroke-width="2.5" d="M50 189 C56 190 74 193 86 193 C98 192 110 185 122 186 C134 186 146 196 158 196 C170 197 182 190 194 189 C206 189 218 193 230 193 C242 193 254 189 266 189 C278 189 290 193 302 193 C314 192 326 186 338 186 C350 186 362 192 374 193 C386 193 398 189 410 189 C422 190 434 196 446 196 C458 197 470 194 482 193 C494 192 506 189 518 189 C530 189 548 192 554 193"/>
+              <g id="ev-axe"><text x="38" y="220">2 nov.</text><text x="182" y="220">10 nov.</text><text x="326" y="220">17 nov.</text><text x="470" y="220">24 nov.</text></g>
+              <path d="M410 20v180" stroke="#A1A1AA" data-at="3"/><circle id="ev-pt" cx="410" cy="70" r="4" fill="#22c55e" data-at="3"/>
+            </svg>
+            <div class="leg"><span style="--c:#22c55e">Participations</span><span style="--c:#ef4444">Malus</span><span style="--c:#f59e0b">Absences</span></div>
+            <div class="infob" data-at="3" style="left:430px;top:80px"><b>jeudi 19 novembre</b><br><span style="color:#22c55e">Participations : 36</span><br><span style="color:#ef4444">Malus : 8</span><br><span style="color:#f59e0b">Absences : 3</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ répartition -->
+    <section class="fiche" id="repartition">
+      <div class="fiche__texte">
+        <h2>Répartition des événements</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Repartition des evenements</span></p>
+        <p class="fiche__but">La part de chaque type d'événement sur la période : un coup d'œil sur l'équilibre entre implications et malus.</p>
+        <ol class="etapes">
+          <li data-cursor="#re-donut" data-duration="3200">Un anneau aux couleurs des types : participations, malus, sorties, absences, remarques.</li>
+          <li data-cursor="#re-lab" data-duration="3000">Chaque part porte son nom et son pourcentage.</li>
+          <li data-cursor="#re-malus" data-duration="3000">Survoler une part donne le nombre d'événements.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un type à zéro sur la période est retiré de l'anneau. Les retours de sortie ne comptent pas.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="ac" style="position:relative">
+            <h4>Repartition des evenements</h4>
+            <svg class="ch" viewBox="0 0 580 250" id="re-donut">
+              <g transform="translate(290 128) rotate(-90) scale(2.1)" fill="none" stroke-width="16">
+                <circle class="arc" data-from="1" r="40" stroke="#22c55e" style="stroke-dasharray:165.6 252;stroke-dashoffset:0"/>
+                <circle class="arc" data-from="1" id="re-malus" r="40" stroke="#ef4444" style="stroke-dasharray:47.5 252;stroke-dashoffset:-165.6"/>
+                <circle class="arc" data-from="1" r="40" stroke="#3b82f6" style="stroke-dasharray:20.9 252;stroke-dashoffset:-213.1"/>
+                <circle class="arc" data-from="1" r="40" stroke="#f59e0b" style="stroke-dasharray:14.8 252;stroke-dashoffset:-234"/>
+                <circle class="arc" data-from="1" r="40" stroke="#8b5cf6" style="stroke-dasharray:2.5 252;stroke-dashoffset:-248.8"/>
+              </g>
+              <g id="re-lab" style="font-size:12px"><text x="430" y="200" style="fill:#22c55e;font-size:12px">Participations 66%</text><text x="60" y="175" style="fill:#ef4444;font-size:12px">Malus 19%</text><text x="80" y="80" style="fill:#3b82f6;font-size:12px">Sorties 8%</text><text x="140" y="40" style="fill:#f59e0b;font-size:12px">Absences 6%</text><text x="390" y="30" style="fill:#8b5cf6;font-size:12px">Remarques 1%</text></g>
+            </svg>
+            <div class="infob" data-at="3" style="left:200px;top:330px"><span style="color:#ef4444">Malus : 118</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ comparaison par classe -->
+    <section class="fiche" id="comparaison">
+      <div class="fiche__texte">
+        <h2>Comparaison par classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Comparaison par classe</span></p>
+        <p class="fiche__but">Mettre les classes côte à côte sur les implications, les malus et les absences.</p>
+        <ol class="etapes">
+          <li data-cursor="#cp-g1" data-duration="3200">Trois barres par classe : vert, rouge, orange.</li>
+          <li data-cursor="#cp-axe" data-duration="3200">Les classes sont rangées de la meilleure à la moins bonne, d'après leur ratio implications / (implications + malus).</li>
+          <li data-cursor="#cp-g4" data-duration="3000">Survoler une classe donne ses trois valeurs.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une classe sans événement sur la période n'apparaît pas.</li>
+            <li>Une classe très chargée en implications peut aussi avoir beaucoup de malus : c'est le ratio, pas la hauteur des barres, qui fait l'ordre.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="ac" style="position:relative">
+            <h4>Comparaison par classe</h4>
+            <svg class="ch" viewBox="0 0 580 240"><path d="M50 20h510M50 65h510M50 110h510M50 155h510" stroke="#E6E6E9" stroke-dasharray="3 3"/><path d="M50 200h510" stroke="#D4D4D8"/>
+              <text x="22" y="24">140</text><text x="22" y="69">105</text><text x="26" y="114">70</text><text x="26" y="159">35</text>
+              <g id="cp-g1"><rect class="bar" data-from="1" x="80" y="35" width="28" height="165" fill="#22c55e"/><rect class="bar" data-from="1" x="110" y="177" width="28" height="23" fill="#ef4444"/><rect class="bar" data-from="1" x="140" y="188" width="28" height="12" fill="#f59e0b"/></g>
+              <g><rect class="bar" data-from="1" x="210" y="57" width="28" height="143" fill="#22c55e"/><rect class="bar" data-from="1" x="240" y="172" width="28" height="28" fill="#ef4444"/><rect class="bar" data-from="1" x="270" y="190" width="28" height="10" fill="#f59e0b"/></g>
+              <g><rect class="bar" data-from="1" x="340" y="78" width="28" height="122" fill="#22c55e"/><rect class="bar" data-from="1" x="370" y="161" width="28" height="39" fill="#ef4444"/><rect class="bar" data-from="1" x="400" y="185" width="28" height="15" fill="#f59e0b"/></g>
+              <g id="cp-g4"><rect class="bar" data-from="1" x="470" y="100" width="28" height="100" fill="#22c55e"/><rect class="bar" data-from="1" x="500" y="138" width="28" height="62" fill="#ef4444"/><rect class="bar" data-from="1" x="530" y="190" width="28" height="10" fill="#f59e0b"/></g>
+              <g id="cp-axe" style="font-size:11px"><text x="115" y="222" transform="rotate(-45 115 222)">6A</text><text x="245" y="222" transform="rotate(-45 245 222)">4B</text><text x="375" y="222" transform="rotate(-45 375 222)">3A</text><text x="505" y="222" transform="rotate(-45 505 222)">5B</text></g>
+            </svg>
+            <div class="leg"><span style="--c:#22c55e">Participations</span><span style="--c:#ef4444">Malus</span><span style="--c:#f59e0b">Absences</span></div>
+            <div class="infob" data-at="3" style="left:640px;top:40px"><b>5B</b><br><span style="color:#22c55e">Participations : 78</span><br><span style="color:#ef4444">Malus : 48</span><br><span style="color:#f59e0b">Absences : 8</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ classement -->
+    <section class="fiche" id="classement">
+      <div class="fiche__texte">
+        <h2>Classement par ratio participation / malus</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Classement par ratio participation/malus</span></p>
+        <p class="fiche__but">Classer ses classes par climat de travail, avec les chiffres sous les yeux.</p>
+        <ol class="etapes">
+          <li data-cursor="#cl-r1">Le rang dans un carré : or, argent, bronze, puis indigo.</li>
+          <li data-cursor="#cl-ch" data-duration="3000">Participations, malus et absences de la période, dans des pastilles vertes, rouges et orange.</li>
+          <li data-cursor="#cl-ratio" data-duration="3400">Le ratio, avec sa petite barre : verte à 60 % et plus, orange à 40 % et plus, rouge en dessous.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Même ordre que le graphique « Comparaison par classe ».</li>
+            <li>Le rapport PDF reprend ce classement, commenté.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          
+<div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" >Générer rapport PDF</span></div>
+
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="ac">
+            <h4>Classement par ratio participation/malus</h4>
+            <table class="tbl"><tr><th>Classe</th><th>Participations</th><th>Malus</th><th>Absences</th><th>Ratio</th></tr>
+              <tr><td><span class="rk" style="background:var(--warn)" id="cl-r1">1</span> <b>6A</b></td><td id="cl-ch"><span class="p-pill" style="background:#DCFCE7;color:#15803D">128</span></td><td><span class="p-pill" style="background:#FEE2E2;color:#B91C1C">18</span></td><td><span class="p-pill" style="background:#FEF3C7;color:#B45309">9</span></td><td id="cl-ratio"><span class="rbar"><i class="bh" data-from="1" style="width:88%;background:#22c55e"></i></span>88%</td></tr>
+              <tr><td><span class="rk" style="background:var(--text-dim)">2</span> <b>4B</b></td><td><span class="p-pill" style="background:#DCFCE7;color:#15803D">111</span></td><td><span class="p-pill" style="background:#FEE2E2;color:#B91C1C">22</span></td><td><span class="p-pill" style="background:#FEF3C7;color:#B45309">8</span></td><td><span class="rbar"><i class="bh" data-from="1" style="width:83%;background:#22c55e"></i></span>83%</td></tr>
+              <tr><td><span class="rk" style="background:#cd7f32">3</span> <b>3A</b></td><td><span class="p-pill" style="background:#DCFCE7;color:#15803D">95</span></td><td><span class="p-pill" style="background:#FEE2E2;color:#B91C1C">30</span></td><td><span class="p-pill" style="background:#FEF3C7;color:#B45309">12</span></td><td><span class="rbar"><i class="bh" data-from="1" style="width:76%;background:#22c55e"></i></span>76%</td></tr>
+              <tr><td><span class="rk" style="background:var(--indigo)">4</span> <b>5B</b></td><td><span class="p-pill" style="background:#DCFCE7;color:#15803D">78</span></td><td><span class="p-pill" style="background:#FEE2E2;color:#B91C1C">48</span></td><td><span class="p-pill" style="background:#FEF3C7;color:#B45309">8</span></td><td><span class="rbar"><i class="bh" data-from="1" style="width:62%;background:#22c55e"></i></span>62%</td></tr>
+            </table>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ rapport PDF -->
+    <section class="fiche" id="rapport">
+      <div class="fiche__texte">
+        <h2>Le rapport PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Analyses › Générer rapport PDF</span></p>
+        <p class="fiche__but">Un rapport de comportement imprimable, commenté automatiquement, pour un conseil de classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#rp-btn" data-action="click">Régler classes et période, puis cliquer <span class="btn-nom">Générer rapport PDF</span> (« Génération… »).</li>
+          <li data-cursor="#rp-vue" data-duration="3400">Le fichier se télécharge. Il s'ouvre sur une <b>Vue d'ensemble</b> : chiffres de la période et une phrase d'appréciation selon le ratio.</li>
+          <li data-cursor="#rp-cl" data-duration="3600">Puis la comparaison par niveau, et l'analyse de chaque classe : points forts en vert, points à améliorer en rouge.</li>
+          <li data-cursor="#rp-sor" data-duration="3600">Enfin l'équité filles / garçons, les sorties (élèves à 3 sorties ou plus, sous leur pseudonyme) et une synthèse.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les chiffres portent sur la période et les classes choisies.</li>
+            <li>Limite actuelle : le trimestre écrit en titre est déduit du mois en cours, pas de la période choisie, et la date de début indiquée est approximative.</li>
+            <li>Le PDF est écrit sans accents. Fichier : « Rapport_T1_2026-2027.pdf ».</li>
+            <li>Seuls des pseudonymes apparaissent, jamais de nom réel.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/analytics</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it is-actif"><span class="ico"></span>Classes</div><div class="side__it side__sous">Classes et plans</div><div class="side__it side__sous">Suivi élèves</div><div class="side__it side__sous">Séances</div><div class="side__it side__sous">Cahier de texte</div><div class="side__it side__sous is-actif">Analyses</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it"><span class="ico"></span>Plus</div></aside><div class="app__main">
+        <div class="app__corps an">
+          <div class="an-t"><h3>Analyses</h3><span class="esp"></span><span class="b b--petit" id="rp-btn" data-on="1"><span data-at="1">Génération…</span><span data-from="2">Générer rapport PDF</span></span></div>
+          
+<div class="ac">
+  <div class="flt"><b>Periode:</b><span class="pu">7 jours</span><span class="pu on">30 jours</span><span class="pu">90 jours</span><span class="pu">Tout</span></div>
+  <div class="flt" style="margin:0"><b>Classes:</b><span class="lnk">Toutes</span><span class="lnk">Aucune</span><span class="pu on">3A</span><span class="pu on">4B</span><span class="pu on">5B</span><span class="pu on">6A</span></div>
+</div>
+
+          <div class="kpi"><div><span class="sq" style="background:#22c55e">+</span><span><b>412</b><small>Participations</small></span></div><div><span class="sq" style="background:#ef4444">-</span><span><b>118</b><small>Malus</small></span></div><div><span class="sq" style="background:#f59e0b">A</span><span><b>37</b><small>Absences</small></span></div><div><span class="sq" style="background:#3b82f6">S</span><span><b>52</b><small>Sorties</small></span></div><div><span class="sq" style="background:#6366f1">%</span><span><b>78%</b><small>Ratio +/-</small></span></div></div>
+        </div>
+        <div class="pdf" data-from="2">
+          <h5>Rapport d'analyse - Trimestre 1</h5>
+          <div style="color:#71717A">Annee scolaire 2026/2027 · Periode : 27/10/2026 - 27/11/2026 · 4 classe(s) - 112 eleve(s)</div>
+          <div id="rp-vue"><h6>Vue d'ensemble</h6>
+            <table><tr><th>Participations</th><th>Malus</th><th>Absences</th><th>Sorties</th><th>Ratio +/-</th></tr><tr><td>412</td><td>118</td><td>37</td><td>52</td><td>78%</td></tr></table>
+            <div style="margin-top:3px">Le ratio global est excellent, les classes sont globalement bien impliquees.</div></div>
+          <div id="rp-cl" data-from="3"><h6>Analyse par classe</h6>
+            <table><tr><th>Classe</th><th>Part.</th><th>Malus</th><th>Ratio</th></tr><tr><td>6A</td><td>128</td><td>18</td><td>88%</td></tr><tr><td>5B</td><td>78</td><td>48</td><td>62%</td></tr></table>
+            <div><b>6A</b> · <span class="pv">Points forts: Excellent ratio participation/malus, Peu de malus</span></div>
+            <div><b>5B</b> · <span class="pr">A ameliorer: Taux de malus eleve, Nombreuses sorties</span></div></div>
+          <div id="rp-sor" data-from="4"><h6>Analyse des sorties</h6>
+            <table class="or"><tr><th>Eleve</th><th>Classe</th><th>Sorties</th></tr><tr><td>Tom SA</td><td>5B</td><td>4</td></tr><tr><td>Naël CH</td><td>3A</td><td>3</td></tr></table>
+            <h6>Synthese</h6><div class="pv">Points positifs: Ratio global satisfaisant (78%), 6A se distingue avec 88% de ratio</div><div class="pr">Axes d'amelioration: Continuer sur cette lancee</div></div>
+          <div style="position:absolute;bottom:12px;left:26px;color:#A1A1AA">Rapport genere le 27/11/2026 - Gestion Classe</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+

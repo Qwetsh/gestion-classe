@@ -1,0 +1,460 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Travail de groupe sur tablette — Guide Gestion Classe</title>
+<meta name="description" content="Former des groupes et noter un TP sur critères depuis le site, sur une tablette ou un téléphone tactile, sans l'application mobile.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="63">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Travail de groupe lancé depuis le site sur un appareil tactile (components/live-session/Group*.tsx) */
+.ecran .is-hidden:not(.modale-fond):not(.bulle):not(.gw-modale) { display: none; }
+.gw { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; background: #fff; font-family: var(--font); color: var(--text); font-size: 13px; }
+.gw-site { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border); font-weight: 650; font-size: 13.5px; }
+.gw-site b { width: 22px; height: 22px; border-radius: 6px; background: var(--indigo); color: #fff; font-size: 11px; display: grid; place-items: center; }
+.gw-titre { font-size: 20px; font-weight: 600; padding: 14px 16px 8px; }
+.gw-launch { display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 14px; border-radius: 8px; font-weight: 600; font-size: 14px; transition: transform .15s, box-shadow .2s; }
+.gw-launch--p { background: var(--indigo); color: #fff; }
+.gw-launch--g { background: #fff; color: var(--text); border: 1px solid var(--border-strong); flex: 1; justify-content: center; font-size: 13px; padding: 0 8px; gap: 7px; white-space: nowrap; }
+.gw-launch.is-on { transform: scale(.97); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.gw-ico { width: 16px; height: 16px; border-radius: 4px; border: 2px solid currentColor; opacity: .8; flex: none; }
+.gw-lecture { width: 0; height: 0; border-left: 11px solid currentColor; border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
+.gw-stub { margin: 14px 16px 0; border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text-dim); font-size: 12.5px; }
+.gw-stub i { display: block; height: 8px; border-radius: 4px; background: var(--surface-3); margin-top: 8px; }
+.gw-bas { margin-top: auto; height: 56px; border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; font-size: 10.5px; color: var(--text-dim); }
+.gw-bas span { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.gw-bas span::before { content: ''; width: 18px; height: 18px; border-radius: 5px; border: 1.8px solid currentColor; opacity: .8; }
+.gw-bas .on { color: var(--indigo); font-weight: 600; }
+.gw-vert { background: #15803D; color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; flex: none; transition: box-shadow .25s; }
+.gw-vert.is-on { box-shadow: inset 0 0 0 3px rgba(255,255,255,.6); }
+.gw-vert h3 { margin: 0; font-size: 17px; font-weight: 700; text-align: center; }
+.gw-vert small { display: block; font-size: 11px; font-weight: 400; color: rgba(255,255,255,.75); }
+.gw-vert span { font-size: 13.5px; color: rgba(255,255,255,.85); min-width: 56px; }
+.gw-corps { flex: 1; min-height: 0; overflow: hidden; padding: 14px; display: flex; flex-direction: column; gap: 14px; background: var(--bg); position: relative; }
+.gw-classe { display: flex; align-items: center; gap: 13px; padding: 13px; border: 1px solid var(--border); border-radius: 10px; background: #fff; box-shadow: 0 1px 3px rgba(20,25,40,.08); transition: transform .15s, box-shadow .2s; }
+.gw-classe.is-on { transform: scale(.98); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.gw-classe .ini { width: 44px; height: 44px; border-radius: 10px; color: #fff; font-weight: 700; display: grid; place-items: center; }
+.gw-classe b { font-size: 16px; font-weight: 600; }
+.gw-classe em { margin-left: auto; font-style: normal; font-size: 20px; color: var(--text-dim); }
+.gw-sombre { background: #1a1410; color: #e8dcc8; font-family: Georgia, 'Times New Roman', serif; }
+.gw-sombre .gw-classe { background: #251c15; border-color: #3a2e22; box-shadow: none; }
+.gw-sombre .gw-classe b { color: #e8dcc8; }
+.gw-sombre .gw-classe .ini { background: linear-gradient(135deg, #d4a843, #b8860b); color: #1a1410; }
+.gw-ecu { width: 14px; height: 17px; background: linear-gradient(135deg, #d4a843, #b8860b); clip-path: polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%); display: inline-block; vertical-align: -2px; margin-right: 6px; }
+.gw-lbl { font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.gw-lbl em { font-style: normal; font-size: 12px; font-weight: 700; color: #15803D; }
+.gw-champ { min-height: 44px; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; display: flex; align-items: center; font-size: 15px; background: #fff; transition: all .25s; }
+.gw-champ.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.gw-champ--vide { color: var(--text-dim); }
+.gw-modeles { display: flex; gap: 7px; overflow: hidden; margin-bottom: 8px; }
+.gw-modele { flex: none; padding: 6px 11px; border-radius: 20px; background: #EAF6EE; color: #15803D; font-size: 12px; font-weight: 500; transition: all .2s; }
+.gw-modele.is-on { box-shadow: 0 0 0 3px rgba(21,128,61,.25); transform: scale(.97); }
+.gw-crit { display: flex; align-items: center; gap: 8px; padding: 8px; background: var(--surface-3); border-radius: 8px; font-size: 13px; margin-bottom: 5px; }
+.gw-crit span { flex: 1; }
+.gw-crit em { font-style: normal; font-size: 12px; font-weight: 700; color: #15803D; }
+.gw-crit i { font-style: normal; color: var(--neg); font-size: 14px; padding: 0 3px; border-radius: 4px; transition: background .2s; }
+.gw-crit i.is-on { background: var(--neg-soft); }
+.gw-ajout { display: flex; gap: 7px; }
+.gw-ajout .gw-champ { min-height: 36px; font-size: 13px; border-radius: 8px; padding: 0 9px; }
+.gw-plus { width: 40px; border-radius: 8px; background: #15803D; color: #fff; font-weight: 700; font-size: 15px; display: grid; place-items: center; transition: transform .15s; }
+.gw-plus.is-on { transform: scale(.92); }
+.gw-pil { flex: none; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; transition: all .2s; }
+.gw-pil--i { background: var(--indigo-soft); color: var(--indigo); }
+.gw-pil--v { background: #EAF6EE; color: #15803D; }
+.gw-pil--g { background: var(--surface-3); color: var(--text-muted); }
+.gw-pil--a { background: var(--indigo); color: #fff; }
+.gw-pil.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.gw-boite { padding: 8px; border-radius: 10px; font-size: 12px; }
+.gw-eleve { display: inline-block; padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: 500; margin: 0 3px 4px 0; background: #fff; box-shadow: 0 1px 2px rgba(20,25,40,.1); transition: all .2s; }
+.gw-eleve--in { background: var(--indigo); color: #fff; box-shadow: none; }
+.gw-eleve.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.gw-pied { padding: 12px 14px 16px; background: var(--bg); flex: none; }
+.gw-go { height: 50px; border-radius: 10px; background: #15803D; color: #fff; font-weight: 700; font-size: 16px; display: grid; place-items: center; transition: all .2s; }
+.gw-go--off { opacity: .5; }
+.gw-go.is-on { transform: scale(.97); }
+.gw-aide { font-size: 12px; color: var(--text-dim); text-align: center; margin-top: 6px; }
+/* notation */
+.gw-tete { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: #fff; flex: none; }
+.gw-tete span { color: #15803D; font-weight: 600; font-size: 14px; }
+.gw-tete b { font-size: 16px; }
+.gw-tete b small { font-size: 12px; font-weight: 500; color: var(--text-dim); }
+.gw-onglets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); flex: none; background: #fff; }
+.gw-onglet { min-height: 46px; border-radius: 10px; background: var(--surface-3); color: var(--text-muted); font-size: 12px; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; border: 2px solid transparent; transition: all .2s; }
+.gw-onglet small { font-size: 11px; opacity: .7; font-weight: 600; }
+.gw-mb { background: var(--surface-3) !important; box-shadow: none !important; font-size: 11px !important; }
+.gw-act.is-on { background: #059669; color: #fff; border-color: #059669; }
+.gw-onglet--a { background: #059669; color: #fff; border-color: #059669; }
+.gw-carte { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; }
+.gw-carte__h { display: flex; justify-content: space-between; font-size: 13.5px; font-weight: 600; }
+.gw-carte__h b { font-size: 14px; }
+.gw-jauge { height: 4px; border-radius: 2px; background: var(--surface-3); overflow: hidden; }
+.gw-jauge span { display: block; height: 100%; border-radius: 2px; transition: width .5s; }
+.gw-boutons { display: flex; gap: 5px; align-items: center; }
+.gw-moins, .gw-plusv { width: 36px; height: 34px; border-radius: 9px; display: grid; place-items: center; font-weight: 700; font-size: 17px; flex: none; transition: transform .15s; }
+.gw-moins { background: #FEF2F2; color: #B91C1C; }
+.gw-plusv { background: #EAF6EE; color: #15803D; }
+.gw-rac { flex: 1; height: 34px; border-radius: 9px; border: 1px solid var(--border); display: grid; place-items: center; font-size: 12.5px; font-weight: 600; color: var(--text-muted); transition: all .2s; }
+.gw-rac--a { background: #15803D; border-color: #15803D; color: #fff; }
+.gw-rac.is-on, .gw-moins.is-on, .gw-plusv.is-on, .gw-mplus.is-on { transform: scale(.9); box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.gw-malus { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 10px; background: var(--surface-3); }
+.gw-malus--on { background: #FEF2F2; border: 1px solid #FECACA; }
+.gw-malus b { display: block; font-size: 14px; color: #B91C1C; }
+.gw-malus small { font-size: 12.5px; color: #B91C1C; }
+.gw-mmoins, .gw-mplus { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 18px; transition: transform .15s; }
+.gw-mmoins { background: #fff; border: 1px solid var(--border); color: var(--text-dim); }
+.gw-mplus { background: var(--neg); color: #fff; }
+.gw-fixe { display: flex; align-items: center; gap: 12px; padding: 10px 12px 14px; border-top: 1px solid #F1F5F9; background: #fff; flex: none; }
+.gw-fixe .t { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); }
+.gw-fixe .v { font-size: 19px; font-weight: 700; }
+.gw-fixe .v small { font-size: 13px; font-weight: 500; color: var(--text-dim); }
+.gw-suivant { flex: 1; height: 46px; border-radius: 10px; background: #4F46E5; color: #fff; font-weight: 600; font-size: 14.5px; display: grid; place-items: center; transition: transform .15s; }
+.gw-suivant--fin { background: #059669; }
+.gw-suivant.is-on { transform: scale(.97); box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.gw-modale { position: absolute; inset: 0; z-index: 60; background: rgba(0,0,0,.5); display: grid; place-items: center; padding: 20px; }
+.gw-modale__b { background: #fff; border-radius: 14px; padding: 20px 18px; text-align: center; width: 100%; }
+.gw-rond { width: 52px; height: 52px; border-radius: 50%; background: #EAF6EE; margin: 0 auto 10px; position: relative; }
+.gw-rond::after, .gw-coche::after { content: ''; position: absolute; left: 50%; top: 46%; width: 18px; height: 9px; border-left: 3px solid #15803D; border-bottom: 3px solid #15803D; transform: translate(-50%, -50%) rotate(-45deg); }
+.gw-coche { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.2); position: relative; margin: 0 auto 6px; }
+.gw-coche::after { border-color: #fff; }
+.gw-rang { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+.gw-res { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; transition: box-shadow .25s; }
+.gw-res.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.gw-res__d { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 11px; color: var(--text-muted); }
+.gw-res__d span { display: flex; justify-content: space-between; }
+.gw-synth { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.gw-synth div { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 8px; text-align: center; font-size: 11px; color: var(--text-dim); }
+.gw-synth b { display: block; font-size: 17px; color: var(--text); }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Travail de groupe sur tablette</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#lancer">Lancer un travail de groupe</a></li>
+    <li><a href="#bareme">Nommer le TP et poser le barème</a></li>
+    <li><a href="#groupes">Former les groupes</a></li>
+    <li><a href="#notation">Noter les groupes</a></li>
+    <li><a href="#fin">Terminer et lire la synthèse</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/tp-en-groupes.html">◀ TP en groupes</a><a href="../enseignant/cahier-de-texte.html">Cahier de texte ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Évaluations</div>
+      <h1>Travail de groupe sur tablette</h1>
+      <p>Sans l'application mobile, le site ouvert sur une tablette ou un téléphone tactile sait mener un TP noté en groupes : nommer le TP, poser le barème, former les groupes, noter chacun, puis lire la synthèse. Le parcours est plus simple que celui de l'application.</p>
+      <div class="chap__resume"><span>Accueil › Travail de groupe</span><span>Tablette ou téléphone tactile</span><span>Pas sur ordinateur</span></div>
+    </header>
+
+
+    <!-- ============================================================ lancer -->
+    <section class="fiche fiche--etroite" id="lancer">
+      <div class="fiche__texte">
+        <h2>Lancer un travail de groupe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Site › Accueil › Travail de groupe</span></p>
+        <p class="fiche__but">Sur l'accueil du site, deux boutons servent aux TP en groupes : <b>Travail de groupe</b> pour un TP noté sur critères, <b>Épreuve</b> pour les épreuves de l'Académie.</p>
+        <ol class="etapes">
+          <li data-cursor="#lc-tg" data-action="tap">Sous <b>Démarrer une séance</b>, toucher <span class="btn-nom">Travail de groupe</span>.</li>
+          <li data-cursor="#lc-5b" data-action="tap">L'écran vert « Travail de groupe » liste les classes : toucher la classe du TP. <span class="btn-nom">Annuler</span>, en haut à gauche, abandonne.</li>
+          <li data-cursor="#lc-conf">L'écran <b>Configuration</b> s'ouvre, au nom de la classe.</li>
+          <li data-cursor="#lc-ep" data-duration="3600"><span class="btn-nom">Épreuve</span> suit le même chemin, dans un décor sombre et doré : « Sélectionnez la classe pour l'épreuve des Quatre Maisons ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ces boutons n'existent que sur un appareil tactile de 1 024 pixels de large au plus, ou sur le site installé comme application. Sur un ordinateur, ils n'apparaissent pas.</li>
+            <li>L'application mobile reste la voie conseillée : îlots, photos, séance liée et travail sans réseau. Ce parcours n'a ni îlots, ni photos, ni séance liée.</li>
+            <li>Si la classe a l'Académie activée, quatre groupes « maisons » sont créés tout seuls avec leurs membres, qu'on passe par <b>Travail de groupe</b> ou par <b>Épreuve</b>.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/tp-en-groupes.html">TP en groupes sur l'application</a> · <a href="academie.html">Académie</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div class="gw" data-at="1">
+          <div class="gw-site"><b>GC</b>Gestion Classe</div>
+          <div class="gw-titre">Accueil</div>
+          <div class="col" style="padding:0 16px;gap:8px">
+            <div class="gw-launch gw-launch--p"><span class="gw-lecture"></span>Démarrer une séance</div>
+            <div class="ligne" style="gap:8px"><div class="gw-launch gw-launch--g" id="lc-tg" data-on="1"><span class="gw-ico" style="border-radius:50%"></span>Travail de groupe</div><div class="gw-launch gw-launch--g"><span class="gw-ico"></span>Épreuve</div></div>
+          </div>
+          <div class="gw-stub">Emploi du temps de la semaine<i></i><i style="width:70%"></i><i style="width:85%"></i></div>
+          <div class="gw-stub">Dernières séances<i></i><i style="width:60%"></i></div>
+          <div class="gw-bas"><span class="on">Accueil</span><span>Cours</span><span>Classes</span><span>Évals</span><span>Plus</span></div>
+        </div>
+        <div class="gw" data-at="2">
+          <div class="gw-vert"><span>Annuler</span><h3>Travail de groupe</h3><span></span></div>
+          <div class="gw-corps">
+            <div class="gw-classe"><span class="ini" style="background:#4F46E5">3A</span><b>3A</b><em>›</em></div>
+            <div class="gw-classe"><span class="ini" style="background:#059669">4B</span><b>4B</b><em>›</em></div>
+            <div class="gw-classe" id="lc-5b" data-on="2"><span class="ini" style="background:#D97706">5E</span><b>5e B</b><em>›</em></div>
+            <div class="gw-classe"><span class="ini" style="background:#DB2777">6A</span><b>6A</b><em>›</em></div>
+          </div>
+        </div>
+        <div class="gw" data-at="3">
+          <div class="gw-vert" id="lc-conf" data-on="3"><span>← Retour</span><h3>Configuration<small>5e B</small></h3><span style="text-align:right">Annuler</span></div>
+          <div class="gw-corps">
+            <div><div class="gw-lbl">Nom de la séance</div><div class="gw-champ gw-champ--vide">Ex: Dissection sardine</div></div>
+            <div><div class="gw-lbl">Critères de notation <em>Total: 0 pts</em></div><div class="gw-modeles"><span class="gw-modele">Observation au microscope (20pts)</span><span class="gw-modele">Dissection (15pts)</span></div></div>
+            <div><div class="gw-lbl">Groupes (0) <span class="ligne" style="gap:6px"><span class="gw-pil gw-pil--i">Aléatoire</span><span class="gw-pil gw-pil--v">+ Groupe</span></span></div></div>
+          </div>
+          <div class="gw-pied"><div class="gw-go gw-go--off">Commencer la notation</div><div class="gw-aide">Nom requis</div></div>
+        </div>
+        <div class="gw gw-sombre" data-at="4">
+          <div class="gw-vert" style="background:linear-gradient(135deg,#2a1f14,#1a1410);border-bottom:1px solid #3a2e22"><span style="color:#d4a843">Annuler</span><h3 id="lc-ep" style="color:#e8dcc8;font-family:Georgia,serif;white-space:nowrap;font-size:16px"><i class="gw-ecu"></i>Choisir une classe</h3><span></span></div>
+          <div style="text-align:center;padding:12px 16px 0;font-size:13px;color:#8a7a66;font-style:italic">Sélectionnez la classe pour l'épreuve des Quatre Maisons</div>
+          <div class="gw-corps" style="background:transparent">
+            <div class="gw-classe"><span class="ini">3A</span><b>3A</b><em>›</em></div>
+            <div class="gw-classe"><span class="ini">4B</span><b>4B</b><em>›</em></div>
+            <div class="gw-classe"><span class="ini">5E</span><b>5e B</b><em>›</em></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ barème -->
+    <section class="fiche fiche--etroite" id="bareme">
+      <div class="fiche__texte">
+        <h2>Nommer le TP et poser le barème</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Travail de groupe › Configuration</span></p>
+        <p class="fiche__but">Le haut de l'écran Configuration : le nom du TP et ses critères de notation, repris d'un modèle de Mes TP ou écrits sur place.</p>
+        <ol class="etapes">
+          <li data-cursor="#cb-nom" data-action="tap" data-duration="3200">Écrire le <b>Nom de la séance</b>, par exemple « Observation au microscope ».</li>
+          <li data-cursor="#cb-modele" data-action="tap">Toucher un modèle de Mes TP : son barème remplit la liste des critères, et le total s'affiche à droite.</li>
+          <li data-cursor="#cb-x" data-action="tap">La croix d'un critère le retire.</li>
+          <li data-cursor="#cb-plus" data-action="tap" data-duration="3200">Pour ajouter un critère : son nom dans « Critère... », ses points dans « Pts », puis <span class="btn-nom">+</span>.</li>
+          <li data-cursor="#cb-total">Le barème est prêt : « Total: 20 pts ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seuls les modèles du niveau de la classe (et ceux sans niveau) sont proposés.</li>
+            <li>Tant que le TP n'est pas prêt, un message sous le bouton dit ce qui manque : « Nom requis », « Ajoutez des critères », « Créez des groupes ».</li>
+            <li>En mode Académie, une ligne <b>Coefficient Académie</b> (de 0 à 5, par demi-point) s'ajoute.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="classeur-virtuel-et-tp.html">Mes TP</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div class="gw">
+          <div class="gw-vert"><span>← Retour</span><h3>Configuration<small>5e B</small></h3><span style="text-align:right">Annuler</span></div>
+          <div class="gw-corps">
+            <div><div class="gw-lbl">Nom de la séance</div><div class="gw-champ" id="cb-nom" data-on="1"><span data-type="Observation au microscope" data-type-at="1"></span></div></div>
+            <div>
+              <div class="gw-lbl">Critères de notation <em id="cb-total"><span data-at="1">Total: 0 pts</span><span data-at="2">Total: 20 pts</span><span data-at="3-4">Total: 15 pts</span><span data-at="5">Total: 20 pts</span></em></div>
+              <div class="gw-modeles"><span class="gw-modele" id="cb-modele" data-on="2">Observation au microscope (20pts)</span><span class="gw-modele">Dissection (15pts)</span></div>
+              <div data-from="2">
+                <div class="gw-crit"><span>Mise au point</span><em>4pts</em><i>×</i></div>
+                <div class="gw-crit"><span>Dessin d'observation</span><em>6pts</em><i>×</i></div>
+                <div class="gw-crit"><span>Légendes</span><em>5pts</em><i>×</i></div>
+                <div class="gw-crit" data-to="3"><span>Titre et grossissement</span><em>5pts</em><i id="cb-x" data-on="3">×</i></div>
+                <div class="gw-crit zoom" data-at="5"><span>Titre et échelle</span><em>5pts</em><i>×</i></div>
+              </div>
+              <div class="gw-ajout"><span class="gw-champ" style="flex:1"><span class="muet" data-to="3" style="font-size:13px">Critère...</span><span data-at="4" data-type="Titre et échelle" data-type-at="4"></span><span class="muet" data-at="5" style="font-size:13px">Critère...</span></span><span class="gw-champ" style="width:52px;justify-content:center"><span class="muet" data-to="3" style="font-size:13px">Pts</span><span data-at="4">5</span><span class="muet" data-at="5" style="font-size:13px">Pts</span></span><span class="gw-plus" id="cb-plus" data-on="4">+</span></div>
+            </div>
+            <div><div class="gw-lbl">Groupes (0) <span class="ligne" style="gap:6px"><span class="gw-pil gw-pil--i">Aléatoire</span><span class="gw-pil gw-pil--v">+ Groupe</span></span></div></div>
+          </div>
+          <div class="gw-pied"><div class="gw-go gw-go--off">Commencer la notation</div><div class="gw-aide"><span data-at="1">Ajoutez des critères</span><span data-from="2">Créez des groupes</span></div></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ groupes -->
+    <section class="fiche fiche--etroite" id="groupes">
+      <div class="fiche__texte">
+        <h2>Former les groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Travail de groupe › Configuration › Groupes</span></p>
+        <p class="fiche__but">Le bas de l'écran Configuration : les groupes se forment à la main, élève par élève, ou au hasard d'un seul geste.</p>
+        <ol class="etapes">
+          <li data-cursor="#cg-plus" data-action="tap"><span class="btn-nom">+ Groupe</span> ajoute « Groupe 1 », puis « Groupe 2 »…</li>
+          <li data-cursor="#cg-onglet" data-action="tap">Toucher l'onglet du groupe pour l'ouvrir.</li>
+          <li data-cursor="#cg-lina" data-action="tap" data-duration="3200">La liste <b>Non assignés</b> montre les élèves sans groupe : un toucher fait entrer l'élève dans le groupe ouvert.</li>
+          <li data-cursor="#cg-boite" data-duration="3400">Les membres s'affichent en indigo ; toucher « Lina BO × » le retire. <span class="btn-nom">Supprimer</span> retire le groupe.</li>
+          <li data-cursor="#cg-alea" data-action="tap">Pour aller vite : <span class="btn-nom">Aléatoire</span>.</li>
+          <li data-cursor="#cg-ok" data-action="tap">Indiquer le nombre d'« Élèves par groupe: », puis <span class="btn-nom">OK</span> : toute la classe est répartie au hasard.</li>
+          <li data-cursor="#cg-go" data-action="tap">Les onglets montrent chaque groupe et son effectif : toucher un onglet pour vérifier, puis <span class="btn-nom">Commencer la notation</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un élève n'est que dans un groupe : l'ajouter ailleurs le retire du premier.</li>
+            <li>Le bouton reste grisé tant qu'un groupe est vide : « Chaque groupe doit avoir au moins 1 élève ».</li>
+            <li>En mode Académie, les groupes sont les quatre maisons : ni <b>+ Groupe</b>, ni <b>Aléatoire</b>, ni suppression.</li>
+            <li>À la création, tous les critères de tous les groupes sont posés à 0 point.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div class="gw">
+          <div class="gw-vert"><span>← Retour</span><h3>Configuration<small>5e B</small></h3><span style="text-align:right">Annuler</span></div>
+          <div class="gw-corps" style="gap:10px">
+            <div><div class="gw-lbl">Nom de la séance</div><div class="gw-champ">Observation au microscope</div></div>
+            <div class="gw-lbl" style="margin:0">Critères de notation <em>Total: 20 pts</em></div>
+            <div><div class="gw-crit" style="padding:6px 8px"><span>Mise au point</span><em>4pts</em><i>×</i></div><div class="gw-crit" style="padding:6px 8px"><span>Dessin d'observation</span><em>6pts</em><i>×</i></div><div class="gw-crit" style="padding:6px 8px"><span>Légendes</span><em>5pts</em><i>×</i></div><div class="gw-crit" style="padding:6px 8px;margin:0"><span>Titre et grossissement</span><em>5pts</em><i>×</i></div></div>
+            <div>
+              <div class="gw-lbl"><span>Groupes (<span data-at="1">0</span><span data-from="2" data-to="6">1</span><span data-at="7">4</span>)</span><span class="ligne" style="gap:6px"><span class="gw-pil gw-pil--i" id="cg-alea" data-on="5">Aléatoire</span><span class="gw-pil gw-pil--v" id="cg-plus" data-on="1">+ Groupe</span></span></div>
+              <div class="gw-boite ligne" data-at="6" style="background:var(--indigo-soft);margin-bottom:8px;gap:8px"><span>Élèves par groupe:</span><span class="gw-champ" style="min-height:30px;width:44px;justify-content:center;font-size:13px">6</span><span class="b b--petit" id="cg-ok" data-on="6">OK</span><span class="muet">×</span></div>
+              <div class="ligne" data-from="2" data-to="6" style="margin-bottom:8px"><span class="gw-pil gw-pil--g" id="cg-onglet" data-at="2" data-on="2">Groupe 1 (0)</span><span class="gw-pil gw-pil--a" data-at="3">Groupe 1 (0)</span><span class="gw-pil gw-pil--a" data-from="4" data-to="6">Groupe 1 (3)</span></div>
+              <div class="ligne" data-at="7" style="margin-bottom:8px;overflow:hidden"><span class="gw-pil gw-pil--g">Groupe 1 (6)</span><span class="gw-pil gw-pil--g">Groupe 2 (6)</span><span class="gw-pil gw-pil--g">Groupe 3 (6)</span><span class="gw-pil gw-pil--g">Groupe 4 (6)</span></div>
+              <div class="gw-boite" id="cg-boite" data-from="3" data-to="6" style="background:var(--indigo-soft);margin-bottom:8px">
+                <div class="ligne" style="justify-content:space-between;margin-bottom:4px"><b style="color:var(--indigo)">Groupe 1</b><span style="color:var(--neg)">Supprimer</span></div>
+                <span class="muet" data-at="3">Tapez un élève ci-dessous</span>
+                <span data-from="4" data-to="6"><span class="gw-eleve gw-eleve--in">Lina BO ×</span><span class="gw-eleve gw-eleve--in">Noé MA ×</span><span class="gw-eleve gw-eleve--in">Inès KA ×</span></span>
+              </div>
+              <div class="gw-boite" data-from="3" data-to="6" style="background:var(--surface-3)">
+                <div style="font-weight:600;color:var(--text-dim);margin-bottom:4px">Non assignés (<span data-at="3">24</span><span data-from="4">21</span>)</div>
+                <span data-at="3"><span class="gw-eleve">Adam KE</span><span class="gw-eleve">Éva RO</span><span class="gw-eleve">Hugo PE</span><span class="gw-eleve">Inès KA</span><span class="gw-eleve">Jade LU</span><span class="gw-eleve" id="cg-lina" data-on="3">Lina BO</span><span class="gw-eleve">Lou BE</span><span class="gw-eleve">Malo RI</span><span class="gw-eleve">Noé MA</span><span class="gw-eleve">Rose VI</span></span>
+                <span data-from="4" data-to="6"><span class="gw-eleve">Adam KE</span><span class="gw-eleve">Éva RO</span><span class="gw-eleve">Hugo PE</span><span class="gw-eleve">Jade LU</span><span class="gw-eleve">Lou BE</span><span class="gw-eleve">Malo RI</span><span class="gw-eleve">Rose VI</span><span class="gw-eleve">Tom SA</span></span>
+              </div>
+            </div>
+          </div>
+          <div class="gw-pied"><div class="gw-go gw-go--off" data-to="3">Commencer la notation</div><div class="gw-go" id="cg-go" data-from="4" data-on="7">Commencer la notation</div><div class="gw-aide"><span data-at="1">Créez des groupes</span><span data-at="2-3">Chaque groupe doit avoir au moins 1 élève</span></div></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ notation -->
+    <section class="fiche fiche--etroite" id="notation">
+      <div class="fiche__texte">
+        <h2>Noter les groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Travail de groupe › notation</span></p>
+        <p class="fiche__but">Un groupe à la fois : chaque critère se règle d'un toucher, le malus de conduite se retire, puis on passe au groupe suivant.</p>
+        <ol class="etapes">
+          <li data-cursor="#nt-max" data-action="tap" data-duration="3200">Les onglets du haut montrent chaque groupe et son score. Sur un critère, les raccourcis <span class="btn-nom">0</span> <span class="btn-nom">½</span> <span class="btn-nom">¾</span> <span class="btn-nom">Max</span> donnent la note d'un coup.</li>
+          <li data-cursor="#nt-demi" data-action="tap">La barre sous la note se colore : verte à partir de 70 %, orange à partir de 40 %, rouge en dessous.</li>
+          <li data-cursor="#nt-plus" data-action="tap"><span class="btn-nom">−</span> et <span class="btn-nom">+</span> ajustent finement : d'un demi-point si le critère vaut 5 points ou moins, sinon d'un point.</li>
+          <li data-cursor="#nt-malus" data-action="tap">Le <b>Malus conduite</b> retire des points au groupe ; l'encadré passe au rose.</li>
+          <li data-cursor="#nt-suiv" data-action="tap">En bas, le <b>TOTAL</b> du groupe ; <span class="btn-nom">Groupe suivant →</span> ouvre le suivant.</li>
+          <li data-cursor="#nt-g1" data-duration="3200">L'onglet du groupe noté garde son score ; sur le dernier groupe, le bouton devient <span class="btn-nom">Terminer la notation</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Chaque note s'écrit aussitôt dans la base, sans attendre. Limite actuelle : une erreur d'écriture passe inaperçue, une coupure de réseau peut faire perdre un point sans message.</li>
+            <li>Une petite vibration accompagne chaque geste (sur Android ; pas sur iPhone).</li>
+            <li><span class="btn-nom">← Retour</span> suspend la notation : l'accueil propose alors <b>Reprendre la notation</b>.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div class="gw">
+          <div class="gw-tete"><span>← Retour</span><b><span data-to="1">0</span><span data-at="2">4</span><span data-at="3">7</span><span data-at="4">8</span><span data-at="5">7</span><span data-at="6">0</span><small>/20</small></b></div>
+          <div class="gw-onglets">
+            <div class="gw-onglet gw-act" id="nt-g1" data-on="1-5"><span>Groupe 1</span><small><span data-to="1">0 pts</span><span data-at="2">4 pts</span><span data-at="3">7 pts</span><span data-at="4">8 pts</span><span data-from="5">7 pts</span></small></div>
+            <div class="gw-onglet gw-act" data-on="6"><span>Groupe 2</span><small>0 pts</small></div>
+            <div class="gw-onglet"><span>Groupe 3</span><small>0 pts</small></div>
+            <div class="gw-onglet"><span>Groupe 4</span><small>0 pts</small></div>
+          </div>
+          <div class="gw-corps" style="gap:10px;padding:10px 12px">
+            <div data-to="5"><span class="gw-eleve gw-mb">Adam KE</span><span class="gw-eleve gw-mb">Rose VI</span><span class="gw-eleve gw-mb">Lina BO</span><span class="gw-eleve gw-mb">Hugo PE</span><span class="gw-eleve gw-mb">Zoé FA</span><span class="gw-eleve gw-mb">Malo RI</span></div>
+            <div data-at="6"><span class="gw-eleve gw-mb">Jade LU</span><span class="gw-eleve gw-mb">Noé MA</span><span class="gw-eleve gw-mb">Inès KA</span><span class="gw-eleve gw-mb">Tom SA</span><span class="gw-eleve gw-mb">Éva RO</span><span class="gw-eleve gw-mb">Lou BE</span></div>
+            <div class="gw-carte">
+              <div class="gw-carte__h"><span>Mise au point</span><b><span data-at="1,6" style="color:#B91C1C">0/4</span><span data-from="2" data-to="5" style="color:#15803D">4/4</span></b></div>
+              <div class="gw-jauge"><span data-at="1,6" style="width:2%;background:#B91C1C"></span><span data-from="2" data-to="5" style="width:100%;background:#15803D"></span></div>
+              <div class="gw-boutons"><span class="gw-moins">−</span><span class="gw-rac gw-rac--a" data-at="1,6">0</span><span class="gw-rac" data-from="2" data-to="5">0</span><span class="gw-rac">½</span><span class="gw-rac">¾</span><span class="gw-rac" id="nt-max" data-at="1,6" data-on="1">Max</span><span class="gw-rac gw-rac--a" data-from="2" data-to="5">Max</span><span class="gw-plusv">+</span></div>
+            </div>
+            <div class="gw-carte">
+              <div class="gw-carte__h"><span>Dessin d'observation</span><b><span data-at="1-2,6" style="color:#B91C1C">0/6</span><span data-at="3" style="color:#D97706">3/6</span><span data-at="4-5" style="color:#D97706">4/6</span></b></div>
+              <div class="gw-jauge"><span data-at="1-2,6" style="width:2%;background:#B91C1C"></span><span data-at="3" style="width:50%;background:#D97706"></span><span data-at="4-5" style="width:67%;background:#D97706"></span></div>
+              <div class="gw-boutons"><span class="gw-moins">−</span><span class="gw-rac gw-rac--a" data-at="1-2,6">0</span><span class="gw-rac" data-from="3" data-to="5">0</span><span class="gw-rac" id="nt-demi" data-at="1-2,4-6" data-on="2">½</span><span class="gw-rac gw-rac--a" data-at="3">½</span><span class="gw-rac">¾</span><span class="gw-rac">Max</span><span class="gw-plusv" id="nt-plus" data-on="3">+</span></div>
+            </div>
+            <div class="gw-carte">
+              <div class="gw-carte__h"><span>Légendes</span><b style="color:#B91C1C">0/5</b></div>
+              <div class="gw-jauge"><span style="width:2%;background:#B91C1C"></span></div>
+              <div class="gw-boutons"><span class="gw-moins">−</span><span class="gw-rac gw-rac--a">0</span><span class="gw-rac">½</span><span class="gw-rac">¾</span><span class="gw-rac">Max</span><span class="gw-plusv">+</span></div>
+            </div>
+            <div class="gw-malus" data-at="1-4,6"><span style="flex:1"><b style="color:var(--text)">Malus conduite</b><small style="color:var(--text-muted)">Aucun</small></span><span class="gw-mmoins">−</span><span style="min-width:24px;text-align:center;font-weight:700">0</span><span class="gw-mplus" id="nt-malus" data-on="4">+</span></div>
+            <div class="gw-malus gw-malus--on" data-at="5"><span style="flex:1"><b>Malus conduite</b><small>−1 pt</small></span><span class="gw-mmoins" style="color:var(--text)">−</span><span style="min-width:24px;text-align:center;font-weight:700;color:#B91C1C">1</span><span class="gw-mplus">+</span></div>
+          </div>
+          <div class="gw-fixe"><div><div class="t">Total</div><div class="v"><span data-to="1">0</span><span data-at="2">4</span><span data-at="3">7</span><span data-at="4">8</span><span data-at="5">7</span><span data-at="6">0</span><small>/20</small></div></div><div class="gw-suivant" id="nt-suiv" data-on="5">Groupe suivant →</div></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ fin -->
+    <section class="fiche fiche--etroite" id="fin">
+      <div class="fiche__texte">
+        <h2>Terminer et lire la synthèse</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Travail de groupe › Terminer la notation</span></p>
+        <p class="fiche__but">Une fois le dernier groupe noté, la notation se clôt et un écran classe les groupes du meilleur au moins bon.</p>
+        <ol class="etapes">
+          <li data-cursor="#fi-term" data-action="tap">Sur le dernier groupe, toucher <span class="btn-nom">Terminer la notation</span>.</li>
+          <li data-cursor="#fi-val" data-action="tap">La fenêtre rappelle le « Score final : 15/20 (75%) » : <span class="btn-nom">Valider</span>, ou <span class="btn-nom">Poursuivre</span> pour revenir.</li>
+          <li data-cursor="#fi-tete">« Séance terminée » : le TP passe à l'état terminé, ce qui crée sa colonne au carnet.</li>
+          <li data-cursor="#fi-g1" data-duration="3400">Les groupes sont classés : rang, membres, score, barre colorée et détail des critères, malus compris.</li>
+          <li data-cursor="#fi-retour" data-action="tap">Lire les trois cases de synthèse (groupes, élèves, moyenne), puis <span class="btn-nom">Retour à l'accueil</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La synthèse ne se rouvre pas une fois fermée : la fiche du TP au bureau, ouverte depuis le carnet, prend le relais.</li>
+            <li>Les critères étant posés à 0 dès la création, la fiche du bureau peut compter tous les groupes comme « notés » dès le départ : vérifier les notes groupe par groupe.</li>
+            <li>Après <b>← Retour</b>, le bouton <b>Reprendre la notation</b> de l'accueil ne marche que tant que la page n'a pas été rechargée.</li>
+            <li>En épreuve de l'Académie, la fenêtre et la synthèse prennent les couleurs de la maison gagnante et les points vont aux maisons.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tp-en-groupes.html#ouvrir">La fiche du TP au bureau</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div class="gw" data-to="2">
+          <div class="gw-tete"><span>← Retour</span><b>15<small>/20</small></b></div>
+          <div class="gw-onglets">
+            <div class="gw-onglet" style="background:var(--surface-3);color:var(--text-muted);border-color:transparent"><span>Groupe 1</span><small>16 pts</small></div>
+            <div class="gw-onglet" style="background:var(--surface-3);color:var(--text-muted);border-color:transparent"><span>Groupe 2</span><small>12 pts</small></div>
+            <div class="gw-onglet" style="background:var(--surface-3);color:var(--text-muted);border-color:transparent"><span>Groupe 3</span><small>13 pts</small></div>
+            <div class="gw-onglet gw-onglet--a"><span>Groupe 4</span><small>15 pts</small></div>
+          </div>
+          <div class="gw-corps" style="gap:10px;padding:10px 12px">
+            <div class="gw-carte"><div class="gw-carte__h"><span>Mise au point</span><b style="color:#15803D">4/4</b></div><div class="gw-jauge"><span style="width:100%;background:#15803D"></span></div></div>
+            <div class="gw-carte"><div class="gw-carte__h"><span>Dessin d'observation</span><b style="color:#15803D">5/6</b></div><div class="gw-jauge"><span style="width:83%;background:#15803D"></span></div></div>
+            <div class="gw-carte"><div class="gw-carte__h"><span>Légendes</span><b style="color:#D97706">3/5</b></div><div class="gw-jauge"><span style="width:60%;background:#D97706"></span></div></div>
+            <div class="gw-carte"><div class="gw-carte__h"><span>Titre et grossissement</span><b style="color:#D97706">3/5</b></div><div class="gw-jauge"><span style="width:60%;background:#D97706"></span></div></div>
+          </div>
+          <div class="gw-fixe"><div><div class="t">Total</div><div class="v">15<small>/20</small></div></div><div class="gw-suivant gw-suivant--fin" id="fi-term" data-on="1">Terminer la notation</div></div>
+          <div class="gw-modale" data-at="2"><div class="gw-modale__b">
+            <div class="gw-rond"></div>
+            <div style="font-size:17px;font-weight:700;margin-bottom:6px">Terminer la notation ?</div>
+            <div style="font-size:13.5px;color:var(--text-muted);margin-bottom:16px">Score final : <b style="color:var(--text)">15/20</b> (75%)</div>
+            <div class="ligne" style="gap:8px"><span class="gw-launch gw-launch--g" style="height:44px">Poursuivre</span><span class="gw-launch" id="fi-val" data-on="2" style="flex:1;justify-content:center;background:#059669;color:#fff;height:44px">Valider</span></div>
+          </div></div>
+        </div>
+        <div class="gw" data-from="3">
+          <div class="gw-vert" id="fi-tete" data-on="3" style="flex-direction:column;padding:14px"><span class="gw-coche"></span><h3>Séance terminée</h3><small style="color:rgba(255,255,255,.8);font-size:12.5px">Observation au microscope</small></div>
+          <div class="gw-corps" style="gap:8px;padding:10px 12px">
+            <div class="gw-res" id="fi-g1" data-on="4">
+              <div class="ligne"><span class="gw-rang" style="background:#FDE68A;color:#92400E">1</span><b style="font-size:14px">Groupe 1</b><span class="esp"></span><b style="font-size:15px">16/20</b></div>
+              <div class="muet" style="font-size:11px">Adam KE, Rose VI, Lina BO, Hugo PE, Zoé FA, Malo RI</div>
+              <div class="gw-jauge" style="height:8px;border-radius:4px"><span style="width:80%;background:#15803D"></span></div>
+              <div class="gw-res__d"><span>Mise au point <b>4/4</b></span><span>Dessin d'observation <b>6/6</b></span><span>Légendes <b>4/5</b></span><span>Titre <b>3/5</b></span><span style="color:#B91C1C">Malus -1</span></div>
+            </div>
+            <div class="gw-res"><div class="ligne"><span class="gw-rang" style="background:var(--surface-3);color:var(--text-muted)">#2</span><b style="font-size:14px">Groupe 4</b><span class="esp"></span><b style="font-size:15px">15/20</b></div><div class="gw-jauge" style="height:8px;border-radius:4px"><span style="width:75%;background:#15803D"></span></div></div>
+            <div class="gw-res"><div class="ligne"><span class="gw-rang" style="background:var(--surface-3);color:var(--text-muted)">#3</span><b style="font-size:14px">Groupe 3</b><span class="esp"></span><b style="font-size:15px">13/20</b></div><div class="gw-jauge" style="height:8px;border-radius:4px"><span style="width:65%;background:#B45309"></span></div></div>
+            <div class="gw-res"><div class="ligne"><span class="gw-rang" style="background:var(--surface-3);color:var(--text-muted)">#4</span><b style="font-size:14px">Groupe 2</b><span class="esp"></span><b style="font-size:15px">12/20</b></div><div class="gw-jauge" style="height:8px;border-radius:4px"><span style="width:60%;background:#B45309"></span></div></div>
+            <div class="gw-synth"><div><b>4</b>Groupes</div><div><b>24</b>Élèves</div><div><b>14/20</b>Moyenne</div></div>
+          </div>
+          <div class="gw-pied"><div class="gw-go" id="fi-retour" data-on="5">Retour à l'accueil</div></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+

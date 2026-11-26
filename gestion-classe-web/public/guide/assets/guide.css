@@ -117,11 +117,12 @@ code, kbd { font-family: var(--mono); font-size: 0.88em; background: rgba(127,12
 .toc ol { list-style: none; margin: 0; padding: 0; counter-reset: toc; }
 .toc li { counter-increment: toc; }
 .toc a { display: block; padding: 6px 10px; border-radius: 6px; font-size: 14px; line-height: 1.35; text-decoration: none; color: var(--g-muted) !important; border-left: 2px solid transparent; }
-.toc a::before { content: counter(toc) ". "; font-variant-numeric: tabular-nums; opacity: 0.7; }
+.toc ol a::before { content: counter(toc) ". "; font-variant-numeric: tabular-nums; opacity: 0.7; }
 .toc a:hover { color: var(--g-text) !important; background: rgba(127,127,140,0.08); }
 .toc a.is-current { color: var(--g-text) !important; border-left-color: var(--indigo); background: rgba(79,70,229,0.08); font-weight: 550; }
 .toc__nav { margin-top: 22px; display: grid; gap: 8px; font-size: 13px; }
-.toc__nav a { color: var(--g-muted) !important; text-decoration: none; }
+.toc__nav a { color: var(--g-muted) !important; text-decoration: none; padding: 4px 10px; }
+.toc__nav a:hover { color: var(--g-text) !important; }
 
 .chap__tete { padding: 44px 0 8px; max-width: 880px; }
 .chap__partie { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--indigo); }
@@ -479,3 +480,14 @@ code, kbd { font-family: var(--mono); font-size: 0.88em; background: rgba(127,12
 .t-place--sortie { background: #F5F3FF; border-color: #DDD6FE; color: #6D28D9; }
 .hors-ligne { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: #FEF1D8; color: #B45309; font-size: 11px; font-weight: 650; }
 .hors-ligne::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #F59E0B; }
+
+/* ------------------------------------------------------------------ petits pictogrammes dessinés (à la place de symboles typographiques) */
+.ic { display: inline-block; width: 0.9em; height: 0.9em; vertical-align: -0.1em; position: relative; flex: none; }
+.ic-ok::after { content: ''; position: absolute; left: 0.18em; top: 0.08em; width: 0.32em; height: 0.56em; border: solid currentColor; border-width: 0 0.13em 0.13em 0; transform: rotate(40deg); }
+.ic-crayon::after { content: ''; position: absolute; left: 0.38em; top: -0.02em; width: 0.2em; height: 0.85em; background: currentColor; border-radius: 0.04em 0.04em 0 0; transform: rotate(45deg); clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%); }
+.ic-etoile { background: currentColor; clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%); }
+.ic-note::before { content: ''; position: absolute; left: 0.1em; bottom: 0.02em; width: 0.38em; height: 0.3em; border-radius: 50%; background: currentColor; }
+.ic-note::after { content: ''; position: absolute; left: 0.4em; top: 0.02em; width: 0.1em; height: 0.72em; background: currentColor; box-shadow: 0.08em 0 0 0 currentColor; }
+.ic-menu { background: linear-gradient(currentColor 0 0) 0 0.12em / 100% 0.11em no-repeat, linear-gradient(currentColor 0 0) 0 0.4em / 100% 0.11em no-repeat, linear-gradient(currentColor 0 0) 0 0.68em / 100% 0.11em no-repeat; }
+.ic-fiole::before { content: ''; position: absolute; left: 0.3em; top: 0; width: 0.3em; height: 0.35em; border: 0.09em solid currentColor; border-bottom: 0; }
+.ic-fiole::after { content: ''; position: absolute; left: 0.08em; top: 0.33em; width: 0.74em; height: 0.52em; border: 0.09em solid currentColor; border-radius: 0.1em 0.1em 0.3em 0.3em; box-sizing: border-box; }

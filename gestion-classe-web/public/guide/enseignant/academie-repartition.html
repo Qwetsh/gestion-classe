@@ -1,0 +1,848 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Académie : la répartition — Guide Gestion Classe</title>
+<meta name="description" content="Le questionnaire de répartition dans les quatre Maisons : le paramétrer, lire les réponses, lancer et confirmer la répartition, comprendre ses règles, déplacer un élève, tout réinitialiser, et ce que voit l'élève.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="83">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques communes aux chapitres Récompenses, Académie et Pronote */
+.app__side { position: relative; }
+.side__compte { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); padding: 8px 6px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.side__compte .avatar { width: 24px; height: 24px; font-size: 10.5px; }
+.pn-encart { margin-top: auto; display: flex; align-items: flex-start; gap: 7px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 9px; font-size: 11.5px; line-height: 1.35; position: relative; transition: box-shadow .25s, opacity .35s; }
+.pn-encart u { cursor: pointer; }
+.pn-encart.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-encart__i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 9px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+.pn-encart__x { margin-left: auto; font-size: 14px; line-height: 1; opacity: .7; padding: 0 2px; border-radius: 4px; }
+.ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic--p { width: 13px; height: 13px; }
+.ic--g { width: 22px; height: 22px; }
+.modale__x { margin-left: auto; color: var(--text-dim); font-size: 18px; line-height: 1; font-weight: 400; }
+.modale__tl { display: flex; align-items: center; gap: 8px; }
+.modale__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.modale__texte { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.45; white-space: pre-line; }
+.b--rouge { background: var(--neg); border-color: var(--neg); color: #fff; }
+.b--encre { background: #4338CA; border-color: #4338CA; }
+.toast { z-index: 760; }
+.toast--ok { background: var(--pos-soft); color: var(--pos); box-shadow: 0 6px 20px rgba(20,25,40,.12); border: 1px solid #CDE9D6; font-weight: 550; }
+.cl-ok { color: var(--pos); }
+.sel { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; white-space: nowrap; transition: all .25s; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; padding-left: 6px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.sw { display: inline-grid; }
+.sw > * { grid-area: 1 / 1; }
+.apres:not(.is-hidden) { transition-delay: 1.1s !important; }
+.avant.is-hidden { transition-delay: 1.1s !important; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.puls.is-on { animation: puls 1.1s ease-in-out infinite; }
+@keyframes puls { 50% { opacity: .55; } }
+.tourne { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--indigo-soft); border-top-color: var(--indigo); animation: tourne 0.9s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.natif { position: absolute; left: 50%; top: 18px; translate: -50% 0; width: 430px; background: #fff; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.35); padding: 16px 18px 14px; z-index: 780; font-family: 'Segoe UI', system-ui, sans-serif; color: #1f1f1f; }
+.natif__o { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.natif__m { font-size: 13px; line-height: 1.45; margin-bottom: 14px; }
+.natif__b { display: flex; justify-content: flex-end; gap: 8px; }
+.natif__b span { padding: 6px 16px; border-radius: 16px; font-size: 12.5px; border: 1px solid #c7c7c7; background: #fff; }
+.natif__b span.ok { background: #0b57d0; border-color: #0b57d0; color: #fff; }
+.natif__b span.is-on { box-shadow: 0 0 0 3px rgba(11,87,208,.3); }
+
+/* Académie : décor sombre et doré (polices remplacées par Georgia, sans ressource externe) */
+.ak { flex: 1; min-height: 0; background: #0a0908; color: #E9DFC9; font-family: Georgia, 'Times New Roman', serif; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.ak::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .55;
+  background-image: radial-gradient(1.2px 1.2px at 22px 30px, #d4a843 50%, transparent 52%), radial-gradient(1px 1px at 90px 80px, #e8d48b 50%, transparent 52%), radial-gradient(1.4px 1.4px at 150px 20px, #d4a843 50%, transparent 52%), radial-gradient(1px 1px at 60px 140px, #c9a84c 50%, transparent 52%), radial-gradient(1px 1px at 180px 120px, #e8d48b 50%, transparent 52%);
+  background-size: 200px 160px; animation: scint 4s ease-in-out infinite alternate; }
+@keyframes scint { to { opacity: .3; } }
+.ak > * { position: relative; }
+.ak-tete { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid #3a2e22; }
+.ak-emb { width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid #c9a84c; position: relative; flex: none; }
+.ak-emb::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; border: 1px solid #a6812f; }
+.ak-emb::after { content: ''; position: absolute; left: 50%; top: 4px; bottom: 4px; width: 1.5px; background: #e8d48b; transform: rotate(35deg); }
+.ak-sur { font-size: 8.5px; letter-spacing: .28em; text-transform: uppercase; color: #A6812F; }
+.ak-titre { font-size: 21px; font-style: italic; color: #EFE6D0; line-height: 1.1; }
+.ak-sel { background: #1a1410; border: 1px solid #6b5a3a; color: #E9DFC9; font-style: italic; padding: 5px 24px 5px 10px; border-radius: 6px; font-size: 12px; position: relative; transition: box-shadow .25s; }
+.ak-sel::after { content: '▾'; position: absolute; right: 8px; color: #a6812f; font-style: normal; }
+.ak-sel.is-on, .ak-mc.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.ak-mc { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; font-weight: 700; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-family: var(--font); transition: box-shadow .25s; }
+.ak-mc .tv { width: 12px; height: 9px; border: 1.6px solid currentColor; border-radius: 2px; }
+.ak-sceau { width: 32px; height: 32px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #c0392b, #7b1d14); color: #f3d9c0; display: grid; place-items: center; font-style: italic; font-size: 14px; transform: rotate(-8deg); box-shadow: 0 2px 6px rgba(0,0,0,.6); flex: none; }
+.ak-corps { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 16px; padding: 12px 20px; }
+.ak-col { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.ak-h { font-size: 18px; font-style: italic; display: flex; align-items: center; gap: 10px; color: #EFE6D0; }
+.ak-h::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #c9a84c, transparent); }
+.ak-sous { font-size: 10.5px; font-style: italic; color: #8a7a66; margin-top: -6px; }
+.pan4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.parch { background: radial-gradient(ellipse at center, #EDE3CC 55%, #CDBE9C 100%); color: #3b2a1a; border-radius: 6px; padding: 12px 6px 8px; text-align: center; position: relative; box-shadow: 0 4px 14px rgba(0,0,0,.5); display: flex; flex-direction: column; align-items: center; transition: transform .35s, box-shadow .35s; }
+.parch.is-on { transform: translateY(-3px); box-shadow: 0 0 0 2.5px #F0D27A, 0 8px 18px rgba(0,0,0,.6); }
+.parch--tete { box-shadow: 0 0 0 2px #c9a84c, 0 0 22px rgba(212,168,67,.4); }
+.parch__rang { position: absolute; top: 6px; right: 8px; font-size: 8px; letter-spacing: .12em; text-transform: uppercase; color: #6b5a3a; border-radius: 4px; transition: box-shadow .25s; }
+.parch__nom { font-size: 15px; font-style: italic; margin-top: 6px; }
+.parch__dev { font-size: 9.5px; font-style: italic; color: #6b5a3a; line-height: 1.25; min-height: 24px; padding: 0 4px; }
+.orn { width: 7px; height: 7px; background: #a6812f; transform: rotate(45deg); margin: 6px 0 2px; box-shadow: -12px 12px 0 -2.5px #a6812f, 12px -12px 0 -2.5px #a6812f; }
+.parch__pl { font-size: 8px; letter-spacing: .22em; text-transform: uppercase; color: #6b5a3a; margin-top: 6px; }
+.parch__pts { font-size: 32px; font-style: italic; line-height: 1.05; border-radius: 6px; transition: box-shadow .25s; }
+.parch__cache { font-size: 10px; font-style: italic; color: #a0462e; border-radius: 4px; transition: box-shadow .25s; }
+.parch__clic { font-size: 8.5px; color: #8a7a66; margin-top: 6px; }
+.couronne { position: absolute; top: -13px; left: 50%; translate: -50% 0; width: 30px; height: 16px; background: linear-gradient(#f3d77d, #b8892a); clip-path: polygon(0 100%, 0 25%, 22% 60%, 50% 0, 78% 60%, 100% 25%, 100% 100%); filter: drop-shadow(0 1px 2px rgba(0,0,0,.5)); }
+.zor.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+/* écussons neutres A à D (les blasons de l'application ne sont pas reproduits) */
+.ecu { width: 34px; height: 40px; flex: none; display: inline-grid; place-items: center; font-family: var(--font); font-weight: 800; font-size: 15px; color: #fff; clip-path: path('M0 0 H34 V22 C34 32 17 40 17 40 C17 40 0 32 0 22 Z'); }
+.ecu--p { width: 17px; height: 20px; font-size: 9px; clip-path: path('M0 0 H17 V11 C17 16 8.5 20 8.5 20 C8.5 20 0 16 0 11 Z'); }
+.ecu--m { width: 50px; height: 59px; font-size: 22px; clip-path: path('M0 0 H50 V32 C50 47 25 59 25 59 C25 59 0 47 0 32 Z'); }
+.ecu--g { width: 90px; height: 106px; font-size: 40px; clip-path: path('M0 0 H90 V58 C90 85 45 106 45 106 C45 106 0 85 0 58 Z'); }
+.ecu-a { background: linear-gradient(#2F7F86, #1D5257); } .ecu-b { background: linear-gradient(#7A4B8C, #4E2D5D); }
+.ecu-c { background: linear-gradient(#B98A2E, #7D5A16); } .ecu-d { background: linear-gradient(#56657A, #343F4E); }
+.ha { --hc: #2F7F86; } .hb { --hc: #7A4B8C; } .hc { --hc: #B98A2E; } .hd { --hc: #56657A; }
+/* barre latérale */
+.ak-side { border: 1px solid #3a2e22; background: #120f0c; border-radius: 8px; padding: 10px; }
+.ak-side__t { font-size: 9px; letter-spacing: .22em; text-transform: uppercase; color: #c9a84c; border-bottom: 1px solid #3a2e22; padding-bottom: 6px; margin-bottom: 6px; }
+.qa { display: flex; align-items: center; gap: 8px; padding: 5px 6px; border-radius: 6px; border: 1px solid transparent; transition: background .25s, border-color .25s; margin-bottom: 2px; }
+.qa__p { width: 22px; height: 22px; border-radius: 50%; border: 1px solid #6b5a3a; display: grid; place-items: center; font-size: 11px; color: #c9a84c; flex: none; font-family: var(--font); }
+.qa__p .ic { width: 12px; height: 12px; }
+.qa__l { font-size: 11.5px; font-style: italic; line-height: 1.2; }
+.qa__d { font-size: 9px; color: #8a7a66; font-family: var(--font); }
+.qa--or { background: #2a2010; border-color: #c9a84c; }
+.qa--gris { opacity: .4; }
+.qa.is-on { background: #2a2016; border-color: #F0D27A; }
+.sm { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-style: italic; padding: 3px 0; }
+.sm .ak-mini { margin-left: auto; font-size: 10px; border: 1px solid #3a2e22; border-radius: 4px; padding: 1px 16px 1px 6px; color: #8a7a66; position: relative; font-style: normal; font-family: var(--font); transition: box-shadow .25s; }
+.sm .ak-mini::after { content: '▾'; position: absolute; right: 4px; }
+.ak-mini.is-on { box-shadow: 0 0 0 2px #F0D27A; color: #EFE6D0; }
+/* fenêtres parchemin */
+.pmod-fond { position: absolute; inset: 0; background: rgba(0,0,0,.72); display: grid; place-items: center; z-index: 600; }
+.pmod { background: radial-gradient(ellipse at center, #EFE6D0 50%, #D2C3A0 100%); color: #3b2a1a; border-radius: 6px; padding: 16px 20px; width: 560px; font-family: Georgia, serif; position: relative; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+.pmod__sur { font-size: 9px; letter-spacing: .3em; text-transform: uppercase; color: #8a7a66; font-family: var(--mono); }
+.pmod__t { font-size: 22px; font-style: italic; line-height: 1.2; }
+.pmod__x { position: absolute; top: 12px; right: 14px; width: 24px; height: 24px; border-radius: 50%; border: 1px solid #8a7a66; display: grid; place-items: center; font-size: 12px; color: #6b5a3a; transition: background .25s; }
+.pmod__x.is-on { background: rgba(0,0,0,.08); }
+.pl { display: flex; align-items: center; gap: 9px; padding: 5px 4px; border-bottom: 1px solid rgba(107,90,58,.25); font-size: 13px; transition: opacity .35s, background .25s; }
+.pl i { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-style: normal; color: #fff; background: var(--hc); flex: none; font-family: var(--font); font-weight: 650; }
+.pl em { flex: 1; }
+.pl.is-on { background: rgba(166,129,47,.15); }
+.psel { font-size: 11px; border: 1px solid #a89773; border-radius: 4px; padding: 2px 18px 2px 7px; background: rgba(255,255,255,.5); position: relative; font-family: var(--font); transition: box-shadow .25s; white-space: nowrap; }
+.psel::after { content: '▾'; position: absolute; right: 5px; }
+.psel.is-on { box-shadow: 0 0 0 2px #a6812f; }
+.pmenu { position: absolute; z-index: 5; background: #fff; border: 1px solid #a89773; border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.25); padding: 3px; font-family: var(--font); font-size: 11.5px; color: #3b2a1a; }
+.pmenu div { padding: 4px 10px; border-radius: 4px; }
+.pmenu div.is-on, .pmenu div.actif { background: #EDE3CC; }
+.bt-parch { background: #EFE6D0; color: #2a1d10; border: 1px solid #c9a84c; border-radius: 6px; padding: 7px 12px; text-align: center; font-style: italic; font-size: 12px; transition: box-shadow .25s; }
+.bt-or { background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; border-radius: 6px; padding: 7px 12px; text-align: center; font-size: 12px; font-weight: 700; font-family: var(--font); transition: box-shadow .25s, opacity .25s; }
+.bt-parch.is-on, .bt-or.is-on { box-shadow: 0 0 0 2.5px #F0D27A; }
+.bt-rouge { background: #8e2a1e; color: #f3d9c0; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-family: var(--font); }
+.dd { position: absolute; z-index: 20; background: #1a1410; border: 1px solid #6b5a3a; border-radius: 6px; padding: 4px; font-size: 12px; font-style: italic; min-width: 110px; box-shadow: 0 8px 20px rgba(0,0,0,.5); }
+.dd div { padding: 4px 9px; border-radius: 4px; }
+.dd div.is-on, .dd div.actif { background: #3a2e22; color: #F0D27A; }
+
+/* Page Académie : questionnaire et répartition */
+.ha { --hc2: #7fc6cc; --hi: #1D5257; } .hb { --hc2: #c69ad6; --hi: #4E2D5D; } .hc { --hc2: #e6be6a; --hi: #7D5A16; } .hd { --hc2: #a9b6c8; --hi: #343F4E; }
+.fond-ak { opacity: .45; }
+.qa-grand .qa { padding: 8px; }
+.qa-grand .qa__l { font-size: 13px; }
+.qa-grand .qa__d { font-size: 10.5px; }
+.qa-grand .qa__p { width: 28px; height: 28px; }
+/* éditeur du questionnaire */
+.qe { display: grid; grid-template-columns: 200px 1fr; gap: 16px; margin-top: 10px; }
+.qe-g { border-right: 1px solid rgba(107,90,58,.3); padding-right: 12px; }
+.qe-n { display: flex; align-items: center; font-size: 9px; letter-spacing: .2em; color: #8a7a66; font-family: var(--mono); margin-bottom: 6px; }
+.qe-plus { margin-left: auto; font-size: 11px; letter-spacing: 0; font-family: var(--font); color: #3b2a1a; border: 1px solid #a89773; border-radius: 4px; padding: 2px 7px; transition: box-shadow .25s; }
+.qe-plus.is-on { box-shadow: 0 0 0 2px #a6812f; }
+.qe-q { font-size: 11.5px; padding: 5px 6px; border-radius: 4px; transition: background .25s; line-height: 1.3; }
+.qe-q b { font-family: var(--font); font-size: 10px; color: #8a7a66; margin-right: 4px; }
+.qe-q.is-on, .qe-q.actif { background: rgba(166,129,47,.2); }
+.qe-et { font-size: 9px; letter-spacing: .2em; text-transform: uppercase; color: #8a7a66; font-family: var(--mono); margin-bottom: 4px; }
+.qe-zone { min-height: 52px; border: 1px solid #a89773; border-radius: 4px; background: rgba(255,255,255,.45); padding: 6px 8px; font-size: 12.5px; font-style: italic; transition: box-shadow .25s; }
+.qe-zone.is-on, .qe-ch.is-on, .qe-w.is-on { box-shadow: 0 0 0 2px #a6812f; }
+.qe-zone .ph, .qe-ch .ph { color: #a89773; }
+.qe-r { display: grid; grid-template-columns: 16px 1fr repeat(4, 34px); gap: 6px; align-items: center; margin-top: 5px; font-size: 12px; }
+.qe-r b { font-family: var(--font); color: #6b5a3a; font-size: 11px; }
+.qe-ch { border: 1px solid #a89773; border-radius: 4px; background: rgba(255,255,255,.45); padding: 4px 7px; font-size: 11.5px; min-height: 25px; transition: box-shadow .25s; }
+.qe-w { border: 1px solid #a89773; border-radius: 4px; background: rgba(255,255,255,.55); text-align: center; font-family: var(--font); font-size: 11.5px; padding: 3px 0; transition: box-shadow .25s; }
+.qe-h { display: grid; grid-template-columns: 16px 1fr repeat(4, 34px); gap: 6px; font-size: 10px; font-family: var(--font); font-weight: 700; margin-top: 8px; }
+.qe-h span { text-align: center; color: var(--hi); }
+.qe-bt { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+/* réponses brutes */
+.rr { display: grid; grid-template-columns: 170px 1fr; gap: 16px; margin-top: 10px; min-height: 280px; }
+.rr-g { border-right: 1px solid rgba(107,90,58,.3); padding-right: 10px; }
+.rr-e { display: flex; align-items: center; font-size: 12.5px; font-style: italic; padding: 4px 6px; border-radius: 4px; transition: background .25s; }
+.rr-e b { margin-left: auto; font-style: normal; color: #2d6a4f; font-family: var(--font); font-weight: 600; }
+.rr-e.is-on, .rr-e.actif { background: rgba(166,129,47,.25); }
+.rr-n { font-size: 22px; font-style: italic; margin-bottom: 8px; }
+.rr-q { font-size: 12px; padding: 3px 0; border-bottom: 1px dotted rgba(107,90,58,.35); font-family: var(--font); }
+.rr-q b { color: #6b5a3a; margin-right: 6px; }
+.rr-q small { color: #8a7a66; margin-left: 6px; }
+.rr-pref { margin-top: 10px; font-size: 9px; letter-spacing: .25em; color: #8a7a66; font-family: var(--mono); }
+.rr-pref div { font-size: 12.5px; letter-spacing: 0; font-family: Georgia, serif; font-style: italic; color: #3b2a1a; padding: 2px 0; }
+.rr-vide { font-style: italic; color: #8a7a66; padding-top: 60px; text-align: center; font-size: 14px; }
+/* résultat de la répartition */
+.res4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 12px 0; }
+.res4 > div { border: 1px solid rgba(107,90,58,.35); border-radius: 6px; text-align: center; padding: 6px; background: rgba(255,255,255,.3); transition: box-shadow .25s; }
+.res4 b { display: block; font-size: 28px; font-style: italic; font-weight: 400; line-height: 1.1; }
+.res4 small { font-size: 10px; color: #8a7a66; }
+.res4 .nm { font-size: 12.5px; font-style: italic; color: var(--hi); }
+.res-l { max-height: 190px; overflow: hidden; border-top: 1px solid rgba(107,90,58,.3); }
+.res-r { display: grid; grid-template-columns: 1fr 90px 120px; font-size: 12px; padding: 4px 6px; border-bottom: 1px dotted rgba(107,90,58,.3); transition: background .3s; border-radius: 3px; }
+.res-r .m { color: var(--hi); font-style: italic; }
+.res-r .t { color: #6b5a3a; font-family: var(--font); font-size: 11px; }
+.res-r.is-on { background: rgba(166,129,47,.28); }
+.res-bt { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.bt-ann { border: 1px solid #a89773; border-radius: 6px; padding: 7px 12px; font-size: 12px; font-family: var(--font); color: #6b5a3a; }
+/* réaffectation */
+.ra-l { display: grid; grid-template-columns: 1fr 110px 120px; align-items: center; font-size: 12.5px; padding: 6px 4px; border-bottom: 1px solid rgba(107,90,58,.25); transition: background .25s; }
+.ra-l em { font-style: italic; }
+.ra-l .cur { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--hi, #8a7a66); font-family: var(--font); font-weight: 700; }
+.ra-l.is-on { background: rgba(166,129,47,.18); }
+/* téléphone de l'élève */
+.el-ak { background: radial-gradient(ellipse at 50% 0%, #1e1712, #0a0908 70%); color: #E9DFC9; font-family: Georgia, serif; position: relative; }
+.el-ak::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .5; background-image: radial-gradient(1.2px 1.2px at 22px 30px, #d4a843 50%, transparent 52%), radial-gradient(1px 1px at 90px 80px, #e8d48b 50%, transparent 52%); background-size: 120px 110px; }
+.el-ak .tel__statut { color: #E9DFC9; }
+.el-c { position: absolute; inset: 30px 0 0; padding: 16px 18px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.el-parch { background: radial-gradient(ellipse at center, #EFE6D0 50%, #D2C3A0 100%); color: #3b2a1a; border-radius: 6px; padding: 22px 18px; width: 100%; font-style: italic; font-size: 14px; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+.el-parch b { display: block; font-size: 21px; font-weight: 400; margin-bottom: 8px; }
+.el-btn { background: linear-gradient(#e0bd62, #a6812f); color: #1a1410; border-radius: 10px; padding: 11px 16px; font-family: var(--font); font-weight: 650; font-size: 14px; width: 100%; transition: box-shadow .25s; }
+.el-btn.is-on { box-shadow: 0 0 0 3px rgba(240,210,122,.45); }
+.el-meta { font-size: 11.5px; color: #8a7a66; font-family: var(--font); }
+.el-prog { display: flex; gap: 4px; width: 100%; }
+.el-prog i { flex: 1; height: 3px; border-radius: 2px; background: #3a2e22; }
+.el-prog i.ok { background: #d4a843; }
+.el-q { font-size: 19px; font-style: italic; line-height: 1.3; margin: 8px 0 4px; }
+.el-r { width: 100%; text-align: left; background: rgba(90,67,48,.35); border: 1px solid #3a2e22; border-radius: 10px; padding: 10px 12px; font-size: 13.5px; transition: background .3s, color .3s; }
+.el-r b { font-family: var(--font); color: #c9a84c; margin-right: 8px; font-size: 12px; }
+.el-r.is-on { background: #EBD9A8; color: #2a1d10; }
+.el-cls { width: 100%; display: flex; align-items: center; gap: 10px; background: rgba(90,67,48,.35); border: 1px solid #3a2e22; border-radius: 10px; padding: 8px 10px; font-size: 14px; font-style: italic; }
+.el-cls .rom { font-family: var(--font); font-size: 11px; color: #c9a84c; width: 18px; }
+.el-cls .fl { margin-left: auto; color: #c9a84c; font-size: 11px; font-style: normal; }
+.el-sceau { width: 74px; height: 74px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #c0392b, #7b1d14); display: grid; place-items: center; color: #f3d9c0; font-size: 26px; font-style: italic; box-shadow: 0 4px 14px rgba(0,0,0,.6); margin: 20px 0 6px; }
+.el-carte { width: 100%; border: 1px solid #3a2e22; background: rgba(26,20,16,.8); border-radius: 12px; padding: 10px; }
+.el-carte b { display: block; font-size: 42px; font-weight: 400; font-style: italic; color: #F0D27A; line-height: 1; }
+.el-mini { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-style: italic; padding: 4px 2px; }
+.el-mini span:last-child { margin-left: auto; font-family: var(--font); font-style: normal; font-size: 11px; }
+.el-live { font-size: 11px; font-family: var(--font); color: #8fd6a8; display: inline-flex; align-items: center; gap: 6px; }
+.el-live::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #22c55e; animation: puls 1.2s infinite; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-bulle" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-crayon" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
+  <symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z"/></symbol>
+  <symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-groupe" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 010 6M21 20c0-2.6-1.7-4.8-4-5.6"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 013 3v12a2 2 0 00-2-2H3z"/><path d="M21 5h-6a3 3 0 00-3 3v12a2 2 0 012-2h7z"/></symbol>
+  <symbol id="i-feuille" viewBox="0 0 24 24"><path d="M5 20c0-9 5-15 15-15 0 10-5 15-14 15"/><path d="M5 20l8-8"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8C10 4 6 4 6.5 7 7 8 12 8 12 8zM12 8c2-4 6-4 5.5-1-.5 1-5.5 1-5.5 1z"/></symbol>
+  <symbol id="i-sablier" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3v3l4 6 4-6V3M8 21v-3l4-6 4 6v3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-tampon" viewBox="0 0 24 24"><path d="M9 3h6v5l3 4H6l3-4z"/><path d="M5 15h14v3H5zM7 21h10"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+  <symbol id="i-calendrier" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-copier" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></symbol>
+  <symbol id="i-fichier" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></symbol>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Académie : la répartition</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#ar-actions">Les actions rapides</a></li>
+      <li><a href="#ar-questionnaire">Paramétrer le questionnaire</a></li>
+      <li><a href="#ar-reponses">Lire les réponses</a></li>
+      <li><a href="#ar-repartition">Lancer la répartition</a></li>
+      <li><a href="#ar-regles">Comment elle décide</a></li>
+      <li><a href="#ar-reaffecter">Déplacer un élève</a></li>
+      <li><a href="#ar-reinitialiser">Tout réinitialiser</a></li>
+      <li><a href="#ar-eleve">Ce que vit l'élève</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/academie.html">◀ Académie</a><a href="../enseignant/pronote.html">Pronote ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus · Académie</div>
+      <h1>Académie : questionnaire et répartition</h1>
+      <p>Avant de jouer, il faut des Maisons. Les élèves répondent à un questionnaire depuis leur espace et classent les Maisons par préférence ; l'enseignant lance ensuite une répartition automatique et équilibrée, qu'il vérifie avant de la confirmer, puis ajuste à la main si besoin.</p>
+      <div class="chap__resume"><span>Académie › Actions rapides</span><span>Ordinateur</span><span>Aussi dans l'espace élève</span><span>8 fiches</span></div>
+    </header>
+
+    <!-- ============================================================ 1. actions rapides -->
+    <section class="fiche" id="ar-actions">
+      <div class="fiche__texte">
+        <h2>Les actions rapides</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Académie › Actions rapides</span></p>
+        <p class="fiche__but">Toute l'administration du jeu tient dans le panneau de droite du registre, en six boutons.</p>
+        <ol class="etapes">
+          <li data-cursor="#r1-q1" data-duration="3200"><b>Révéler les bonus cachés</b>, mis en avant en or, annonce les points en attente ; grisé s'il n'y en a aucun.</li>
+          <li data-cursor="#r1-q2" data-duration="3000"><b>Lancer la répartition</b> rappelle le nombre d'élèves de la classe.</li>
+          <li data-cursor="#r1-q3" data-duration="3200"><b>Réaffecter un·e élève</b> (choix manuel de la Maison) et <b>Réponses brutes du test</b> (nombre d'élèves déjà répartis).</li>
+          <li data-cursor="#r1-q5" data-duration="3000"><b>Paramétrer le questionnaire</b> : modifier les questions du test.</li>
+          <li data-cursor="#r1-q6" data-duration="3200"><b>Réinitialiser les maisons</b> : supprime les Maisons attribuées et les réponses.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'application nomme le questionnaire et certaines fenêtres d'après un chapeau célèbre, par clin d'œil ; ce guide public abrège ces titres et remplace les Maisons par des écussons A, B, C, D.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="academie.html#ac-reveler">Révéler les bonus cachés</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r1-sel">4B</span><span class="ak-mc" id="r1-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps" style="grid-template-columns:minmax(0,1fr) 300px">
+            <div class="ak-col fond-ak">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4" style="grid-template-columns:repeat(2,1fr)">
+                <div class="parch parch--tete" ><span class="couronne"></span><div class="parch__rang">1er · 7 él.</div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">312</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">4e · 6 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+            </div>
+            <div class="ak-col">
+              <div class="ak-side qa-grand">
+                <div class="ak-side__t">Actions rapides</div>
+                <div class="qa qa--or" id="r1-q1" data-on="1"><span class="qa__p"><svg class="ic"><use href="#i-etoile"/></svg></span><div><div class="qa__l">Révéler les bonus cachés</div><div class="qa__d">35 points en attente</div></div></div>
+                <div class="qa" id="r1-q2" data-on="2"><span class="qa__p"><svg class="ic"><use href="#i-fiole"/></svg></span><div><div class="qa__l">Lancer la répartition</div><div class="qa__d">26 élèves</div></div></div>
+                <div class="qa" id="r1-q3" data-on="3"><span class="qa__p">⇄</span><div><div class="qa__l">Réaffecter un·e élève</div><div class="qa__d">Choix manuel de la Maison</div></div></div>
+                <div class="qa" data-on="3"><span class="qa__p"><svg class="ic"><use href="#i-fichier"/></svg></span><div><div class="qa__l">Réponses brutes du test</div><div class="qa__d">24 réparti·es</div></div></div>
+                <div class="qa" id="r1-q5" data-on="4"><span class="qa__p"><svg class="ic"><use href="#i-crayon"/></svg></span><div><div class="qa__l">Paramétrer le questionnaire</div><div class="qa__d">Modifier les questions du test</div></div></div>
+                <div class="qa" id="r1-q6" data-on="5"><span class="qa__p">↺</span><div><div class="qa__l">Réinitialiser les maisons</div><div class="qa__d">Supprime assignations + réponses</div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 2. questionnaire -->
+    <section class="fiche fiche--large" id="ar-questionnaire">
+      <div class="fiche__texte">
+        <h2>Paramétrer le questionnaire</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Actions rapides › Paramétrer le questionnaire</span></p>
+        <p class="fiche__but">Écrire les questions du test et dire, pour chaque réponse, vers quelles Maisons elle fait pencher.</p>
+        <ol class="etapes">
+          <li data-cursor="#r2-qa" data-action="click">Cliquer <b>Paramétrer le questionnaire</b> : la fenêtre « Paramétrage » liste les questions à gauche (« 5 QUESTIONS »).</li>
+          <li data-cursor="#r2-plus" data-action="click"><span class="btn-nom">+ Nouvelle</span> vide la partie droite : « Nouvelle question ».</li>
+          <li data-cursor="#r2-zone" data-duration="3200">Écrire la question dans « Texte de la question… ».</li>
+          <li data-cursor="#r2-wa" data-duration="3800">Pour chacune des quatre réponses A, B, C, D : son texte, puis un poids de 0 à 5 pour chaque Maison. Ici, la réponse A fait surtout pencher vers la Maison C.</li>
+          <li data-cursor="#r2-ajout" data-action="click" data-duration="3200"><span class="btn-nom">Ajouter la question</span> : elle rejoint la liste (« 6 QUESTIONS »).</li>
+          <li data-cursor="#r2-q2" data-action="click" data-duration="3600">Cliquer une question existante pour la modifier : <span class="btn-nom">Mettre à jour</span>, ou <span class="btn-nom">Supprimer</span> (le navigateur demande « Supprimer cette question ? »).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Le questionnaire est commun à tous les enseignants qui utilisent l'application : ajouter, modifier ou supprimer une question change le test pour tout le monde.</li>
+            <li class="important">Mettre à jour une question recrée ses quatre réponses : les réponses que des élèves y avaient déjà données sont effacées, dans toutes les classes. Supprimer une question efface aussi ces réponses. Mieux vaut régler le questionnaire avant que les élèves le passent.</li>
+            <li>Toujours quatre réponses par question. Le bouton reste grisé tant que la question est vide.</li>
+            <li>L'élève voit le nombre de questions avant de commencer (« 6 questions · 1 classement · ~5 min »).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r2-sel">4B</span><span class="ak-mc" id="r2-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps fond-ak"><div class="ak-col"><div class="ak-h">Les Quatre Maisons</div></div><div class="ak-col"><div class="ak-side"><div class="ak-side__t">Actions rapides</div><div class="qa" id="r2-qa" data-on="1"><span class="qa__p"><svg class="ic"><use href="#i-crayon"/></svg></span><div><div class="qa__l">Paramétrer le questionnaire</div></div></div></div></div></div>
+        </div>
+        <div class="pmod-fond apres" data-from="1" style="left:-190px">
+          <div class="pmod" style="width:760px">
+            <span class="pmod__x">×</span>
+            <div class="pmod__sur">Paramétrage</div>
+            <div class="pmod__t">Questionnaire</div>
+            <div class="qe">
+              <div class="qe-g">
+                <div class="qe-n"><span class="sw"><span data-to="4">5 QUESTIONS</span><span class="apres" data-from="5">6 QUESTIONS</span></span><span class="qe-plus" id="r2-plus" data-on="2">+ Nouvelle</span></div>
+                <div class="qe-q actif off" data-on="2-6"><b>Q1</b>Face à une épreuve difficile, tu…</div>
+                <div class="qe-q" id="r2-q2" data-on="6"><b>Q2</b>Ton moment préféré en classe est…</div>
+                <div class="qe-q"><b>Q3</b>Un camarade a besoin d'aide…</div>
+                <div class="qe-q"><b>Q4</b>Tu découvres un livre interdit…</div>
+                <div class="qe-q"><b>Q5</b>Ce que tu aimerais qu'on dise de…</div>
+                <div class="qe-q repli apres" data-from="5"><b>Q6</b>Pendant une sortie au musée, tu…</div>
+              </div>
+              <div>
+                <div class="qe-et"><span class="repli" data-to="1">Modifier Q1</span><span class="repli" data-at="2-5">Nouvelle question</span><span class="repli" data-at="6">Modifier Q2</span></div>
+                <div class="qe-zone" id="r2-zone" data-on="3"><span class="repli" data-to="1">Face à une épreuve difficile, tu…</span><span class="ph repli" data-at="2">Texte de la question…</span><span class="repli" data-at="3-5" data-type="Pendant une sortie au musée, tu…" data-type-at="3"></span><span class="repli" data-at="6">Ton moment préféré en classe est…</span></div>
+                <div class="qe-h"><span></span><span style="text-align:left;color:#6b5a3a">Réponses &amp; poids par maison</span><span class="ha">A</span><span class="hb">B</span><span class="hc">C</span><span class="hd">D</span></div>
+                <div class="qe-r"><b>A</b><span class="qe-ch"><span class="ph repli" data-at="2-3">Réponse A</span><span class="repli" data-at="4-5" data-type="Tu lis chaque cartel" data-type-at="4"></span><span class="repli" data-at="1,6">…</span></span><span class="qe-w">0</span><span class="qe-w">1</span><span class="qe-w" id="r2-wa" data-on="4"><span class="sw"><span data-to="3">0</span><span data-from="4">4</span></span></span><span class="qe-w">0</span></div>
+                <div class="qe-r"><b>B</b><span class="qe-ch"><span class="ph repli" data-at="2-5">Réponse B</span><span class="repli" data-at="1,6">…</span></span><span class="qe-w">0</span><span class="qe-w">0</span><span class="qe-w">0</span><span class="qe-w">0</span></div>
+                <div class="qe-r"><b>C</b><span class="qe-ch"><span class="ph repli" data-at="2-5">Réponse C</span><span class="repli" data-at="1,6">…</span></span><span class="qe-w">0</span><span class="qe-w">0</span><span class="qe-w">0</span><span class="qe-w">0</span></div>
+                <div class="qe-r"><b>D</b><span class="qe-ch"><span class="ph repli" data-at="2-5">Réponse D</span><span class="repli" data-at="1,6">…</span></span><span class="qe-w">0</span><span class="qe-w">0</span><span class="qe-w">0</span><span class="qe-w">0</span></div>
+                <div class="qe-bt"><span class="bt-rouge repli" data-at="1,6">Supprimer</span><span class="bt-parch" id="r2-ajout" data-on="5"><span class="repli" data-at="2-5">Ajouter la question</span><span class="repli" data-at="1,6">Mettre à jour</span></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 3. réponses brutes -->
+    <section class="fiche" id="ar-reponses">
+      <div class="fiche__texte">
+        <h2>Lire les réponses des élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Actions rapides › Réponses brutes du test</span></p>
+        <p class="fiche__but">Vérifier qui a passé le questionnaire, et quels poids ses réponses ont donnés à chaque Maison.</p>
+        <ol class="etapes">
+          <li data-cursor="#r3-qa" data-action="click">Cliquer <b>Réponses brutes du test</b> : la fenêtre « Archives » liste les élèves à gauche, avec une coche pour ceux qui ont terminé.</li>
+          <li data-cursor="#r3-iris" data-action="click" data-duration="3600">Cliquer un élève : pour chaque question, « → Réponse sélectionnée » et les poids qu'elle donne aux quatre Maisons.</li>
+          <li data-cursor="#r3-pref" data-duration="3200">Le bloc <b>PRÉFÉRENCES</b> montre son classement des Maisons, de I à IV.</li>
+          <li data-cursor="#r3-eva" data-action="click" data-duration="3000">Un élève sans coche : « Test non complété ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le texte de la réponse choisie n'est pas affiché, seulement ses poids.</li>
+            <li>Dans l'application, les poids sont abrégés par les premières lettres des noms de Maisons ; ce guide les note A, B, C, D.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r3-sel">4B</span><span class="ak-mc" id="r3-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps fond-ak"><div class="ak-col"><div class="ak-h">Les Quatre Maisons</div></div><div class="ak-col"><div class="ak-side"><div class="ak-side__t">Actions rapides</div><div class="qa" id="r3-qa" data-on="1"><span class="qa__p"><svg class="ic"><use href="#i-fichier"/></svg></span><div><div class="qa__l">Réponses brutes du test</div><div class="qa__d">24 réparti·es</div></div></div></div></div></div>
+        </div>
+        <div class="pmod-fond apres" data-from="1" style="left:-190px">
+          <div class="pmod" style="width:640px">
+            <span class="pmod__x">×</span>
+            <div class="pmod__sur">Archives</div>
+            <div class="pmod__t">Réponses brutes</div>
+            <div class="rr">
+              <div class="rr-g">
+                <div class="rr-e">Adam KE<b><span class="ic ic-ok" aria-hidden="true"></span></b></div>
+                <div class="rr-e" id="r3-eva" data-on="4">Éva RO</div>
+                <div class="rr-e">Inès DU<b><span class="ic ic-ok" aria-hidden="true"></span></b></div>
+                <div class="rr-e" id="r3-iris" data-on="2-3">Iris TA<b><span class="ic ic-ok" aria-hidden="true"></span></b></div>
+                <div class="rr-e">Lina BO<b><span class="ic ic-ok" aria-hidden="true"></span></b></div>
+                <div class="rr-e">Noé MA<b><span class="ic ic-ok" aria-hidden="true"></span></b></div>
+                <div class="rr-e">Tom SA<b><span class="ic ic-ok" aria-hidden="true"></span></b></div>
+                <div class="rr-e">Yanis LE</div>
+              </div>
+              <div>
+                <div class="rr-vide repli" data-to="1">Sélectionner un élève</div>
+                <div class="repli" data-at="2-3">
+                  <div class="rr-n">Iris TA</div>
+                  <div class="rr-q"><b>Q1</b>→ Réponse sélectionnée<small>(A:0 B:1 C:3 D:0)</small></div>
+                  <div class="rr-q"><b>Q2</b>→ Réponse sélectionnée<small>(A:1 B:0 C:4 D:0)</small></div>
+                  <div class="rr-q"><b>Q3</b>→ Réponse sélectionnée<small>(A:0 B:0 C:1 D:3)</small></div>
+                  <div class="rr-q"><b>Q4</b>→ Réponse sélectionnée<small>(A:0 B:2 C:3 D:0)</small></div>
+                  <div class="rr-q"><b>Q5</b>→ Réponse sélectionnée<small>(A:2 B:0 C:2 D:1)</small></div>
+                  <div class="rr-pref zor" id="r3-pref" data-on="3" style="border-radius:4px;padding:4px">PRÉFÉRENCES<div>I. Maison C</div><div>II. Maison A</div><div>III. Maison D</div><div>IV. Maison B</div></div>
+                </div>
+                <div class="repli" data-at="4"><div class="rr-n">Éva RO</div><div class="rr-vide" style="padding-top:30px">Test non complété</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 4. lancer la répartition -->
+    <section class="fiche" id="ar-repartition">
+      <div class="fiche__texte">
+        <h2>Lancer la répartition</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Actions rapides › Lancer la répartition</span></p>
+        <p class="fiche__but">L'application propose des Maisons équilibrées pour les élèves qui ont répondu ; rien n'est enregistré avant la confirmation.</p>
+        <ol class="etapes">
+          <li data-cursor="#r4-qa" data-action="click">Cliquer <b>Lancer la répartition</b>.</li>
+          <li data-cursor="#r4-ok" data-action="click" data-duration="4000">Si des élèves sont déjà répartis, le navigateur demande : « 24 élève(s) sont déjà réparti(e)s. Relancer la répartition recalculera les Maisons (les affectations manuelles sont conservées). Continuer ? »</li>
+          <li data-cursor="#r4-res" data-duration="3400">La fenêtre <b>Résultat de la répartition</b> donne l'effectif de chaque Maison (« apprenti·es »).</li>
+          <li data-cursor="#r4-liste" data-duration="3600">Dessous, une ligne par élève : son pseudonyme, sa Maison (en couleur) et la règle qui l'y a placé.</li>
+          <li data-cursor="#r4-conf" data-action="click" data-duration="3400"><span class="btn-nom">Confirmer la répartition</span> enregistre ; les panneaux des Maisons se mettent à jour. <b>Annuler</b> ne change rien.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les élèves qui n'ont pas passé le questionnaire ne sont pas répartis : ils restent dans « Élèves sans maison », à placer à la main.</li>
+            <li>Les Maisons choisies à la main sont conservées et comptent dans les effectifs.</li>
+            <li>On peut relancer autant de fois qu'on veut avant de confirmer ; la cérémonie projetée rejoue ensuite le résultat.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#ar-regles">Comment elle décide</a> · <a href="academie.html#ac-ceremonie">La cérémonie</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r4-sel">4B</span><span class="ak-mc" id="r4-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps">
+            <div class="ak-col fond-ak"><div class="ak-h">Les Quatre Maisons</div>
+              <div class="pan4">
+                <div class="parch parch--tete" ><span class="couronne"></span><div class="parch__rang">1er · <span class="sw"><span data-to="4">6</span><span class="apres" data-from="5">7</span></span> él.</div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">312</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">4e · 6 él.</div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">2e · <span class="sw"><span data-to="4">6</span><span class="apres" data-from="5">7</span></span> él.</div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">287</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang">3e · 6 él.</div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">254</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div></div>
+            <div class="ak-col"><div class="ak-side"><div class="ak-side__t">Actions rapides</div><div class="qa" id="r4-qa" data-on="1"><span class="qa__p"><svg class="ic"><use href="#i-fiole"/></svg></span><div><div class="qa__l">Lancer la répartition</div><div class="qa__d">26 élèves</div></div></div></div></div>
+          </div>
+        </div>
+        <div class="natif apres avant zoom" data-at="1">
+          <div class="natif__o">qwetsh.github.io indique</div>
+          <div class="natif__m">24 élève(s) sont déjà réparti(e)s. Relancer la répartition recalculera les Maisons (les affectations manuelles sont conservées). Continuer ?</div>
+          <div class="natif__b"><span>Annuler</span><span class="ok" id="r4-ok">OK</span></div>
+        </div>
+        <div class="pmod-fond apres avant" data-from="2" data-to="4" style="left:-190px">
+          <div class="pmod" style="width:640px">
+            <span class="pmod__x">×</span>
+            <div class="pmod__t">Résultat de la répartition</div>
+            <div class="res4" id="r4-res">
+              <div class="ha"><span class="nm">Maison A</span><b>7</b><small>apprenti·es</small></div>
+              <div class="hb"><span class="nm">Maison B</span><b>6</b><small>apprenti·es</small></div>
+              <div class="hc"><span class="nm">Maison C</span><b>7</b><small>apprenti·es</small></div>
+              <div class="hd"><span class="nm">Maison D</span><b>6</b><small>apprenti·es</small></div>
+            </div>
+            <div class="res-l zor" id="r4-liste" data-on="4">
+              <div class="res-r ha"><span>Adam KE</span><span class="m">Maison A</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r hc"><span>Inès DU</span><span class="m">Maison C</span><span class="t">Meilleur compromis</span></div>
+              <div class="res-r hc"><span>Iris TA</span><span class="m">Maison C</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r ha"><span>Lina BO</span><span class="m">Maison A</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r hd"><span>Malo RI</span><span class="m">Maison D</span><span class="t">Dernière chance</span></div>
+              <div class="res-r hb"><span>Rose VI</span><span class="m">Maison B</span><span class="t">Meilleur compromis</span></div>
+              <div class="res-r hb"><span>Tom SA</span><span class="m">Maison B</span><span class="t">Choix du cœur</span></div>
+            </div>
+            <div class="res-bt"><span class="bt-ann">Annuler</span><span class="bt-or" id="r4-conf" data-on="5">Confirmer la répartition</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 5. règles -->
+    <section class="fiche" id="ar-regles">
+      <div class="fiche__texte">
+        <h2>Comment la répartition décide</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Résultat de la répartition</span></p>
+        <p class="fiche__but">La règle affichée au bout de chaque ligne dit comment l'élève a été placé. Trois passages successifs, sous un plafond d'effectif.</p>
+        <ol class="etapes">
+          <li data-cursor="#r5-res" data-duration="4200">D'abord les scores : pour chaque élève, la somme des poids de ses réponses pour chaque Maison. Taille visée par Maison : l'effectif divisé par 4, arrondi au-dessus ; plafond : 115 % de cette taille (25 élèves : 7 visés, 8 au plus).</li>
+          <li data-cursor="#r5-c1" data-duration="4000"><b>Choix du cœur</b> : la Maison au meilleur score est aussi le premier choix de l'élève, et il y reste de la place.</li>
+          <li data-cursor="#r5-c2" data-duration="4200"><b>Meilleur compromis</b> : le score est multiplié par le rang de préférence (4 pour le premier choix, 1 pour le dernier), en évitant si possible la Maison classée dernière.</li>
+          <li data-cursor="#r5-c3" data-duration="4000"><b>Dernière chance</b> : le meilleur score parmi les Maisons qui ont encore de la place, sinon la Maison la moins remplie.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les Maisons choisies à la main sont gardées et comptent dans les effectifs avant le calcul.</li>
+            <li>Au passage « Meilleur compromis », les élèves dont le compromis est le meilleur sont placés en premier.</li>
+            <li>Les préférences comptent sans être une garantie, comme le dit l'écran de l'élève.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak"><div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r5-sel">4B</span><span class="ak-mc" id="r5-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div></div>
+        <div class="pmod-fond" style="left:-190px">
+          <div class="pmod" style="width:640px">
+            <span class="pmod__x">×</span>
+            <div class="pmod__t">Résultat de la répartition</div>
+            <div class="res4 zor" id="r5-res" data-on="1" style="border-radius:6px">
+              <div class="ha"><span class="nm">Maison A</span><b>7</b><small>apprenti·es</small></div>
+              <div class="hb"><span class="nm">Maison B</span><b>6</b><small>apprenti·es</small></div>
+              <div class="hc"><span class="nm">Maison C</span><b>7</b><small>apprenti·es</small></div>
+              <div class="hd"><span class="nm">Maison D</span><b>6</b><small>apprenti·es</small></div>
+            </div>
+            <div class="res-l" style="max-height:230px">
+              <div class="res-r ha" id="r5-c1" data-on="2"><span>Adam KE</span><span class="m">Maison A</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r hc" data-on="3"><span>Inès DU</span><span class="m">Maison C</span><span class="t">Meilleur compromis</span></div>
+              <div class="res-r hc" data-on="2"><span>Iris TA</span><span class="m">Maison C</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r ha" data-on="2"><span>Lina BO</span><span class="m">Maison A</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r hd" id="r5-c3" data-on="4"><span>Malo RI</span><span class="m">Maison D</span><span class="t">Dernière chance</span></div>
+              <div class="res-r hd" data-on="2"><span>Noé MA</span><span class="m">Maison D</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r hb" id="r5-c2" data-on="3"><span>Rose VI</span><span class="m">Maison B</span><span class="t">Meilleur compromis</span></div>
+              <div class="res-r hb" data-on="2"><span>Tom SA</span><span class="m">Maison B</span><span class="t">Choix du cœur</span></div>
+              <div class="res-r ha" data-on="4"><span>Zoé FA</span><span class="m">Maison A</span><span class="t">Dernière chance</span></div>
+            </div>
+            <div class="res-bt"><span class="bt-ann">Annuler</span><span class="bt-or">Confirmer la répartition</span></div>
+          </div>
+          <div class="bulle bulle--gauche" data-at="1" style="left:calc(50% + 330px);top:110px;max-width:170px">26 élèves : 7 visés par Maison, 8 au plus</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 6. réaffecter -->
+    <section class="fiche" id="ar-reaffecter">
+      <div class="fiche__texte">
+        <h2>Déplacer un élève, placer les élèves sans maison</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Actions rapides › Réaffecter un·e élève</span></p>
+        <p class="fiche__but">Changer la Maison de n'importe quel élève, ou placer ceux que la répartition a laissés de côté (questionnaire non passé, nouvel élève).</p>
+        <ol class="etapes">
+          <li data-cursor="#r6-qa" data-action="click" data-duration="3200">Cliquer <b>Réaffecter un·e élève</b> : « Déplacez un·e apprenti·e vers une autre Maison d'un simple choix. »</li>
+          <li data-cursor="#r6-l1" data-duration="3200">Chaque ligne : le pseudonyme, la Maison actuelle en petites capitales (ou « AUCUNE »), et une liste.</li>
+          <li data-cursor="#r6-psel" data-action="click">Ouvrir la liste de l'élève…</li>
+          <li data-cursor="#r6-c" data-action="click" data-duration="3200">… et choisir « → Maison C » : c'est enregistré aussitôt, la Maison actuelle change.</li>
+          <li data-cursor="#r6-ass" data-action="click" data-duration="3600">Sans ouvrir cette fenêtre, le panneau <b>Élèves sans maison</b> de la barre latérale fait de même : choisir une Maison dans « Assigner... » à côté du pseudonyme.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une Maison choisie à la main est conservée par les répartitions suivantes.</li>
+            <li>On ne peut pas retirer un élève de sa Maison : l'option « — » de la liste ne fait rien.</li>
+            <li>Le panneau « Élèves sans maison » disparaît quand tous les élèves sont placés.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r6-sel">4B</span><span class="ak-mc" id="r6-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps">
+            <div class="ak-col fond-ak"><div class="ak-h">Les Quatre Maisons</div></div>
+            <div class="ak-col">
+              <div class="ak-side"><div class="ak-side__t">Actions rapides</div><div class="qa" id="r6-qa" data-on="1"><span class="qa__p">⇄</span><div><div class="qa__l">Réaffecter un·e élève</div><div class="qa__d">Choix manuel de la Maison</div></div></div></div>
+              <div class="ak-side">
+                <div class="ak-side__t">Élèves sans maison</div>
+                <div class="sm avant" data-to="5">Yanis LE<span class="ak-mini" id="r6-ass" data-on="5">Assigner...</span></div>
+                <div class="sm">Clara JO<span class="ak-mini">Assigner...</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="pmod-fond apres avant" data-from="1" data-to="4" style="left:-190px">
+          <div class="pmod" style="width:560px">
+            <span class="pmod__x">×</span>
+            <div class="pmod__sur">Administration</div>
+            <div class="pmod__t">Réaffectation manuelle</div>
+            <div style="font-size:12.5px;font-style:italic;color:#5a4630;margin:4px 0 10px">Déplacez un·e apprenti·e vers une autre Maison d'un simple choix.</div>
+            <div style="position:relative">
+              <div class="ra-l ha"><em>Adam KE</em><span class="cur">Maison A</span><span class="psel">—</span></div>
+              <div class="ra-l" id="r6-l1" data-on="2-4" style="--hi:#8a7a66"><em>Éva RO</em><span class="cur"><span class="sw"><span data-to="3">Aucune</span><span class="apres hc" data-from="4" style="color:#7D5A16">Maison C</span></span></span><span class="psel" id="r6-psel" data-on="3">—</span></div>
+              <div class="ra-l hc"><em>Iris TA</em><span class="cur">Maison C</span><span class="psel">—</span></div>
+              <div class="ra-l ha"><em>Lina BO</em><span class="cur">Maison A</span><span class="psel">—</span></div>
+              <div class="ra-l hd"><em>Malo RI</em><span class="cur">Maison D</span><span class="psel">—</span></div>
+              <div class="ra-l hb"><em>Tom SA</em><span class="cur">Maison B</span><span class="psel">—</span></div>
+              <div class="pmenu apres avant" data-at="3" style="right:0;top:70px"><div class="actif">—</div><div>→ Maison A</div><div>→ Maison B</div><div id="r6-c" data-on="4">→ Maison C</div><div>→ Maison D</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="dd apres" data-at="5" style="right:30px;top:300px"><div>Maison A</div><div class="is-on">Maison B</div><div>Maison C</div><div>Maison D</div></div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 7. réinitialiser -->
+    <section class="fiche" id="ar-reinitialiser">
+      <div class="fiche__texte">
+        <h2>Tout réinitialiser</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Actions rapides › Réinitialiser les maisons</span></p>
+        <p class="fiche__but">Recommencer le jeu pour la classe : nouveau questionnaire, nouvelle répartition.</p>
+        <ol class="etapes">
+          <li data-cursor="#r7-qa" data-action="click">Cliquer <b>Réinitialiser les maisons</b>.</li>
+          <li data-cursor="#r7-ok" data-action="click" data-duration="3600">Le navigateur demande : « Réinitialiser toutes les maisons ? Les élèves devront repasser le questionnaire. » Cliquer <b>OK</b>.</li>
+          <li data-cursor="#r7-sm" data-duration="3600">La page se recharge : les Maisons sont vides et tous les élèves passent dans <b>Élèves sans maison</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Sont supprimés définitivement, pour les élèves de la classe : leurs réponses au questionnaire, leurs préférences et leurs Maisons.</li>
+            <li>Les bonus de points et les coefficients des épreuves ne sont pas effacés.</li>
+            <li>Les élèves retrouvent le questionnaire dans l'onglet Maison de leur espace.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/academy</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous is-actif">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="ak">
+          <div class="ak-tete"><span class="ak-emb"></span><div><div class="ak-sur">Académie des Quatre Lumières</div><div class="ak-titre">Registre du Professeur</div></div><span class="esp"></span><span class="ak-sel" id="r7-sel">4B</span><span class="ak-mc" id="r7-mc"><i class="tv"></i>Mode Classe</span><span class="ak-sceau">M</span></div>
+          <div class="ak-corps">
+            <div class="ak-col">
+              <div class="ak-h">Les Quatre Maisons</div><div class="ak-sous">Points cumulés et classement</div>
+              <div class="pan4 coupe">
+                <div class="parch parch--tete" ><span class="couronne"></span><div class="parch__rang"><span class="sw"><span class="avant" data-to="2">1er · 7 él.</span><span class="apres" data-from="3">1er · 0 él.</span></span></div><span class="ecu ecu-a ecu--m">A</span><div class="parch__nom">Maison A</div><div class="parch__dev">« La fortune sourit aux audacieux »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">312</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang"><span class="sw"><span class="avant" data-to="2">4e · 6 él.</span><span class="apres" data-from="3">4e · 0 él.</span></span></div><span class="ecu ecu-b ecu--m">B</span><div class="parch__nom">Maison B</div><div class="parch__dev">« Par les détours jusqu'aux étoiles »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">230</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang"><span class="sw"><span class="avant" data-to="2">2e · 6 él.</span><span class="apres" data-from="3">2e · 0 él.</span></span></div><span class="ecu ecu-c ecu--m">C</span><div class="parch__nom">Maison C</div><div class="parch__dev">« L'esprit qui s'envole »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">287</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+                <div class="parch" ><div class="parch__rang"><span class="sw"><span class="avant" data-to="2">3e · 7 él.</span><span class="apres" data-from="3">3e · 0 él.</span></span></div><span class="ecu ecu-d ecu--m">D</span><div class="parch__nom">Maison D</div><div class="parch__dev">« Fidèle comme la terre »</div><div class="orn"></div><div class="parch__pl">Points</div><div class="parch__pts">254</div><div class="parch__clic">Cliquer pour voir les élèves</div></div>
+              </div>
+            </div>
+            <div class="ak-col">
+              <div class="ak-side"><div class="ak-side__t">Actions rapides</div><div class="qa" id="r7-qa" data-on="1"><span class="qa__p">↺</span><div><div class="qa__l">Réinitialiser les maisons</div><div class="qa__d">Supprime assignations + réponses</div></div></div></div>
+              <div class="ak-side zor" id="r7-sm" data-on="3">
+                <div class="ak-side__t">Élèves sans maison</div>
+                <div class="sm">Yanis LE<span class="ak-mini">Assigner...</span></div>
+                <div class="repli apres" data-from="3">
+                  <div class="sm">Adam KE<span class="ak-mini">Assigner...</span></div>
+                  <div class="sm">Éva RO<span class="ak-mini">Assigner...</span></div>
+                  <div class="sm">Inès DU<span class="ak-mini">Assigner...</span></div>
+                  <div class="sm">Iris TA<span class="ak-mini">Assigner...</span></div>
+                  <div class="sm">Lina BO<span class="ak-mini">Assigner...</span></div>
+                  <div class="sm" style="color:#8a7a66">…</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="natif apres avant zoom" data-at="1">
+          <div class="natif__o">qwetsh.github.io indique</div>
+          <div class="natif__m">Réinitialiser toutes les maisons ? Les élèves devront repasser le questionnaire.</div>
+          <div class="natif__b"><span>Annuler</span><span class="ok" id="r7-ok">OK</span></div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 8. côté élève -->
+    <section class="fiche fiche--etroite" id="ar-eleve">
+      <div class="fiche__texte">
+        <h2>Ce que vit l'élève</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Espace élève › Maison</span></p>
+        <p class="fiche__but">Le pendant de la répartition, dans l'onglet Maison de l'espace élève : le questionnaire, l'attente, puis sa Maison en direct.</p>
+        <ol class="etapes">
+          <li data-cursor="#r8-go" data-action="tap" data-duration="3400">Un parchemin d'accueil annonce le test (« 6 questions · 1 classement · ~5 min ») ; le bouton de départ le lance (son libellé reprend le nom du questionnaire).</li>
+          <li data-cursor="#r8-rep" data-action="tap" data-duration="3400">Une question par écran, quatre réponses a, b, c, d : un toucher choisit et passe à la suivante.</li>
+          <li data-cursor="#r8-cls" data-action="tap" data-duration="3600">« Question finale » : classer les quatre Maisons de la plus désirée à la moins désirée, avec les flèches ▲ ▼, puis envoyer.</li>
+          <li data-cursor="#r8-sceau" data-duration="3400">« Sceau apposé » : les réponses sont parties, la Maison sera révélée lors de la prochaine cérémonie (« En attente de la cérémonie »).</li>
+          <li data-cursor="#r8-maison" data-duration="3800">Une fois la répartition confirmée : sa Maison, ses points, son rang, l'écart avec les trois autres et ses camarades, avec « Mise à jour en direct ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'onglet Maison n'existe que si la classe a le module activé. Le test ne se passe qu'une fois (« Tu as déjà passé le test. »).</li>
+            <li>La Maison de l'élève se recharge à chaque révélation de bonus cachés, et toutes les 15 secondes par sécurité.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/maison.html#questionnaire">Le questionnaire, côté élève</a> · <a href="../eleve/maison.html#ma-maison">Sa Maison</a></p>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el-ak">
+              <div class="tel__statut"><span>10:24</span><span>4G</span></div>
+              <div class="el-c repli" data-at="1">
+                <div class="el-parch" style="margin-top:40px"><b>Approche, jeune apprenti·e…</b>Ni bonnes ni mauvaises réponses — seulement les tiennes.</div>
+                <div class="el-btn" id="r8-go" data-on="1" style="margin-top:20px">▶</div>
+                <div class="el-meta">6 questions · 1 classement · ~5 min</div>
+              </div>
+              <div class="el-c repli" data-at="2" style="align-items:stretch;text-align:left">
+                <div class="el-prog"><i class="ok"></i><i class="ok"></i><i></i><i></i><i></i><i></i></div>
+                <div class="el-meta">Question 2 sur 6</div>
+                <div class="el-q">Ton moment préféré en classe est…</div>
+                <div class="el-r"><b>a</b>Quand on débat</div>
+                <div class="el-r is-on" id="r8-rep"><b>b</b>Quand on fait une expérience</div>
+                <div class="el-r"><b>c</b>Quand on aide un camarade</div>
+                <div class="el-r"><b>d</b>Quand on relève un défi</div>
+                <div class="el-meta" style="margin-top:8px">← Retour</div>
+              </div>
+              <div class="el-c repli" data-at="3" style="align-items:stretch">
+                <div class="el-meta">Question finale</div>
+                <div class="el-q" style="text-align:center">Classe les quatre Maisons selon ton inclination.</div>
+                <div class="el-meta">De la plus désirée (en haut) à la moins désirée.</div>
+                <div class="el-cls"><span class="rom">I</span><span class="ecu ecu-c ecu--p">C</span>Maison C<span class="fl">▲ ▼</span></div>
+                <div class="el-cls" id="r8-cls"><span class="rom">II</span><span class="ecu ecu-a ecu--p">A</span>Maison A<span class="fl">▲ ▼</span></div>
+                <div class="el-cls"><span class="rom">III</span><span class="ecu ecu-d ecu--p">D</span>Maison D<span class="fl">▲ ▼</span></div>
+                <div class="el-cls"><span class="rom">IV</span><span class="ecu ecu-b ecu--p">B</span>Maison B<span class="fl">▲ ▼</span></div>
+                <div class="el-btn" style="margin-top:10px">▶</div>
+              </div>
+              <div class="el-c repli" data-at="4">
+                <div class="el-sceau" id="r8-sceau">M</div>
+                <div style="font-size:22px;font-style:italic">Sceau apposé</div>
+                <div style="font-size:14px;font-style:italic;color:#c9b996;line-height:1.5">Tes réponses sont parvenues. Ta Maison te sera révélée lors de la prochaine cérémonie, par la voix de ta professeur·e.</div>
+                <div class="el-meta" style="border:1px solid #3a2e22;border-radius:999px;padding:4px 12px">En attente de la cérémonie</div>
+              </div>
+              <div class="el-c repli hc" data-at="5" id="r8-maison" style="gap:7px">
+                <div class="el-meta" style="font-style:italic">Ta Maison est la</div>
+                <span class="ecu ecu-c ecu--g">C</span>
+                <div style="font-size:30px;font-style:italic;color:#e6be6a">Maison C</div>
+                <div style="font-size:12.5px;font-style:italic">« L'esprit qui s'envole »</div>
+                <div class="el-carte"><div class="el-meta">Points de ta Maison</div><b>287</b><div class="el-meta">IIe rang sur IV</div></div>
+                <div class="el-carte" style="padding:6px 10px">
+                  <div class="el-mini"><span class="ecu ecu-a ecu--p">A</span>Maison A<span style="color:#f87171">+25 · Ier</span></div>
+                  <div class="el-mini"><span class="ecu ecu-d ecu--p">D</span>Maison D<span style="color:#8fd6a8">−33 · IIIe</span></div>
+                  <div class="el-mini"><span class="ecu ecu-b ecu--p">B</span>Maison B<span style="color:#8fd6a8">−57 · IVe</span></div>
+                </div>
+                <span class="el-live">Mise à jour en direct</span>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="academie.html">Académie : Maisons et points</a> · <a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

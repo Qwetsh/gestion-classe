@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cahier de texte en lecture seule — Guide Gestion Classe</title>
+<meta name="description" content="Le lien lecture seule d'un document à coller dans le cahier de texte, la vue A4 et l'impression, le classeur de la classe ouvert par le lien Pronote.">
+<meta name="guide-partie" content="public">
+<meta name="guide-ordre" content="20">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+  /* ---------- éditeur de cours */
+  .ed { height: 100%; display: flex; flex-direction: column; background: #E9EAEE; position: relative; }
+  .ed-titre { height: 46px; flex: none; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: #fff; border-bottom: 1px solid var(--border); }
+  .ed-logo { width: 24px; height: 24px; border-radius: 6px; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 700; display: grid; place-items: center; }
+  .ed-nom { font-size: 14px; font-weight: 600; }
+  .ed-saved { font-size: 12px; color: var(--text-dim); }
+  .ed-onglets { flex: none; display: flex; gap: 2px; padding: 4px 10px 0; background: #fff; }
+  .ed-onglet { padding: 6px 12px; font-size: 12.5px; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all .25s; }
+  .ed-onglet.is-on { color: var(--indigo); border-bottom-color: var(--indigo); font-weight: 600; }
+  .ed-ruban { flex: none; height: 80px; display: flex; padding: 8px 6px 6px; background: #fff; border-bottom: 1px solid var(--border); }
+  .ed-groupe { display: flex; flex-direction: column; padding: 0 10px; border-right: 1px solid var(--surface-3); }
+  .ed-groupe__b { display: flex; gap: 4px; flex: 1; }
+  .ed-groupe__n { font-size: 10.5px; color: var(--text-dim); text-align: center; }
+  .ed-gros { width: 74px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 2px; border-radius: 6px; font-size: 11px; text-align: center; line-height: 1.15; color: var(--text); transition: all .25s; }
+  .ed-gros i { width: 24px; height: 22px; border-radius: 5px; border: 1.8px solid var(--text-muted); display: block; }
+  .ed-gros.is-on { background: var(--indigo-soft); color: var(--indigo); }
+  .ed-bureau { flex: 1; min-height: 0; overflow: hidden; display: flex; justify-content: center; padding-top: 18px; }
+  .ed-feuille { width: 430px; height: 560px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 34px 40px; }
+  /* ---------- contenu d'un document */
+  .doc-h { font-size: 15px; font-weight: 700; color: #1F3A93; margin: 0 0 8px; line-height: 1.25; }
+  .doc-p { font-size: 11px; line-height: 1.5; margin: 0 0 8px; color: #1F2433; }
+  .doc-encadre { border-left: 4px solid #2563EB; background: #EFF5FF; border-radius: 4px; padding: 7px 10px; margin: 0 0 10px; font-size: 11px; line-height: 1.45; }
+  .doc-encadre b { color: #1D4ED8; }
+  .doc-fig { border: 1px solid #E5E7EB; border-radius: 4px; overflow: hidden; margin: 0 0 6px; }
+  .doc-fig svg { display: block; width: 100%; height: auto; }
+  .doc-leg { font-size: 10px; color: #6B7280; margin: 0 0 10px; font-style: italic; }
+  .doc-ligne { height: 7px; border-radius: 3px; background: #E5E7EB; margin: 0 0 7px; }
+  .doc-pointilles { border-bottom: 1.5px dotted #9CA3AF; height: 16px; }
+  .doc-rep { color: #1F3A93; font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive; font-size: 11px; }
+  /* ---------- fenêtre « Partager en lecture seule » */
+  .ls-modale { width: 470px; font-size: 13px; }
+  .ls-indice { color: var(--text-muted); font-size: 12.5px; margin: 0 0 10px; line-height: 1.45; }
+  .ls-alerte { color: #9A4A07; background: #FDF1E3; border-radius: 6px; padding: 7px 9px; font-size: 12.5px; margin: 0 0 10px; }
+  .ls-lien { display: flex; gap: 8px; margin-bottom: 12px; }
+  .ls-lien .champ { flex: 1; font-size: 12px; overflow: hidden; white-space: nowrap; }
+  .ls-pied { display: flex; align-items: center; gap: 8px; }
+  .ls-ok { color: var(--pos); font-size: 12.5px; margin: 10px 0 0; }
+  .ls-confirme { font-size: 12.5px; color: var(--neg); flex: 1; }
+  /* ---------- page publique /d/ (ordinateur) */
+  .md { height: 100%; display: flex; flex-direction: column; background: #fff; color: #111827; position: relative; }
+  .md-bar { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 16px; border-bottom: 1px solid #E5E7EB; background: rgba(255,255,255,.96); }
+  .md-titre { flex: 1; min-width: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .md-seg { display: inline-flex; padding: 2px; border-radius: 8px; background: #F3F4F6; }
+  .md-seg span { height: 30px; padding: 0 10px; border-radius: 6px; font-size: 12px; font-weight: 600; line-height: 30px; color: #374151; transition: all .25s; }
+  .md-seg span.is-on { background: #fff; color: #111827; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+  .md-print { height: 34px; padding: 0 12px; border-radius: 8px; background: #4F46E5; color: #fff; font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; transition: all .25s; }
+  .md-print.is-on { opacity: .65; }
+  .ico-imp { width: 13px; height: 10px; border: 1.6px solid currentColor; border-radius: 2px; position: relative; display: inline-block; }
+  .ico-imp::before { content: ''; position: absolute; left: 2px; right: 2px; top: -5px; height: 4px; border: 1.6px solid currentColor; border-bottom: 0; }
+  .md-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 18px; background: #ECFDF5; color: #047857; }
+  .md-corps { flex: 1; min-height: 0; overflow: hidden; position: relative; }
+  .md-a4 { position: absolute; inset: 0; background: #E7E9EE; display: flex; justify-content: center; padding-top: 16px; }
+  .md-a4 .ed-feuille { width: 400px; height: 566px; padding: 30px 36px; }
+  .md-col { position: absolute; inset: 0; background: #fff; display: flex; justify-content: center; }
+  .md-col > div { width: 560px; padding: 18px 16px; }
+  .md-col .doc-h { font-size: 20px; }
+  .md-col .doc-p, .md-col .doc-encadre { font-size: 13.5px; }
+  .md-msg { text-align: center; color: #374151; font-size: 15px; padding-top: 160px; }
+  .md-msg b { display: block; font-size: 17px; color: #111827; margin-bottom: 6px; }
+  .imp-nav { position: absolute; z-index: 630; inset: 0; background: rgba(32,33,36,.55); display: flex; justify-content: center; align-items: flex-start; padding-top: 30px; }
+  .imp-nav__boite { width: 640px; height: 420px; background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); display: flex; overflow: hidden; }
+  .imp-nav__apercu { flex: 1; background: #F1F3F4; display: flex; justify-content: center; align-items: center; }
+  .imp-nav__apercu div { width: 180px; height: 254px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); padding: 14px; }
+  .imp-nav__reglages { width: 260px; padding: 16px; font-size: 12.5px; display: flex; flex-direction: column; gap: 10px; }
+  .imp-nav__reglages b { font-size: 16px; font-weight: 600; }
+  .imp-nav__ligne { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #3C4043; }
+  .imp-nav__ligne .champ { height: 28px; font-size: 12px; }
+  /* ---------- Mes cours (bibliothèque) */
+  .vues { display: flex; gap: 6px; margin-bottom: 14px; }
+  .vue { padding: 5px 12px; border-radius: 999px; font-size: 12.5px; color: var(--text-muted); border: 1px solid var(--border); background: #fff; }
+  .vue--on { background: var(--text); color: #fff; border-color: var(--text); }
+  .biblio__niv { font-size: 12px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; margin: 0 0 6px; }
+  .biblio__seq { font-size: 13.5px; font-weight: 600; margin: 0 0 6px; }
+  .biblio__it { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; font-size: 13px; margin-bottom: 6px; transition: all .25s; }
+  .biblio__it i { width: 18px; height: 22px; border: 1.6px solid var(--text-dim); border-radius: 3px; flex: none; }
+  .biblio__it.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+  .menu__sep { height: 1px; background: var(--border); margin: 4px 0; }
+  .navig { position: absolute; z-index: 660; right: 26px; bottom: 22px; width: 380px; height: 220px; border-radius: 10px; overflow: hidden; background: #fff; box-shadow: 0 18px 50px rgba(0,0,0,.3); border: 1px solid var(--border); display: flex; flex-direction: column; }
+  .navig .fenetre__barre { height: 28px; }
+  /* ---------- classeur (enseignant et élève) */
+  .bd { height: 100%; display: flex; flex-direction: column; background: #DCDCE0; position: relative; }
+  .bd-bar { flex: none; height: 50px; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: #fff; border-bottom: 1px solid #E6E6E9; }
+  .bd-btn { height: 34px; min-width: 34px; padding: 0 10px; border: 1px solid #D4D4D8; border-radius: 8px; background: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 12.5px; color: var(--text); white-space: nowrap; transition: all .25s; }
+  .bd-btn.is-on, .bd-btn--on { background: #EEF0FF; color: #4338CA; border-color: #C7D2FE; }
+  .bd-titre { font-size: 14.5px; font-weight: 650; display: flex; align-items: center; gap: 7px; }
+  .ico-livre { width: 16px; height: 13px; border: 1.8px solid currentColor; border-radius: 2px; position: relative; display: inline-block; }
+  .ico-livre::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1.5px solid currentColor; }
+  .ico-liste { width: 15px; height: 11px; border-top: 2px solid currentColor; border-bottom: 2px solid currentColor; position: relative; display: inline-block; }
+  .ico-liste::after { content: ''; position: absolute; left: 0; right: 0; top: 2.5px; border-top: 2px solid currentColor; }
+  .bd-select { height: 34px; padding: 0 26px 0 10px; border: 1px solid #D4D4D8; border-radius: 8px; background: #fff; font-size: 12.5px; display: inline-flex; align-items: center; position: relative; transition: all .25s; }
+  .bd-select::after { content: ''; position: absolute; right: 10px; top: 13px; border: 4px solid transparent; border-top-color: var(--text-muted); }
+  .bd-select.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+  .bd-niv { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: #F0F0F2; }
+  .bd-bureau { flex: 1; min-height: 0; overflow: hidden; display: flex; justify-content: center; align-items: flex-start; padding-top: 18px; position: relative; }
+  .seyes { position: relative; background-color: #FDFDFB; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+    background-image:
+      linear-gradient(90deg, transparent 46px, #E06A6A 46px, #E06A6A 48px, transparent 48px),
+      repeating-linear-gradient(180deg, transparent 0 23px, #9DAEE6 23px 24px),
+      repeating-linear-gradient(180deg, transparent 0 5px, #E0E6F8 5px 6px),
+      repeating-linear-gradient(90deg, transparent 0 23px, #D5DCF5 23px 24px); }
+  .seyes__trou { position: absolute; left: 14px; width: 12px; height: 12px; border-radius: 50%; background: #DCDCE0; box-shadow: inset 0 1px 2px rgba(0,0,0,.25); }
+  .main { font-family: 'Segoe Script', 'Bradley Hand', 'Comic Sans MS', cursive; }
+  .seyes__titre { position: absolute; left: 70px; color: #1F3A93; text-decoration: underline; text-decoration-color: #C8102E; text-decoration-thickness: 2px; }
+  .collee { position: absolute; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.18); padding: 10px 12px; }
+  .collee .doc-h { font-size: 10px; margin-bottom: 4px; }
+  .collee .doc-p, .collee .doc-encadre { font-size: 7px; padding: 4px 6px; margin-bottom: 4px; }
+  .collee .doc-ligne { height: 4px; margin-bottom: 4px; }
+  .collee .doc-pointilles { height: 10px; position: relative; }
+  .collee .doc-rep { position: absolute; left: 4px; bottom: 1px; font-size: 7.5px; }
+  .onglet-cor { position: absolute; right: -2px; top: -22px; height: 22px; padding: 0 9px; border-radius: 6px 6px 0 0; background: #EEF0FF; color: #4338CA; font-size: 10.5px; font-weight: 600; line-height: 22px; border: 1px solid #C7D2FE; border-bottom: 0; transition: all .25s; }
+  .onglet-cor.is-on { background: #4F46E5; color: #fff; }
+  .bilan { position: absolute; left: 60px; right: 18px; color: #C00000; font-size: 12px; line-height: 24px; }
+  .bilan u { text-decoration-color: #C00000; }
+  .bd-pied { flex: none; height: 62px; display: flex; align-items: center; justify-content: space-between; padding: 0 14px; background: #fff; border-top: 1px solid #E6E6E9; }
+  .bd-pied__b { width: 50px; height: 44px; border-radius: 10px; border: 1px solid #D4D4D8; background: #fff; display: grid; place-items: center; font-size: 20px; color: var(--text); transition: all .25s; }
+  .bd-pied__b--suiv { background: #4F46E5; border-color: #4F46E5; color: #fff; }
+  .bd-pied__b.is-on { transform: scale(.94); }
+  .bd-pied__n { font-size: 13.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .bd-panel { position: absolute; z-index: 640; right: 12px; top: 52px; width: 330px; background: #fff; border: 1px solid #E6E6E9; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 12px 14px; font-size: 12.5px; }
+  .bd-panel__t { font-size: 13px; font-weight: 650; margin: 0 0 6px; }
+  .bd-panel__t--suite { margin-top: 12px; padding-top: 10px; border-top: 1px solid #F0F0F2; }
+  .bd-panel__x { color: var(--text-muted); margin: 0 0 8px; line-height: 1.4; }
+  .bd-panel__ligne { display: flex; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+  .bd-panel .champ { font-size: 11.5px; margin-bottom: 8px; overflow: hidden; white-space: nowrap; }
+  .bd-sommaire { position: absolute; z-index: 30; left: 0; top: 0; bottom: 0; width: 260px; background: #fff; border-right: 1px solid #E6E6E9; padding: 14px; font-size: 13px; box-shadow: 6px 0 20px rgba(0,0,0,.08); }
+  .bd-sommaire__t { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 650; margin: 10px 0 4px; }
+  .bd-sommaire__it { padding: 7px 8px; border-radius: 6px; transition: all .25s; }
+  .bd-sommaire__it.is-on { background: #EEF0FF; color: #4338CA; }
+  .inter { position: absolute; right: -16px; width: 16px; height: 70px; border-radius: 0 6px 6px 0; }
+  /* un libellé remplacé par un autre ne garde pas sa place */
+  .ecran span.is-hidden { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="volcan">
+      <rect width="240" height="130" fill="#DBEAFE"/>
+      <circle cx="132" cy="22" r="13" fill="#9CA3AF"/><circle cx="148" cy="16" r="11" fill="#9CA3AF"/><circle cx="118" cy="14" r="9" fill="#A1A1AA"/>
+      <rect y="96" width="240" height="34" fill="#A8A29E"/>
+      <polygon points="40,100 112,34 128,34 200,100" fill="#92400E"/>
+      <path d="M112 34 C108 50 96 62 84 84 L90 86 C102 66 114 52 116 36Z" fill="#F97316"/>
+      <rect x="117" y="34" width="6" height="74" fill="#DC2626"/>
+      <ellipse cx="120" cy="114" rx="34" ry="11" fill="#DC2626"/>
+    </g>
+  </defs>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Pages sans compte</a> › Cahier de texte en lecture seule</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#ls-creer">Créer le lien lecture seule</a></li>
+      <li><a href="#ls-ouvrir">Ce que voit qui a le lien</a></li>
+      <li><a href="#ls-couper">Couper le lien</a></li>
+      <li><a href="#cl-lien">Le lien Pronote du classeur</a></li>
+      <li><a href="#cl-feuilleter">Feuilleter le classeur par le lien</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../public/documents-par-qr-code.html">◀ Documents par QR code</a><a href="../public/pages-pour-les-eleves.html">Pages pour les élèves ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Pages sans compte · Liens</div>
+      <h1>Cahier de texte en lecture seule</h1>
+      <p>Deux sortes de liens à coller dans Pronote ou l'ENT : celui d'un document, que les élèves et les familles lisent, impriment ou enregistrent en PDF ; celui du classeur de la classe, qui montre tout ce que l'enseignant y a ouvert. Personne n'a besoin de compte, et personne ne peut rien modifier.</p>
+      <div class="chap__resume"><span>Éditeur de cours › Fichier › Lien lecture seule</span><span>Mes cours › Classeur › Accès des élèves</span><span>Ordinateur</span><span>Sans compte</span></div>
+    </header>
+
+    <!-- ============================================================ fiche : créer le lien -->
+    <section class="fiche" id="ls-creer">
+      <div class="fiche__texte">
+        <h2>Créer le lien lecture seule d'un document</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Éditeur de cours › Fichier › Partager › Lien lecture seule</span></p>
+        <p class="fiche__but">Le lien d'un document à coller dans le cahier de texte : celui qui l'ouvre lit la fiche, l'imprime ou l'enregistre en PDF, sans compte.</p>
+        <ol class="etapes">
+          <li data-cursor="#lr-fichier" data-action="click">Ouvrir le document dans l'éditeur de cours, onglet <b>Fichier</b>.</li>
+          <li data-cursor="#lr-lien" data-action="click" data-duration="3400">Dans le groupe <b>Partager</b>, cliquer <span class="btn-nom">Lien lecture seule</span>. La fenêtre « Partager en lecture seule » explique ce que verront les élèves.</li>
+          <li data-cursor="#lr-creer" data-action="click">Cliquer <span class="btn-nom">Créer et copier le lien</span>.</li>
+          <li data-cursor="#lr-champ" data-duration="3600">L'adresse s'affiche et part dans le presse-papiers : « Lien copié : collez-le dans le cahier de texte. » Il reste à la coller dans Pronote ou l'ENT.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Plus rapide : dans <b>Mes cours</b>, clic droit sur le document, <span class="btn-nom">Copier le lien lecture seule</span>. Le lien est créé s'il n'existe pas.</li>
+            <li>Un document a un seul lien. Il montre toujours la dernière version : une retouche se voit à la prochaine ouverture.</li>
+            <li>Une copie posée sur l'emploi du temps partage son original de la bibliothèque (la fenêtre le dit).</li>
+            <li>Une évaluation (sujet, documents ou corrigé), une copie modèle ou un devoir noté ne se partagent pas : la fenêtre le refuse, et le menu affiche « Lien lecture seule (pas pour une évaluation) » grisé.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="ed">
+                <div class="ed-titre">
+                  <span class="ed-logo">GC</span>
+                  <span class="ed-nom">Activité 4 — Les éruptions volcaniques</span>
+                  <span class="ed-saved">Enregistré</span>
+                  <span class="esp"></span>
+                  <span class="b b--petit">Fermer</span>
+                </div>
+                <div class="ed-onglets">
+                  <span class="ed-onglet" id="lr-fichier" data-on="1-4">Fichier</span>
+                  <span class="ed-onglet">Accueil</span>
+                  <span class="ed-onglet">Insertion</span>
+                  <span class="ed-onglet">Mise en page</span>
+                  <span class="ed-onglet">Révision</span>
+                  <span class="ed-onglet">Affichage</span>
+                </div>
+                <div class="ed-ruban">
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Imprimer</span><span class="ed-gros"><i></i>Exporter en PDF</span></div><div class="ed-groupe__n">Imprimer</div></div>
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros" id="lr-lien" data-on="2-4"><i></i>Lien lecture seule</span></div><div class="ed-groupe__n">Partager</div></div>
+                  <div class="ed-groupe"><div class="ed-groupe__b"><span class="ed-gros"><i></i>Word ou PDF…</span></div><div class="ed-groupe__n">Importer</div></div>
+                </div>
+                <div class="ed-bureau">
+                  <div class="ed-feuille">
+                    <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                    <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                    <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                    <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                    <div class="doc-ligne" style="width:94%"></div><div class="doc-ligne" style="width:80%"></div>
+                  </div>
+                </div>
+                <div class="modale-fond" data-from="2">
+                  <div class="modale ls-modale">
+                    <div class="modale__t">Partager en lecture seule</div>
+                    <p class="ls-indice">Les élèves ouvrent ce lien sans compte : ils lisent le document sur leur téléphone ou en pages A4, et peuvent l'imprimer ou l'enregistrer en PDF. Ils ne peuvent rien modifier. Le lien montre toujours la dernière version du document.</p>
+                    <div class="ls-pied repli" data-to="3"><span class="esp"></span><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="lr-creer" data-on="3">Créer et copier le lien</span></div>
+                    <div class="repli" data-from="4">
+                      <div class="ls-lien"><span class="champ" id="lr-champ">https://qwetsh.github.io/gestion-classe/d/aB3dE5fG7hJ9kL1mN2pQ</span><span class="b b--petit">Copié</span></div>
+                      <div class="ls-pied"><span class="b b--fantome b--petit">Couper le lien</span><span class="b b--fantome b--petit">Ouvrir</span><span class="esp"></span><span class="b b--fantome b--petit">Fermer</span></div>
+                      <p class="ls-ok">Lien copié : collez-le dans le cahier de texte.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : ouvrir le lien -->
+    <section class="fiche" id="ls-ouvrir">
+      <div class="fiche__texte">
+        <h2>Ce que voit celui qui ouvre le lien</h2>
+        <p class="fiche__ou"><span class="qui qui--public">Sans compte</span><span class="qui qui--eleve">Élève ou famille</span><span class="chemin">Cahier de texte › lien</span></p>
+        <p class="fiche__but">Le document s'ouvre tel qu'il a été distribué, avec ses zones d'écriture vides. On peut le relire, l'imprimer ou l'enregistrer en PDF, depuis un ordinateur, une tablette ou un téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#lo-msg">Cliquer le lien dans le cahier de texte : « Ouverture du document… ».</li>
+          <li data-cursor="#lo-tag" data-duration="3400">Sur un ordinateur ou une tablette, la page s'ouvre en <b>Pages A4</b>, avec l'étiquette verte <b>Lecture seule</b>. Sur un téléphone, elle s'ouvre en vue <b>Téléphone</b>.</li>
+          <li data-cursor="#lo-tel" data-action="click"><span class="btn-nom">Téléphone</span> met le document sur une colonne, plus facile à lire sur un petit écran.</li>
+          <li data-cursor="#lo-print" data-action="click"><span class="btn-nom">Imprimer / PDF</span> repasse sur les feuilles A4 et attend que les images soient prêtes (« Préparation… »).</li>
+          <li data-cursor="#lo-pdf" data-duration="3600">La fenêtre d'impression du navigateur s'ouvre : imprimer, ou choisir « Enregistrer au format PDF ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Ce que voit qui a le lien</b> : ce document seul, en lecture. Aucun nom d'élève, aucune note, aucun autre document, aucun accès à l'espace de l'enseignant.</li>
+            <li><b>Une correction d'activité peut passer par ce lien</b> si l'enseignant le décide (la fenêtre avertit : « C'est une correction : ne collez le lien que lorsque vous voulez la donner aux élèves. »).</li>
+            <li><b>Jamais</b> une évaluation, même son corrigé, ni une copie modèle, ni un devoir noté. Le titre est relu à chaque ouverture : un document renommé après coup en évaluation n'est plus servi.</li>
+            <li>Les écrans projetés, les liens vers des sites, les annotations et les encarts de tableau blanc ne sortent pas. Jamais de version sur mesure par ce lien.</li>
+            <li>L'impression porte toujours sur les feuilles A4, quelle que soit la vue affichée.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/d/aB3dE5fG7hJ9kL1mN2pQ</div></div>
+              <div class="md">
+                <div class="md-bar" data-from="2">
+                  <div class="md-titre">Activité 4 — Les éruptions volcaniques</div>
+                  <div class="md-seg"><span id="lo-tel" data-on="3">Téléphone</span><span data-on="2,4-5">Pages A4</span></div>
+                  <span class="md-print" id="lo-print" data-on="4-5"><i class="ico-imp"></i><span data-to="3">Imprimer / PDF</span><span data-from="4">Préparation…</span></span>
+                  <span class="md-tag" id="lo-tag">Lecture seule</span>
+                </div>
+                <div class="md-corps">
+                  <p class="md-msg" id="lo-msg" data-at="1">Ouverture du document…</p>
+                  <div class="md-a4" data-at="2,4-5">
+                    <div class="ed-feuille">
+                      <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                      <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                      <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                      <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                      <p class="doc-p">1. Nomme les trois parties du volcan visibles sur le document 1.</p>
+                      <div class="doc-pointilles"></div><div class="doc-pointilles"></div>
+                      <p class="doc-p" style="margin-top:8px">2. Explique pourquoi le magma remonte vers la surface.</p>
+                      <div class="doc-pointilles"></div><div class="doc-pointilles"></div>
+                    </div>
+                  </div>
+                  <div class="md-col" data-at="3">
+                    <div>
+                      <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                      <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma de la profondeur jusqu'à la surface.</div>
+                      <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                      <p class="doc-leg">Document 1 — Coupe simplifiée d'un volcan.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="imp-nav" data-at="5">
+                  <div class="imp-nav__boite">
+                    <div class="imp-nav__apercu"><div>
+                      <p class="doc-h" style="font-size:8px">Activité 4 — Les éruptions volcaniques</p>
+                      <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                      <div class="doc-ligne" style="height:4px"></div><div class="doc-ligne" style="height:4px;width:70%"></div>
+                    </div></div>
+                    <div class="imp-nav__reglages">
+                      <b>Imprimer</b>
+                      <div class="imp-nav__ligne">Destination <span class="champ is-on" id="lo-pdf">Enregistrer au format PDF</span></div>
+                      <div class="imp-nav__ligne">Pages <span class="champ">Toutes</span></div>
+                      <div class="imp-nav__ligne">Mise en page <span class="champ">Portrait</span></div>
+                      <span class="esp"></span>
+                      <div class="imp-nav__ligne"><span class="esp"></span><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit">Enregistrer</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="bulle bulle--droite" data-at="2" style="left:80px;top:400px;width:190px">Les pointillés restent : la fiche s'imprime telle qu'elle a été distribuée</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : couper le lien -->
+    <section class="fiche" id="ls-couper">
+      <div class="fiche__texte">
+        <h2>Couper le lien</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › clic droit › Gérer le lien lecture seule…</span></p>
+        <p class="fiche__but">Un lien collé par erreur, une correction donnée trop tôt : couper le lien rend l'adresse inutilisable partout où elle a été collée.</p>
+        <ol class="etapes">
+          <li data-cursor="#lc-gerer" data-action="click" data-duration="3200">Dans <b>Mes cours</b>, clic droit sur le document, puis <span class="btn-nom">Gérer le lien lecture seule…</span> (ou <span class="btn-nom">Lien lecture seule</span> dans l'éditeur).</li>
+          <li data-cursor="#lc-couper" data-action="click" data-duration="3200">La fenêtre montre l'adresse. Pour une correction, elle rappelle de ne coller le lien qu'au bon moment. Cliquer <span class="btn-nom">Couper le lien</span>.</li>
+          <li data-cursor="#lc-couper2" data-action="click" data-duration="3200">Confirmer : « L'adresse déjà collée ne mènera plus à rien. » <span class="btn-nom">Garder</span> annule.</li>
+          <li data-cursor="#lc-recreer" data-duration="3200">Le document n'a plus de lien. <span class="btn-nom">Créer et copier le lien</span> en fabriquerait un nouveau, avec une autre adresse.</li>
+          <li data-cursor="#lc-mort" data-duration="3600">Qui ouvre l'ancienne adresse lit : « Ce lien ne fonctionne plus. Demande la fiche à ton professeur. »</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Couper le lien ne touche pas le QR code des feuilles imprimées : ce sont deux liens différents.</li>
+            <li>Une adresse coupée ne revient pas : il faut coller la nouvelle là où l'ancienne était.</li>
+            <li>Supprimer le document coupe aussi son lien.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app" style="position:relative">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it"><span class="ico"></span>Accueil</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it side__sous is-actif">Bibliothèque et classes</div>
+                  <div class="side__it side__sous">Mes TP</div>
+                  <div class="side__it side__sous">Annales</div>
+                  <div class="side__it"><span class="ico"></span>Classes</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit">Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit">+ Nouveau</span></div>
+                  <div class="app__corps">
+                    <div class="vues"><span class="vue vue--on">Bibliothèque</span><span class="vue">Fiches méthode</span><span class="vue">Par classe</span><span class="vue">Classeur des classes</span></div>
+                    <p class="biblio__niv">4e</p>
+                    <p class="biblio__seq">Séquence 2 — La Terre, une planète active</p>
+                    <div class="biblio__it" style="width:520px"><i></i>Activité 3 — Les séismes</div>
+                    <div class="biblio__it" style="width:520px"><i></i>Activité 4 — Les éruptions volcaniques</div>
+                    <div class="biblio__it" style="width:520px" data-on="1"><i></i>Activité 4 — Les éruptions volcaniques (correction)</div>
+                    <div class="biblio__it" style="width:520px"><i></i>Évaluation 2 — La Terre, une planète active</div>
+                  </div>
+                </div>
+                <div class="menu" data-at="1" style="left:520px;top:236px;width:250px">
+                  <div class="menu__it">Ouvrir</div>
+                  <div class="menu__it">Essayer en classe</div>
+                  <div class="menu__sep"></div>
+                  <div class="menu__it">Copier le lien lecture seule</div>
+                  <div class="menu__it" id="lc-gerer" data-on="1">Gérer le lien lecture seule…</div>
+                </div>
+                <div class="modale-fond" data-from="2">
+                  <div class="modale ls-modale">
+                    <div class="modale__t">Partager en lecture seule</div>
+                    <p class="ls-indice">Les élèves ouvrent ce lien sans compte : ils lisent le document sur leur téléphone ou en pages A4, et peuvent l'imprimer ou l'enregistrer en PDF. Ils ne peuvent rien modifier. Le lien montre toujours la dernière version du document.</p>
+                    <p class="ls-alerte">C'est une correction : ne collez le lien que lorsque vous voulez la donner aux élèves.</p>
+                    <div class="repli" data-to="3">
+                      <div class="ls-lien"><span class="champ">https://qwetsh.github.io/gestion-classe/d/Zt8kW2nR5vQ1xC7mL4bP</span><span class="b b--petit">Copier</span></div>
+                      <div class="ls-pied repli" data-at="2"><span class="b b--fantome b--petit" id="lc-couper" data-on="2">Couper le lien</span><span class="b b--fantome b--petit">Ouvrir</span><span class="esp"></span><span class="b b--fantome b--petit">Fermer</span></div>
+                      <div class="ls-pied repli" data-at="3"><span class="ls-confirme">L'adresse déjà collée ne mènera plus à rien.</span><span class="b b--fantome b--petit">Garder</span><span class="b b--danger b--petit" id="lc-couper2" data-on="3">Couper le lien</span></div>
+                    </div>
+                    <div class="ls-pied repli" data-from="4"><span class="esp"></span><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="lc-recreer">Créer et copier le lien</span></div>
+                  </div>
+                </div>
+                <div class="navig glisse-haut" data-at="5">
+                  <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/d/Zt8kW2nR5vQ1xC7mL4bP</div></div>
+                  <div class="md-msg" id="lc-mort" style="padding-top:44px;font-size:13px"><b>Ce lien ne fonctionne plus.</b>Demande la fiche à ton professeur.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : lien Pronote du classeur -->
+    <section class="fiche" id="cl-lien">
+      <div class="fiche__texte">
+        <h2>Le lien Pronote du classeur de la classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Classeur › Réglage d'une classe › Accès des élèves</span></p>
+        <p class="fiche__but">Le classeur virtuel rassemble les fiches d'un niveau comme un vrai classeur. Un lien par classe, posé dans Pronote, permet aux élèves de le feuilleter sans code, avec seulement ce que l'enseignant leur a ouvert.</p>
+        <ol class="etapes">
+          <li data-cursor="#cl-select" data-action="click">Dans le classeur, choisir la classe dans la liste : <b>Réglage : 4B</b>. Les pages fermées pour cette classe sont voilées.</li>
+          <li data-cursor="#cl-acces" data-action="click" data-duration="3200">Cliquer <span class="btn-nom">Accès des élèves</span>. Le panneau <b>Lien pour Pronote</b> rappelle qu'on ne voit que ce qui est ouvert à la 4B.</li>
+          <li data-cursor="#cl-creer" data-action="click">Cliquer <span class="btn-nom">Créer le lien</span>. Le bouton du haut devient <b>Lien actif</b>.</li>
+          <li data-cursor="#cl-copier" data-action="click" data-duration="3200"><span class="btn-nom">Copier le lien</span>, puis le poser dans Pronote. <span class="btn-nom">Voir comme la 4B</span> ouvre le classeur tel que la classe le verra.</li>
+          <li data-cursor="#cl-remplacer2" data-action="click" data-duration="3800"><span class="btn-nom">Couper le lien</span> le met en pause (il pourra être réactivé). <span class="btn-nom">Remplacer par un nouveau lien</span> tue l'ancienne adresse partout, après confirmation.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Ce que voit qui a le lien</b> : les pages ouvertes à cette classe, rien d'autre. Tout est fermé au départ. Aucune donnée personnelle, aucun lien vers l'espace de l'enseignant.</li>
+            <li>Les corrections (copie modèle, bilan) n'apparaissent que si l'enseignant les a ouvertes à la classe ; une évaluation, seulement si elle a été ouverte elle-même. Un document renommé après coup en correction ou en évaluation se referme tout seul.</li>
+            <li><b>Couper</b> : le lien ne répond plus, et <span class="btn-nom">Réactiver le lien</span> remet la même adresse. <b>Remplacer</b> : l'ancienne adresse ne marche plus nulle part, il faut reposer la nouvelle dans Pronote.</li>
+            <li>Sous le lien, <b>Espace élève</b> ajoute ou retire l'onglet « Classeur » dans l'espace élève de la classe (code à 6 chiffres).</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classeur</div></div>
+              <div class="bd">
+                <div class="bd-bar">
+                  <span class="bd-btn">← Mes cours</span>
+                  <span class="bd-btn"><i class="ico-liste"></i></span>
+                  <span class="bd-titre"><i class="ico-livre"></i>Classeur de SVT</span>
+                  <span class="bd-niv">4e</span>
+                  <span class="bd-select" id="cl-select" data-on="1">Réglage : 4B</span>
+                  <span class="bd-btn">Aperçu élève</span>
+                  <span class="bd-btn" id="cl-acces" data-on="2"><span data-to="2">Accès des élèves</span><span data-from="3">Lien actif</span></span>
+                  <span class="esp"></span>
+                  <span class="muet">Page 5 sur 32</span>
+                </div>
+                <div class="bd-bureau">
+                  <div class="seyes" style="width:430px;height:540px">
+                    <span class="seyes__trou" style="top:80px"></span><span class="seyes__trou" style="top:260px"></span><span class="seyes__trou" style="top:440px"></span>
+                    <div class="seyes__titre main" style="top:28px;font-size:12px">Activité 4 — Les éruptions volcaniques</div>
+                    <div class="collee" style="left:70px;top:62px;width:300px;height:400px">
+                      <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                      <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma.</div>
+                      <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                      <p class="doc-p">1. Nomme les trois parties du volcan.</p>
+                      <div class="doc-pointilles"></div><div class="doc-pointilles"></div>
+                      <p class="doc-p">2. Explique pourquoi le magma remonte.</p>
+                      <div class="doc-pointilles"></div><div class="doc-pointilles"></div>
+                    </div>
+                  </div>
+                  <div class="bd-panel zoom" data-from="2">
+                    <p class="bd-panel__t">Lien pour Pronote</p>
+                    <div class="repli" data-at="2">
+                      <p class="bd-panel__x">Avec ce lien, sans compte ni code, on voit ce que vous avez ouvert à la 4B dans le classeur, et rien d'autre. Il ne montre aucune donnée personnelle.</p>
+                      <span class="b b--petit" id="cl-creer">Créer le lien</span>
+                    </div>
+                    <div class="repli" data-from="3">
+                      <p class="bd-panel__x">À poser dans Pronote. Qui a ce lien voit ce que vous avez ouvert à la 4B.</p>
+                      <div class="champ">https://qwetsh.github.io/gestion-classe/classeur/c/Hy4mQ9sT2wE6rU8iO1pA</div>
+                      <div class="bd-panel__ligne"><span class="b b--petit" id="cl-copier" data-on="4"><span data-to="3">Copier le lien</span><span data-from="4">Copié</span></span><span class="b b--fantome b--petit">Voir comme la 4B</span></div>
+                      <div class="bd-panel__ligne"><span class="b b--fantome b--petit">Couper le lien</span><span class="b b--fantome b--petit repli" data-to="4">Remplacer par un nouveau lien</span></div>
+                      <div class="repli" data-at="5">
+                        <p class="bd-panel__x">Le lien actuel cessera de marcher partout où il est posé (Pronote, messages). Il faudra y mettre le nouveau.</p>
+                        <div class="bd-panel__ligne"><span class="b b--petit" id="cl-remplacer2" data-on="5">Remplacer le lien</span><span class="b b--fantome b--petit">Annuler</span></div>
+                      </div>
+                    </div>
+                    <p class="bd-panel__t bd-panel__t--suite">Espace élève</p>
+                    <p class="bd-panel__x">Ajoute un onglet « Classeur » dans l'espace élève de la 4B (code à 6 chiffres).</p>
+                    <span class="b b--doux b--petit">Ouvrir l'onglet</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : feuilleter le classeur -->
+    <section class="fiche fiche--etroite" id="cl-feuilleter">
+      <div class="fiche__texte">
+        <h2>Feuilleter le classeur par le lien Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--public">Sans compte</span><span class="qui qui--eleve">Élève</span><span class="chemin">Pronote › lien du classeur</span></p>
+        <p class="fiche__but">L'élève retrouve son classeur de SVT comme il devrait être tenu : fiches collées sur des feuilles à grands carreaux, titres et bilans écrits à la main, corrections quand l'enseignant les a ouvertes.</p>
+        <ol class="etapes">
+          <li data-cursor="#cf-titre" data-duration="3200">Cliquer le lien dans Pronote : « Ouverture du classeur… », puis la page s'affiche. L'onglet du navigateur s'appelle « Classeur de SVT — 4B ».</li>
+          <li data-cursor="#cf-cor" data-action="tap" data-duration="3400">Sur une fiche dont la correction est ouverte, toucher <span class="btn-nom">Afficher la correction</span> : les réponses s'écrivent en bleu.</li>
+          <li data-cursor="#cf-suiv" data-action="tap">Tourner la page avec le bouton indigo du bas, ou en glissant le doigt. Sous la fiche, le bilan est écrit en rouge.</li>
+          <li data-cursor="#cf-som" data-action="tap" data-duration="3200">Le bouton <b>Sommaire</b>, en haut, liste les pages par intercalaire ; toucher une entrée y mène.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Mêmes pages et mêmes gestes que l'onglet « Classeur » de l'espace élève, sans bouton « Retour ».</li>
+            <li>Lien coupé ou remplacé : « Ce lien ne fonctionne plus. Demande le nouveau lien à ton professeur. »</li>
+            <li>Rien n'est lu dans la base par le navigateur de l'élève : le serveur revérifie le lien à chaque fois et ne rend que ce qui est ouvert.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran">
+              <div class="tel__statut"><span>18:05</span><span>4G</span></div>
+              <div class="bd" style="flex:1;min-height:0">
+                <div class="bd-bar" style="padding:0 10px">
+                  <span class="bd-btn" id="cf-som" data-on="4"><i class="ico-liste"></i></span>
+                  <span class="bd-titre" id="cf-titre"><i class="ico-livre"></i>Classeur de SVT</span>
+                  <span class="esp"></span>
+                  <span class="bd-niv">4B</span>
+                </div>
+                <div class="bd-bureau" style="padding-top:14px">
+                  <div class="seyes" style="width:320px;height:470px" data-to="2">
+                    <span class="seyes__trou" style="top:60px"></span><span class="seyes__trou" style="top:230px"></span><span class="seyes__trou" style="top:400px"></span>
+                    <div class="seyes__titre main" style="top:20px;left:56px;font-size:12px">Activité 4 — Les éruptions volcaniques</div>
+                    <div class="collee" style="left:56px;top:62px;width:250px;height:340px">
+                      <span class="onglet-cor" id="cf-cor" data-on="2"><span data-to="1">Afficher la correction</span><span data-from="2">Masquer la correction</span></span>
+                      <p class="doc-h">Activité 4 — Les éruptions volcaniques</p>
+                      <div class="doc-encadre"><b>Consigne.</b> Observe le schéma du volcan, puis décris le trajet du magma.</div>
+                      <div class="doc-fig"><svg viewBox="0 0 240 130"><use href="#volcan"/></svg></div>
+                      <p class="doc-p">1. Nomme les trois parties du volcan.</p>
+                      <div class="doc-pointilles"><span class="doc-rep" data-at="2">Chambre magmatique, cheminée, cratère.</span></div>
+                      <p class="doc-p">2. Explique pourquoi le magma remonte.</p>
+                      <div class="doc-pointilles"><span class="doc-rep" data-at="2">Il est moins dense que les roches autour.</span></div>
+                      <div class="doc-pointilles"></div>
+                    </div>
+                  </div>
+                  <div class="seyes" style="width:320px;height:470px;position:absolute;top:14px" data-from="3">
+                    <span class="seyes__trou" style="top:60px"></span><span class="seyes__trou" style="top:230px"></span><span class="seyes__trou" style="top:400px"></span>
+                    <div class="bilan main" style="top:44px"><u>Bilan :</u> le magma se forme en profondeur ; moins dense que les roches, il remonte, s'accumule dans la chambre magmatique, puis sort par la cheminée lors d'une éruption.</div>
+                    <div class="seyes__titre main" style="top:212px;left:56px;font-size:12px">Activité 5 — Volcans et risques</div>
+                    <div class="collee" style="left:56px;top:250px;width:250px;height:190px">
+                      <p class="doc-h">Activité 5 — Volcans et risques</p>
+                      <div class="doc-ligne" style="width:90%"></div><div class="doc-ligne" style="width:75%"></div><div class="doc-ligne" style="width:85%"></div>
+                    </div>
+                  </div>
+                  <div class="bd-sommaire glisse-droite" data-at="4">
+                    <div class="bd-sommaire__t">Séquences</div>
+                    <div class="muet">Séquence 2 — La Terre, une planète active</div>
+                    <div class="bd-sommaire__it">Activité 3 — Les séismes</div>
+                    <div class="bd-sommaire__it is-on">Activité 4 — Les éruptions volcaniques</div>
+                    <div class="bd-sommaire__it">Activité 5 — Volcans et risques</div>
+                    <div class="bd-sommaire__t">Fiches méthodes</div>
+                    <div class="bd-sommaire__it">Réaliser un schéma</div>
+                    <div class="bd-sommaire__t">Je révise</div>
+                    <div class="bd-sommaire__it">Fiche de mémorisation — Séquence 2</div>
+                  </div>
+                </div>
+                <div class="bd-pied">
+                  <span class="bd-pied__b">‹</span>
+                  <span class="bd-pied__n"><span data-to="2">Page 5 sur 32</span><span data-from="3">Page 6 sur 32</span></span>
+                  <span class="bd-pied__b bd-pied__b--suiv" id="cf-suiv" data-on="3">›</span>
+                </div>
+              </div>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

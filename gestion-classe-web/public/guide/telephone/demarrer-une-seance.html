@@ -1,0 +1,1029 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Démarrer une séance — Guide Gestion Classe</title>
+<meta name="description" content="Lancer une séance au téléphone : choisir la classe, le groupe, la salle et le thème, avec la proposition de groupe d'après l'emploi du temps ou l'alternance.">
+<meta name="guide-partie" content="telephone">
+<meta name="guide-ordre" content="20">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---------- maquettes de l'application téléphone (charte « Direction B », constants/theme.ts) ---------- */
+.m-zone { flex: 1; min-height: 0; position: relative; }
+.m-page { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--t-bg); color: var(--t-text); }
+.m-ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.m-pile { display: grid; }
+.m-pile > * { grid-area: 1 / 1; }
+.m-centre { align-items: center; justify-content: center; text-align: center; }
+.m-gris { color: var(--t-text2); font-size: 14px; }
+.m-roue { display: inline-block; width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(79,70,229,.2); border-top-color: var(--t-primary); animation: m-tourne .9s linear infinite; }
+.m-roue--blanc { border-color: rgba(255,255,255,.35); border-top-color: #fff; }
+.m-roue--petit { width: 18px; height: 18px; border-width: 2.5px; }
+@keyframes m-tourne { to { transform: rotate(360deg); } }
+@keyframes m-vibre { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-3px) rotate(-.6deg); } 40% { transform: translateX(3px) rotate(.6deg); } 60% { transform: translateX(-2px); } 80% { transform: translateX(2px); } }
+.tel.m-vibrable.is-on { animation: m-vibre .45s ease 2; }
+
+/* accueil */
+.m-tete { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 18px 0; flex: none; }
+.m-bonjour { font-size: 12.5px; color: var(--t-text2); }
+.m-nom { font-size: 22px; font-weight: 700; letter-spacing: -.3px; line-height: 1.2; }
+.m-ronds { display: flex; gap: 7px; }
+.m-rond { width: 34px; height: 34px; border-radius: 50%; background: #fff; border: 1px solid var(--t-border); display: grid; place-items: center; position: relative; color: var(--t-text2); transition: all .25s; }
+.m-rond .m-ic { width: 16px; height: 16px; stroke-width: 1.8; }
+.m-rond.is-on { background: #FAFBFC; transform: scale(.97); }
+.m-rond--sync.is-on { color: var(--t-primary); }
+.m-rond--sync.is-on .m-ic { animation: m-tourne 1s linear infinite; }
+.m-avatar { background: var(--t-text); border: 0; color: #fff; font-weight: 700; font-size: 14px; }
+.m-avatar.is-on { background: var(--t-text); opacity: .85; }
+.m-pastille { position: absolute; top: -5px; right: -5px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px; background: #EF4444; color: #fff; font-size: 9px; font-weight: 700; border: 1.5px solid #fff; display: grid; place-items: center; }
+.m-hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 24px; }
+.m-halo { width: 150px; height: 150px; border-radius: 50%; background: #ECFDF5; display: grid; place-items: center; transition: transform .2s; }
+.m-halo.is-on { transform: scale(.96); }
+.m-disque { width: 126px; height: 126px; border-radius: 50%; background: #059669; box-shadow: 0 8px 26px rgba(5,150,105,.3); display: grid; place-items: center; }
+.m-disque > * { grid-area: 1 / 1; }
+.m-lecture { width: 0; height: 0; border-left: 40px solid #fff; border-top: 24px solid transparent; border-bottom: 24px solid transparent; margin-left: 9px; }
+.m-hero-t { font-size: 17px; font-weight: 600; margin-top: 18px; text-align: center; }
+.m-hero-s { font-size: 12px; color: var(--t-text2); text-align: center; margin-top: 4px; max-width: 260px; justify-items: center; }
+.m-encours { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 700; color: #059669; letter-spacing: .5px; margin-bottom: 14px; }
+.m-encours::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #059669; }
+.m-annuler-s { margin-top: 14px; background: #FDE8E8; color: #EF4444; font-size: 12px; font-weight: 600; border-radius: 9px; padding: 7px 14px; transition: transform .2s; }
+.m-annuler-s.is-on { transform: scale(.97); }
+.m-derniere { margin: 0 18px 14px; background: #fff; border: 1px solid var(--t-border); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--t-text2); display: flex; align-items: center; gap: 8px; white-space: nowrap; flex: none; transition: background .2s; }
+.m-derniere.is-on { background: #FAFBFC; }
+.m-derniere span { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.m-chev { color: var(--t-text3); font-size: 15px; line-height: 1; }
+
+/* barre d'onglets */
+.m-onglets { height: 54px; flex: none; border-top: 1px solid var(--t-border); background: #fff; display: flex; justify-content: space-around; align-items: center; }
+.m-onglet { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 70px; font-size: 9.5px; font-weight: 600; color: var(--t-text3); }
+.m-onglet .m-ic { width: 19px; height: 19px; stroke-width: 1.8; }
+.m-onglet.is-actif { color: var(--t-primary); }
+.m-onglet.is-actif .m-ic { stroke-width: 2.1; }
+
+/* écrans de liste */
+.m-titre-ecran { font-size: 22px; font-weight: 700; letter-spacing: -.3px; padding: 14px 20px 0; flex: none; }
+.m-sous-ecran { font-size: 11.5px; color: var(--t-text2); padding: 1px 20px 12px; flex: none; }
+.m-liste { flex: 1; min-height: 0; overflow: hidden; padding: 0 16px; display: flex; flex-direction: column; gap: 9px; }
+.m-ccarte { background: #fff; border: 1px solid var(--t-border); border-radius: 14px; padding: 11px 12px; display: flex; align-items: center; gap: 11px; }
+.m-ctuile { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; flex: none; }
+.m-ccarte__n { font-size: 14px; font-weight: 600; }
+.m-ccarte__s { font-size: 11px; color: var(--t-text2); }
+.m-ccarte .m-chev { margin-left: auto; }
+.m-jour { font-size: 11px; font-weight: 600; color: var(--t-text2); padding: 2px 4px 0; }
+.m-hcarte { background: #fff; border: 1px solid var(--t-border); border-radius: 14px; padding: 11px 13px; }
+.m-hcarte__l1 { display: flex; align-items: center; font-size: 13.5px; font-weight: 600; }
+.m-hcarte__l1 .m-chev { margin-left: auto; }
+.m-hcarte__th { font-size: 11.5px; color: var(--t-text2); }
+.m-hcols { display: flex; border-top: 1px solid #F1F5F9; margin-top: 8px; padding-top: 7px; }
+.m-hcols div { flex: 1; }
+.m-hcols small { display: block; font-size: 8.5px; color: var(--t-text3); text-transform: uppercase; letter-spacing: .05em; }
+.m-hcols b { font-size: 11.5px; font-weight: 600; }
+.m-rclasse { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13.5px; padding: 2px 4px 0; }
+.m-rclasse span { background: #F3F4F7; border-radius: 999px; font-size: 10px; padding: 1px 7px; color: var(--t-text2); font-weight: 600; }
+.m-rcarte { background: #fff; border: 1px solid var(--t-border); border-radius: 14px; padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+.m-rcarte__n { font-size: 13px; font-weight: 600; }
+.m-rcarte__p { font-size: 10.5px; color: var(--t-text3); }
+.m-score { margin-left: auto; font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: #ECFDF5; color: #059669; }
+
+/* connexion, inscription */
+.m-natif { height: 48px; flex: none; display: flex; align-items: center; gap: 16px; padding: 0 18px; font-size: 17px; font-weight: 600; }
+.m-form { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 0 22px 30px; }
+.m-logo { width: 50px; height: 50px; border-radius: 13px; background: var(--t-primary); color: #fff; display: grid; place-items: center; margin: 0 auto 12px; }
+.m-logo .m-ic { width: 25px; height: 25px; stroke-width: 2; }
+.m-logo--grand { width: 58px; height: 58px; border-radius: 15px; }
+.m-logo--grand .m-ic { width: 29px; height: 29px; }
+.m-titre-c { font-size: 22px; font-weight: 700; text-align: center; }
+.m-sous-c { font-size: 12.5px; color: var(--t-text2); text-align: center; margin: 3px 0 20px; }
+.m-lab { font-size: 12px; font-weight: 600; margin: 0 0 5px; }
+.m-champ { height: 42px; background: #fff; border: 1px solid var(--t-border); border-radius: 10px; padding: 0 40px 0 12px; display: flex; align-items: center; font-size: 13.5px; margin-bottom: 14px; position: relative; white-space: nowrap; overflow: hidden; }
+.m-ph { color: var(--t-text3); }
+.m-oeil { position: absolute; right: 12px; top: 11px; color: var(--t-text3); }
+.m-oeil .m-ic { width: 17px; height: 17px; stroke-width: 1.8; }
+.m-btn { height: 44px; border-radius: 10px; background: var(--t-primary); color: #fff; font-weight: 600; font-size: 14px; display: grid; place-items: center; transition: all .2s; }
+.m-btn > * { grid-area: 1 / 1; }
+.m-btn.is-on { background: #4338CA; transform: scale(.98); }
+.m-btn--attente { opacity: .7; }
+.m-pied-f { text-align: center; font-size: 12.5px; color: var(--t-text2); margin-top: 18px; }
+.m-lien { color: var(--t-primary); font-weight: 600; }
+
+/* fenêtres natives (Android) */
+.m-dial-fond { position: absolute; inset: 0; z-index: 620; background: rgba(0,0,0,.32); display: grid; place-items: center; }
+.m-dial { width: 274px; background: #fff; border-radius: 24px; padding: 20px 22px 12px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.m-dial__t { font-size: 17px; font-weight: 500; margin-bottom: 10px; }
+.m-dial__m { font-size: 13px; color: #49454F; line-height: 1.45; margin-bottom: 14px; }
+.m-dial__b { display: flex; justify-content: flex-end; gap: 4px; }
+.m-dial__b span { font-size: 13px; font-weight: 600; color: var(--t-primary); padding: 8px 10px; border-radius: 18px; transition: background .2s; }
+.m-dial__b span.is-on { background: var(--t-primary-soft); }
+
+/* fenêtres de l'application */
+.m-modal-fond { position: absolute; inset: 0; z-index: 620; background: rgba(15,23,42,.6); display: grid; place-items: center; }
+.m-modal { width: 282px; background: #fff; border-radius: 18px; padding: 26px 22px 20px; text-align: center; }
+.m-rond-err { width: 54px; height: 54px; border-radius: 50%; background: #FDE8E8; color: #EF4444; display: grid; place-items: center; margin: 0 auto 14px; }
+.m-rond-err .m-ic { width: 26px; height: 26px; stroke-width: 2.6; }
+.m-modal__t { font-size: 17px; font-weight: 700; }
+.m-modal__m { font-size: 13px; color: #EF4444; margin-top: 6px; }
+.m-btn-doux { margin-top: 18px; height: 42px; border-radius: 13px; background: #EEF0FF; color: #4F46E5; font-weight: 600; font-size: 14px; display: grid; place-items: center; transition: all .2s; }
+.m-btn-doux.is-on { background: #4F46E5; color: #fff; }
+.m-voile { position: absolute; inset: 0; z-index: 610; background: rgba(15,23,42,.35); }
+.m-fen { position: absolute; left: 16px; right: 16px; top: 50%; translate: 0 -50%; z-index: 620; background: #fff; border-radius: 14px; box-shadow: 0 10px 30px rgba(20,25,40,.18); overflow: hidden; }
+.m-fen__tete { display: flex; align-items: flex-start; gap: 10px; padding: 15px 16px 13px; border-bottom: 1px solid #F1F5F9; }
+.m-fen__t { font-size: 16px; font-weight: 700; }
+.m-fen__s { font-size: 11.5px; color: var(--t-text2); }
+.m-croix { margin-left: auto; width: 30px; height: 30px; border-radius: 10px; background: #F3F4F7; display: grid; place-items: center; color: var(--t-text2); flex: none; }
+.m-croix .m-ic { width: 15px; height: 15px; }
+.m-fen__corps { padding: 14px 16px; }
+.m-fen__lab { font-size: 12px; font-weight: 600; color: var(--t-text2); margin: 0 0 6px; }
+.m-types { display: flex; gap: 6px; margin-bottom: 14px; }
+.m-type { flex: 1; text-align: center; border: 1px solid var(--t-border); border-radius: 10px; padding: 8px 0; font-size: 11.5px; color: var(--t-text2); transition: all .25s; }
+.m-type.is-on { color: #fff; background: var(--c); border-color: var(--c); }
+.m-texte { background: #F7F7F9; border: 1px solid var(--t-border); border-radius: 10px; min-height: 96px; padding: 10px; font-size: 12px; line-height: 1.4; }
+.m-texte > * { grid-area: 1 / 1; }
+.m-fen__pied { display: flex; gap: 8px; padding: 12px 16px 14px; border-top: 1px solid #F1F5F9; }
+.m-fen__pied span { flex: 1; height: 40px; border-radius: 10px; display: grid; place-items: center; font-size: 13px; font-weight: 600; transition: all .25s; }
+.m-fen__pied span > * { grid-area: 1 / 1; }
+.m-b-bord { border: 1px solid var(--t-border); color: var(--t-text); }
+.m-b-plein { background: var(--t-primary); color: #fff; }
+.m-b-att { opacity: .5; }
+.m-b-att.is-on { opacity: 1; }
+.m-merci { position: absolute; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; font-size: 15px; font-weight: 600; }
+.m-merci i { width: 50px; height: 50px; border-radius: 50%; background: #ECFDF5; color: #059669; display: grid; place-items: center; }
+.m-merci .m-ic { width: 25px; height: 25px; stroke-width: 2.4; }
+
+/* bandeau hors ligne et bannière de confirmation */
+.m-hl { position: absolute; top: 0; left: 0; right: 0; z-index: 640; background: #9CA3AF; color: #fff; font-size: 10.5px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 3px 0; }
+.m-hl::before { content: ''; width: 6px; height: 6px; border-radius: 50%; border: 1.5px solid #fff; }
+.m-ok { position: absolute; top: 26px; left: 10px; right: 10px; z-index: 650; background: #059669; color: #fff; border-radius: 12px; padding: 9px 12px; font-size: 11.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; box-shadow: 0 6px 18px rgba(5,150,105,.3); }
+.m-ok .m-ic { width: 14px; height: 14px; stroke-width: 2.6; }
+.m-ok b { margin-left: auto; text-decoration: underline; }
+
+/* aperçu de l'écran de séance */
+.m-s-tete { background: #fff; border-bottom: 1px solid var(--t-border); display: flex; align-items: center; padding: 9px 12px; gap: 6px; flex: none; }
+.m-s-ann { color: #EF4444; font-size: 12px; font-weight: 500; width: 54px; }
+.m-s-centre { flex: 1; min-width: 0; text-align: center; }
+.m-s-titre { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m-s-chrono { font-size: 10px; font-weight: 600; color: #059669; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.m-s-chrono::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: #059669; }
+.m-s-fin { background: #059669; color: #fff; font-size: 11px; font-weight: 600; border-radius: 8px; padding: 6px 10px; }
+.m-s-bascule { display: flex; gap: 6px; padding: 9px 12px 4px; align-items: center; flex: none; }
+.m-seg { flex: 1; background: #EDEEF2; border-radius: 9px; padding: 3px; display: flex; }
+.m-seg span { flex: 1; text-align: center; font-size: 11px; font-weight: 600; color: var(--t-text2); padding: 5px 0; border-radius: 7px; }
+.m-seg .act { background: #fff; color: var(--t-text); box-shadow: 0 1px 3px rgba(20,25,40,.08); }
+.m-carre { width: 32px; height: 32px; border-radius: 9px; background: #fff; border: 1px solid var(--t-border); display: grid; place-items: center; color: var(--t-text2); flex: none; }
+.m-carre .m-ic { width: 15px; height: 15px; stroke-width: 1.8; }
+.m-indic { text-align: center; font-size: 10px; color: var(--t-text3); padding: 6px 0 8px; flex: none; }
+.m-grille { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 0 12px; flex: none; }
+.m-case { height: 54px; background: #fff; border: 1px solid var(--t-border); border-radius: 7px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10.5px; font-weight: 600; transition: all .25s; }
+.m-case--allee { background: #F1F2F5; border-color: transparent; }
+.m-case.is-on { border: 2px solid #10B981; background: #ECFDF5; }
+.m-cpt { font-size: 8px; font-weight: 700; border-radius: 4px; padding: 0 4px; color: #059669; background: #ECFDF5; }
+.m-cpt--malus { color: #B45309; background: #FFFBEB; }
+.m-tableau { margin: 8px 12px 0; background: #EDEEF2; border-radius: 7px; text-align: center; font-size: 9px; font-weight: 600; letter-spacing: .14em; color: var(--t-text2); padding: 4px; flex: none; }
+.m-s-gpe { display: inline-flex; align-items: center; gap: 3px; background: #EEF0FF; color: #4F46E5; border-radius: 999px; padding: 0 6px; font-size: 9px; margin-left: 4px; }
+.m-s-gpe::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.m-outils { display: flex; gap: 5px; padding: 5px 12px 0; flex: none; }
+.m-outil { flex: 1; background: #fff; border: 1px solid var(--t-border); border-radius: 9px; padding: 5px 0 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 7.5px; font-weight: 600; color: var(--t-text); }
+.m-outil .m-ic { width: 13px; height: 13px; stroke-width: 1.8; }
+/* écran « Nouvelle séance » (app/(main)/session/start.tsx) */
+.m-ns-tete { display: flex; align-items: center; padding: 9px 12px; flex: none; }
+.m-retour { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: var(--t-text); flex: none; }
+.m-retour .m-ic { width: 20px; height: 20px; stroke-width: 2; }
+.m-ns-titre { flex: 1; text-align: center; font-size: 16px; font-weight: 600; }
+.m-ns-corps { flex: 1; min-height: 0; overflow: hidden; position: relative; padding: 4px 20px 0; }
+.m-sec { margin-bottom: 22px; }
+.m-sec-t { font-size: 11px; font-weight: 600; color: var(--t-text2); letter-spacing: .5px; text-transform: uppercase; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: baseline; }
+.m-opt { font-size: 10px; color: var(--t-text3); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.m-tuiles { display: flex; flex-wrap: wrap; gap: 7px; }
+.m-tuile { flex: 1 1 22%; background: #fff; border: 1px solid var(--t-border); border-radius: 10px; padding: 11px 4px; text-align: center; font-size: 13px; font-weight: 600; transition: all .25s; }
+.m-tuile.is-on { background: var(--t-primary); border-color: var(--t-primary); color: #fff; }
+.m-pgs { display: flex; flex-wrap: wrap; gap: 7px; }
+.m-pg { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1px solid var(--t-border); border-radius: 999px; padding: 8px 12px; font-size: 12.5px; font-weight: 600; transition: all .25s; }
+.m-pg i { width: 8px; height: 8px; border-radius: 50%; background: var(--g); transition: background .25s; }
+.m-pg b { font-weight: 400; font-size: 11px; color: var(--t-text3); }
+.m-pg.is-on { background: var(--g); border-color: var(--g); color: #fff; }
+.m-pg.is-on i { background: #fff; }
+.m-pg.is-on b { color: #fff; }
+.m-indice { font-size: 10.5px; color: var(--t-text3); margin-top: 7px; min-height: 14px; }
+.m-salles { background: #fff; border: 1px solid var(--t-border); border-radius: 13px; overflow: hidden; }
+.m-salle { display: flex; align-items: center; padding: 10px 13px; border-bottom: 1px solid #F1F5F9; transition: background .25s; }
+.m-salle:last-child { border-bottom: 0; }
+.m-salle__n { font-size: 13px; font-weight: 600; transition: color .25s; }
+.m-salle__d { font-size: 10.5px; color: var(--t-text3); }
+.m-coche { margin-left: auto; width: 20px; height: 20px; border-radius: 50%; background: var(--t-primary); color: #fff; display: grid; place-items: center; opacity: 0; transform: scale(.5); transition: all .25s; }
+.m-coche .m-ic { width: 12px; height: 12px; stroke-width: 3; }
+.m-salle.is-on { background: var(--t-primary-soft); }
+.m-salle.is-on .m-salle__n { color: var(--t-primary); }
+.m-salle.is-on .m-coche { opacity: 1; transform: none; }
+.m-theme { background: #fff; border: 1px solid var(--t-border); border-radius: 10px; padding: 12px; min-height: 72px; font-size: 12.5px; position: relative; }
+.m-compteur { position: absolute; right: 10px; bottom: 6px; font-size: 9.5px; color: var(--t-text3); }
+.m-ns-pied { flex: none; background: #fff; border-top: 1px solid var(--t-border); padding: 10px 20px 16px; }
+.m-resume { font-size: 11px; font-weight: 600; color: var(--t-text2); text-align: center; margin-bottom: 8px; height: 15px; justify-items: center; }
+.m-go { height: 46px; border-radius: 10px; display: grid; place-items: center; font-size: 13.5px; font-weight: 600; background: #EDEEF2; color: var(--t-text3); transition: all .25s; }
+.m-go > * { grid-area: 1 / 1; }
+.m-go.is-on { background: #059669; color: #fff; }
+.m-go__in { display: inline-flex; align-items: center; gap: 7px; }
+.m-go .tri { width: 0; height: 0; border-left: 11px solid currentColor; border-top: 7px solid transparent; border-bottom: 7px solid transparent; }
+.m-vide { background: #fff; border: 1px solid var(--t-border); border-radius: 13px; padding: 18px; text-align: center; }
+.m-vide__t { font-size: 12.5px; color: var(--t-text2); margin-bottom: 6px; }
+.m-note { display: flex; gap: 8px; align-items: flex-start; background: #FEF1D8; border-radius: 10px; padding: 8px 10px; margin-top: 9px; font-size: 11.5px; font-weight: 500; line-height: 1.35; }
+.m-note .m-ic { color: #F59E0B; width: 15px; height: 15px; margin-top: 1px; }
+.m-ecole { width: 66px; height: 66px; border-radius: 50%; background: #F5F3FF; color: #8B5CF6; display: grid; place-items: center; margin: 0 auto 12px; }
+.m-ecole .m-ic { width: 30px; height: 30px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-livre" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-maison" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-horloge" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-personnes" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1"/><path d="M16 4.1a4 4 0 0 1 0 7.8"/><path d="M22 21v-1a6 6 0 0 0-4-5.7"/></symbol>
+  <symbol id="i-synchro" viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.4 6.4L3 16"/><path d="M3 12a9 9 0 0 1 15.4-6.4L21 8"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/></symbol>
+  <symbol id="i-bulle" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.6A8.4 8.4 0 1 1 21 11.5z"/></symbol>
+  <symbol id="i-chevg" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+  <symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-croix" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-oeil-barre" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="m3 3 18 18"/></symbol>
+  <symbol id="i-ecran" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-hasard" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></symbol>
+  <symbol id="i-micro" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/></symbol>
+  <symbol id="i-crayon" viewBox="0 0 24 24"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></symbol>
+  <symbol id="i-bulle-carree" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></symbol>
+  <symbol id="i-note" viewBox="0 0 24 24"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v6h6"/></symbol>
+  <symbol id="i-ecole" viewBox="0 0 24 24"><path d="M3 21h18M5 21V10l7-5 7 5v11M10 21v-5h4v5"/></symbol>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Application téléphone</a> › Démarrer une séance</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#nouvelle-seance">L'écran « Nouvelle séance »</a></li>
+      <li><a href="#classe">Choisir la classe</a></li>
+      <li><a href="#rien-a-choisir">Ni classe ni salle ?</a></li>
+      <li><a href="#note-cours">La note pour ce cours</a></li>
+      <li><a href="#groupe">Choisir le groupe de classe</a></li>
+      <li><a href="#alternance">L'alternance des groupes</a></li>
+      <li><a href="#emploi-du-temps">La proposition de l'emploi du temps</a></li>
+      <li><a href="#salle">Choisir la salle</a></li>
+      <li><a href="#theme">Le thème de la séance</a></li>
+      <li><a href="#demarrer">Démarrer la séance</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../telephone/prise-en-main.html">◀ Prise en main</a><a href="../telephone/seance-et-menu-radial.html">La séance et le menu radial ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Application téléphone · Séance en classe</div>
+      <h1>Démarrer une séance</h1>
+      <p>Au début de l'heure, trois ou quatre appuis suffisent : la classe, le groupe s'il y a lieu, la salle. Le téléphone propose souvent le bon groupe tout seul, et tout marche sans réseau.</p>
+      <div class="chap__resume"><span>Accueil › Démarrer une séance</span><span>Téléphone</span><span>Marche sans réseau</span></div>
+    </header>
+
+    <!-- ============================================================ fiche : l'écran -->
+    <section class="fiche fiche--etroite" id="nouvelle-seance">
+      <div class="fiche__texte">
+        <h2>L'écran « Nouvelle séance »</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Accueil › gros bouton vert</span></p>
+        <p class="fiche__but">Choisir en quelques appuis la classe, éventuellement le groupe, la salle (donc le plan de classe) et, si on veut, le thème de l'heure.</p>
+        <ol class="etapes">
+          <li data-cursor="#ou-hero" data-action="tap">Sur l'accueil, toucher le gros rond vert <b>Démarrer une séance</b>.</li>
+          <li data-cursor="#ou-retour" data-duration="3200"><b>Nouvelle séance</b> s'ouvre en plein écran, sans barre d'onglets. Le chevron, en haut à gauche, ramène à l'accueil.</li>
+          <li data-cursor="#ou-sec1" data-duration="3600">Les étapes sont numérotées : <b>1 · Choisir une classe</b>, puis la salle, puis le thème, facultatif. Une étape <b>Groupe</b> s'ajoute en deuxième si la classe a des groupes.</li>
+          <li data-cursor="#ou-go" data-duration="3200">En bas, le bouton reste gris et dit <b>Sélectionnez une classe et une salle</b> tant que les deux ne sont pas choisies.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>À chaque ouverture, tous les choix repartent de zéro et l'écran relit classes et salles dans le téléphone : il marche sans réseau.</li>
+            <li>L'heure d'ouverture de l'écran sert de référence pour la note du cours et pour l'emploi du temps.</li>
+            <li>Si une séance est déjà en cours, le gros bouton la rouvre au lieu d'en proposer une nouvelle : une seule séance à la fois.</li>
+            <li>Sur le site, « Lancer la séance » depuis l'emploi du temps ouvre l'écran projeté ; la séance, elle, se conduit au téléphone.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="prise-en-main.html#accueil">L'écran d'accueil</a> · <a href="prise-en-main.html#reprendre">Reprendre la séance en cours</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-tete">
+                      <div><div class="m-bonjour">Bonjour,</div><div class="m-nom">Martin</div></div>
+                      <div class="m-ronds"><span class="m-rond m-rond--sync"><svg class="m-ic"><use href="#i-synchro"/></svg></span><span class="m-rond"><svg class="m-ic"><use href="#i-bulle"/></svg></span><span class="m-rond m-avatar">M</span></div>
+                    </div>
+                    <div class="m-hero">
+                      <div class="m-halo" id="ou-hero" data-on="1"><div class="m-disque"><i class="m-lecture"></i></div></div>
+                      <div class="m-hero-t">Démarrer une séance</div>
+                      <div class="m-hero-s">Suivre la participation en classe en moins de 2 secondes</div>
+                    </div>
+                    <div class="m-derniere"><span>Dernière séance : 5E · hier, 55 min</span><b class="m-chev">›</b></div>
+                    <div class="m-onglets">
+                      <span class="m-onglet is-actif"><svg class="m-ic"><use href="#i-maison"/></svg>Accueil</span>
+                      <span class="m-onglet"><svg class="m-ic"><use href="#i-livre"/></svg>Classes</span>
+                      <span class="m-onglet"><svg class="m-ic"><use href="#i-horloge"/></svg>Historique</span>
+                      <span class="m-onglet"><svg class="m-ic"><use href="#i-personnes"/></svg>Réunions</span>
+                    </div>
+                  </div>
+                  <div class="m-page glisse-gauche" data-from="2">
+                    <div class="m-ns-tete"><span class="m-retour" id="ou-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t" id="ou-sec1">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile">4B</span><span class="m-tuile">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Choisir une salle</div>
+                        <div class="m-salles">
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>3 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go" id="ou-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <div class="halo" data-at="3" style="left:14px;top:46px;width:312px;height:70px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : la classe -->
+    <section class="fiche fiche--etroite" id="classe">
+      <div class="fiche__texte">
+        <h2>Choisir la classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance › 1 · Choisir une classe</span></p>
+        <p class="fiche__but">Dire quelle classe on a devant soi. Chaque tuile porte le nom d'une classe préparée sur le site.</p>
+        <ol class="etapes">
+          <li data-cursor="#cl-5e" data-action="tap">Toucher une tuile : elle passe en indigo.</li>
+          <li data-cursor="#cl-5e" data-action="tap">Un second appui sur la même tuile annule le choix.</li>
+          <li data-cursor="#cl-4b" data-action="tap" data-duration="3800">Toucher <b>4B</b>. Cette classe a des groupes : l'étape <b>2 · Groupe</b> apparaît et les suivantes sont renumérotées.</li>
+          <li data-cursor="#cl-6c" data-duration="3200">Les tuiles viennent du site : le téléphone ne crée pas de classe. Changer de classe efface le groupe choisi et relance la proposition de groupe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les tuiles se rangent à quatre par ligne environ et s'étirent pour remplir la ligne.</li>
+            <li>Une nouvelle classe créée sur le site n'apparaît qu'après une synchronisation (voir <a href="#rien-a-choisir">Ni classe ni salle ?</a>).</li>
+            <li>Si une note a été écrite sur le site pour ce cours, un bandeau jaune apparaît sous les tuiles (voir <a href="#note-cours">La note pour ce cours</a>).</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile" id="cl-4b" data-on="3-4">4B</span><span class="m-tuile" id="cl-5e" data-on="1">5E</span><span class="m-tuile" id="cl-6c">6C</span></div>
+                      </div>
+                      <div class="m-sec repli glisse-haut" data-from="3"><div class="m-sec-t">2 · Groupe</div>
+                        <div class="m-pgs">
+                          <span class="m-pg is-on" style="--g:#4F46E5">Classe entière</span>
+                          <span class="m-pg" style="--g:#4F46E5"><i></i>Groupe 1<b>12</b></span>
+                          <span class="m-pg" style="--g:#059669"><i></i>Groupe 2<b>13</b></span>
+                        </div>
+                        <div class="m-indice"></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span class="m-pile"><span data-to="2">2 · Choisir une salle</span><span data-from="3">3 · Choisir une salle</span></span></div>
+                        <div class="m-salles">
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span class="m-pile"><span data-to="2">3 · Thème de la séance</span><span data-from="3">4 · Thème de la séance</span></span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : ni classe ni salle -->
+    <section class="fiche fiche--etroite" id="rien-a-choisir">
+      <div class="fiche__texte">
+        <h2>Ni classe ni salle ?</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance</span></p>
+        <p class="fiche__but">Classes et salles se créent sur le site. Tant que le téléphone ne les a pas reçues, l'écran le dit et montre où aller.</p>
+        <ol class="etapes">
+          <li data-cursor="#vi-vc">Sans classe dans le téléphone, la première étape affiche <b>Aucune classe disponible</b>.</li>
+          <li data-cursor="#vi-lien" data-action="tap">Le lien <span class="btn-nom">Synchroniser les classes</span> ramène à l'accueil.</li>
+          <li data-cursor="#vi-rond" data-action="tap" data-duration="3400">Y toucher le rond aux flèches pour lancer la synchronisation : le gros bouton attend la fin.</li>
+          <li data-cursor="#vi-tuiles" data-duration="3200">Rouvrir <b>Nouvelle séance</b> : les classes du site sont arrivées.</li>
+          <li data-cursor="#vi-conf" data-action="tap" data-duration="3600">Pas encore de salle ? <span class="btn-nom">Configurer une salle</span> ouvre <b>Mes salles</b>, qui renvoie au site.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le lien « Synchroniser les classes » ne synchronise pas lui-même. La synchronisation automatique ne part qu'une fois par lancement : il faut donc souvent toucher le rond aux flèches.</li>
+            <li>Les salles se créent, se modifient et se suppriment sur le site ; le téléphone ne fait que les lire.</li>
+            <li>« Mes salles » n'a pas de bouton retour dessiné : revenir avec le geste retour du téléphone.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="prise-en-main.html#synchroniser">Synchroniser à la main</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <!-- Nouvelle séance, après la synchronisation -->
+                  <div class="m-page" data-from="4">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles" id="vi-tuiles"><span class="m-tuile">3A</span><span class="m-tuile">4B</span><span class="m-tuile">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Choisir une salle</div>
+                        <div class="m-vide"><div class="m-vide__t">Aucune salle configurée</div><span class="m-lien" id="vi-conf">Configurer une salle</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>3 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <!-- Accueil -->
+                  <div class="m-page" data-at="2-3">
+                    <div class="m-tete">
+                      <div><div class="m-bonjour">Bonjour,</div><div class="m-nom">Martin</div></div>
+                      <div class="m-ronds"><span class="m-rond m-rond--sync" id="vi-rond" data-on="3"><svg class="m-ic"><use href="#i-synchro"/></svg></span><span class="m-rond"><svg class="m-ic"><use href="#i-bulle"/></svg></span><span class="m-rond m-avatar">M</span></div>
+                    </div>
+                    <div class="m-hero">
+                      <div class="m-halo"><div class="m-disque"><i class="m-lecture" data-at="2"></i><i class="m-roue m-roue--blanc" data-at="3" style="width:40px;height:40px"></i></div></div>
+                      <div class="m-hero-t">Démarrer une séance</div>
+                      <div class="m-hero-s m-pile"><span data-at="2">Suivre la participation en classe en moins de 2 secondes</span><span data-at="3">Synchronisation en cours…</span></div>
+                    </div>
+                    <div class="m-onglets">
+                      <span class="m-onglet is-actif"><svg class="m-ic"><use href="#i-maison"/></svg>Accueil</span>
+                      <span class="m-onglet"><svg class="m-ic"><use href="#i-livre"/></svg>Classes</span>
+                      <span class="m-onglet"><svg class="m-ic"><use href="#i-horloge"/></svg>Historique</span>
+                      <span class="m-onglet"><svg class="m-ic"><use href="#i-personnes"/></svg>Réunions</span>
+                    </div>
+                  </div>
+                  <!-- Nouvelle séance vide -->
+                  <div class="m-page" data-at="1">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-vide"><div class="m-vide__t" id="vi-vc">Aucune classe disponible</div><span class="m-lien" id="vi-lien">Synchroniser les classes</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Choisir une salle</div>
+                        <div class="m-vide"><div class="m-vide__t">Aucune salle configurée</div><span class="m-lien">Configurer une salle</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>3 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <!-- Mes salles -->
+                  <div class="m-page glisse-gauche" data-from="5">
+                    <div class="m-titre-ecran" style="font-size:24px;padding-top:18px">Mes salles</div>
+                    <div style="flex:1;display:flex;align-items:center;padding:0 18px 80px">
+                      <div class="m-vide" style="border-radius:18px;padding:28px 20px;width:100%">
+                        <div class="m-ecole"><svg class="m-ic"><use href="#i-ecole"/></svg></div>
+                        <div style="font-size:17px;font-weight:700;margin-bottom:6px">Aucune salle</div>
+                        <div class="m-vide__t" style="margin:0">Créez vos salles depuis l'application web, puis synchronisez.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : note pour ce cours -->
+    <section class="fiche fiche--etroite" id="note-cours">
+      <div class="fiche__texte">
+        <h2>La note pour ce cours</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Nouvelle séance › sous les classes</span></p>
+        <p class="fiche__but">Une note écrite à l'avance sur le site (rendre des copies, interroger un élève, prévoir une interrogation) revient au bon moment, dès qu'on choisit la classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#no-5e" data-action="tap">Choisir la classe.</li>
+          <li data-cursor="#no-note" data-duration="3400">S'il existe une note pour ce cours, un bandeau jaune apparaît sous les tuiles.</li>
+          <li data-cursor="#no-note" data-duration="3600">Il reprend en deux lignes au plus la note écrite sur le site, à l'accueil ou dans l'emploi du temps (« Note pour ce cours »).</li>
+          <li data-cursor="#no-hl" data-duration="3400">Sans réseau, la note n'est pas lue : pas de bandeau, et aucun message ne le signale.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La note retenue est celle d'un cours de cette classe qui a commencé il y a moins de 50 minutes ou commence dans moins de 30 minutes, la plus proche de l'heure d'ouverture de l'écran. En demi-groupe, seules comptent les notes du groupe ou de la classe entière.</li>
+            <li>Dans l'écran de séance, la note revient en grand, avec un bouton « Vu » qui la marque comme traitée, sur le site aussi.</li>
+            <li>Le téléphone ne crée ni ne modifie jamais une note. S'il n'y en a pas, rien ne s'affiche.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seance-et-menu-radial.html">Écran de séance et menu radial</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile">4B</span><span class="m-tuile" id="no-5e" data-on="1-4">5E</span><span class="m-tuile">6C</span></div>
+                        <div class="m-note repli glisse-haut" id="no-note" data-at="2-3"><svg class="m-ic"><use href="#i-note"/></svg><span>Rendre les copies de l'évaluation. Oral : Noé MA et Iris TA.</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Choisir une salle</div>
+                        <div class="m-salles">
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>3 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <div class="m-hl glisse-bas" id="no-hl" data-at="4">Mode hors-ligne</div>
+                  <div class="bulle bulle--haut" data-at="3" style="left:30px;top:184px">Écrite sur le site, à l'avance, pour ce cours de 5E</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : le groupe -->
+    <section class="fiche fiche--etroite" id="groupe">
+      <div class="fiche__texte">
+        <h2>Choisir le groupe de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance › 2 · Groupe</span></p>
+        <p class="fiche__but">Faire la séance avec une partie de la classe (demi-groupe, groupe de langue…). La grille, le tirage au sort, l'oral et les TP ne montrent alors que les élèves du groupe.</p>
+        <ol class="etapes">
+          <li data-cursor="#gr-titre">Avec une classe qui a des groupes, l'étape <b>2 · Groupe</b> apparaît sous les classes.</li>
+          <li data-cursor="#gr-g1" data-duration="3600">Une pastille par groupe : sa couleur, son nom, son effectif. <b>Classe entière</b> reste choisie quand le téléphone n'a rien à proposer.</li>
+          <li data-cursor="#gr-g2" data-action="tap">Toucher un groupe : la pastille se remplit de la couleur du groupe.</li>
+          <li data-cursor="#gr-ce" data-action="tap"><b>Classe entière</b> reprend toute la classe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le téléphone propose souvent un groupe tout seul, d'après la dernière séance ou l'emploi du temps (fiches suivantes). Un appui de l'enseignant l'emporte toujours.</li>
+            <li>En séance, la grille utilise le plan du groupe s'il en a un, sinon celui de la classe entière, où les places de l'autre groupe restent vides.</li>
+            <li>Le choix est gardé avec la séance : il s'affiche dans l'en-tête de séance, dans l'historique et sur le site.</li>
+            <li>Les groupes se créent sur le site ou dans l'onglet Classes du téléphone (« Groupes » de la fiche de classe).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html#plan-groupe">Un plan par groupe de classe</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile is-on">4B</span><span class="m-tuile">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t" id="gr-titre">2 · Groupe</div>
+                        <div class="m-pgs">
+                          <span class="m-pg" id="gr-ce" style="--g:#4F46E5" data-on="1-2,4">Classe entière</span>
+                          <span class="m-pg" id="gr-g1" style="--g:#4F46E5"><i></i>Groupe 1<b>12</b></span>
+                          <span class="m-pg" id="gr-g2" style="--g:#059669" data-on="3"><i></i>Groupe 2<b>13</b></span>
+                        </div>
+                        <div class="m-indice"></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">3 · Choisir une salle</div>
+                        <div class="m-salles">
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>4 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <div class="halo" data-at="1" style="left:14px;top:112px;width:312px;height:100px"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : l'alternance -->
+    <section class="fiche fiche--etroite" id="alternance">
+      <div class="fiche__texte">
+        <h2>L'alternance des groupes</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance › 2 · Groupe</span></p>
+        <p class="fiche__but">Quand les groupes viennent chacun leur tour, le téléphone propose le groupe qui suit celui de la dernière séance en groupe. Il le fait sans réseau.</p>
+        <ol class="etapes">
+          <li data-cursor="#al-4b" data-duration="3200">La dernière séance de 4B en groupe s'est faite avec le Groupe 1.</li>
+          <li data-cursor="#al-4b" data-action="tap" data-duration="3200">Toucher <b>4B</b> : le <b>Groupe 2</b> est déjà choisi.</li>
+          <li data-cursor="#al-indice" data-duration="3400">Dessous, l'indication dit pourquoi : « Proposé en alternance avec la dernière séance en groupe ».</li>
+          <li data-cursor="#al-g1" data-action="tap" data-duration="3200">Pour garder le Groupe 1, le toucher : l'appui de l'enseignant l'emporte et l'indication disparaît.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le téléphone regarde la dernière séance de la classe faite <b>en groupe</b> : les séances en classe entière ne comptent pas. Il propose le groupe suivant dans l'ordre des groupes, puis revient au premier.</li>
+            <li>Sans séance en groupe passée, rien n'est proposé : « Classe entière » reste choisie. Un groupe supprimé depuis n'est pas deviné non plus.</li>
+            <li>L'alternance se calcule dans le téléphone : elle marche hors ligne. Avec du réseau, l'emploi du temps peut la remplacer (fiche suivante).</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile" id="al-4b" data-on="2-4">4B</span><span class="m-tuile">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec repli glisse-haut" data-from="2"><div class="m-sec-t">2 · Groupe</div>
+                        <div class="m-pgs">
+                          <span class="m-pg" style="--g:#4F46E5">Classe entière</span>
+                          <span class="m-pg" id="al-g1" style="--g:#4F46E5" data-on="4"><i></i>Groupe 1<b>12</b></span>
+                          <span class="m-pg" style="--g:#059669" data-on="2-3"><i></i>Groupe 2<b>13</b></span>
+                        </div>
+                        <div class="m-indice" id="al-indice"><span data-at="2-3">Proposé en alternance avec la dernière séance en groupe</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span class="m-pile"><span data-to="1">2 · Choisir une salle</span><span data-from="2">3 · Choisir une salle</span></span></div>
+                        <div class="m-salles">
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span class="m-pile"><span data-to="1">3 · Thème de la séance</span><span data-from="2">4 · Thème de la séance</span></span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <div class="bulle bulle--haut" data-at="1" style="left:70px;top:112px">Dernière séance de 4B en groupe : Groupe 1</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : l'emploi du temps -->
+    <section class="fiche fiche--etroite" id="emploi-du-temps">
+      <div class="fiche__texte">
+        <h2>La proposition de l'emploi du temps</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Nouvelle séance › 2 · Groupe</span></p>
+        <p class="fiche__but">Si l'emploi du temps est importé sur le site et que ses cours sont reliés aux classes et aux groupes, le téléphone sait quel groupe on a à cette heure-ci.</p>
+        <ol class="etapes">
+          <li data-cursor="#ed-g2" data-duration="3200">Choisir 4B : l'alternance propose d'abord le Groupe 2, aussitôt.</li>
+          <li data-cursor="#ed-g1" data-duration="3400">Un instant plus tard, l'emploi du temps répond : c'est le <b>Groupe 1</b> qui a cours maintenant. Il remplace la proposition.</li>
+          <li data-cursor="#ed-indice" data-duration="3800">L'indication devient « D'après l'emploi du temps », avec entre parenthèses le libellé du cours tel qu'il figure dans l'emploi du temps.</li>
+          <li data-cursor="#ed-hl" data-duration="3400">Hors ligne, l'emploi du temps n'est pas lu : seule l'alternance joue.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le téléphone cherche un cours de la classe qui commence entre 50 minutes avant et 30 minutes après l'ouverture de l'écran, et prend le plus proche.</li>
+            <li>Le lien entre un libellé de l'emploi du temps et une classe ou un groupe se règle sur le site. Un cours relié à la classe entière fait proposer « Classe entière ».</li>
+            <li>L'emploi du temps est lu en direct sur le site, jamais copié dans le téléphone.</li>
+            <li>Si l'enseignant a déjà touché une pastille, la réponse de l'emploi du temps ne change plus rien.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile is-on">4B</span><span class="m-tuile">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Groupe</div>
+                        <div class="m-pgs">
+                          <span class="m-pg" style="--g:#4F46E5">Classe entière</span>
+                          <span class="m-pg" id="ed-g1" style="--g:#4F46E5" data-on="2-3"><i></i>Groupe 1<b>12</b></span>
+                          <span class="m-pg" id="ed-g2" style="--g:#059669" data-on="1,4"><i></i>Groupe 2<b>13</b></span>
+                        </div>
+                        <div class="m-indice m-pile" id="ed-indice"><span data-at="1,4">Proposé en alternance avec la dernière séance en groupe</span><span data-at="2-3">D'après l'emploi du temps (4B G1)</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">3 · Choisir une salle</div>
+                        <div class="m-salles">
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>4 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied"><div class="m-resume"></div><div class="m-go"><span class="m-go__in"><i class="tri"></i>Sélectionnez une classe et une salle</span></div></div>
+                  </div>
+                  <div class="m-hl glisse-bas" id="ed-hl" data-at="4">Mode hors-ligne</div>
+                  <div class="bulle bulle--haut" data-at="3" style="left:40px;top:274px">Libellé du cours dans l'emploi du temps, relié sur le site à 4B, Groupe 1</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : la salle -->
+    <section class="fiche fiche--etroite" id="salle">
+      <div class="fiche__texte">
+        <h2>Choisir la salle</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance › Choisir une salle</span></p>
+        <p class="fiche__but">La salle fixe la disposition des tables, donc le plan de classe qui s'affichera pendant la séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#sa-labo" data-action="tap">Toucher une salle : la ligne se colore et une coche apparaît à droite.</li>
+          <li data-cursor="#sa-12" data-action="tap">Toucher une autre salle déplace la coche.</li>
+          <li data-cursor="#sa-dim" data-duration="3200">Sous le nom, la taille de la grille : rangées × colonnes.</li>
+          <li data-cursor="#sa-go" data-duration="3200">Classe et salle choisies : le résumé s'affiche au-dessus du bouton, qui passe au vert.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Aucune salle n'est imposée à une classe. Si la classe n'a pas encore de plan dans la salle choisie, la grille de séance s'affichera vide : préparer le plan avant, sur le site ou dans l'onglet Classes du téléphone.</li>
+            <li>En demi-groupe, c'est le plan du groupe dans cette salle qui sert, s'il existe ; sinon celui de la classe entière.</li>
+            <li>Les salles et leurs dispositions se créent sur le site.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../enseignant/plans-de-classe.html">Plans de classe</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile">4B</span><span class="m-tuile is-on">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Choisir une salle</div>
+                        <div class="m-salles">
+                          <div class="m-salle" id="sa-12" data-on="2-4"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d" id="sa-dim">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle" id="sa-labo" data-on="1"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>3 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied">
+                      <div class="m-resume m-pile"><span data-at="1">5E · Labo SVT</span><span data-from="2">5E · Salle 12</span></div>
+                      <div class="m-go is-on" id="sa-go"><span class="m-go__in"><i class="tri"></i>Démarrer la séance</span></div>
+                    </div>
+                  </div>
+                  <div class="bulle bulle--gauche" data-at="3" style="left:104px;top:190px">5 rangées, 6 colonnes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : le thème -->
+    <section class="fiche fiche--etroite" id="theme">
+      <div class="fiche__texte">
+        <h2>Le thème de la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance › Thème de la séance</span></p>
+        <p class="fiche__but">Noter en une ligne de quoi parle l'heure, pour la retrouver ensuite. C'est facultatif, et c'est la seule saisie de texte du démarrage.</p>
+        <ol class="etapes">
+          <li data-cursor="#th-champ" data-action="tap">Toucher le champ, sous <b>Thème de la séance</b> (mention « Optionnel »).</li>
+          <li data-cursor="#th-champ" data-duration="3600">Taper le thème. Un compteur apparaît en bas à droite : 200 caractères au plus.</li>
+          <li data-cursor="#th-champ" data-duration="3600">Le thème suit la séance : il s'affiche sous « Reprendre la séance » sur l'accueil, dans l'historique et sur le site.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Le thème part vers le site tel qu'il est écrit : n'y mettre aucun nom d'élève.</li>
+            <li>Laisser le champ vide ne gêne rien : la séance démarre sans thème.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile">4B</span><span class="m-tuile is-on">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t">2 · Choisir une salle</div>
+                        <div class="m-salles">
+                          <div class="m-salle is-on"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span>3 · Thème de la séance</span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme" id="th-champ"><span class="m-ph repli" data-to="1">Ex : Chapitre 3 - Les fonctions linéaires...</span><span data-type="Chapitre 2 - La respiration" data-type-at="2"></span><span class="m-compteur" data-from="2">27/200</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied">
+                      <div class="m-resume">5E · Salle 12</div>
+                      <div class="m-go is-on"><span class="m-go__in"><i class="tri"></i>Démarrer la séance</span></div>
+                    </div>
+                  </div>
+                  <div class="bulle bulle--bas" data-at="3" style="left:40px;top:226px">Visible ensuite sur l'accueil, l'historique et le site</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : démarrer -->
+    <section class="fiche fiche--etroite" id="demarrer">
+      <div class="fiche__texte">
+        <h2>Démarrer la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Téléphone</span><span class="chemin">Nouvelle séance › Démarrer la séance</span></p>
+        <p class="fiche__but">Le dernier appui : la séance est créée et l'écran de séance s'ouvre sur le plan de classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#la-go" data-duration="3200">Tant que classe et salle ne sont pas choisies, le bouton est gris : <b>Sélectionnez une classe et une salle</b>.</li>
+          <li data-cursor="#la-4b" data-action="tap" data-duration="3200">Toucher la classe ; le groupe est proposé (ici d'après l'emploi du temps).</li>
+          <li data-cursor="#la-12" data-action="tap" data-duration="3600">Toucher la salle : le résumé <b>4B · Groupe 1 · Salle 12</b> apparaît et le bouton devient vert, <b>Démarrer la séance</b>.</li>
+          <li data-cursor="#la-go" data-action="tap">Toucher <span class="btn-nom">Démarrer la séance</span> : une roue tourne un instant.</li>
+          <li data-cursor="#la-titre" data-duration="3800">L'écran de séance s'ouvre : classe, groupe et salle en haut, chrono à 0, plan du groupe. Le geste retour ne revient pas sur « Nouvelle séance ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La séance est créée dans le téléphone : elle démarre sans réseau. Avec du réseau, elle part vers le site une demi-seconde plus tard, pour que l'écran projeté la trouve.</li>
+            <li>Le résumé s'écrit « 4B · Salle 12 » pour une classe sans groupes, et « 4B · Classe entière · Salle 12 » quand on garde toute la classe.</li>
+            <li>Si la création échoue, rien ne s'affiche : l'écran reste en place.</li>
+            <li>La suite (appui long sur un élève, menu radial, vibration, « Terminer ») est décrite dans le chapitre suivant.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seance-et-menu-radial.html">Écran de séance et menu radial</a></p>
+      </div>
+
+      <div class="scene scene--tel">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel">
+              <div class="tel__ecran">
+                <div class="tel__statut"></div>
+                <div class="m-zone">
+                  <div class="m-page">
+                    <div class="m-ns-tete"><span class="m-retour"><svg class="m-ic"><use href="#i-chevg"/></svg></span><span class="m-ns-titre">Nouvelle séance</span><span style="width:32px"></span></div>
+                    <div class="m-ns-corps">
+                      <div class="m-sec"><div class="m-sec-t">1 · Choisir une classe</div>
+                        <div class="m-tuiles"><span class="m-tuile">3A</span><span class="m-tuile" id="la-4b" data-on="2-5">4B</span><span class="m-tuile">5E</span><span class="m-tuile">6C</span></div>
+                      </div>
+                      <div class="m-sec repli glisse-haut" data-from="2"><div class="m-sec-t">2 · Groupe</div>
+                        <div class="m-pgs">
+                          <span class="m-pg" style="--g:#4F46E5">Classe entière</span>
+                          <span class="m-pg is-on" style="--g:#4F46E5"><i></i>Groupe 1<b>12</b></span>
+                          <span class="m-pg" style="--g:#059669"><i></i>Groupe 2<b>13</b></span>
+                        </div>
+                        <div class="m-indice">D'après l'emploi du temps (4B G1)</div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span class="m-pile"><span data-to="1">2 · Choisir une salle</span><span data-from="2">3 · Choisir une salle</span></span></div>
+                        <div class="m-salles">
+                          <div class="m-salle" id="la-12" data-on="3-5"><div><div class="m-salle__n">Salle 12</div><div class="m-salle__d">5 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Labo SVT</div><div class="m-salle__d">4 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                          <div class="m-salle"><div><div class="m-salle__n">Salle 21</div><div class="m-salle__d">6 × 6 places</div></div><span class="m-coche"><svg class="m-ic"><use href="#i-coche"/></svg></span></div>
+                        </div>
+                      </div>
+                      <div class="m-sec"><div class="m-sec-t"><span class="m-pile"><span data-to="1">3 · Thème de la séance</span><span data-from="2">4 · Thème de la séance</span></span><span class="m-opt">Optionnel</span></div>
+                        <div class="m-theme"><span class="m-ph">Ex : Chapitre 3 - Les fonctions linéaires...</span></div>
+                      </div>
+                    </div>
+                    <div class="m-ns-pied">
+                      <div class="m-resume"><span data-from="3">4B · Groupe 1 · Salle 12</span></div>
+                      <div class="m-go" id="la-go" data-on="3-5">
+                        <span class="m-go__in" data-to="2"><i class="tri"></i>Sélectionnez une classe et une salle</span>
+                        <span class="m-go__in" data-at="3"><i class="tri"></i>Démarrer la séance</span>
+                        <i class="m-roue m-roue--blanc m-roue--petit" data-from="4"></i>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- écran de séance -->
+                  <div class="m-page glisse-gauche" data-from="5">
+                    <div class="m-s-tete"><span class="m-s-ann">Annuler</span><div class="m-s-centre"><div class="m-s-titre" id="la-titre">4B · Groupe 1 · Salle 12</div><div class="m-s-chrono">0 min<span class="m-s-gpe">12 élèves</span></div></div><span class="m-s-fin">Terminer</span></div>
+                    <div class="m-s-bascule"><div class="m-seg"><span class="act">Plan de classe</span><span>Groupes</span></div><span class="m-carre"><svg class="m-ic"><use href="#i-ecran"/></svg></span><span class="m-carre"><svg class="m-ic"><use href="#i-reglages"/></svg></span></div>
+                    <div class="m-outils"><span class="m-outil"><svg class="m-ic"><use href="#i-hasard"/></svg>Aléatoire</span><span class="m-outil"><svg class="m-ic"><use href="#i-micro"/></svg>Oral</span><span class="m-outil"><svg class="m-ic"><use href="#i-scan"/></svg>Copies</span><span class="m-outil"><svg class="m-ic"><use href="#i-crayon"/></svg>Note</span><span class="m-outil"><svg class="m-ic"><use href="#i-bulle-carree"/></svg>Remarque</span><span class="m-outil"><svg class="m-ic"><use href="#i-corbeille"/></svg>Supprimer</span></div>
+                    <div class="m-indic">Maintenir appuyé sur un élève</div>
+                    <div class="m-grille">
+                      <div class="m-case">Lina</div>
+                      <div class="m-case"></div>
+                      <div class="m-case m-case--allee"></div>
+                      <div class="m-case">Iris</div>
+                      <div class="m-case"></div>
+                      <div class="m-case"></div>
+                      <div class="m-case">Adam</div>
+                      <div class="m-case m-case--allee"></div>
+                      <div class="m-case">Jade</div>
+                      <div class="m-case"></div>
+                      <div class="m-case">Malo</div>
+                      <div class="m-case">Inès</div>
+                      <div class="m-case m-case--allee"></div>
+                      <div class="m-case">Hugo</div>
+                      <div class="m-case"></div>
+                      <div class="m-case">Noé</div>
+                      <div class="m-case"></div>
+                      <div class="m-case m-case--allee"></div>
+                      <div class="m-case">Léa</div>
+                      <div class="m-case">Rose</div>
+                      <div class="m-case"></div>
+                      <div class="m-case">Lou</div>
+                      <div class="m-case m-case--allee"></div>
+                      <div class="m-case">Éva</div>
+                      <div class="m-case"></div>
+                    </div>
+                    <div class="m-tableau">TABLEAU</div>
+                  </div>
+                  <div class="bulle bulle--haut" data-at="5" style="left:60px;top:520px">Seuls les 12 élèves du Groupe 1 sont sur le plan</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

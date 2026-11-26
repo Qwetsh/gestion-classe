@@ -1,0 +1,829 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boîte à outils — Guide Gestion Classe</title>
+<meta name="description" content="La boîte à outils du site : QR code et lecteur, mots croisés et mots mêlés, code d'intégration, conversion YouTube et intro à texte défilant.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="90">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques propres au chapitre Outils (boîte à outils) */
+.app__side.side-e { width: 150px; }
+.corps-e { padding: 14px 16px; }
+.ot-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.corps-e .ot-tete { margin-bottom: 10px; }
+.ot-retour { width: 30px; height: 30px; flex: none; border: 1px solid var(--border); border-radius: 6px; background: #fff; display: grid; place-items: center; color: var(--text-muted); font-size: 15px; transition: all .25s; }
+.ot-retour.is-on { background: var(--surface-3); box-shadow: 0 0 0 3px rgba(79,70,229,.22); }
+.ot-ico { width: 34px; height: 34px; flex: none; border-radius: 6px; background: var(--indigo-soft); color: var(--indigo); display: grid; place-items: center; }
+.ot-ico svg { width: 19px; height: 19px; }
+.ot-titre { font-size: 18px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; white-space: nowrap; }
+.ot-desc { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ot-col { max-width: 540px; }
+.ot-lab { font-size: 11px; font-weight: 500; color: var(--text-dim); margin-bottom: 4px; }
+.ot-lab--f { font-size: 12.5px; color: var(--text-muted); margin-bottom: 6px; }
+.ot-in { min-height: 34px; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; font-size: 13.5px; display: flex; align-items: center; background: #fff; transition: all .25s; white-space: nowrap; overflow: hidden; }
+.ot-in.is-on { border-color: transparent; box-shadow: 0 0 0 2px var(--indigo); }
+.ot-in .ph { color: var(--text-dim); }
+.ot-in--p { min-height: 28px; border-radius: 7px; font-size: 12px; padding: 0 9px; }
+.ot-in--zone { align-items: flex-start; padding: 7px 10px; white-space: normal; line-height: 1.35; }
+.ot-g { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 500; background: var(--surface-3); color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.ot-g.is-on, .ot-g.actif { background: var(--indigo); color: #fff; }
+.ot-carte { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.ot-sec { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.ot-b { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 10px; font-size: 12.5px; font-weight: 560; background: var(--indigo); color: #fff; white-space: nowrap; transition: transform .15s, box-shadow .2s, background .3s, opacity .3s; }
+.ot-b--gris { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); }
+.ot-b--vert { background: var(--pos); }
+.ot-b--p { height: 26px; font-size: 11.5px; padding: 0 10px; border-radius: 7px; }
+.ot-b.is-on { transform: scale(.96); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.ot-b.off { opacity: .45; }
+.ot-zone { border: 2px dashed var(--border-strong); border-radius: 12px; display: grid; place-items: center; text-align: center; color: var(--text-dim); font-size: 12px; padding: 14px; transition: all .25s; }
+.ot-zone.is-on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.ot-zone b { display: block; font-size: 26px; font-weight: 300; line-height: 1; margin-bottom: 4px; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); background: rgba(249,115,22,.05); }
+.seg { display: inline-flex; gap: 2px; background: #F3F4F6; padding: 3px; border-radius: 9px; }
+.seg span { padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.seg span.actif, .seg span.is-on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,25,40,.14); }
+.res { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 10px 12px; }
+.res__t { font-size: 12.5px; font-weight: 650; color: var(--pos); margin-bottom: 4px; }
+.res__l { display: flex; align-items: center; gap: 9px; background: #fff; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; margin-top: 5px; }
+.res__l .nom { font-weight: 600; }
+.res__l .esp + .ot-b { flex: none; }
+.vg { width: 28px; height: 34px; border-radius: 4px; display: grid; place-items: center; color: #fff; font-size: 8.5px; font-weight: 700; flex: none; }
+.vg--pdf { background: #DC2626; } .vg--doc { background: #2563EB; }
+.vg--img { background: linear-gradient(135deg, #BAE6FD, #86EFAC); }
+.ot-err { font-size: 11.5px; color: var(--neg); }
+.ot-info { background: var(--surface-3); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
+.mono { font-family: var(--mono); }
+.chg { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; display: inline-block; animation: tourne .8s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.dl-barre { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #F1F1F4; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 12px; z-index: 500; color: var(--text-muted); }
+.dl-barre b { color: var(--text); font-weight: 600; }
+.dl-barre .vg { width: 20px; height: 24px; font-size: 7px; }
+.nav-dial { position: absolute; z-index: 650; left: 50%; top: 40px; translate: -50% 0; width: 380px; background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 16px 18px; font-size: 13px; }
+.nav-dial__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.nav-dial__pied span { padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); color: #1A56DB; }
+.nav-dial__pied span.ok { background: #1A56DB; border-color: #1A56DB; color: #fff; }
+.voile-o { position: absolute; inset: 0; background: rgba(20,25,40,.45); z-index: 600; }
+.ok-pastille { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--pos-soft); color: var(--pos); font-size: 12px; font-weight: 600; }
+/* textes de remplacement : un span caché ne prend pas de place */
+span.is-hidden:not(.garde) { display: none; }
+/* page 1 : grille, QR, jeux, liens */
+.gr-grille { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.gr-c { background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 16px 14px; min-height: 150px; transition: transform .3s, box-shadow .3s, border-color .3s; }
+.gr-c .ot-ico { margin-bottom: 12px; width: 42px; height: 42px; } .gr-c .ot-ico svg { width: 22px; height: 22px; }
+.gr-c .n { font-size: 14px; font-weight: 600; transition: color .3s; }
+.gr-c .d { font-size: 11.5px; color: var(--text-dim); line-height: 1.35; margin-top: 2px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.gr-c.is-on { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: rgba(79,70,229,.3); }
+.gr-c.is-on .n { color: var(--indigo); }
+.vue { position: absolute; inset: 0; background: #fff; padding: 18px 20px; z-index: 5; }
+/* QR */
+.qr-couleurs { display: flex; gap: 4px; }
+.qr-couleurs span { width: 26px; height: 26px; border-radius: 7px; border: 2px solid var(--border); transition: all .25s; }
+.qr-couleurs span.actif, .qr-couleurs span.is-on { border-color: var(--indigo); transform: scale(1.1); }
+.qr-boite { width: 214px; height: 214px; border-radius: 16px; background: #fff; box-shadow: var(--shadow); padding: 12px; position: relative; }
+.qr-boite .qr-svg { position: absolute; left: 12px; top: 12px; }
+.qr-mot { position: absolute; left: 50%; top: 50%; translate: -50% -50%; background: #fff; border-radius: 8px; padding: 3px 7px; font-weight: 800; font-size: 13px; color: #000; }
+/* lecteur */
+.lq-video { width: 330px; height: 330px; margin: 0 auto; border-radius: 14px; background: #111; position: relative; overflow: hidden; }
+.lq-video .vis { position: absolute; left: 50%; top: 50%; width: 66%; height: 66%; translate: -50% -50%; border: 3px solid rgba(255,255,255,.6); border-radius: 12px; }
+.lq-video .qr-svg { position: absolute; left: 50%; top: 50%; translate: -50% -50%; transform: rotate(-6deg); opacity: .85; }
+.lq-fermer { position: absolute; top: 10px; right: 10px; padding: 4px 10px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 11.5px; }
+.lq-res { background: var(--surface-3); border-radius: 12px; padding: 12px 14px; }
+/* mots croisés / mêlés */
+.src-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.src { border: 1.5px solid var(--border); border-radius: 9px; padding: 6px 8px; display: flex; gap: 7px; align-items: center; transition: all .25s; min-width: 0; }
+.src i { font-style: normal; width: 22px; height: 22px; border-radius: 6px; background: var(--surface-3); color: var(--text-muted); font-size: 8.5px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.src b { display: block; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.src small { display: block; font-size: 9.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.src > span { min-width: 0; }
+.src.actif, .src.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.src.actif b, .src.is-on b { color: var(--indigo); }
+.mt { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+.mt__h { background: var(--surface-3); padding: 7px 12px; display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: var(--text-muted); }
+.mt__h .cpt { min-width: 18px; height: 18px; border-radius: 9px; background: var(--indigo); color: #fff; font-size: 10px; display: grid; place-items: center; letter-spacing: 0; padding: 0 5px; }
+.mt__h .lien { font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--text-dim); padding: 1px 4px; border-radius: 5px; transition: all .25s; }
+.mt__h .lien.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.mt__b { padding: 10px 12px; }
+.mt-l { display: flex; align-items: center; gap: 8px; background: var(--surface-2); border: 1px solid transparent; border-radius: 8px; padding: 5px 9px; font-size: 11.5px; margin-top: 4px; transition: all .25s; }
+.mt-l .no { color: var(--text-dim); font-size: 10.5px; width: 12px; }
+.mt-l b { font-weight: 700; }
+.mt-l .def { color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.mt-l .x { color: var(--text-dim); opacity: 0; font-size: 13px; }
+.mt-l.is-on { border-color: var(--indigo); }
+.mt-l.is-on .x { opacity: 1; color: var(--neg); }
+.plus-c { width: 32px; height: 32px; border-radius: 9px; background: var(--indigo); color: #fff; display: grid; place-items: center; font-size: 18px; flex: none; transition: all .25s; }
+.plus-c.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); transform: scale(.95); }
+.puce-m { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); font-size: 11.5px; font-weight: 700; }
+.puce-m .x { font-weight: 400; color: var(--text-dim); }
+.th-g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.th { border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); padding: 5px 6px; font-size: 9.5px; font-weight: 600; line-height: 1.2; transition: all .3s; min-height: 38px; }
+.th small { display: block; font-weight: 400; color: var(--text-dim); font-size: 9px; margin-top: 2px; }
+.th.is-on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.th.is-on small { color: rgba(255,255,255,.8); }
+.curseur { position: relative; height: 6px; border-radius: 3px; background: var(--surface-3); flex: 1; }
+.curseur .rempli { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--indigo); transition: width .6s; }
+.curseur .poignee { position: absolute; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #fff; border: 3px solid var(--indigo); transition: left .6s; }
+.nb { width: 40px; height: 40px; border-radius: 10px; background: var(--indigo); color: #fff; font-weight: 700; font-size: 16px; display: grid; place-items: center; flex: none; }
+.barre-r { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 14px; background: #fff; border: 1px solid var(--border); font-size: 12px; color: var(--text-muted); }
+.barre-r b { color: var(--text); }
+.cw { display: grid; gap: 0; }
+.cw-c, .cw-v { width: 100%; aspect-ratio: 1; }
+.cw-c { background: #fff; border: 1px solid #334155; margin: 0 -1px -1px 0; position: relative; display: grid; place-items: center; }
+.cw-c i { position: absolute; left: 2px; top: 0; font-size: 8px; font-style: normal; color: #4A90D9; font-weight: 700; }
+.cw-c .cw-l { font-size: 13px; color: #1E293B; opacity: 0; transition: opacity .4s; }
+.sol .cw-l, .mg-a.is-on .cw-l { opacity: 1; }
+.defs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.defs .ot-carte { padding: 9px 11px; font-size: 11px; }
+.defs h4 { margin: 0 0 5px; font-size: 11.5px; padding-bottom: 4px; border-bottom: 2px solid var(--indigo); display: flex; justify-content: space-between; }
+.defs h4 small { font-weight: 400; color: var(--text-dim); }
+.defs p { margin: 2px 0; color: var(--text-muted); line-height: 1.3; }
+.impr { position: absolute; inset: 0; z-index: 640; background: #50545A; display: flex; justify-content: center; padding: 18px; }
+.impr__f { width: 400px; background: #fff; border-radius: 3px; box-shadow: 0 6px 24px rgba(0,0,0,.35); padding: 22px 26px; font-family: Arial, sans-serif; font-size: 10px; color: #111; }
+.impr__f h5 { font-size: 13px; margin: 0 0 8px; border-bottom: 2px solid #4A90D9; padding-bottom: 3px; }
+.ws { display: grid; font-family: 'Courier New', var(--mono); font-weight: 700; font-size: 13px; }
+.ws span { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 4px; transition: background .4s, color .4s; }
+.ws.is-on .s { background: var(--indigo); color: #fff; }
+.am { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.am span { background: var(--surface-2); border-radius: 7px; padding: 4px 7px; font-size: 11px; font-weight: 700; }
+.am small { display: block; font-weight: 400; font-size: 9.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* iframe */
+.code { background: var(--surface-3); border-radius: 10px; padding: 9px 11px; font-family: var(--mono); font-size: 10.5px; color: var(--text); line-height: 1.45; word-break: break-all; }
+.ap-cadre { border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); background: linear-gradient(180deg, #E0F2FE, #F0F9FF); position: relative; transition: all .5s; }
+/* YouTube */
+.fmt { flex: 1; height: 50px; border-radius: 12px; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-muted); background: #fff; transition: all .25s; }
+.fmt.actif, .fmt.is-on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.fmt.off { opacity: .5; }
+.fmt svg { width: 17px; height: 17px; }
+/* intro */
+.sw-form { background: #0a0a0a; border-radius: 12px; padding: 16px 18px; color: #ddd; height: 100%; }
+.sw-lab { font-size: 10.5px; color: #FFE81F; margin-bottom: 3px; opacity: .85; }
+.sw-in { background: #1a1a2e; border: 1px solid #2a2a44; border-radius: 6px; color: #FFE81F; font-size: 11.5px; padding: 6px 9px; min-height: 28px; transition: box-shadow .25s; }
+.sw-in.is-on, .sw-zone.is-on { box-shadow: 0 0 0 2px #FFE81F; }
+.sw-zone { border-radius: 8px; transition: box-shadow .25s; }
+.sw-play { display: inline-flex; align-items: center; gap: 6px; background: #FFE81F; color: #000; font-weight: 800; font-size: 14px; padding: 8px 22px; border-radius: 8px; transition: transform .15s, box-shadow .2s; }
+.sw-play.is-on { transform: scale(.95); box-shadow: 0 0 0 4px rgba(255,232,31,.35); }
+.sw-anim { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; background: #000; z-index: 6;
+  background-image: radial-gradient(1px 1px at 20px 30px, #fff 50%, transparent 51%), radial-gradient(1px 1px at 90px 120px, #ddd 50%, transparent 51%), radial-gradient(1.5px 1.5px at 160px 60px, #fff 50%, transparent 51%), radial-gradient(1px 1px at 230px 170px, #bbb 50%, transparent 51%), radial-gradient(1px 1px at 300px 40px, #fff 50%, transparent 51%), radial-gradient(1.5px 1.5px at 60px 200px, #eee 50%, transparent 51%);
+  background-size: 320px 230px; }
+.sw-intro { position: absolute; left: 60px; top: 70px; color: #4BD5EE; font-size: 17px; line-height: 1.4; max-width: 330px; }
+.sw-intro.is-on { animation: sw-intro 3s ease forwards; }
+@keyframes sw-intro { 0% { opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
+.sw-logo { position: absolute; left: 50%; top: 34px; translate: -50% 0; border: 2px solid #FFE81F; color: #FFE81F; font-size: 11px; letter-spacing: .3em; padding: 6px 14px; border-radius: 3px; opacity: .55; }
+.sw-scene { position: absolute; left: 0; right: 0; bottom: -10px; height: 360px; perspective: 260px; overflow: hidden; }
+.sw-crawl { position: absolute; left: 50%; width: 360px; margin-left: -180px; top: 30px; transform-origin: 50% 100%; transform: rotateX(28deg); color: #FFE81F; text-align: justify; font-weight: 700; font-size: 17px; line-height: 1.35; }
+.sw-crawl .ep { text-align: center; font-size: 14px; }
+.sw-crawl h6 { text-align: center; font-size: 24px; margin: 4px 0 10px; letter-spacing: .04em; }
+.sw-crawl.is-on > div { animation: sw-defile 9s linear infinite; }
+@keyframes sw-defile { from { transform: translateY(120px); } to { transform: translateY(-260px); } }
+.sw-quit { position: absolute; top: 12px; right: 12px; padding: 5px 11px; border-radius: 7px; background: rgba(255,255,255,.12); color: #fff; font-size: 12px; transition: box-shadow .25s; z-index: 2; }
+.sw-quit.is-on { box-shadow: 0 0 0 2px #FFE81F; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Outils</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#grille">La boîte à outils</a></li>
+      <li><a href="#qr-code">QR Code</a></li>
+      <li><a href="#lecteur-qr">Lecteur QR Code</a></li>
+      <li><a href="#mots-croises">Mots croisés : saisir ses mots</a></li>
+      <li><a href="#mc-vocabulaire">Mots croisés : vocabulaire du collège</a></li>
+      <li><a href="#mc-grille">Mots croisés : grille et impression</a></li>
+      <li><a href="#mots-meles">Mots mêlés : saisir ses mots</a></li>
+      <li><a href="#mm-vocabulaire">Mots mêlés : vocabulaire</a></li>
+      <li><a href="#mm-grille">Mots mêlés : grille et impression</a></li>
+      <li><a href="#iframe">Iframe</a></li>
+      <li><a href="#youtube">YouTube → MP3 / MP4</a></li>
+      <li><a href="#intro">Intro animée (texte défilant)</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/pronote.html">◀ Pronote</a><a href="../enseignant/outils-suite.html">Journal et frise chronologique ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+<header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus</div>
+      <h1>Boîte à outils</h1>
+      <p>Douze petits utilitaires, indépendants des classes et des élèves : un QR code à imprimer, des jeux de vocabulaire, un journal, une frise, des documents administratifs, des PDF à découper. Cette première page présente la grille, les QR codes, les jeux et les outils de liens et de vidéo.</p>
+      <div class="chap__resume"><span>Menu Plus › Outils</span><span>Ordinateur</span><span>12 fiches</span><span>Suite : <a href="outils-suite.html">journal et frise</a>, <a href="outils-fin.html">documents et fichiers</a></span></div>
+    </header>
+
+    <!-- ============================================================ grille -->
+    <section class="fiche" id="grille">
+      <div class="fiche__texte">
+        <h2>La boîte à outils</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils</span></p>
+        <p class="fiche__but">Une grille de douze cartes, une par outil. Chaque outil travaille seul, dans le navigateur : il ne connaît ni les classes ni les élèves de l'application.</p>
+        <ol class="etapes">
+          <li data-cursor="#gr-menu" data-action="click">Dans le menu, ouvrir <b>Plus</b> puis <span class="btn-nom">Outils</span>. La page s'intitule « Boite a outils » et compte les outils disponibles.</li>
+          <li data-cursor="#gr-c-timeline">Survoler une carte : elle se soulève, son nom passe en indigo. Sous le nom, une courte description de l'outil.</li>
+          <li data-cursor="#gr-c-timeline" data-action="click">Cliquer la carte : l'outil s'ouvre sous un bandeau qui rappelle son nom et sa description.</li>
+          <li data-cursor="#gr-retour" data-action="click">Le bouton carré <span class="btn-nom">←</span>, en haut à gauche, ramène à la grille.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Presque tout se calcule sur l'ordinateur : rien n'est envoyé. Seul le convertisseur YouTube passe par un service extérieur.</li>
+            <li>Quitter un outil efface ce qui n'a été ni téléchargé ni sauvegardé, sauf la frise (gardée automatiquement) et l'historique des documents officiels. Ces sauvegardes restent dans le navigateur de cet ordinateur.</li>
+            <li>La recherche générale du site trouve aussi chaque outil par son nom ou un mot-clé (« frise », « pdf », « qr », « vocabulaire », « youtube ») et l'ouvre directement.</li>
+            <li>Ni catégories ni filtre : l'ordre des cartes est fixe. Les pictogrammes des cartes dépendent de l'ordinateur et changent d'aspect d'un système à l'autre.</li>
+            <li>Plusieurs libellés sont écrits sans accents sur le site (« Boite a outils », « Separateur PDF », « Telecharger ») : le guide les recopie tels quels.</li>
+            <li>Une carte porte le nom d'un film connu dont l'outil imite le générique : le guide l'appelle <a href="#intro">Intro animée</a>.</li>
+            <li>Cinq outils prennent toute la largeur de l'écran (journal, intro, frise, documents officiels, séparateur PDF) ; les autres tiennent dans une colonne centrale.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="cadre-general.html">la recherche générale et le menu</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="gr-menu" data-on="1">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete ot-tete--grille"><div><div class="ot-titre" style="font-size:20px">Boite a outils</div><div class="ot-desc" style="font-size:12.5px;margin-top:2px">12 outils disponibles</div></div></div>
+        <div class="gr-grille">
+          <div class="gr-c" id="gr-c-qrcode"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg></span><div class="n">QR Code</div><div class="d">Générer un QR code à partir d'un lien</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8.5 7l1.5-2.5h4L15.5 7"/></svg></span><div class="n">Lecteur QR Code</div><div class="d">Scanner un QR code avec la caméra ou une image</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg></span><div class="n">Mots croisés</div><div class="d">Générer des mots croisés (libre ou vocabulaire collège)</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span><div class="n">Mots mêlés</div><div class="d">Générer des mots mêlés (libre ou vocabulaire collège)</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.4"/></svg></span><div class="n">Iframe</div><div class="d">Générer un code iframe pour intégrer une page web</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="10" rx="1.5"/><path d="M3 10l1.5-5.5L20 4.5 21 10"/><path d="M8 4.8l-1.5 5M13 4.6l-1.5 5.3M18 4.5l-1.5 5.4"/></svg></span><div class="n">YouTube → MP3 / MP4</div><div class="d">Convertir une vidéo YouTube en fichier audio MP3 ou vidéo MP4</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></span><div class="n">Intro animée</div><div class="d">Créer une intro personnalisée avec texte défilant</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13v16H6a2 2 0 01-2-2z"/><path d="M17 8h3v10a2 2 0 01-2 2"/><path d="M7 8h7M7 11h7M7 14h4"/></svg></span><div class="n">Générateur de Journal</div><div class="d">Créer une page de une de journal avec photos, articles et mise en page automatique</div></div>
+          <div class="gr-c" id="gr-c-timeline" data-on="2-3"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div class="n">Frise Chronologique</div><div class="d">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div class="n">Documents Officiels</div><div class="d">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.6"/><circle cx="6" cy="17" r="2.6"/><path d="M8.2 8.6L20 18M8.2 15.4L20 6"/></svg></span><div class="n">Separateur PDF</div><div class="d">Decouper, extraire ou supprimer des pages d'un fichier PDF</div></div>
+          <div class="gr-c"><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11a7.5 7.5 0 0113.3-4.2L20 9"/><path d="M20 4v5h-5"/><path d="M19.5 13a7.5 7.5 0 01-13.3 4.2L4 15"/><path d="M4 20v-5h5"/></svg></span><div class="n">Convertisseur de fichiers</div><div class="d">Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF</div></div>
+        </div>
+        <div class="vue glisse-haut" data-from="4">
+          <div class="ot-tete"><span class="ot-retour" id="gr-retour" data-on="4">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+          <div style="display:flex;gap:12px;height:440px">
+            <div style="width:250px;border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:7px">
+              <span class="ot-b ot-b--p" style="background:#8B5CF6">Templates</span>
+              <div class="ligne" style="gap:4px"><span class="ot-b ot-b--p" style="background:#10B981;padding:0 6px;font-size:10px">Exporter JSON</span><span class="ot-b ot-b--p" style="background:#3B82F6;padding:0 6px;font-size:10px">Importer JSON</span></div>
+              <div class="ot-sec" style="margin:6px 0 0">Style</div>
+              <div class="ligne" style="gap:4px"><span class="ot-g actif">Classique</span><span class="ot-g">Moderne</span><span class="ot-g">Parchemin</span></div>
+              <div class="ot-sec" style="margin:6px 0 0">Informations</div>
+              <div class="ot-in ot-in--p">Ma frise chronologique</div>
+              <div class="ligne"><div class="ot-in ot-in--p" style="flex:1">1789</div><div class="ot-in ot-in--p" style="flex:1">1799</div></div>
+            </div>
+            <div style="flex:1;border-radius:10px;background:#fff;border:1px solid var(--border);display:grid;place-items:center">
+              <div style="width:86%;text-align:center"><div style="font-weight:700;font-size:15px;margin-bottom:40px">Ma frise chronologique</div><div style="height:4px;background:#1F2937;border-radius:2px"></div><div class="ligne" style="justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:5px"><span>1789</span><span>1799</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="vue zoom" data-at="3" style="display:grid;place-items:center;background:transparent;pointer-events:none"><div class="chg" style="width:34px;height:34px;border-width:3px;color:var(--indigo)"></div></div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ QR code -->
+    <section class="fiche" id="qr-code">
+      <div class="fiche__texte">
+        <h2>QR Code</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › QR Code</span></p>
+        <p class="fiche__but">Transformer un lien en QR code à imprimer ou à coller dans une fiche, avec au centre un mot (« Correction », « Vidéo »…) pour que les élèves sachent ce qu'ils vont ouvrir.</p>
+        <ol class="etapes">
+          <li data-cursor="#qr-champ" data-action="click">Taper ou coller le lien dans <b>Lien ou texte</b> : le QR code se dessine aussitôt, sans bouton à cliquer.</li>
+          <li data-cursor="#qr-bleu" data-action="click">Choisir la <b>Couleur</b> du code : noir, bleu, rouge ou vert. Le fond reste blanc.</li>
+          <li data-cursor="#qr-mot" data-action="click" data-duration="3400">Cliquer un <b>Mot central</b> : Correction, Application, Documents, Exercice, Leçon, Évaluation, Ressource ou Vidéo. Recliquer le même le retire. <b>Logo central</b> › <span class="btn-nom">Ajouter</span> pose une image à la place.</li>
+          <li data-cursor="#qr-dl" data-action="click"><span class="btn-nom">Télécharger PNG</span> enregistre l'image ; <span class="btn-nom">Copier</span> la place dans le presse-papiers pour la coller dans un document ou un courriel.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un seul élément au centre : poser un logo retire le mot, et l'inverse. Avec l'un ou l'autre, le code passe en correction d'erreur haute : il reste lisible malgré ce qui le cache.</li>
+            <li>L'image fait 1024 × 1024 pixels (« qrcode-1024px.png »), avec une marge blanche autour.</li>
+            <li><span class="btn-nom">Copier</span> ne confirme rien à l'écran, et certains navigateurs refusent la copie d'image sans le dire : en cas de doute, télécharger le PNG.</li>
+            <li>Tout se calcule sur l'ordinateur : le lien n'est ni envoyé ni gardé.</li>
+            <li>Le QR « version couleur » imprimé tout seul sur les documents de Mes cours est une autre fonction.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#lecteur-qr">Lecteur QR Code</a> · <a href="../public/documents-par-qr-code.html">documents ouverts par QR code</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/qrcode</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="qr-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="qr-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></svg></span><div style="min-width:0"><div class="ot-titre">QR Code</div><div class="ot-desc">Générer un QR code à partir d'un lien</div></div></div>
+        <div class="ot-col" style="max-width:560px">
+          <div class="ot-lab ot-lab--f">Lien ou texte</div>
+          <div class="ot-in" id="qr-champ" data-on="1" style="min-height:44px;font-size:15px;border-radius:12px"><span class="ph" data-to="0">https://exemple.com</span><span data-type="https://exemple.com/svt/correction-ex3" data-type-at="1"></span></div>
+          <div class="ligne" style="gap:16px;align-items:flex-end;margin-top:16px;flex-wrap:wrap">
+            <div><div class="ot-lab">Couleur</div><div class="qr-couleurs"><span style="background:#000" data-on="1" class=""></span><span style="background:#1a56db" id="qr-bleu" data-on="2-4"></span><span style="background:#c81e1e"></span><span style="background:#057a55"></span></div></div>
+            <div><div class="ot-lab">Logo central</div><span class="ot-g" style="font-size:12px;padding:5px 11px">Ajouter</span></div>
+            <div style="flex:1;min-width:250px"><div class="ot-lab">Mot central</div><div class="ligne" style="gap:4px;flex-wrap:wrap"><span class="ot-g" id="qr-mot" data-on="3-4">Correction</span><span class="ot-g">Application</span><span class="ot-g">Documents</span><span class="ot-g">Exercice</span><span class="ot-g">Leçon</span><span class="ot-g">Évaluation</span><span class="ot-g">Ressource</span><span class="ot-g">Vidéo</span></div></div>
+          </div>
+          <div class="col" style="align-items:center;margin-top:20px;gap:10px">
+            <div class="qr-boite">
+              <span data-at="1"><svg class="qr-svg" viewBox="-2 -2 29 29" width="190" height="190" ><rect x="-2" y="-2" width="29" height="29" fill="#fff"/><path d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM19 16h6v1h-6zM11 17h1v1h-1zM14 17h1v1h-1zM17 17h1v1h-1zM19 17h2v1h-2zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h3v1h-3zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h2v1h-2zM21 19h2v1h-2zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h2v1h-2zM20 20h2v1h-2zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z" fill="#000000"/></svg></span>
+              <span data-from="2"><svg class="qr-svg" viewBox="-2 -2 29 29" width="190" height="190" ><rect x="-2" y="-2" width="29" height="29" fill="#fff"/><path d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM19 16h6v1h-6zM11 17h1v1h-1zM14 17h1v1h-1zM17 17h1v1h-1zM19 17h2v1h-2zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h3v1h-3zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h2v1h-2zM21 19h2v1h-2zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h2v1h-2zM20 20h2v1h-2zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z" fill="#1a56db"/></svg></span>
+              <span class="qr-mot zoom" data-from="3">Correction</span>
+            </div>
+            <div class="muet" data-from="3">Correction d'erreur haute (H) activée pour compenser le mot central</div>
+            <div class="ligne" style="gap:10px"><span class="ot-b" id="qr-dl" data-on="4">Télécharger PNG</span><span class="ot-b ot-b--gris">Copier</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ lecteur -->
+    <section class="fiche" id="lecteur-qr">
+      <div class="fiche__texte">
+        <h2>Lecteur QR Code</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Lecteur QR Code</span></p>
+        <p class="fiche__but">Lire un QR code avec la webcam ou sur une image, par exemple pour vérifier où mène un code avant de l'imprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#lq-cam" data-action="click">Cliquer <span class="btn-nom">Scanner avec la camera</span> : le navigateur demande l'accès à la webcam.</li>
+          <li data-cursor="#lq-video">Présenter le QR code dans le cadre de visée. <span class="btn-nom">Fermer</span> arrête la caméra sans rien lire.</li>
+          <li data-cursor="#lq-res" data-duration="3200">Dès que le code est reconnu, la caméra s'éteint et le contenu s'affiche sous <b>Resultat</b>.</li>
+          <li data-cursor="#lq-copier" data-action="click"><span class="btn-nom">Copier</span> copie le texte lu ; <span class="btn-nom">Scanner un autre</span> relance la caméra.</li>
+          <li data-cursor="#lq-import" data-action="click">Sans webcam : <b>Ou importer une image</b> lit le code sur une capture d'écran ou une photo.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le texte lu n'est jamais ouvert tout seul : on le lit et on le copie. C'est une bonne protection contre un code piégé.</li>
+            <li>En cas d'échec : « Impossible d'acceder a la camera. Verifiez les permissions. » ou « Aucun QR code detecte dans cette image. »</li>
+            <li>Réimporter exactement la même image juste après ne relance pas la lecture : choisir un autre fichier entre les deux.</li>
+            <li>La lecture se fait entièrement sur l'ordinateur.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/qrreader</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="lq-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="lq-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="7" width="18" height="13" rx="2"/><circle cx="12" cy="13.5" r="3.5"/><path d="M8.5 7l1.5-2.5h4L15.5 7"/></svg></span><div style="min-width:0"><div class="ot-titre">Lecteur QR Code</div><div class="ot-desc">Scanner un QR code avec la caméra ou une image</div></div></div>
+        <div style="max-width:420px;margin:0 auto">
+          <div class="col" data-at="1,5" style="gap:12px">
+            <span class="ot-b" id="lq-cam" data-on="1" style="height:46px;font-size:14px;border-radius:12px">Scanner avec la camera</span>
+            <div class="ot-zone" id="lq-import" data-on="5" style="height:120px">Ou importer une image</div>
+          </div>
+          <div data-at="2" class="zoom" style="position:absolute;left:0;right:0;top:64px">
+            <div class="lq-video" id="lq-video"><span><svg class="qr-svg" viewBox="-2 -2 29 29" width="150" height="150" ><rect x="-2" y="-2" width="29" height="29" fill="#fff"/><path d="M0 0h7v1h-7zM8 0h2v1h-2zM11 0h1v1h-1zM13 0h2v1h-2zM16 0h1v1h-1zM18 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h4v1h-4zM13 1h2v1h-2zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM9 2h1v1h-1zM11 2h1v1h-1zM13 2h4v1h-4zM18 2h1v1h-1zM20 2h3v1h-3zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM9 3h1v1h-1zM12 3h1v1h-1zM14 3h3v1h-3zM18 3h1v1h-1zM20 3h3v1h-3zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM9 4h2v1h-2zM12 4h2v1h-2zM16 4h1v1h-1zM18 4h1v1h-1zM20 4h3v1h-3zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM12 5h1v1h-1zM14 5h2v1h-2zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h7v1h-7zM8 6h3v1h-3zM15 6h1v1h-1zM18 6h7v1h-7zM10 7h1v1h-1zM13 7h1v1h-1zM15 7h1v1h-1zM3 8h2v1h-2zM6 8h5v1h-5zM12 8h3v1h-3zM16 8h2v1h-2zM22 8h3v1h-3zM2 9h5v1h-5zM8 9h4v1h-4zM18 9h1v1h-1zM23 9h2v1h-2zM0 10h1v1h-1zM2 10h11v1h-11zM15 10h5v1h-5zM22 10h3v1h-3zM0 11h3v1h-3zM4 11h2v1h-2zM8 11h1v1h-1zM10 11h1v1h-1zM15 11h3v1h-3zM21 11h2v1h-2zM4 12h1v1h-1zM6 12h5v1h-5zM13 12h1v1h-1zM17 12h5v1h-5zM0 13h1v1h-1zM3 13h1v1h-1zM8 13h2v1h-2zM11 13h1v1h-1zM14 13h2v1h-2zM18 13h3v1h-3zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h2v1h-2zM10 14h1v1h-1zM13 14h4v1h-4zM18 14h3v1h-3zM22 14h2v1h-2zM1 15h1v1h-1zM6 15h4v1h-4zM11 15h2v1h-2zM15 15h1v1h-1zM19 15h1v1h-1zM21 15h2v1h-2zM3 16h1v1h-1zM8 16h1v1h-1zM10 16h1v1h-1zM15 16h1v1h-1zM19 16h6v1h-6zM11 17h1v1h-1zM14 17h1v1h-1zM17 17h1v1h-1zM19 17h2v1h-2zM23 17h2v1h-2zM0 18h7v1h-7zM9 18h3v1h-3zM13 18h1v1h-1zM15 18h3v1h-3zM20 18h1v1h-1zM24 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h2v1h-2zM11 19h3v1h-3zM16 19h2v1h-2zM21 19h2v1h-2zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h3v1h-3zM6 20h1v1h-1zM8 20h1v1h-1zM12 20h1v1h-1zM14 20h1v1h-1zM16 20h2v1h-2zM20 20h2v1h-2zM23 20h2v1h-2zM0 21h1v1h-1zM2 21h3v1h-3zM6 21h1v1h-1zM8 21h5v1h-5zM14 21h1v1h-1zM16 21h5v1h-5zM23 21h2v1h-2zM0 22h1v1h-1zM2 22h3v1h-3zM6 22h1v1h-1zM9 22h1v1h-1zM11 22h2v1h-2zM14 22h1v1h-1zM18 22h1v1h-1zM22 22h3v1h-3zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h2v1h-2zM11 23h3v1h-3zM17 23h7v1h-7zM0 24h7v1h-7zM10 24h1v1h-1zM12 24h5v1h-5zM18 24h1v1h-1zM20 24h5v1h-5z" fill="#000000"/></svg></span><div class="vis"></div><span class="lq-fermer">Fermer</span></div>
+          </div>
+          <div class="col glisse-haut" data-at="3-4" style="gap:10px;position:absolute;left:50%;width:420px;margin-left:-210px;top:70px">
+            <div class="lq-res" id="lq-res"><div class="ot-sec" style="font-size:10px">Resultat</div><div class="mono" style="font-size:13px">https://exemple.com/svt/correction-ex3</div></div>
+            <div class="ligne" style="gap:8px"><span class="ot-b" id="lq-copier" data-on="4" style="flex:1">Copier</span><span class="ot-b ot-b--gris" style="flex:1;background:#fff">Scanner un autre</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ mots croisés : source -->
+    <section class="fiche" id="mots-croises">
+      <div class="fiche__texte">
+        <h2>Mots croisés : choisir la source et saisir ses mots</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Mots croisés</span></p>
+        <p class="fiche__but">Fabriquer en quelques secondes une grille de mots croisés imprimable avec les mots du chapitre et leurs définitions.</p>
+        <ol class="etapes">
+          <li data-cursor="#mc-libre" data-action="click">Dans <b>Source des mots</b>, garder <b>Saisie libre</b>, choisie à l'ouverture. Les six autres cartes sont des listes de vocabulaire du collège.</li>
+          <li data-cursor="#mc-plus" data-action="click" data-duration="3400">Taper un <b>Mot</b> et, si on veut, sa <b>Définition (optionnelle)</b>, puis Entrée ou <span class="btn-nom">+</span>. Le mot rejoint la liste numérotée.</li>
+          <li data-cursor="#mc-texte" data-action="click" data-duration="3600">Plus rapide : <span class="btn-nom">Mode texte</span>, une ligne par mot au format « MOT : définition », puis <span class="btn-nom">Valider et revenir</span>. <span class="btn-nom">Importer Excel</span> lit un tableau : mots en colonne A, définitions en colonne B.</li>
+          <li data-cursor="#mc-l2" data-action="click">Survoler un mot puis cliquer sa croix pour le retirer ; <span class="btn-nom">Tout effacer</span> vide la liste.</li>
+          <li data-cursor="#mc-gen" data-action="click">Cliquer <span class="btn-nom">Générer les mots croisés</span> : la grille apparaît dessous.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les mots passent en capitales et seules les lettres sont gardées, accents compris : « ÊTRE VIVANT » devient « ÊTREVIVANT ». Un mot de moins de deux lettres est ignoré.</li>
+            <li>Le « Mode texte » remplace toute la liste ; l'import Excel (.xlsx, .xls ou .csv, première feuille) ajoute à la suite.</li>
+            <li>Une définition laissée vide s'imprime « — ».</li>
+            <li>Changer de source efface la grille en cours. Rien n'est sauvegardé : quitter la page perd la liste.</li>
+            <li>Les grilles et les listes sont un peu serrées : l'outil tient dans la colonne étroite du site.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#mc-vocabulaire">listes de vocabulaire</a> · <a href="#mc-grille">grille et impression</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/crossword</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="mc-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="mc-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg></span><div style="min-width:0"><div class="ot-titre">Mots croisés</div><div class="ot-desc">Générer des mots croisés (libre ou vocabulaire collège)</div></div></div>
+        <div class="ot-col" style="max-width:600px;display:flex;flex-direction:column;gap:10px">
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Source des mots</div>
+            <div class="src-g">
+              <div class="src actif" id="mc-libre" data-on="1"><i>Aa</i><span><b>Saisie libre</b><small>Vos propres mots et définitions</small></span></div>
+              <div class="src"><i>SVT</i><span><b>SVT Collège</b><small>191 termes du programme officiel</small></span></div>
+              <div class="src"><i>Fr</i><span><b>Français Collège</b><small>172 termes littéraires et grammaticaux</small></span></div>
+              <div class="src"><i>En</i><span><b>Anglais Collège</b><small>194 termes et verbes irréguliers</small></span></div>
+              <div class="src"><i>HG</i><span><b>Histoire-Géo Collège</b><small>138 termes d'histoire et géographie</small></span></div>
+              <div class="src"><i>Ma</i><span><b>Maths Collège</b><small>123 termes mathématiques</small></span></div>
+              <div class="src"><i>De</i><span><b>Allemand Collège</b><small>156 termes et verbes forts</small></span></div>
+            </div>
+          </div>
+          <div class="mt">
+            <div class="mt__h">MOTS ET DÉFINITIONS <span class="cpt"><span data-to="1">3</span><span data-at="2">4</span><span data-at="3">5</span><span data-from="4">4</span></span><span class="esp"></span><span class="lien" id="mc-texte" data-on="3"><span data-to="2">Mode texte</span><span data-at="3">Mode formulaire</span><span data-from="4">Mode texte</span></span><span class="lien">Importer Excel</span></div>
+            <div class="mt__b" style="position:relative;height:270px">
+              <div data-at="1,2,4,5">
+                <div class="ligne" style="gap:6px">
+                  <div class="ot-in ot-in--p" style="width:120px;font-weight:700"><span data-type="ORGANE" data-type-at="2"></span><span class="ph" data-at="1">Mot</span></div>
+                  <div class="ot-in ot-in--p" style="flex:1"><span data-type="Partie du corps qui remplit une fonction" data-type-at="2"></span><span class="ph" data-at="1">Définition (optionnelle)</span></div>
+                  <span class="plus-c" id="mc-plus" data-on="2">+</span>
+                </div>
+                <div class="mt-l"><span class="no">1</span><b>CELLULE</b>—<span class="def">Unité de base du vivant</span><span class="x">×</span></div>
+                <div class="mt-l repli" id="mc-l2" data-on="4" data-to="4"><span class="no">2</span><b>NOYAU</b>—<span class="def">Organite contenant le matériel génétique</span><span class="x">×</span></div>
+                <div class="mt-l"><span class="no" data-to="4">3</span><span class="no" data-from="5">2</span><b>MEMBRANE</b>—<span class="def">Enveloppe qui délimite la cellule</span><span class="x">×</span></div>
+                <div class="mt-l glisse-haut repli" data-from="2"><span class="no" data-to="4">4</span><span class="no" data-from="5">3</span><b>ORGANE</b>—<span class="def">Partie du corps qui remplit une fonction</span><span class="x">×</span></div>
+                <div class="mt-l repli" data-from="4"><span class="no" data-to="4">5</span><span class="no" data-from="5">4</span><b>TISSU</b>—<span class="def">Ensemble de cellules ayant la même fonction</span><span class="x">×</span></div>
+              </div>
+              <div data-at="3" class="zoom" style="position:absolute;inset:10px 12px">
+                <div class="ot-in ot-in--zone mono" style="height:190px;font-size:11.5px;align-items:flex-start;display:block;border-color:var(--indigo)">CELLULE : Unité de base du vivant<br>NOYAU : Organite contenant le matériel génétique<br>MEMBRANE : Enveloppe qui délimite la cellule<br>ORGANE : Partie du corps qui remplit une fonction<br>TISSU : Ensemble de cellules ayant la même fonction</div>
+                <div class="ligne" style="justify-content:flex-end;margin-top:8px"><span class="ot-b ot-b--p">Valider et revenir</span></div>
+              </div>
+              <div class="ligne" style="position:absolute;left:12px;right:12px;bottom:10px" data-at="1,2,4,5"><span class="muet">Tout effacer</span><span class="esp"></span><span class="ot-b" id="mc-gen" data-on="5">Générer les mots croisés</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ mots croisés : vocabulaire -->
+    <section class="fiche" id="mc-vocabulaire">
+      <div class="fiche__texte">
+        <h2>Mots croisés : listes de vocabulaire du collège</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mots croisés › SVT Collège…</span></p>
+        <p class="fiche__but">Tirer au hasard des termes d'une matière, déjà écrits avec leur définition : les définitions deviennent les indices de la grille.</p>
+        <ol class="etapes">
+          <li data-cursor="#mv-svt" data-action="click">Choisir une matière : SVT, français, anglais, histoire-géographie, maths ou allemand. Chaque carte annonce son nombre de termes.</li>
+          <li data-cursor="#mv-t2" data-action="click">Dans <b>Thèmes</b>, cliquer un ou plusieurs des dix thèmes. Sans sélection, tous les thèmes sont pris.</li>
+          <li data-cursor="#mv-poignee" data-action="drag" data-drag-to="#mv-cible">Régler le <b>Nombre de mots</b> avec le curseur, de 4 à 30.</li>
+          <li data-cursor="#mv-gen" data-action="click">Cliquer <span class="btn-nom">Générer les mots croisés</span> : les termes sont tirés au hasard, sans doublon.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>En anglais et en allemand, une carte <b>Options</b> propose « Masquer les formes verbales dans les définitions » : seule la traduction française s'affiche.</li>
+            <li>Chaque clic sur « Générer » ou « Regénérer » tire d'autres mots. Sous la grille, le volet « Voir les N mots sélectionnés » liste les mots tirés et leurs définitions complètes : pratique pour le corrigé.</li>
+            <li>Les thèmes de SVT : cellule et vivant, nutrition et digestion, respiration et circulation, reproduction, génétique, évolution et classification, écosystèmes, géologie, système immunitaire, environnement.</li>
+            <li>Les listes sont écrites dans l'application : on ne peut ni les compléter ni les corriger depuis le site.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/crossword</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="mv-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="mv-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg></span><div style="min-width:0"><div class="ot-titre">Mots croisés</div><div class="ot-desc">Générer des mots croisés (libre ou vocabulaire collège)</div></div></div>
+        <div class="ot-col" style="max-width:600px;display:flex;flex-direction:column;gap:10px">
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Source des mots</div>
+            <div class="src-g">
+              <div class="src"><i>Aa</i><span><b>Saisie libre</b><small>Vos propres mots et définitions</small></span></div>
+              <div class="src" id="mv-svt" data-on="1-4"><i>SVT</i><span><b>SVT Collège</b><small>191 termes du programme officiel</small></span></div>
+              <div class="src"><i>Fr</i><span><b>Français Collège</b><small>172 termes littéraires et grammaticaux</small></span></div>
+              <div class="src"><i>En</i><span><b>Anglais Collège</b><small>194 termes et verbes irréguliers</small></span></div>
+            </div>
+          </div>
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Thèmes <span data-from="2" style="color:var(--indigo);text-transform:none;letter-spacing:0">(2 sélectionnés)</span></div>
+            <div class="th-g">
+              <div class="th" data-on="2-4">La cellule et le vivant<small>19 mots</small></div>
+              <div class="th" id="mv-t2" data-on="2-4">Nutrition et digestion<small>19 mots</small></div>
+              <div class="th">Respiration et circulation<small>19 mots</small></div>
+              <div class="th">Reproduction et sexualité<small>21 mots</small></div>
+              <div class="th">Génétique et hérédité<small>15 mots</small></div>
+              <div class="th">Évolution et classification<small>18 mots</small></div>
+              <div class="th">Écosystèmes et biodiversité<small>19 mots</small></div>
+              <div class="th">Géologie et dynamique terrestre<small>23 mots</small></div>
+              <div class="th">Système immunitaire et santé<small>20 mots</small></div>
+              <div class="th">Environnement et développement durable<small>18 mots</small></div>
+            </div>
+            <div class="muet" data-to="1" style="margin-top:6px">Aucune sélection = tous les thèmes (191 mots)</div>
+          </div>
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Nombre de mots</div>
+            <div class="ligne" style="gap:12px">
+              <div class="curseur"><span class="rempli" data-at="1-2" style="width:23%"></span><span class="rempli" data-from="3" style="width:42%"></span><span class="poignee" id="mv-poignee" data-to="2" style="left:23%"></span><span class="poignee" data-from="3" style="left:42%"></span><span id="mv-cible" style="position:absolute;left:42%;top:0"></span></div>
+              <span class="nb"><span data-to="2">10</span><span data-from="3">15</span></span>
+            </div>
+            <div class="ligne" style="margin-top:8px"><span class="muet"><span data-to="1">191 mots disponibles dans 10 thèmes</span><span data-from="2">38 mots disponibles dans 2 thèmes</span></span><span class="esp"></span><span class="ot-b" id="mv-gen" data-on="4">Générer les mots croisés</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ mots croisés : grille -->
+    <section class="fiche" id="mc-grille">
+      <div class="fiche__texte">
+        <h2>Mots croisés : grille, solution et impression</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mots croisés › sous les réglages</span></p>
+        <p class="fiche__but">Vérifier la grille, l'afficher avec ou sans les lettres, en tirer une autre, puis l'imprimer pour la classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#mg-bar">La barre indique le nombre de mots placés et la taille de la grille. Les définitions sont rangées en <b>Horizontalement</b> et <b>Verticalement</b>.</li>
+          <li data-cursor="#mg-sol" data-action="click"><span class="btn-nom">Voir solution</span> écrit les lettres dans la grille ; le bouton passe au vert et devient <span class="btn-nom">Masquer solution</span>.</li>
+          <li data-cursor="#mg-regen" data-action="click"><span class="btn-nom">Regénérer</span> propose une autre disposition (et d'autres mots si la source est une liste de vocabulaire).</li>
+          <li data-cursor="#mg-imp" data-action="click" data-duration="3400"><span class="btn-nom">Imprimer</span> ouvre un onglet avec la grille vide et les définitions, et lance l'impression.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Chaque mot doit croiser un mot déjà posé : l'outil essaie quinze dispositions et garde la plus remplie, puis la plus compacte. Un mot sans lettre commune est écarté, avec l'avertissement « N mots non placés ».</li>
+            <li>La feuille imprimée n'a jamais les lettres, même si la solution est affichée. Pour un corrigé papier, faire une capture d'écran avec « Voir solution ».</li>
+            <li>Pas d'export PDF dédié, mais « Enregistrer en PDF » dans la fenêtre d'impression du navigateur convient.</li>
+            <li>Si le navigateur bloque les fenêtres surgissantes, « Imprimer » ne fait rien : autoriser le site.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/crossword</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="mg-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="mg-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/></svg></span><div style="min-width:0"><div class="ot-titre">Mots croisés</div><div class="ot-desc">Générer des mots croisés (libre ou vocabulaire collège)</div></div></div>
+        <div class="ot-col" style="max-width:620px;display:flex;flex-direction:column;gap:10px;position:relative">
+          <div class="barre-r" id="mg-bar" data-on="1"><b>5</b> mots placés <span style="color:var(--border)">|</span> <b><span data-to="2">7×9</span><span data-from="3">9×7</span></b> grille<span class="esp"></span><span class="ot-b ot-b--gris ot-b--p" id="mg-regen" data-on="3">Regénérer</span><span id="mg-sol" style="display:inline-flex"><span class="ot-b ot-b--p" data-to="1">Voir solution</span><span class="ot-b ot-b--p ot-b--vert" data-from="2" data-on="2">Masquer solution</span></span><span class="ot-b ot-b--p" id="mg-imp" data-on="4">Imprimer</span></div>
+          <div style="display:flex;gap:12px;align-items:flex-start">
+            <div class="ot-carte" style="width:300px;height:310px;display:grid;place-items:center;position:relative">
+              <div data-to="2" data-on="2" class="mg-a" style="width:270px"><div class="cw" style="grid-template-columns:repeat(9,30px)"><span class="cw-v"></span><span class="cw-c"><i>1</i><b class="cw-l">C</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><i>2</i><b class="cw-l">M</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-c"><b class="cw-l">M</b></span><span class="cw-c"><b class="cw-l">B</b></span><span class="cw-c"><b class="cw-l">R</b></span><span class="cw-c"><b class="cw-l">A</b></span><span class="cw-c"><i>3</i><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">O</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">Y</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">U</b></span><span class="cw-v"></span><span class="cw-c"><i>4</i><b class="cw-l">O</b></span><span class="cw-c"><b class="cw-l">R</b></span><span class="cw-c"><b class="cw-l">G</b></span><span class="cw-c"><b class="cw-l">A</b></span><span class="cw-c"><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">U</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><i>5</i><b class="cw-l">E</b></span><span class="cw-c"><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">Z</b></span><span class="cw-c"><b class="cw-l">Y</b></span><span class="cw-c"><b class="cw-l">M</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-v"></span></div></div>
+              <div data-from="3" class="zoom sol" style="width:210px;position:absolute"><div class="cw" style="grid-template-columns:repeat(7,30px)"><span class="cw-v"></span><span class="cw-c"><i>2</i><b class="cw-l">M</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><i>1</i><b class="cw-l">C</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-c"><b class="cw-l">U</b></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-c"><i>5</i><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">M</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">N</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">B</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><i>4</i><b class="cw-l">O</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">Z</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">R</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">R</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">Y</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">A</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">G</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">M</b></span><span class="cw-v"></span><span class="cw-c"><i>3</i><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">O</b></span><span class="cw-c"><b class="cw-l">Y</b></span><span class="cw-c"><b class="cw-l">A</b></span><span class="cw-c"><b class="cw-l">U</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">N</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-v"></span></div></div>
+            </div>
+            <div class="defs" style="grid-template-columns:1fr;flex:1">
+              <div class="ot-carte"><h4>→ Horizontalement <small>3 mots</small></h4><p>2. Enveloppe qui délimite la cellule (8 lettres)</p><p>4. Partie du corps remplissant une fonction précise (6 lettres)</p><p>5. Molécule qui accélère une réaction chimique dans l'organisme (6 lettres)</p></div>
+              <div class="ot-carte"><h4>↓ Verticalement <small>2 mots</small></h4><p>1. Unité de base du vivant (7 lettres)</p><p>3. Organite contenant le matériel génétique (5 lettres)</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="impr glisse-haut" data-at="4">
+          <div class="impr__f">
+            <h5>Mots croisés</h5>
+            <div style="width:200px;margin:6px auto 12px" class="impr-g"><div class="cw" style="grid-template-columns:repeat(9,30px)"><span class="cw-v"></span><span class="cw-c"><i>1</i><b class="cw-l">C</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><i>2</i><b class="cw-l">M</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-c"><b class="cw-l">M</b></span><span class="cw-c"><b class="cw-l">B</b></span><span class="cw-c"><b class="cw-l">R</b></span><span class="cw-c"><b class="cw-l">A</b></span><span class="cw-c"><i>3</i><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">O</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">Y</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">U</b></span><span class="cw-v"></span><span class="cw-c"><i>4</i><b class="cw-l">O</b></span><span class="cw-c"><b class="cw-l">R</b></span><span class="cw-c"><b class="cw-l">G</b></span><span class="cw-c"><b class="cw-l">A</b></span><span class="cw-c"><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">L</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><b class="cw-l">U</b></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-v"></span><span class="cw-c"><i>5</i><b class="cw-l">E</b></span><span class="cw-c"><b class="cw-l">N</b></span><span class="cw-c"><b class="cw-l">Z</b></span><span class="cw-c"><b class="cw-l">Y</b></span><span class="cw-c"><b class="cw-l">M</b></span><span class="cw-c"><b class="cw-l">E</b></span><span class="cw-v"></span><span class="cw-v"></span></div></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><b style="border-bottom:2px solid #4A90D9">Horizontalement</b><p style="margin:4px 0">2. Enveloppe qui délimite la cellule (8 lettres)</p><p style="margin:4px 0">4. Partie du corps remplissant une fonction précise (6 lettres)</p></div><div><b style="border-bottom:2px solid #4A90D9">Verticalement</b><p style="margin:4px 0">1. Unité de base du vivant (7 lettres)</p><p style="margin:4px 0">3. Organite contenant le matériel génétique (5 lettres)</p></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ mots mêlés : source -->
+    <section class="fiche" id="mots-meles">
+      <div class="fiche__texte">
+        <h2>Mots mêlés : choisir la source et saisir ses mots</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Mots mêlés</span></p>
+        <p class="fiche__but">Cacher des mots dans une grille de lettres, dans tous les sens, pour une fiche d'entraînement au vocabulaire.</p>
+        <ol class="etapes">
+          <li data-cursor="#mm-libre" data-action="click">Dans <b>Source des mots</b>, garder <b>Saisie libre</b> (« Vos propres mots ») ou choisir une matière.</li>
+          <li data-cursor="#mm-plus" data-action="click">Taper un <b>Mot</b>, puis Entrée ou <span class="btn-nom">+</span> : il s'ajoute en étiquette à côté des autres.</li>
+          <li data-cursor="#mm-texte" data-action="click" data-duration="3400">Ou <span class="btn-nom">Mode texte</span> : un mot par ligne, puis <span class="btn-nom">Valider et revenir</span>. <span class="btn-nom">Importer Excel</span> lit la colonne A d'un tableau.</li>
+          <li data-cursor="#mm-gen" data-action="click">Cliquer <span class="btn-nom">Générer les mots mêlés</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pas de définitions en saisie libre : seulement les mots.</li>
+            <li>Mêmes règles de nettoyage que pour les mots croisés : capitales, lettres seules, deux lettres au moins.</li>
+            <li>Changer de source efface la grille ; rien n'est sauvegardé.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/wordsearch</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="mm-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="mm-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span><div style="min-width:0"><div class="ot-titre">Mots mêlés</div><div class="ot-desc">Générer des mots mêlés (libre ou vocabulaire collège)</div></div></div>
+        <div class="ot-col" style="max-width:600px;display:flex;flex-direction:column;gap:10px">
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Source des mots</div>
+            <div class="src-g">
+              <div class="src actif" id="mm-libre" data-on="1"><i>Aa</i><span><b>Saisie libre</b><small>Vos propres mots</small></span></div>
+              <div class="src"><i>SVT</i><span><b>SVT Collège</b><small>191 termes</small></span></div>
+              <div class="src"><i>Fr</i><span><b>Français Collège</b><small>172 termes</small></span></div>
+              <div class="src"><i>En</i><span><b>Anglais Collège</b><small>194 termes</small></span></div>
+              <div class="src"><i>HG</i><span><b>Histoire-Géo</b><small>138 termes</small></span></div>
+              <div class="src"><i>Ma</i><span><b>Maths Collège</b><small>123 termes</small></span></div>
+              <div class="src"><i>De</i><span><b>Allemand Collège</b><small>156 termes</small></span></div>
+            </div>
+          </div>
+          <div class="mt">
+            <div class="mt__h">MOTS <span class="cpt"><span data-to="1">5</span><span data-from="2">6</span></span><span class="esp"></span><span class="lien" id="mm-texte" data-on="3"><span data-to="2">Mode texte</span><span data-at="3">Mode formulaire</span><span data-from="4">Mode texte</span></span><span class="lien">Importer Excel</span></div>
+            <div class="mt__b" style="position:relative;height:220px">
+              <div data-at="1,2,4">
+                <div class="ligne" style="gap:6px"><div class="ot-in ot-in--p" style="flex:1;font-weight:700"><span class="ph" data-at="1">Mot</span><span data-type="ADN" data-type-at="2"></span></div><span class="plus-c" id="mm-plus" data-on="2">+</span></div>
+                <div class="ligne" style="flex-wrap:wrap;gap:5px;margin-top:10px">
+                  <span class="puce-m">CELLULE <span class="x">×</span></span><span class="puce-m">NOYAU <span class="x">×</span></span><span class="puce-m">MEMBRANE <span class="x">×</span></span><span class="puce-m">ORGANE <span class="x">×</span></span><span class="puce-m">TISSU <span class="x">×</span></span><span class="puce-m zoom" data-from="2">ADN <span class="x">×</span></span>
+                </div>
+              </div>
+              <div data-at="3" class="zoom" style="position:absolute;inset:10px 12px">
+                <div class="ot-in ot-in--zone mono" style="height:130px;display:block;border-color:var(--indigo)">CELLULE<br>NOYAU<br>MEMBRANE<br>ORGANE<br>TISSU<br>ADN</div>
+                <div class="ligne" style="margin-top:8px"><span class="muet">Un mot par ligne</span><span class="esp"></span><span class="ot-b ot-b--p">Valider et revenir</span></div>
+              </div>
+              <div class="ligne" style="position:absolute;left:12px;right:12px;bottom:10px" data-at="1,2,4"><span class="muet">Tout effacer</span><span class="esp"></span><span class="ot-b" id="mm-gen" data-on="4">Générer les mots mêlés</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ mots mêlés : vocabulaire -->
+    <section class="fiche" id="mm-vocabulaire">
+      <div class="fiche__texte">
+        <h2>Mots mêlés : listes de vocabulaire</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mots mêlés › SVT Collège…</span></p>
+        <p class="fiche__but">Tirer des termes d'une matière et, si on veut, afficher leur définition sous chaque mot à trouver.</p>
+        <ol class="etapes">
+          <li data-cursor="#mw-svt" data-action="click">Choisir une matière. Ici les cartes annoncent simplement « N termes ».</li>
+          <li data-cursor="#mw-t" data-action="click">Choisir un ou plusieurs <b>Thèmes</b> ; sans sélection, tous les thèmes sont pris.</li>
+          <li data-cursor="#mw-poignee" data-action="drag" data-drag-to="#mw-cible">Régler le <b>Nombre de mots</b>, de 4 à 30.</li>
+          <li data-cursor="#mw-def" data-action="click">L'interrupteur <b>Définitions</b>, activé au départ, ajoute la définition sous chaque mot de la liste à trouver. Le couper donne une liste de mots seuls.</li>
+          <li data-cursor="#mw-gen" data-action="click">Cliquer <span class="btn-nom">Générer les mots mêlés</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Mêmes dix thèmes par matière que pour les mots croisés ; tirage au hasard, sans doublon.</li>
+            <li>Pas d'option pour masquer les formes verbales ici.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/wordsearch</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="mw-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="mw-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span><div style="min-width:0"><div class="ot-titre">Mots mêlés</div><div class="ot-desc">Générer des mots mêlés (libre ou vocabulaire collège)</div></div></div>
+        <div class="ot-col" style="max-width:600px;display:flex;flex-direction:column;gap:10px">
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Source des mots</div>
+            <div class="src-g">
+              <div class="src"><i>Aa</i><span><b>Saisie libre</b><small>Vos propres mots</small></span></div>
+              <div class="src" id="mw-svt" data-on="1-5"><i>SVT</i><span><b>SVT Collège</b><small>191 termes</small></span></div>
+              <div class="src"><i>Fr</i><span><b>Français Collège</b><small>172 termes</small></span></div>
+              <div class="src"><i>En</i><span><b>Anglais Collège</b><small>194 termes</small></span></div>
+            </div>
+          </div>
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Thèmes <span data-from="2" style="color:var(--indigo);text-transform:none;letter-spacing:0">(1 sélectionné)</span></div>
+            <div class="th-g">
+              <div class="th" id="mw-t" data-on="2-5">La cellule et le vivant<small>19 mots</small></div>
+              <div class="th">Nutrition et digestion<small>19 mots</small></div>
+              <div class="th">Respiration et circulation<small>19 mots</small></div>
+              <div class="th">Reproduction et sexualité<small>21 mots</small></div>
+              <div class="th">Génétique et hérédité<small>15 mots</small></div>
+            </div>
+          </div>
+          <div class="ot-carte" style="padding:10px">
+            <div class="ot-sec">Nombre de mots</div>
+            <div class="ligne" style="gap:12px">
+              <div class="curseur"><span class="rempli" data-to="2" style="width:23%"></span><span class="rempli" data-from="3" style="width:31%"></span><span class="poignee" id="mw-poignee" data-to="2" style="left:23%"></span><span class="poignee" data-from="3" style="left:31%"></span><span id="mw-cible" style="position:absolute;left:31%;top:0"></span></div>
+              <span class="nb"><span data-to="2">10</span><span data-from="3">12</span></span>
+            </div>
+            <div class="ligne" style="margin-top:10px"><span class="muet"><span data-to="1">191 mots disponibles dans 10 thèmes</span><span data-from="2">19 mots disponibles dans 1 thème</span></span><span class="esp"></span><span style="font-size:12px;font-weight:500">Définitions</span><span class="interrupteur interrupteur--on" id="mw-def" data-on="4" style="box-shadow:0 0 0 0 transparent"></span></div>
+            <div class="ligne" style="margin-top:10px;justify-content:flex-end"><span class="ot-b" id="mw-gen" data-on="5">Générer les mots mêlés</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ mots mêlés : grille -->
+    <section class="fiche" id="mm-grille">
+      <div class="fiche__texte">
+        <h2>Mots mêlés : grille, solution et impression</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mots mêlés › sous les réglages</span></p>
+        <p class="fiche__but">Contrôler la grille, montrer la solution, imprimer la fiche.</p>
+        <ol class="etapes">
+          <li data-cursor="#ml-bar">La barre donne le nombre de mots placés et la taille de la grille, toujours carrée.</li>
+          <li data-cursor="#ml-sol" data-action="click"><span class="btn-nom">Voir solution</span> : les lettres des mots passent en blanc sur fond indigo.</li>
+          <li data-cursor="#ml-liste" data-duration="3200">La carte <b>Mots à trouver</b> liste les mots, avec leur définition si l'option est active.</li>
+          <li data-cursor="#ml-imp" data-action="click"><span class="btn-nom">Imprimer</span> : grille sans solution et liste des mots sur trois colonnes. <span class="btn-nom">Regénérer</span> tire une autre grille.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les mots sont posés dans les huit directions (à l'endroit, à l'envers, en diagonale), les plus longs d'abord ; deux mots peuvent partager une lettre.</li>
+            <li>La grille fait au moins 10 × 10 et grandit avec le nombre et la longueur des mots.</li>
+            <li>Les cases vides sont remplies de lettres sans accent : un mot accentué (« ÉCOSYSTÈME ») se repère donc plus facilement à ses accents.</li>
+            <li>Les mots non placés sont signalés au-dessus de la grille (« N mots non placés »).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/wordsearch</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="ml-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="ml-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5 5"/></svg></span><div style="min-width:0"><div class="ot-titre">Mots mêlés</div><div class="ot-desc">Générer des mots mêlés (libre ou vocabulaire collège)</div></div></div>
+        <div class="ot-col" style="max-width:620px;display:flex;flex-direction:column;gap:10px">
+          <div class="barre-r" id="ml-bar" data-on="1"><b>6</b> mots placés <span style="color:var(--border)">|</span> <b>10×10</b> grille<span class="esp"></span><span class="ot-b ot-b--gris ot-b--p">Regénérer</span><span id="ml-sol" style="display:inline-flex"><span class="ot-b ot-b--p" data-to="1">Voir solution</span><span class="ot-b ot-b--p ot-b--vert" data-from="2" data-on="2">Masquer solution</span></span><span class="ot-b ot-b--p" id="ml-imp" data-on="4">Imprimer</span></div>
+          <div class="ot-carte" style="display:grid;place-items:center;padding:10px"><div class="ws" id="ml-g" data-on="2-4" style="grid-template-columns:repeat(10,26px)"><span>H</span><span class="s">C</span><span class="s">E</span><span class="s">L</span><span class="s">L</span><span class="s">U</span><span class="s">L</span><span class="s">E</span><span>J</span><span>D</span><span>X</span><span>M</span><span>P</span><span class="s">A</span><span class="s">D</span><span class="s">N</span><span>E</span><span>C</span><span>C</span><span>A</span><span class="s">M</span><span>M</span><span>R</span><span>J</span><span>Z</span><span>Y</span><span>B</span><span>H</span><span>Q</span><span class="s">N</span><span>R</span><span class="s">E</span><span>L</span><span>I</span><span>Y</span><span>F</span><span class="s">T</span><span>D</span><span>I</span><span class="s">O</span><span>G</span><span>A</span><span class="s">M</span><span>U</span><span>Z</span><span>I</span><span class="s">I</span><span>Z</span><span>I</span><span class="s">Y</span><span>G</span><span>F</span><span>J</span><span class="s">B</span><span>J</span><span>U</span><span class="s">S</span><span>X</span><span>L</span><span class="s">A</span><span>C</span><span>T</span><span>K</span><span>V</span><span class="s">R</span><span>M</span><span class="s">S</span><span>Q</span><span>H</span><span class="s">U</span><span>F</span><span>H</span><span>P</span><span>I</span><span>C</span><span class="s">A</span><span class="s">U</span><span>R</span><span>J</span><span>A</span><span>J</span><span>S</span><span>W</span><span>J</span><span>Y</span><span>Q</span><span class="s">N</span><span>G</span><span>N</span><span>N</span><span>T</span><span class="s">E</span><span class="s">N</span><span class="s">A</span><span class="s">G</span><span class="s">R</span><span class="s">O</span><span class="s">E</span><span>J</span><span>N</span></div></div>
+          <div class="ot-carte zone-on" id="ml-liste" data-on="3" style="padding:10px">
+            <div class="ot-sec">Mots à trouver (6)</div>
+            <div class="am"><span>CELLULE<small>Unité de base du vivant</small></span><span>NOYAU<small>Organite contenant le matériel génétique</small></span><span>MEMBRANE<small>Enveloppe qui délimite la cellule</small></span><span>ORGANE<small>Partie du corps remplissant une fonction</small></span><span>TISSU<small>Ensemble de cellules ayant la même fonction</small></span><span>ADN<small>Molécule support de l'information génétique</small></span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ iframe -->
+    <section class="fiche" id="iframe">
+      <div class="fiche__texte">
+        <h2>Iframe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Iframe</span></p>
+        <p class="fiche__but">Obtenir le code qui intègre une page web (simulation, vidéo, quiz) dans une page de l'ENT ou un site qui accepte le HTML, et vérifier l'aperçu.</p>
+        <ol class="etapes">
+          <li data-cursor="#if-lien" data-action="click">Coller l'adresse dans <b>Lien à intégrer</b>.</li>
+          <li data-cursor="#if-43" data-action="click">Choisir le <b>Ratio</b> : 16:9, 4:3, 1:1, Téléphone ou Plein. Avec <b>Plein</b>, régler la <b>Hauteur (px)</b> (500 au départ).</li>
+          <li data-cursor="#if-cases">Les cases <b>Sans bordure</b> et <b>Plein écran</b> sont cochées d'avance.</li>
+          <li data-cursor="#if-copier" data-action="click"><span class="btn-nom">Copier</span>, à droite de <b>Code HTML</b> : le bouton affiche « Copié ! » un instant. Coller ce code dans la page de destination.</li>
+          <li data-cursor="#if-apercu">L'<b>Aperçu</b> montre la page intégrée au ratio choisi.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Beaucoup de sites refusent d'être intégrés : l'aperçu reste alors vide ou affiche une erreur, et le code ne marchera pas mieux ailleurs. L'outil ne le signale pas.</li>
+            <li>L'adresse n'est pas vérifiée : une adresse fausse donne quand même un code.</li>
+            <li>Le code prend toute la largeur disponible et ne charge la page qu'au moment où elle devient visible.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="mini-sites-et-animations.html">pages intégrées dans les tableaux de séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/iframe</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="if-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="if-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 16l5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.4"/></svg></span><div style="min-width:0"><div class="ot-titre">Iframe</div><div class="ot-desc">Générer un code iframe pour intégrer une page web</div></div></div>
+        <div class="ot-col" style="max-width:580px;display:flex;flex-direction:column;gap:12px">
+          <div><div class="ot-lab ot-lab--f">Lien à intégrer</div><div class="ot-in" id="if-lien" data-on="1" style="min-height:42px;font-size:14px;border-radius:12px"><span class="ph" data-to="0">https://exemple.com</span><span data-type="https://example.com/simulation-volcan" data-type-at="1"></span></div></div>
+          <div class="ligne" style="gap:16px;align-items:flex-end">
+            <div><div class="ot-lab">Ratio</div><div class="ligne" style="gap:4px"><span class="ot-g" data-on="1">16:9</span><span class="ot-g" id="if-43" data-on="2-5">4:3</span><span class="ot-g">1:1</span><span class="ot-g"><svg width="10" height="12" viewBox="0 0 10 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="8" height="12" rx="1.5"/></svg>Téléphone</span><span class="ot-g">Plein</span></div></div>
+            <div class="ligne zone-on" id="if-cases" data-on="3" style="gap:12px;font-size:12px;padding:3px 5px"><span class="ligne" style="gap:5px"><span class="case case--on"></span>Sans bordure</span><span class="ligne" style="gap:5px"><span class="case case--on"></span>Plein écran</span></div>
+          </div>
+          <div>
+            <div class="ligne" style="margin-bottom:5px"><span class="ot-lab ot-lab--f" style="margin:0">Code HTML</span><span class="esp"></span><span class="ot-g" id="if-copier" data-on="4" style="background:var(--indigo-soft);color:var(--indigo)"><span data-to="3">Copier</span><span data-at="4">Copié !</span><span data-from="5">Copier</span></span></div>
+            <div class="code"><span data-at="1">&lt;iframe src="https://example.com/simulation-volcan" width="100%" style="aspect-ratio: 16/9" frameborder="0" allowfullscreen loading="lazy"&gt;&lt;/iframe&gt;</span><span data-from="2">&lt;iframe src="https://example.com/simulation-volcan" width="100%" style="aspect-ratio: 4/3" frameborder="0" allowfullscreen loading="lazy"&gt;&lt;/iframe&gt;</span></div>
+          </div>
+          <div>
+            <div class="ot-lab ot-lab--f">Aperçu</div>
+            <div class="ap-cadre" id="if-apercu" style="height:180px">
+              <svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMax meet" style="position:absolute;inset:0;width:100%;height:100%"><path d="M0 150 L110 60 L130 52 L150 60 L260 150Z" fill="#A8A29E"/><path d="M118 58 Q130 40 142 58" fill="#F97316"/><circle cx="128" cy="30" r="9" fill="#D6D3D1"/><circle cx="140" cy="18" r="12" fill="#E7E5E4"/></svg>
+              <span style="position:absolute;left:10px;top:8px;font-size:11px;font-weight:600;color:#0C4A6E">Simulation : éruption volcanique</span>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ youtube -->
+    <section class="fiche" id="youtube">
+      <div class="fiche__texte">
+        <h2>YouTube → MP3 / MP4</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › YouTube → MP3 / MP4</span></p>
+        <p class="fiche__but">Récupérer la bande-son (MP3) ou la vidéo (MP4) d'une vidéo YouTube, pour la passer en classe sans connexion et sans publicité.</p>
+        <ol class="etapes">
+          <li data-cursor="#yt-lien" data-action="click">Coller le lien dans <b>Lien YouTube</b> : lien classique, lien court ou Shorts. Une adresse qui ne ressemble pas à YouTube affiche « Lien YouTube invalide ».</li>
+          <li data-cursor="#yt-mp3" data-action="click">Choisir le <b>Format</b> : <b>MP3 (Audio)</b> ou <b>MP4 (Vidéo)</b>.</li>
+          <li data-cursor="#yt-conv" data-action="click">Cliquer <span class="btn-nom">Convertir en MP3</span> : « Conversion en cours… » pendant l'attente.</li>
+          <li data-cursor="#yt-dl" data-action="click">« Fichier prêt ! » : <span class="btn-nom">Télécharger MP3</span> enregistre le fichier, dont le nom s'affiche dessous.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><span class="important">Limite actuelle :</span> l'outil dépend d'un service de conversion extérieur et payant, que le serveur de l'application interroge. Si ce service change, sature ou ferme, la conversion échoue (« Impossible de contacter le service de conversion. ») sans que l'application n'y puisse rien. Quand le service n'est pas branché, l'outil le dit dès l'ouverture et le bouton reste grisé.</li>
+            <li>Quota commun : 500 conversions par mois pour tous les enseignants de l'application, compteur affiché en bas. Au-delà : « Limite mensuelle atteinte. Réessayez le mois prochain. »</li>
+            <li>Le MP4 n'est ouvert qu'à certains comptes, réglés sur le serveur ; pour les autres, le bouton est grisé avec la mention « MP4 : accès restreint ».</li>
+            <li>Réservé aux enseignants connectés. Changer le lien ou le format efface le résultat. Si le téléchargement direct échoue, le fichier s'ouvre dans un nouvel onglet.</li>
+            <li>Télécharger une vidéo reste soumis aux conditions de YouTube et au droit d'auteur : l'outil ne le rappelle pas.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/youtube</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="yt-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="yt-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="10" width="18" height="10" rx="1.5"/><path d="M3 10l1.5-5.5L20 4.5 21 10"/><path d="M8 4.8l-1.5 5M13 4.6l-1.5 5.3M18 4.5l-1.5 5.4"/></svg></span><div style="min-width:0"><div class="ot-titre">YouTube → MP3 / MP4</div><div class="ot-desc">Convertir une vidéo YouTube en fichier audio MP3 ou vidéo MP4</div></div></div>
+        <div class="ot-col" style="max-width:540px;display:flex;flex-direction:column;gap:14px">
+          <div><div class="ot-lab ot-lab--f">Lien YouTube</div><div class="ot-in" id="yt-lien" data-on="1" style="min-height:42px;font-size:14px;border-radius:12px"><span class="ph" data-to="0">https://www.youtube.com/watch?v=...</span><span data-type="https://youtu.be/xYz123AbCd" data-type-at="1"></span></div></div>
+          <div><div class="ot-lab ot-lab--f">Format</div>
+            <div class="ligne" style="gap:10px"><span class="fmt actif" id="yt-mp3" data-on="2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg>MP3 (Audio)</span><span class="fmt off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>MP4 (Vidéo)</span></div>
+            <div class="muet" style="margin-top:5px;text-align:right">MP4 : accès restreint. Contactez l'administrateur pour l'activer.</div>
+          </div>
+          <div style="text-align:center;height:92px;position:relative">
+            <span class="ot-b" id="yt-conv" data-on="3" data-to="3" style="height:42px;padding:0 28px;font-size:13.5px"><span data-to="2">Convertir en MP3</span><span data-at="3" style="display:contents"><span class="chg"></span>Conversion en cours…</span></span>
+            <div class="col zoom" data-from="4" style="align-items:center;gap:8px;position:absolute;left:0;right:0;top:0"><span class="ok-pastille"><span class="ic ic-ok" aria-hidden="true"></span> Fichier prêt !</span><span class="ot-b ot-b--vert" id="yt-dl" data-on="4" style="height:38px;padding:0 24px">Télécharger MP3</span><span class="muet">Le cycle de l'eau expliqué.mp3</span></div>
+          </div>
+          <div class="ot-info">Convertit les vidéos YouTube en MP3 (128 kbps) ou MP4. Fonctionne avec les liens classiques et les Shorts.<br>Limite : 500 conversions par mois, tous comptes confondus (<span data-to="3">37</span><span data-from="4">38</span> ce mois-ci).</div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ intro animée -->
+    <section class="fiche" id="intro">
+      <div class="fiche__texte">
+        <h2>Intro animée : texte qui défile en perspective</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › carte à l'étoile</span></p>
+        <p class="fiche__but">Projeter en ouverture de séance ou de projet un générique de cinéma : une phrase d'introduction, un logo, puis un long texte jaune qui défile en s'éloignant dans un ciel étoilé.</p>
+        <ol class="etapes">
+          <li data-cursor="#in-form" data-duration="3400">Remplir le formulaire : <b>Texte d'intro (bleu)</b>, <b>URL du logo</b> (vide : logo fourni), <b>Épisode</b>, <b>Titre</b> et <b>Texte du crawl</b>, le texte qui défile. Une ligne vide sépare deux paragraphes.</li>
+          <li data-cursor="#in-duree">Régler la <b>Durée du crawl (s)</b> (80 au départ, de 20 à 300). Une musique peut venir d'une adresse ou d'un fichier (<b>Ou fichier local</b>) ; une case centre le texte.</li>
+          <li data-cursor="#in-play" data-action="click">Cliquer <span class="btn-nom">▶ Play</span> : l'animation remplace le formulaire.</li>
+          <li data-cursor="#in-anim" data-duration="4200">Sur fond étoilé : la phrase d'intro en bleu, puis le logo qui recule, puis le texte jaune qui monte en s'éloignant.</li>
+          <li data-cursor="#in-quit" data-action="click"><span class="btn-nom">× Quitter</span>, ou la touche Échap, ramène au formulaire.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Sur le site, la carte et le formulaire portent le nom du film dont l'outil imite le générique, et les champs arrivent préremplis avec le texte d'origine, en anglais : tout remplacer par son propre texte.</li>
+            <li>La musique fournie démarre cinq secondes après « Play ». Un fichier choisi sur l'ordinateur passe avant une adresse, qui passe avant la musique fournie. Si le navigateur bloque le son, l'animation joue en silence, sans message.</li>
+            <li>Le formulaire tutoie (« Remplis les champs… ») : il a été écrit pour être manipulé aussi par des élèves.</li>
+            <li>Rien n'est sauvegardé et il n'y a pas d'export vidéo : l'intro se joue en direct. Pour le plein écran, utiliser celui du navigateur (touche F11).</li>
+            <li>Sans internet, les titres perdent leur police décorative, chargée depuis un site extérieur.</li>
+            <li>Le texte prérempli et la musique fournie reprennent une œuvre protégée : en classe, l'usage reste celui d'une courte citation pédagogique.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/starwars</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="in-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="in-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></span><div style="min-width:0"><div class="ot-titre">Intro animée</div><div class="ot-desc">Créer une intro personnalisée avec texte défilant</div></div></div>
+        <div style="position:absolute;left:20px;right:20px;top:66px;bottom:18px">
+          <div class="sw-form">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 14px" class="sw-zone" id="in-form" data-on="1">
+              <div style="grid-column:1/3"><div class="sw-lab">Texte d'intro (bleu)</div><div class="sw-in">Jeudi matin, en salle de SVT…</div></div>
+              <div><div class="sw-lab">Épisode</div><div class="sw-in">Chapitre 3</div></div>
+              <div><div class="sw-lab">Titre</div><div class="sw-in">LA CELLULE</div></div>
+              <div style="grid-column:1/3"><div class="sw-lab">URL du logo (SVG ou PNG)</div><div class="sw-in" style="color:#777">Laisse vide pour le logo par défaut</div></div>
+              <div style="grid-column:1/3"><div class="sw-lab">Texte du crawl</div><div class="sw-in" style="height:96px;line-height:1.4">Tous les êtres vivants sont faits de cellules. Certains n'en ont qu'une, d'autres des milliards.<br><br>Aujourd'hui, armés de leur microscope, les élèves de 5E partent à leur recherche…</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:110px 1fr 1fr;gap:14px;margin-top:9px;align-items:end">
+              <div><div class="sw-lab">Durée du crawl (s)</div><div class="sw-in" id="in-duree" data-on="2">80</div></div>
+              <div><div class="sw-lab">URL musique (MP3, optionnel)</div><div class="sw-in" style="color:#777">https://...mp3</div></div>
+              <div><div class="sw-lab">Ou fichier local</div><div class="sw-in" style="color:#aaa">Choisir un fichier</div></div>
+            </div>
+            <div class="ligne" style="margin-top:12px;justify-content:space-between"><span style="font-size:11px;color:#bbb"><span class="case" style="background:#1a1a2e;border-color:#555;margin-right:6px;vertical-align:-3px"></span>Centrer le texte du crawl</span><span class="sw-play" id="in-play" data-on="3">▶ Play</span></div>
+          </div>
+          <div class="sw-anim" data-from="4" id="in-anim">
+            <span class="sw-quit" id="in-quit" data-on="5">× Quitter</span>
+            <div class="sw-intro" data-on="4">Jeudi matin, en salle de SVT…</div>
+            <div class="sw-logo">LOGO</div>
+            <div class="sw-scene"><div class="sw-crawl" data-on="4-5"><div><div class="ep">Chapitre 3</div><h6>LA CELLULE</h6>Tous les êtres vivants sont faits de cellules. Certains n'en ont qu'une, d'autres des milliards.<br><br>Aujourd'hui, armés de leur microscope, les élèves de 5E partent à leur recherche…</div></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

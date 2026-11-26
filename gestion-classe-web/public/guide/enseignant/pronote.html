@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronote — Guide Gestion Classe</title>
+<meta name="description" content="Relier Gestion Classe à Pronote : connexion par QR code ou identifiants, emploi du temps de la semaine, accueil, import d'un export de notes et colonne à coller dans Pronote, et ce que la liaison ne fait pas.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="84">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques communes aux chapitres Récompenses, Académie et Pronote */
+.app__side { position: relative; }
+.side__compte { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); padding: 8px 6px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.side__compte .avatar { width: 24px; height: 24px; font-size: 10.5px; }
+.pn-encart { margin-top: auto; display: flex; align-items: flex-start; gap: 7px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 9px; font-size: 11.5px; line-height: 1.35; position: relative; transition: box-shadow .25s, opacity .35s; }
+.pn-encart u { cursor: pointer; }
+.pn-encart.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-encart__i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 9px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+.pn-encart__x { margin-left: auto; font-size: 14px; line-height: 1; opacity: .7; padding: 0 2px; border-radius: 4px; }
+.ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic--p { width: 13px; height: 13px; }
+.ic--g { width: 22px; height: 22px; }
+.modale__x { margin-left: auto; color: var(--text-dim); font-size: 18px; line-height: 1; font-weight: 400; }
+.modale__tl { display: flex; align-items: center; gap: 8px; }
+.modale__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.modale__texte { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.45; white-space: pre-line; }
+.b--rouge { background: var(--neg); border-color: var(--neg); color: #fff; }
+.b--encre { background: #4338CA; border-color: #4338CA; }
+.toast { z-index: 760; }
+.toast--ok { background: var(--pos-soft); color: var(--pos); box-shadow: 0 6px 20px rgba(20,25,40,.12); border: 1px solid #CDE9D6; font-weight: 550; }
+.cl-ok { color: var(--pos); }
+.sel { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; white-space: nowrap; transition: all .25s; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; padding-left: 6px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.sw { display: inline-grid; }
+.sw > * { grid-area: 1 / 1; }
+.apres:not(.is-hidden) { transition-delay: 1.1s !important; }
+.avant.is-hidden { transition-delay: 1.1s !important; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.puls.is-on { animation: puls 1.1s ease-in-out infinite; }
+@keyframes puls { 50% { opacity: .55; } }
+.tourne { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--indigo-soft); border-top-color: var(--indigo); animation: tourne 0.9s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.natif { position: absolute; left: 50%; top: 18px; translate: -50% 0; width: 430px; background: #fff; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.35); padding: 16px 18px 14px; z-index: 780; font-family: 'Segoe UI', system-ui, sans-serif; color: #1f1f1f; }
+.natif__o { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.natif__m { font-size: 13px; line-height: 1.45; margin-bottom: 14px; }
+.natif__b { display: flex; justify-content: flex-end; gap: 8px; }
+.natif__b span { padding: 6px 16px; border-radius: 16px; font-size: 12.5px; border: 1px solid #c7c7c7; background: #fff; }
+.natif__b span.ok { background: #0b57d0; border-color: #0b57d0; color: #fff; }
+.natif__b span.is-on { box-shadow: 0 0 0 3px rgba(11,87,208,.3); }
+
+/* Page Pronote */
+.pn { flex: 1; min-height: 0; padding: 16px 22px; display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden; background: #FAFAFB; }
+.pn-t h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.pn-t p { margin: 2px 0 0; color: var(--text-muted); font-size: 12.5px; border-radius: 5px; display: inline-block; transition: box-shadow .25s; }
+.pn-t p.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-carte { width: 480px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(20,25,40,.1), 0 1px 2px rgba(20,25,40,.06); padding: 16px 20px; position: relative; }
+.pn-ct { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.pn-ic { width: 40px; height: 40px; border-radius: 10px; background: var(--indigo-soft); color: var(--indigo); display: grid; place-items: center; }
+.pn-ct b { display: block; font-size: 15px; }
+.pn-ct small { color: var(--text-dim); font-size: 12px; }
+.pseg { display: flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 8px; margin-bottom: 12px; }
+.pseg span { flex: 1; text-align: center; padding: 6px; border-radius: 6px; font-size: 12.5px; color: var(--text-muted); transition: all .25s; }
+.pseg span.is-actif, .pseg span.is-on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,25,40,.12); font-weight: 550; }
+.pseg span.off.is-on { background: transparent; box-shadow: none; color: var(--text-muted); font-weight: 400; }
+.pn-aide { background: var(--indigo-soft); color: #3730A3; border-radius: 8px; padding: 8px 12px; font-size: 11.5px; line-height: 1.5; transition: box-shadow .25s; }
+.pn-aide.is-on, .pn-warn.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-aide ol { margin: 3px 0 0; padding-left: 18px; }
+.pn-warn { background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 11.5px; line-height: 1.45; transition: box-shadow .25s; }
+.pn-lab { font-size: 12px; font-weight: 500; margin: 9px 0 4px; }
+.pn-zone { border: 1px solid var(--border-strong); border-radius: 7px; padding: 6px 9px; font-family: var(--mono); font-size: 10.5px; min-height: 48px; line-height: 1.45; word-break: break-all; transition: all .25s; }
+.pn-ch { height: 32px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 10px; font-size: 12.5px; display: flex; align-items: center; transition: all .25s; }
+.pn-pin { height: 38px; border: 1px solid var(--border-strong); border-radius: 7px; text-align: center; font-size: 18px; letter-spacing: .6em; display: grid; place-items: center; transition: all .25s; }
+.pn-zone.is-on, .pn-ch.is-on, .pn-pin.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.ph { color: var(--text-dim); }
+.pn-btn { margin-top: 12px; height: 36px; border-radius: 7px; background: #4338CA; color: #fff; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 560; transition: box-shadow .25s, background .25s; }
+.pn-btn.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.pn-btn--gris { background: var(--surface-3); color: var(--text-dim); }
+.pn-btn .tourne { width: 14px; height: 14px; border-width: 2px; border-color: rgba(255,255,255,.35); border-top-color: #fff; }
+.pn-note { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 8px; }
+.pn-charge { flex: 1; display: grid; place-items: center; text-align: center; color: var(--text-muted); font-size: 13px; }
+.pn-charge .tourne { width: 34px; height: 34px; margin: 0 auto 10px; }
+.pn-bloc { background: #fff; border-radius: 8px; box-shadow: 0 1px 3px rgba(20,25,40,.1), 0 1px 2px rgba(20,25,40,.06); transition: box-shadow .25s; }
+.pn-bloc.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-compte { display: flex; align-items: center; gap: 10px; padding: 10px 14px; }
+.pn-av { width: 36px; height: 36px; border-radius: 8px; background: linear-gradient(135deg, #22C55E, #15803D); color: #fff; font-weight: 700; display: grid; place-items: center; }
+.pn-compte b { display: block; font-size: 13px; font-weight: 550; }
+.pn-compte small { font-size: 12px; color: var(--text-dim); }
+.pn-deco { margin-left: auto; color: var(--neg); font-size: 12.5px; font-weight: 500; padding: 6px 12px; border-radius: 8px; transition: background .25s; }
+.pn-deco.is-on { background: var(--neg-soft); }
+.pn-cls { padding: 10px 14px; }
+.pn-cls h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: var(--text-muted); }
+.pn-cls span { display: inline-block; padding: 4px 11px; border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); font-size: 12px; font-weight: 500; margin: 0 5px 4px 0; }
+.pn-edt { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.pn-nav { display: flex; align-items: center; padding: 7px 12px; border-bottom: 1px solid var(--border); gap: 10px; font-size: 13px; }
+.pn-nav .fl { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); transition: background .25s; }
+.pn-nav .fl.is-on { background: var(--surface-3); color: var(--text); }
+.pn-nav .mil { flex: 1; text-align: center; font-weight: 550; }
+.pn-auj { margin-left: 8px; font-size: 11px; padding: 2px 9px; border-radius: 999px; background: var(--indigo-soft); color: var(--indigo); font-weight: 500; transition: box-shadow .25s; }
+.pn-auj.is-on { box-shadow: 0 0 0 2px var(--indigo); }
+.pn-g { display: grid; grid-template-columns: 46px repeat(5, 1fr); font-size: 10px; flex: 1; }
+.pn-g > div { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 3px; min-height: 40px; position: relative; }
+.pn-g .h { color: var(--text-dim); text-align: right; padding-right: 6px; font-size: 10px; }
+.pn-g .j { min-height: 0; text-align: center; font-weight: 600; color: var(--text-muted); padding: 5px 0; font-size: 11px; }
+.pn-g .j small { display: block; font-weight: 400; color: var(--text-dim); font-size: 10px; }
+.pn-g .j.auj { background: var(--indigo-soft); color: var(--indigo); }
+.pn-g .j.auj small { color: var(--indigo); }
+.pn-g .j.aujo { transition: background .25s, color .25s; }
+.pn-g .j.aujo.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.pn-g .j.aujo.is-on small { color: var(--indigo); }
+.pn-g .colauj { transition: background .25s; }
+.pn-g .colauj.is-on { background: rgba(79,70,229,.05); }
+.lc { border-left: 3px solid var(--lc); background: color-mix(in srgb, var(--lc) 14%, #fff); border-radius: 4px; padding: 3px 5px; line-height: 1.25; transition: box-shadow .25s; }
+.lc b { display: block; font-size: 10px; }
+.lc .c { color: var(--indigo); }
+.lc .s { color: var(--text-dim); }
+.lc.is-on { box-shadow: 0 0 0 2px var(--accent); }
+.lc--ann { --lc: var(--neg); background: var(--neg-soft); opacity: .6; }
+/* accueil */
+.ac-t { display: flex; align-items: baseline; gap: 10px; }
+.ac-t h3 { margin: 0; font-size: 20px; font-weight: 600; }
+.ac-t span { font-size: 12.5px; color: var(--text-muted); border-radius: 5px; transition: box-shadow .25s; }
+.ac-t span.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.puce-c { display: inline-block; font-size: 9.5px; font-weight: 650; padding: 1px 5px; border-radius: 5px; margin-right: 3px; }
+.p3 { background: var(--n3-soft); color: var(--n3-ink); } .p4 { background: var(--n4-soft); color: var(--n4-ink); } .p5 { background: var(--n5-soft); color: var(--n5-ink); }
+.ac-c { border: 1px solid var(--border); border-left: 3px solid var(--lc); border-radius: 5px; background: #fff; padding: 3px 5px; font-size: 10px; line-height: 1.3; transition: box-shadow .25s; }
+.ac-c.is-on { box-shadow: 0 0 0 2px var(--accent); }
+.src { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; background: #fff; transition: box-shadow .25s; }
+.src i { width: 7px; height: 7px; border-radius: 50%; background: var(--pos); }
+.src.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+/* carnet */
+.cn { flex: 1; min-height: 0; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; position: relative; }
+.cn-bar { display: flex; align-items: center; gap: 8px; }
+.cn-tab { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; border: 1px solid var(--border); }
+.cn-tab th { background: var(--surface-2); font-weight: 600; color: var(--text-muted); font-size: 11px; padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+.cn-tab th.col { text-align: center; position: relative; transition: background .25s; }
+.cn-tab th.col.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.cn-tab td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.cn-tab td.n { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.dots { width: 28px; height: 28px; border: 1px solid var(--border-strong); border-radius: 6px; display: grid; place-items: center; font-size: 15px; color: var(--text-muted); background: #fff; transition: all .25s; }
+.dots.is-on { background: var(--surface-3); }
+.menu-c { position: absolute; z-index: 30; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 4px; font-size: 12.5px; }
+.menu-c div { padding: 6px 10px; border-radius: 5px; }
+.menu-c div small { display: block; color: var(--text-dim); font-size: 11px; }
+.menu-c div.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.mod-t { font-size: 15px; font-weight: 650; display: flex; align-items: center; margin-bottom: 10px; }
+.fich { border: 1.5px dashed var(--border-strong); border-radius: 8px; padding: 10px; text-align: center; font-size: 12px; color: var(--text-muted); transition: border-color .25s; }
+.fich.is-on { border-color: var(--indigo); color: var(--indigo); }
+.resu { font-size: 12px; color: var(--text-muted); margin: 8px 0; }
+.ev { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 12px; transition: box-shadow .25s; }
+.ev.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.ev-l { display: flex; align-items: center; gap: 8px; }
+.ev-l small { color: var(--text-dim); }
+.ev .sel { margin-top: 6px; width: 100%; }
+.alerte-or { font-size: 11.5px; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 5px 8px; margin-top: 6px; }
+.volet { font-size: 11.5px; color: var(--text-muted); padding: 4px 2px; }
+.cp-t { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cp-t td { padding: 4px 8px; border-bottom: 1px solid var(--border); }
+.cp-t td:first-child { color: var(--text-dim); width: 26px; }
+.cp-t td.v { text-align: right; font-weight: 650; font-variant-numeric: tabular-nums; }
+.cp-t tr.ver td { background: var(--warn-soft); }
+.cp-t .vide { color: var(--text-dim); font-weight: 400; }
+.cp-t .br { color: var(--warn); font-weight: 600; font-size: 11px; }
+.cp-z { border: 1px solid var(--border); border-radius: 8px; max-height: 210px; overflow: hidden; transition: box-shadow .25s; }
+.cp-z.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-res { font-size: 11px; color: var(--text-dim); }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-bulle" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-crayon" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
+  <symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z"/></symbol>
+  <symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-groupe" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 010 6M21 20c0-2.6-1.7-4.8-4-5.6"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 013 3v12a2 2 0 00-2-2H3z"/><path d="M21 5h-6a3 3 0 00-3 3v12a2 2 0 012-2h7z"/></symbol>
+  <symbol id="i-feuille" viewBox="0 0 24 24"><path d="M5 20c0-9 5-15 15-15 0 10-5 15-14 15"/><path d="M5 20l8-8"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8C10 4 6 4 6.5 7 7 8 12 8 12 8zM12 8c2-4 6-4 5.5-1-.5 1-5.5 1-5.5 1z"/></symbol>
+  <symbol id="i-sablier" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3v3l4 6 4-6V3M8 21v-3l4-6 4 6v3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-tampon" viewBox="0 0 24 24"><path d="M9 3h6v5l3 4H6l3-4z"/><path d="M5 15h14v3H5zM7 21h10"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+  <symbol id="i-calendrier" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-copier" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></symbol>
+  <symbol id="i-fichier" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></symbol>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Pronote</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#pn-ouvrir">Ouvrir la page Pronote</a></li>
+      <li><a href="#pn-qr">Connexion par QR code</a></li>
+      <li><a href="#pn-identifiants">Connexion par identifiants</a></li>
+      <li><a href="#pn-memoire">Reconnexion automatique</a></li>
+      <li><a href="#pn-compte">Compte et classes détectées</a></li>
+      <li><a href="#pn-edt">L'emploi du temps</a></li>
+      <li><a href="#pn-encart">L'encart « non connecté »</a></li>
+      <li><a href="#pn-accueil">Pronote sur l'accueil</a></li>
+      <li><a href="#pn-import">Importer un export de notes</a></li>
+      <li><a href="#pn-copier">Copier une colonne pour Pronote</a></li>
+      <li><a href="#pn-limites">Ce que Pronote ne fait pas ici</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/academie-repartition.html">◀ Académie : questionnaire et répartition</a><a href="../enseignant/outils.html">Boîte à outils ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus</div>
+      <h1>Pronote</h1>
+      <p>La liaison avec Pronote lit l'emploi du temps de l'enseignant, semaine par semaine, et le met sur l'accueil. Les notes passent par fichier dans un sens (export Pronote vers le carnet) et par copier-coller dans l'autre. L'application n'écrit jamais elle-même dans Pronote.</p>
+      <div class="chap__resume"><span>Menu Plus › Pronote</span><span>Ordinateur</span><span>Comptes enseignants</span><span>11 fiches</span></div>
+    </header>
+
+    <!-- ============================================================ 1. ouvrir -->
+    <section class="fiche" id="pn-ouvrir">
+      <div class="fiche__texte">
+        <h2>Ouvrir la page Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Pronote</span></p>
+        <p class="fiche__but">La page qui relie son compte Pronote à l'application, pour en lire l'emploi du temps.</p>
+        <ol class="etapes">
+          <li data-cursor="#p1-menu" data-action="click">Dans le menu, ouvrir <b>Plus</b> puis <span class="btn-nom">Pronote</span>.</li>
+          <li data-cursor="#p1-charge" data-duration="3000">« Chargement du module Pronote... » : l'outil qui dialogue avec Pronote n'est chargé qu'à la demande.</li>
+          <li data-cursor="#p1-carte" data-duration="3200">Non connecté, la page présente la carte <b>Connexion Pronote</b> (« Compte enseignant ») et ses deux façons de se connecter.</li>
+          <li data-cursor="#p1-sous" data-duration="3800">Le sous-titre annonce « Emploi du temps et import de classes ». En réalité, la page montre l'emploi du temps et les noms de classes, sans rien importer.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Limite actuelle</b> : malgré son sous-titre, la page n'importe ni classes ni élèves. Les élèves s'importent par fichier dans Classes et plans.</li>
+            <li>Si le chargement échoue, un bandeau rouge l'indique (« Erreur de chargement du module Pronote : … »).</li>
+            <li>Les libellés de cette page sont écrits sans accents dans l'application (« Deconnecter », « Connecte a Pronote ! ») ; ils sont cités tels quels.</li>
+            <li>Réservé aux comptes enseignants.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="classes.html#importer">Importer des élèves</a> · <a href="#pn-limites">Ce que Pronote ne fait pas ici</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous" id="p1-menu" data-on="1-4">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn">
+          <div class="pn-t"><h3>Pronote</h3><p id="p1-sous" data-on="4">Emploi du temps et import de classes</p></div>
+          <div class="pn-charge repli" data-at="1-2" id="p1-charge"><div><div class="tourne"></div>Chargement du module Pronote...</div></div>
+          <div class="pn-carte repli zoom" data-from="3" id="p1-carte">
+            <div class="pn-ct"><span class="pn-ic"><svg class="ic ic--g"><use href="#i-lien"/></svg></span><div><b>Connexion Pronote</b><small>Compte enseignant</small></div></div>
+            <div class="pseg"><span class="is-actif">QR Code (ENT/MBN)</span><span>Identifiants directs</span></div>
+            <div class="pn-aide"><b>Comment faire :</b><ol><li>Ouvrez l'app Pronote sur votre telephone</li><li>Allez dans les parametres (roue dentee)</li><li>Appuyez sur "Generer un QR code"</li></ol></div>
+            <div class="pn-lab">Contenu du QR code (JSON)</div>
+            <div class="pn-zone"><span class="ph">{"url":"https://XXXXXXXX.index-education.net/pronote/…"}</span></div>
+            <div class="pn-btn pn-btn--gris">Se connecter via QR Code</div>
+          </div>
+          <div class="bulle bulle--gauche" data-at="4" style="left:300px;top:10px;max-width:300px">Limite actuelle : aucune classe n'est importée depuis cette page.</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 2. QR -->
+    <section class="fiche" id="pn-qr">
+      <div class="fiche__texte">
+        <h2>Se connecter avec le QR code de Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Pronote › QR Code (ENT/MBN)</span></p>
+        <p class="fiche__but">La voie à prendre quand l'établissement passe par un ENT : on utilise le QR code de connexion que fabrique l'application Pronote du téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#p2-aide" data-duration="4000">L'onglet <b>QR Code (ENT/MBN)</b> est ouvert par défaut. L'encadré « Comment faire » résume : dans l'app Pronote du téléphone, paramètres, « Generer un QR code », choisir un code à 4 chiffres, puis lire le QR code avec une app de scan.</li>
+          <li data-cursor="#p2-zone" data-duration="3400">Coller le texte lu dans le QR code dans <b>Contenu du QR code (JSON)</b>.</li>
+          <li data-cursor="#p2-pin" data-duration="3000">Saisir le <b>Code PIN (4 chiffres)</b> choisi dans Pronote ; seuls les chiffres sont acceptés.</li>
+          <li data-cursor="#p2-btn" data-action="click" data-duration="3400"><span class="btn-nom">Se connecter via QR Code</span> : « Connexion... », puis « Connecte a Pronote ! ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le QR code de Pronote expire vite : le coller peu après l'avoir généré, sinon « Code PIN incorrect ou QR code expire ».</li>
+            <li>Autres messages : « Donnees QR invalides. Copiez le contenu JSON du QR code. », « Le code PIN doit etre 4 chiffres », « Impossible de joindre le serveur Pronote. ».</li>
+            <li>La note « Vos donnees ne sont pas stockees » est inexacte : de quoi se reconnecter est gardé dans ce navigateur (voir <a href="#pn-memoire">Reconnexion automatique</a>).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous is-actif">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn">
+          <div class="pn-t"><h3>Pronote</h3><p>Emploi du temps et import de classes</p></div>
+          <div class="pn-carte">
+            <div class="pn-ct"><span class="pn-ic"><svg class="ic ic--g"><use href="#i-lien"/></svg></span><div><b>Connexion Pronote</b><small>Compte enseignant</small></div></div>
+            <div class="pseg"><span class="is-actif">QR Code (ENT/MBN)</span><span>Identifiants directs</span></div>
+            <div class="pn-aide" id="p2-aide" data-on="1"><b>Comment faire :</b><ol><li>Ouvrez l'app Pronote sur votre telephone</li><li>Allez dans les parametres (roue dentee)</li><li>Appuyez sur "Generer un QR code"</li><li>Choisissez un code PIN a 4 chiffres</li><li>Scannez le QR code avec une app de scan, copiez le contenu JSON ici</li></ol></div>
+            <div class="pn-lab">Contenu du QR code (JSON)</div>
+            <div class="pn-zone" id="p2-zone" data-on="2"><span class="ph repli" data-to="1">{"url":"https://XXXXXXXX.index-education.net/pronote/…", "jeton":"…", "login":"…"}</span><span class="repli" data-from="2">{"url":"https://XXXXXXXX.index-education.net/pronote/mobile.professeur.html", "jeton":"…", "login":"…"}</span></div>
+            <div class="pn-lab">Code PIN (4 chiffres)</div>
+            <div class="pn-pin" id="p2-pin" data-on="3"><span class="repli" data-from="3">••••</span></div>
+            <div class="pn-btn" id="p2-btn" data-on="4"><span class="sw"><span class="avant" data-to="3">Se connecter via QR Code</span><span class="apres" data-from="4" style="display:inline-flex;gap:8px;align-items:center"><span class="tourne"></span>Connexion...</span></span></div>
+            <div class="pn-note">Compatible ENT (MonBureauNumerique, etc.). Vos donnees ne sont pas stockees.</div>
+          </div>
+          <div class="toast toast--ok apres" data-at="4" style="transition-delay:2s">Connecte a Pronote !</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 3. identifiants -->
+    <section class="fiche" id="pn-identifiants">
+      <div class="fiche__texte">
+        <h2>Se connecter avec ses identifiants</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Pronote › Identifiants directs</span></p>
+        <p class="fiche__but">Pour un établissement qui autorise la connexion à Pronote sans passer par un ENT.</p>
+        <ol class="etapes">
+          <li data-cursor="#p3-onglet" data-action="click" data-duration="3600">Onglet <b>Identifiants directs</b> : l'encadré orange prévient que ce mode ne marche que si l'établissement autorise la connexion directe ; avec un ENT, prendre le QR code.</li>
+          <li data-cursor="#p3-url" data-duration="3200">Renseigner l'<b>URL Pronote de votre etablissement</b> (de la forme https://…index-education.net/pronote/).</li>
+          <li data-cursor="#p3-id" data-duration="3200">Puis l'<b>Identifiant</b> et le <b>Mot de passe</b> Pronote.</li>
+          <li data-cursor="#p3-btn" data-action="click" data-duration="3200"><span class="btn-nom">Se connecter</span> (ou Entrée dans le mot de passe). Le bouton reste grisé tant qu'un champ manque.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Messages possibles : « Remplissez tous les champs », « Identifiants incorrects », « Impossible de joindre le serveur Pronote. Verifiez l'URL. ».</li>
+            <li>Le mot de passe n'est pas conservé. En revanche, contrairement à la note sous le bouton, la connexion n'est pas « directe » : elle passe par le serveur de l'application (voir la fiche suivante).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous is-actif">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn">
+          <div class="pn-t"><h3>Pronote</h3><p>Emploi du temps et import de classes</p></div>
+          <div class="pn-carte">
+            <div class="pn-ct"><span class="pn-ic"><svg class="ic ic--g"><use href="#i-lien"/></svg></span><div><b>Connexion Pronote</b><small>Compte enseignant</small></div></div>
+            <div class="pseg"><span class="is-actif off" data-on="1-4">QR Code (ENT/MBN)</span><span id="p3-onglet" data-on="1-4">Identifiants directs</span></div>
+            <div class="pn-warn" data-on="1">Ce mode ne fonctionne que si votre etablissement autorise la connexion directe (sans ENT). Si vous passez par un ENT (MBN, etc.), utilisez le mode QR Code.</div>
+            <div class="pn-lab">URL Pronote de votre etablissement</div>
+            <div class="pn-ch" id="p3-url" data-on="2"><span class="ph">https://0123456A.index-education.net/pronote/</span></div>
+            <div class="pn-lab">Identifiant</div>
+            <div class="pn-ch" id="p3-id" data-on="3"><span class="ph">votre.identifiant</span></div>
+            <div class="pn-lab">Mot de passe</div>
+            <div class="pn-ch" data-on="3"><span class="repli" data-from="3">••••••••</span></div>
+            <div class="pn-btn pn-btn--gris" id="p3-btn" data-on="4">Se connecter</div>
+            <div class="pn-note">Vos identifiants ne sont pas stockes. La connexion est temporaire et directe avec votre serveur Pronote.</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 4. mémoire -->
+    <section class="fiche" id="pn-memoire">
+      <div class="fiche__texte">
+        <h2>La reconnexion automatique</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Pronote et Accueil, à l'ouverture</span></p>
+        <p class="fiche__but">Une fois connecté, on n'a plus à refaire le QR code ni à retaper son mot de passe sur ce navigateur.</p>
+        <ol class="etapes">
+          <li data-cursor="#p4-btn" data-duration="3200">À la visite suivante, la page tente de se reconnecter seule : le bouton affiche « Connexion... ».</li>
+          <li data-cursor="#p4-edt" data-duration="3400">Si la connexion est encore valable : « Reconnexion automatique reussie », et l'emploi du temps s'affiche.</li>
+          <li data-cursor="#p4-autre" data-duration="3600">Sur un autre ordinateur, ou un autre navigateur, il faut se connecter de nouveau : la mémoire est propre à chaque navigateur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le navigateur garde l'adresse Pronote, l'identifiant, le type de compte et un jeton de connexion renouvelé à chaque visite ; jamais le mot de passe.</li>
+            <li>Si la reconnexion échoue, cette mémoire est effacée sans message et le formulaire revient. L'accueil tente aussi la reconnexion et abandonne au bout de 8 secondes, sans message.</li>
+            <li><b>Deconnecter</b> efface la mémoire du navigateur ; rien n'est révoqué côté Pronote.</li>
+            <li>Un navigateur ne peut pas interroger Pronote directement : les demandes passent par le serveur de l'application, réservé aux enseignants connectés. Seules les adresses Pronote en https hébergées chez Index Éducation sont admises ; sinon « Cette adresse Pronote n'est pas reconnue. Vérifiez l'adresse, ou demandez à l'ajouter. ». Session de l'application expirée : « Reconnectez-vous à Gestion Classe pour utiliser Pronote. ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous is-actif">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn">
+          <div class="pn-t"><h3>Pronote</h3><p>Emploi du temps et import de classes</p></div>
+          <div class="pn-carte repli" data-at="1,3">
+            <div class="pn-ct"><span class="pn-ic"><svg class="ic ic--g"><use href="#i-lien"/></svg></span><div><b>Connexion Pronote</b><small>Compte enseignant</small></div></div>
+            <div class="pseg"><span class="is-actif">QR Code (ENT/MBN)</span><span>Identifiants directs</span></div>
+            <div class="pn-lab">Contenu du QR code (JSON)</div>
+            <div class="pn-zone"><span class="ph">{"url":"https://XXXXXXXX.index-education.net/pronote/…"}</span></div>
+            <div class="pn-lab">Code PIN (4 chiffres)</div>
+            <div class="pn-pin"></div>
+            <div class="pn-btn repli" id="p4-btn" data-at="1"><span class="tourne"></span>Connexion...</div>
+            <div class="pn-btn pn-btn--gris repli" data-at="3">Se connecter via QR Code</div>
+          </div>
+          <div class="repli" data-at="2" id="p4-edt" style="flex:1;min-height:0">
+            <div class="pn-bloc pn-compte"><span class="pn-av">M</span><div><b>M. Martin</b><small>Établissement de démonstration</small></div><span class="pn-deco">Deconnecter</span></div>
+            <div class="pn-bloc pn-edt" style="margin-top:12px;height:330px">
+              <div class="pn-nav"><span class="fl">←</span><span class="mil">Semaine du 23 nov.<span class="pn-auj">Aujourd'hui</span></span><span class="fl">→</span></div>
+              <div class="pn-g">
+                <div class="j"></div><div class="j">Lundi<small>23/11</small></div><div class="j">Mardi<small>24/11</small></div><div class="j">Mercredi<small>25/11</small></div><div class="j auj">Jeudi<small>26/11</small></div><div class="j">Vendredi<small>27/11</small></div>
+                <div class="h">8:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B</span> <span class="s">Labo 2</span></div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span></div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">5E</span></div></div><div></div>
+                <div class="h">9:00</div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3B</span></div></div><div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B</span></div></div>
+                <div class="h">10:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span></div></div><div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3B</span></div></div><div></div>
+              </div>
+            </div>
+          </div>
+          <div class="toast toast--ok apres" data-at="2">Reconnexion automatique reussie</div>
+          <div class="bulle bulle--gauche" data-at="3" id="p4-autre" style="left:652px;top:130px;max-width:140px">Autre ordinateur : la mémoire de connexion n'y est pas, il faut se reconnecter.</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 5. compte -->
+    <section class="fiche" id="pn-compte">
+      <div class="fiche__texte">
+        <h2>Le compte connecté et les classes détectées</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Pronote, une fois connecté</span></p>
+        <p class="fiche__but">Vérifier sur quel compte et quel établissement on est connecté, voir comment Pronote nomme ses classes, et se déconnecter.</p>
+        <ol class="etapes">
+          <li data-cursor="#p5-compte" data-duration="3200">En haut : l'initiale sur fond vert, le nom affiché par Pronote et l'établissement.</li>
+          <li data-cursor="#p5-cls" data-duration="3600"><b>Classes detectees cette semaine</b> : les noms de classes et de groupes tels que Pronote les écrit, pour les cours de la semaine affichée.</li>
+          <li data-cursor="#p5-suiv" data-action="click" data-duration="3200">Changer de semaine change la liste (ici, la semaine suivante ajoute un groupe).</li>
+          <li data-cursor="#p5-deco" data-action="click" data-duration="3200"><span class="btn-nom">Deconnecter</span> vide l'emploi du temps, efface la mémoire de connexion et ramène au formulaire, sans confirmation.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Aucune action d'import n'est proposée ici. Le rattachement des noms Pronote aux classes de l'application se règle dans Réglages › Emploi du temps.</li>
+            <li>L'encart n'apparaît que si la semaine affichée contient des cours.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="accueil.html#correspondance">Correspondance des classes</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous is-actif">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn">
+          <div class="pn-t"><h3>Pronote</h3><p>Emploi du temps et import de classes</p></div>
+          <div class="sw" style="flex:1;min-height:0;align-items:start">
+          <div class="col avant" data-to="3" style="gap:12px">
+            <div class="pn-bloc pn-compte" id="p5-compte" data-on="1"><span class="pn-av">M</span><div><b>M. Martin</b><small>Établissement de démonstration</small></div><span class="pn-deco" id="p5-deco" data-on="4">Deconnecter</span></div>
+            <div class="pn-bloc pn-cls" id="p5-cls" data-on="2-3"><h4>Classes detectees cette semaine</h4><span>3A</span><span>3B</span><span>4B</span><span class="repli apres" data-from="3">4B GR.1</span><span>5E</span></div>
+            <div class="pn-bloc pn-edt">
+              <div class="pn-nav"><span class="fl">←</span><span class="mil"><span class="sw"><span class="avant" data-to="2">Semaine du 23 nov.</span><span class="apres" data-from="3">Semaine du 30 nov.</span></span><span class="pn-auj">Aujourd'hui</span></span><span class="fl" id="p5-suiv" data-on="3">→</span></div>
+              <div class="pn-g">
+                <div class="j"></div><div class="j">Lundi</div><div class="j">Mardi</div><div class="j">Mercredi</div><div class="j auj">Jeudi</div><div class="j">Vendredi</div>
+                <div class="h">8:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B</span></div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span></div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">5E</span></div></div><div></div>
+                <div class="h">9:00</div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3B</span></div></div><div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B GR.1</span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="pn-carte apres" data-at="4" style="align-self:start">
+            <div class="pn-ct"><span class="pn-ic"><svg class="ic ic--g"><use href="#i-lien"/></svg></span><div><b>Connexion Pronote</b><small>Compte enseignant</small></div></div>
+            <div class="pseg"><span class="is-actif">QR Code (ENT/MBN)</span><span>Identifiants directs</span></div>
+            <div class="pn-btn pn-btn--gris">Se connecter via QR Code</div>
+          </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 6. emploi du temps -->
+    <section class="fiche" id="pn-edt">
+      <div class="fiche__texte">
+        <h2>L'emploi du temps de la semaine</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Pronote, une fois connecté</span></p>
+        <p class="fiche__but">Ses cours Pronote, semaine par semaine : matière, classes et groupes, salle, horaire et annulations.</p>
+        <ol class="etapes">
+          <li data-cursor="#p6-sem" data-duration="2800">À la connexion, la semaine en cours s'affiche (« Semaine du 23 nov. »).</li>
+          <li data-cursor="#p6-auj" data-duration="2800">Le jour courant est surligné en indigo.</li>
+          <li data-cursor="#p6-cours" data-duration="3400">Chaque cours : la matière en gras, les classes et groupes en indigo, la salle en gris et l'horaire, sur la couleur donnée par Pronote.</li>
+          <li data-cursor="#p6-ann" data-duration="3200">Un cours annulé passe en rouge pâle, à demi effacé, avec « (Annule) » après la matière.</li>
+          <li data-cursor="#p6-suiv" data-action="click" data-duration="3400"><b>→</b> et <b>←</b> changent de semaine ; la pastille <b>Aujourd'hui</b> ramène à la semaine en cours.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un cours se place dans la ligne de son heure de début (un cours de 8 h 30 est dans la ligne 8:00) ; la grille ne montre pas sa durée.</li>
+            <li>Samedi et dimanche ne sont pas affichés. Une semaine vide affiche « Aucun cours cette semaine ».</li>
+            <li>En cas de problème : « Erreur lors du chargement de l'emploi du temps ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous is-actif">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn" style="gap:10px">
+          <div class="pn-t"><h3>Pronote</h3></div>
+          <div class="pn-bloc pn-edt">
+            <div class="pn-nav"><span class="fl">←</span><span class="mil" id="p6-sem"><span class="sw"><span class="avant" data-to="4">Semaine du 23 nov.</span><span class="apres" data-from="5">Semaine du 30 nov.</span></span><span class="pn-auj">Aujourd'hui</span></span><span class="fl" id="p6-suiv" data-on="5">→</span></div>
+            <div class="pn-g">
+              <div class="j"></div><div class="j">Lundi<small><span class="sw"><span class="avant" data-to="4">23/11</span><span class="apres" data-from="5">30/11</span></span></small></div><div class="j">Mardi<small><span class="sw"><span class="avant" data-to="4">24/11</span><span class="apres" data-from="5">01/12</span></span></small></div><div class="j">Mercredi<small><span class="sw"><span class="avant" data-to="4">25/11</span><span class="apres" data-from="5">02/12</span></span></small></div><div class="j aujo" id="p6-auj" data-on="1-4">Jeudi<small><span class="sw"><span class="avant" data-to="4">26/11</span><span class="apres" data-from="5">03/12</span></span></small></div><div class="j">Vendredi<small><span class="sw"><span class="avant" data-to="4">27/11</span><span class="apres" data-from="5">04/12</span></span></small></div>
+              <div class="h">8:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B</span><br><span class="s">Labo 2 · 8:30 - 9:25</span></div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span><br><span class="s">Labo 1 · 8:00 - 8:55</span></div></div><div class="colauj" data-on="2"><div class="lc" id="p6-cours" data-on="3" style="--lc:#059669"><b>SVT</b><span class="c">5E</span><br><span class="s">Labo 2 · 8:00 - 8:55</span></div></div><div></div>
+              <div class="h">9:00</div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3B</span><br><span class="s">Labo 1 · 9:00 - 9:55</span></div></div><div></div><div class="colauj" data-on="2"></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B GR.1</span><br><span class="s">Labo 2 · 9:00 - 9:55</span></div></div>
+              <div class="h">10:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span><br><span class="s">Labo 1 · 10:10 - 11:05</span></div></div><div></div><div></div><div class="colauj" data-on="2"><div class="lc lc--ann" id="p6-ann" data-on="4"><b>SVT (Annule)</b><span class="c">3B</span><br><span class="s">Labo 1 · 10:10 - 11:05</span></div></div><div></div>
+              <div class="h">11:00</div><div></div><div><div class="lc" style="--lc:#7C3AED"><b>Heure de vie de classe</b><span class="c">4B</span></div></div><div></div><div class="colauj" data-on="2"></div><div></div>
+              <div class="h">13:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">5E</span></div></div><div></div><div></div><div class="colauj" data-on="2"><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B</span></div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span></div></div>
+              <div class="h">14:00</div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3B</span></div></div><div></div><div class="colauj" data-on="2"></div><div></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 7. encart -->
+    <section class="fiche" id="pn-encart">
+      <div class="fiche__texte">
+        <h2>L'encart « Pronote non connecté »</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Barre latérale, sur toutes les pages</span></p>
+        <p class="fiche__but">Un rappel discret, en bas de la barre latérale, tant que Pronote n'est pas relié dans ce navigateur.</p>
+        <ol class="etapes">
+          <li data-cursor="#p7-encart" data-duration="3200">Au-dessus du compte, un petit encadré orangé : « Pronote non connecté ».</li>
+          <li data-cursor="#p7-connecter" data-action="click" data-duration="3200">Le lien <b>Connecter</b> ouvre la page Pronote.</li>
+          <li data-cursor="#p7-x" data-action="click" data-duration="3200">La croix (« Masquer pour cette session ») le cache jusqu'à la fermeture de l'onglet ou du navigateur.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>« Connecté » veut seulement dire qu'une mémoire de connexion existe dans ce navigateur : même expirée, elle masque l'encart.</li>
+            <li>Barre latérale réduite : seule l'icône reste, avec l'infobulle « Pronote non connecté — Connecter ».</li>
+            <li>Sur un écran étroit (moins de 1024 pixels de large), la barre latérale laisse place à une barre du haut, où l'encart n'apparaît pas.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+<div class="pn-encart avant" id="p7-encart" data-to="2"><span class="pn-encart__i">i</span><span>Pronote non connecté<br><u id="p7-connecter">Connecter</u></span><span class="pn-encart__x" id="p7-x">×</span></div>
+<div class="side__compte"><span class="avatar">M</span>M. Martin</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn" style="background:#fff">
+          <div class="ac-t"><h3>Accueil</h3><span>Demain · 4B à 8:30</span></div>
+          <div style="flex:1;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)"></div>
+          <div class="bulle bulle--gauche" data-at="2" style="left:14px;bottom:70px">Ouvre la page Pronote</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 8. accueil -->
+    <section class="fiche" id="pn-accueil">
+      <div class="fiche__texte">
+        <h2>Pronote sur l'accueil</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil › emploi du temps de la semaine</span></p>
+        <p class="fiche__but">Une fois Pronote connecté, l'accueil montre les cours réels de la semaine, sans aucune saisie.</p>
+        <ol class="etapes">
+          <li data-cursor="#p8-grille" data-duration="3200">Le grand emploi du temps de l'accueil se remplit avec les cours lus dans Pronote.</li>
+          <li data-cursor="#p8-c1" data-duration="3600">Chaque cours porte la classe de l'application qui lui correspond : les noms Pronote sont rattachés aux classes par la table de correspondance de Réglages › Emploi du temps.</li>
+          <li data-cursor="#p8-sous" data-duration="3000">Le sous-titre « Demain » ou « Prochaine séance » s'appuie sur ces mêmes cours.</li>
+          <li data-cursor="#p8-src" data-duration="3800">Sans Pronote, ou s'il ne répond pas en 8 secondes, l'accueil prend l'emploi du temps importé par fichier (.ics exporté de Pronote), sinon rien.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ordre des sources : Pronote connecté, puis fichier .ics importé, puis rien.</li>
+            <li>L'accueil se reconnecte seul, sans message ; il suffit de s'être connecté une fois sur la page Pronote de ce navigateur.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="accueil.html#semaine">L'emploi du temps de l'accueil</a> · <a href="accueil.html#importer">Importer un .ics</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it is-actif"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn" style="background:#fff;gap:10px">
+          <div class="ac-t"><h3>Accueil</h3><span id="p8-sous" data-on="3">Demain · 4B à 8:30</span><span class="esp"></span></div>
+                    <div class="pn-bloc pn-edt zone-on" id="p8-grille" data-on="1">
+            <div class="pn-g">
+              <div class="j"></div><div class="j">Lundi</div><div class="j">Mardi</div><div class="j">Mercredi</div><div class="j auj">Jeudi</div><div class="j">Vendredi</div>
+              <div class="h">8:00</div><div><div class="ac-c" style="--lc:#059669"><span class="puce-c p4">4B</span>SVT</div></div><div></div><div><div class="ac-c" style="--lc:#4F46E5"><span class="puce-c p3">3A</span>SVT</div></div><div><div class="ac-c" style="--lc:#D97706" id="p8-c1" data-on="2"><span class="puce-c p5">5E</span>SVT · Labo 2</div></div><div></div>
+              <div class="h">9:00</div><div></div><div><div class="ac-c" style="--lc:#4F46E5"><span class="puce-c p3">3B</span>SVT</div></div><div></div><div></div><div><div class="ac-c" style="--lc:#059669"><span class="puce-c p4">4B</span>SVT</div></div>
+              <div class="h">10:00</div><div><div class="ac-c" style="--lc:#4F46E5"><span class="puce-c p3">3A</span>SVT</div></div><div></div><div></div><div><div class="ac-c" style="--lc:#4F46E5"><span class="puce-c p3">3B</span>SVT</div></div><div></div>
+              <div class="h">13:00</div><div><div class="ac-c" style="--lc:#D97706"><span class="puce-c p5">5E</span>SVT</div></div><div></div><div></div><div><div class="ac-c" style="--lc:#059669"><span class="puce-c p4">4B</span>SVT</div></div><div><div class="ac-c" style="--lc:#4F46E5"><span class="puce-c p3">3A</span>SVT</div></div>
+              <div class="h">14:00</div><div></div><div><div class="ac-c" style="--lc:#4F46E5"><span class="puce-c p3">3B</span>SVT</div></div><div></div><div></div><div></div>
+            </div>
+          </div>
+          <div class="bulle bulle--bas" data-at="4" id="p8-src" style="left:120px;top:250px;max-width:300px">Pronote absent ou muet 8 secondes : l'accueil prend le fichier .ics importé dans Réglages, sinon il reste vide.</div>
+          <div class="bulle bulle--haut" data-at="2" style="right:30px;top:150px;max-width:220px">« 5E » dans Pronote = la classe 5E de l'application</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 9. import CSV -->
+    <section class="fiche" id="pn-import">
+      <div class="fiche__texte">
+        <h2>Importer un export de notes Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Évaluations › Carnet et fiches › carnet › ⋯</span></p>
+        <p class="fiche__but">Récupérer dans le carnet des notes déjà saisies dans Pronote, à partir du fichier « Notes d'une classe » exporté de Pronote.</p>
+        <ol class="etapes">
+          <li data-cursor="#p9-dots" data-action="click">Dans le carnet de la classe, ouvrir le menu <b>⋯</b> (« Sauvegarder les notes, importer un export Pronote »)…</li>
+          <li data-cursor="#p9-mi" data-action="click" data-duration="3200">… et choisir <span class="btn-nom">Importer un export Pronote (CSV)</span> : les notes iront dans la classe et le trimestre affichés.</li>
+          <li data-cursor="#p9-fich" data-action="click" data-duration="3400">Dans <b>Importer depuis Pronote</b>, choisir le fichier .csv. Un résumé s'affiche : « notes_4B.csv — 25 élèves, 2 évaluation(s). 23 reconnus, 2 sans correspondance. »</li>
+          <li data-cursor="#p9-ev2" data-duration="4000">Pour chaque évaluation trouvée : la cocher ou non, puis <b>Créer une nouvelle évaluation</b> ou <b>Compléter</b> une évaluation existante. Un avertissement compte les notes du carnet qui seraient remplacées.</li>
+          <li data-cursor="#p9-imp" data-action="click" data-duration="3400"><span class="btn-nom">Importer</span> : « Import… », évaluation par évaluation. <b>Annuler</b> ne change rien.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Rien n'est écrit avant « Importer », et l'écriture se fait dans l'application, jamais dans Pronote.</li>
+            <li>Les élèves sont reconnus par leur pseudonyme (prénom et deux premières lettres du nom, sans accents) ; deux élèves au même pseudonyme ne sont pas importés.</li>
+            <li class="important">Le fichier Pronote contient les vrais noms : ils s'affichent dans la liste des élèves non importés de cette fenêtre, mais ne sont jamais enregistrés.</li>
+            <li>Absent, dispensé, non rendu sont reconnus ; la colonne « Moyenne » n'est jamais prise pour une note. Une évaluation de même date et même barème est proposée d'office.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="carnet-et-evaluations.html">Carnet et évaluations</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it is-actif"><span class="ico"></span>Évaluations</div>
+<div class="side__it side__sous is-actif">Carnet et fiches</div>
+<div class="side__it side__sous">Activité en direct</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="cn">
+          <div class="cn-bar"><span class="app__titre" style="font-size:17px">Carnet · 4B</span><span class="chip">Trimestre 1</span><span class="esp"></span><span class="muet">Enregistré</span><span class="dots" id="p9-dots" data-on="1-2">⋯</span></div>
+          <table class="cn-tab">
+            <tr><th>Élève</th><th class="col">Éval 1<br><small>/20</small></th><th class="col">Éval 2<br><small>/10</small></th><th class="col">TP noté<br><small>/20</small></th></tr>
+            <tr><td>Adam KE</td><td class="n">14</td><td class="n">7</td><td class="n">15</td></tr>
+            <tr><td>Hugo PE</td><td class="n">11</td><td class="n"></td><td class="n">12</td></tr>
+            <tr><td>Iris TA</td><td class="n">17</td><td class="n">9</td><td class="n">16</td></tr>
+            <tr><td>Lina BO</td><td class="n">12,5</td><td class="n"></td><td class="n">13</td></tr>
+            <tr><td>Noé MA</td><td class="n">15</td><td class="n">8</td><td class="n">Abs</td></tr>
+          </table>
+          <div class="menu-c apres avant" data-at="1-2" style="right:20px;top:50px"><div>Sauvegarder les notes (Excel, PDF)</div><div id="p9-mi" data-on="2">Importer un export Pronote (CSV)<small>Dans la classe et le trimestre affichés</small></div></div>
+        </div>
+        <div class="modale-fond apres" data-from="2">
+          <div class="modale" style="width:520px">
+            <div class="mod-t">Importer depuis Pronote<span class="modale__x">×</span></div>
+            <p class="modale__texte" style="margin-bottom:8px">Choisis l'export CSV des notes d'une classe. Les notes sont rangées dans 4B, trimestre 1.</p>
+            <div class="fich" id="p9-fich" data-on="3"><svg class="ic"><use href="#i-fichier"/></svg> <span class="sw"><span data-to="2">Choisir le fichier .csv</span><span class="apres" data-from="3">notes_4B.csv</span></span></div>
+            <div class="repli apres" data-from="3">
+              <div class="resu">notes_4B.csv — 25 élèves, 2 évaluation(s). 23 reconnus, 2 sans correspondance.</div>
+              <div class="ev"><div class="ev-l"><span class="case case--on"></span><b>Évaluation 1</b><small>· /20 · 23 notes · 14/11</small></div><div class="sel">Créer une nouvelle évaluation</div></div>
+              <div class="ev" id="p9-ev2" data-on="4"><div class="ev-l"><span class="case case--on"></span><b>Évaluation 2</b><small>· /10 · 21 notes · 21/11</small></div><div class="sel">Compléter « Éval 2 » (21/11)</div><div class="alerte-or">3 notes déjà saisies dans le carnet seront remplacées.</div></div>
+              <div class="volet">▸ 2 élèves du fichier non importés</div>
+            </div>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="p9-imp" data-on="5"><span class="sw"><span data-to="4">Importer</span><span class="apres" data-from="5">Import…</span></span></span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 10. copier -->
+    <section class="fiche" id="pn-copier">
+      <div class="fiche__texte">
+        <h2>Copier une colonne de notes pour Pronote</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Carnet › en-tête d'une évaluation › Copier pour Pronote</span></p>
+        <p class="fiche__but">Reporter les notes d'une évaluation dans Pronote sans les retaper : toute la colonne part dans le presse-papiers, prête à coller.</p>
+        <ol class="etapes">
+          <li data-cursor="#p10-col" data-action="click">Ouvrir le menu de l'en-tête de colonne de l'évaluation…</li>
+          <li data-cursor="#p10-mi" data-action="click" data-duration="3200">… et choisir <span class="btn-nom">Copier pour Pronote</span> (« la colonne des notes, dans l'ordre de Pronote »).</li>
+          <li data-cursor="#p10-cons" data-duration="4000">La fenêtre <b>Copier pour Pronote · 4B</b> explique : notes sur 20, une par ligne, dans l'ordre alphabétique des noms ; dans Pronote, ouvrir la saisie du devoir, cliquer la case du premier élève et coller (Ctrl+V), puis vérifier la première et la dernière ligne.</li>
+          <li data-cursor="#p10-tab" data-duration="3800">Le tableau numéroté montre ce qui sera copié. Les lignes surlignées sont à vérifier : l'application ne connaît que les deux premières lettres du nom. Une note en brouillon est signalée.</li>
+          <li data-cursor="#p10-btn" data-action="click" data-duration="3200"><span class="btn-nom">Copier la colonne (25 lignes)</span> : le bouton devient « Copié <span class="ic ic-ok" aria-hidden="true"></span> ». Il reste à coller dans Pronote soi-même.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>C'est la seule façon de faire passer des notes vers Pronote : rien ne sort de l'application, le texte va dans le presse-papiers et l'enseignant le colle.</li>
+            <li>Chaque ligne porte la note brute sur le barème (virgule décimale), un code (« Abs », « Disp », « N.Rdu », « N.Rdu0 ») ou reste vide.</li>
+            <li>Toute la classe est copiée, même pour une évaluation de demi-groupe ; les élèves témoins sont exclus.</li>
+            <li>Si le navigateur refuse la copie : « Le navigateur a refusé la copie : sélectionne la colonne à la main. ». Même action dans le menu « Plus d'actions » de la fiche d'évaluation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it is-actif"><span class="ico"></span>Évaluations</div>
+<div class="side__it side__sous is-actif">Carnet et fiches</div>
+<div class="side__it side__sous">Activité en direct</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="cn">
+          <div class="cn-bar"><span class="app__titre" style="font-size:17px">Carnet · 4B</span><span class="chip">Trimestre 1</span><span class="esp"></span><span class="dots">⋯</span></div>
+          <table class="cn-tab">
+            <tr><th>Élève</th><th class="col" id="p10-col" data-on="1-2">Éval 1 ▾<br><small>/20</small></th><th class="col">Éval 2<br><small>/10</small></th><th class="col">TP noté<br><small>/20</small></th></tr>
+            <tr><td>Adam KE</td><td class="n">14</td><td class="n">7</td><td class="n">15</td></tr>
+            <tr><td>Hugo PE</td><td class="n">11</td><td class="n"></td><td class="n">12</td></tr>
+            <tr><td>Iris TA</td><td class="n">17</td><td class="n">9</td><td class="n">16</td></tr>
+            <tr><td>Lina BO</td><td class="n">12,5</td><td class="n"></td><td class="n">13</td></tr>
+          </table>
+          <div class="menu-c apres avant" data-at="1-2" style="left:150px;top:96px;width:300px"><div>Modifier l'évaluation</div><div id="p10-mi" data-on="2"><b>Copier pour Pronote</b><small>la colonne des notes, dans l'ordre de Pronote</small></div></div>
+        </div>
+        <div class="modale-fond apres" data-from="2">
+          <div class="modale" style="width:470px">
+            <div class="mod-t">Copier pour Pronote · 4B<span class="modale__x">×</span></div>
+            <p class="modale__texte zone-on" id="p10-cons" data-on="3" style="font-size:12px;padding:3px">Notes sur 20, une par ligne, dans l'ordre alphabétique des noms. Dans Pronote, ouvre la saisie du devoir, clique la case du premier élève et colle (Ctrl+V). Vérifie ensuite la première et la dernière ligne.</p>
+            <div class="cp-z" id="p10-tab" data-on="4">
+              <table class="cp-t">
+                <tr><td>1</td><td>Lou BE</td><td class="v">16,5</td></tr>
+                <tr><td>2</td><td>Lina BO</td><td class="v">12,5 <span class="br">· brouillon</span></td></tr>
+                <tr><td>3</td><td>Enzo BR</td><td class="v">Abs</td></tr>
+                <tr><td>4</td><td>Naël CH</td><td class="v"><span class="vide">vide</span></td></tr>
+                <tr><td>5</td><td>Mia CO</td><td class="v">14</td></tr>
+                <tr class="ver"><td>6</td><td>Inès DU</td><td class="v">15</td></tr>
+                <tr class="ver"><td>7</td><td>Malo DU</td><td class="v">13</td></tr>
+              </table>
+            </div>
+            <div class="pn-res" style="margin-top:6px;background:var(--warn-soft);color:var(--warn);padding:4px 8px;border-radius:6px">Lignes surlignées : l'app ne connaît que les deux premières lettres du nom. Vérifie leur ordre dans Pronote.</div>
+            <div class="modale__pied"><span class="b b--petit" id="p10-btn" data-on="5"><svg class="ic ic--p"><use href="#i-copier"/></svg><span class="sw"><span data-to="4">Copier la colonne (25 lignes)</span><span class="apres" data-from="5">Copié <span class="ic ic-ok" aria-hidden="true"></span></span></span></span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 11. limites -->
+    <section class="fiche" id="pn-limites">
+      <div class="fiche__texte">
+        <h2>Ce que la liaison avec Pronote fait, et ne fait pas</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Ensemble des usages de Pronote</span></p>
+        <p class="fiche__but">Pour savoir à quoi s'attendre : ce qui est lu en direct, ce qui passe par fichier, et ce qui n'existe pas.</p>
+        <ol class="etapes">
+          <li data-cursor="#p11-edt" data-duration="3200">Lu en direct : l'emploi du temps (page Pronote et accueil).</li>
+          <li data-cursor="#p11-compte" data-duration="3000">Lu en direct : le nom de l'enseignant et de l'établissement.</li>
+          <li data-cursor="#p11-cls" data-duration="3000">Lu en direct : les noms de classes et de groupes des cours.</li>
+          <li data-cursor="#p11-fich" data-duration="3800">Par fichier : les notes (export CSV vers le carnet) et l'emploi du temps de l'année (fichier .ics, Réglages).</li>
+          <li data-cursor="#p11-rien" data-duration="3800">Écrit dans Pronote : rien, directement. Seulement des colonnes de notes copiées, que l'enseignant colle lui-même.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><b>Limite actuelle</b> : pas d'import des classes ni des élèves depuis Pronote, malgré le sous-titre de la page ; les élèves s'importent par fichier CSV ou Excel dans Classes et plans.</li>
+            <li>Non disponible dans cette version : la lecture de l'agenda, du cahier de textes ou des devoirs de Pronote, et toute saisie automatique de notes ou d'appréciations dans Pronote.</li>
+            <li>L'outil qui dialogue avec Pronote n'est pas officiel : une mise à jour de Pronote peut le casser du jour au lendemain.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#pn-import">Importer un export de notes</a> · <a href="#pn-copier">Copier une colonne</a> · <a href="cahier-de-texte.html">Cahier de texte</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/pronote</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous is-actif">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="pn" style="gap:10px">
+          <div class="pn-t"><h3>Pronote</h3><p>Emploi du temps et import de classes</p></div>
+          <div class="pn-bloc pn-compte" id="p11-compte" data-on="2"><span class="pn-av">M</span><div><b>M. Martin</b><small>Établissement de démonstration</small></div><span class="pn-deco">Deconnecter</span></div>
+          <div class="pn-bloc pn-cls" id="p11-cls" data-on="3"><h4>Classes detectees cette semaine</h4><span>3A</span><span>3B</span><span>4B</span><span>4B GR.1</span><span>5E</span></div>
+          <div class="pn-bloc pn-edt" id="p11-edt" data-on="1">
+            <div class="pn-nav"><span class="fl">←</span><span class="mil">Semaine du 23 nov.<span class="pn-auj">Aujourd'hui</span></span><span class="fl">→</span></div>
+            <div class="pn-g">
+              <div class="j"></div><div class="j">Lundi</div><div class="j">Mardi</div><div class="j">Mercredi</div><div class="j auj">Jeudi</div><div class="j">Vendredi</div>
+              <div class="h">8:00</div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B</span></div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3A</span></div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">5E</span></div></div><div></div>
+              <div class="h">9:00</div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">3B</span></div></div><div></div><div></div><div><div class="lc" style="--lc:#059669"><b>SVT</b><span class="c">4B GR.1</span></div></div>
+            </div>
+          </div>
+          <div class="bulle bulle--bas" data-at="4" id="p11-fich" style="left:260px;top:330px;max-width:300px">Par fichier : export CSV des notes vers le carnet ; .ics de l'année dans Réglages › Emploi du temps</div>
+          <div class="bulle bulle--bas" data-at="5" id="p11-rien" style="left:260px;top:330px;max-width:300px">Vers Pronote : rien d'automatique. « Copier pour Pronote », puis coller soi-même.</div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

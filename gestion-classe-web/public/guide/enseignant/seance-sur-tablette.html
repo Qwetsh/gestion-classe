@@ -1,0 +1,1117 @@
+
+
+
+
+
+
+
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Séance sur tablette — Guide Gestion Classe</title>
+<meta name="description" content="Tenir une séance depuis le site sur une tablette ou un téléphone tactile : préparation, plan de classe, menu radial, oral, remarques et fin de séance.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="61">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* séance tenue sur le site (components/live-session, jetons Direction B de directionB.ts) */
+.ecran .is-hidden:not(.feuille):not(.voile):not(.ban):not(.rad):not(.sous):not(.bulle):not(.pill-bas):not(.ov){display:none}
+.tel__ecran{font-family:var(--font)}
+.db-tete{background:#fff;border-bottom:1px solid #E5E7EB;padding:6px 10px 8px;display:flex;align-items:center;gap:8px;flex:none}
+.db-chev{font-size:22px;line-height:1;color:#1F2433;width:22px;transition:color .25s}
+.db-chev.is-on{color:#4F46E5}
+.db-ann{color:#EF4444;font-size:12px;font-weight:600;transition:all .25s;padding:2px 4px;border-radius:5px}
+.db-ann.is-on{background:#FDE8E8}
+.db-titre{flex:1;text-align:center;line-height:1.2}
+.db-titre b{display:block;font-size:12.5px;color:#1F2433}
+.db-titre span{font-size:11px;color:#059669;font-weight:700}
+.db-term{background:#059669;color:#fff;font-size:12px;font-weight:650;border-radius:8px;padding:6px 10px;transition:transform .2s}
+.db-term.is-on{transform:scale(.95);box-shadow:0 0 0 3px rgba(5,150,105,.25)}
+.tb{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:8px 10px 4px}
+.tbc{background:#fff;border:1px solid #E5E7EB;border-radius:10px;height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;font-weight:600;color:#1F2433;position:relative;transition:all .25s}
+.tbc svg{width:17px;height:17px;fill:none;stroke:#1F2433;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tbc.is-on{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.18)}
+.tbc.off{opacity:.3}
+.tbc .pas{position:absolute;top:-6px;right:-4px;background:#4F46E5;color:#fff;font-size:8.5px;padding:1px 4px;border-radius:6px}
+.tbc .pt{position:absolute;top:5px;right:7px;width:6px;height:6px;border-radius:50%;background:#4F46E5}
+.aide{font-size:11px;color:#9CA3AF;text-align:center;padding:4px 0 6px}
+.pl{display:grid;grid-template-columns:repeat(6,1fr);gap:3px;padding:0 10px}
+.cel{height:62px;background:#fff;border:1px solid #E5E7EB;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10.5px;font-weight:650;color:#1F2433;position:relative;transition:all .3s}
+.cel.is-on{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.2)}
+.cel--vide{background:#F1F2F5;border-color:#F1F2F5}
+.cel--abs{background:#FEF2F2;border-color:#FECACA;color:#B91C1C}
+.cel--sor{background:#F5F3FF;border-color:#DDD6FE;color:#6D28D9}
+.bg{display:flex;gap:2px;margin-top:3px;min-height:12px}
+.bg i{font-style:normal;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:4px;line-height:12px}
+.bp{background:#ECFDF5;color:#059669}.bm{background:#FFFBEB;color:#B45309}.babs{background:#EF4444;color:#fff}.bsor{background:#DDD6FE;color:#6D28D9}
+.bpap{position:absolute;top:2px;right:2px;font-style:normal;font-size:7px;font-weight:700;background:#EEF0FF;color:#4F46E5;padding:0 3px;border-radius:3px}
+.tabl{margin:8px 10px 0;height:18px;border-radius:4px;background:#E5E7EB;color:#6B7280;font-size:9px;font-weight:700;letter-spacing:.12em;display:grid;place-items:center}
+.ban{position:absolute;left:12px;right:12px;top:40px;background:#059669;color:#fff;border-radius:10px;padding:10px 12px;font-size:12px;font-weight:650;display:flex;align-items:center;gap:9px;z-index:660;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.ban .ck{width:11px;height:6px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg);margin-top:-3px;flex:none}
+.ban u{margin-left:auto;font-weight:600;padding:2px 4px;border-radius:4px;transition:background .25s}
+.ban u.is-on{background:rgba(255,255,255,.25)}
+.ov{position:absolute;inset:0;background:rgba(0,0,0,.2);z-index:640}
+.rad{position:absolute;z-index:650;width:280px;height:280px;margin:-140px 0 0 -140px;transition:transform .35s cubic-bezier(.3,1.4,.5,1),opacity .25s}
+.rad.is-hidden{transform:scale(.4)}
+.rad path{fill:rgba(15,23,42,.78);transition:fill .2s}
+.rad path.is-on.q-h{fill:#34D399}.rad path.is-on.q-d{fill:#FBBF24}.rad path.is-on.q-b{fill:#A78BFA}.rad path.is-on.q-g{fill:#FB7185}
+.rad text{fill:#fff;font-size:11px;font-weight:700;text-anchor:middle;font-family:var(--font)}
+.rad circle.c{fill:#fff}
+.rad text.n{fill:#1F2433;font-size:10.5px}
+.rad.estompe path{fill:rgba(15,23,42,.35)}
+.sous{position:absolute;z-index:670;display:flex;gap:10px}
+.sous span{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:8.5px;font-weight:700;text-align:center;line-height:1.1;box-shadow:0 6px 14px rgba(0,0,0,.2);transition:transform .25s}
+.sous span.is-on{transform:scale(1.15);box-shadow:0 0 0 3px #fff,0 6px 14px rgba(0,0,0,.25)}
+.pill-bas{position:absolute;left:50%;bottom:16px;translate:-50% 0;background:#fff;border-radius:999px;padding:6px 12px;font-size:11px;color:#1F2433;box-shadow:0 4px 14px rgba(0,0,0,.15);white-space:nowrap;z-index:660}
+.voile{background:rgba(15,23,42,.35)}
+.feuille{padding:10px 16px 16px}
+.f-t{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.f-t b{font-size:15px;color:#1F2433}.f-t span{font-size:11.5px;color:#6B7280}
+.btn-db{height:42px;border-radius:10px;display:grid;place-items:center;font-size:13px;font-weight:650;transition:transform .2s}
+.btn-db.is-on{transform:scale(.96)}
+.btn-db--vert{background:#059669;color:#fff}.btn-db--ind{background:#4F46E5;color:#fff}.btn-db--bord{border:1px solid #E5E7EB;color:#1F2433;background:#fff}.btn-db--rouge{background:#EF4444;color:#fff}
+.tire{background:#EEF0FF;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px}
+.tire small{display:block;font-size:10px;font-weight:700;letter-spacing:.08em;color:#4F46E5}
+.tire b{display:block;font-size:26px;color:#1F2433;margin:4px 0}
+.tire span{font-size:11px;color:#6B7280}
+.notes{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin:10px 0 6px}
+.notes span{height:44px;border-radius:10px;border:1px solid #E5E7EB;display:grid;place-items:center;font-size:16px;font-weight:700;color:#1F2433;transition:all .25s}
+.notes span.is-on{background:#4F46E5;border-color:#4F46E5;color:#fff}
+.zone{border:1px solid #E5E7EB;border-radius:10px;padding:9px 11px;font-size:12.5px;min-height:96px;color:#1F2433;background:#fff}
+.zone.vide{color:#9CA3AF}
+.lst div{display:flex;align-items:center;justify-content:space-between;padding:10px 4px;border-bottom:1px solid #F1F5F9;font-size:13px;font-weight:600;color:#1F2433;transition:background .25s}
+.lst div.is-on{background:#EEF0FF}
+.lst i{font-style:normal;font-size:10.5px;font-weight:600;color:#4F46E5;background:#EEF0FF;padding:1px 6px;border-radius:6px}
+.croix{width:26px;height:26px;border:1.5px solid #FCA5A5;border-radius:6px;display:grid;place-items:center;color:#EF4444;font-size:15px;transition:all .25s}
+.croix.is-on{background:#FDE8E8}
+/* parcours de préparation */
+.nv-tete{background:#fff;padding:8px 12px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #E5E7EB}
+.nv-tete b{font-size:17px;color:#1F2433}.nv-tete small{display:block;font-size:11.5px;color:#6B7280;font-weight:500}
+.sec{font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#9CA3AF;text-transform:uppercase;margin:14px 0 8px;display:flex;justify-content:space-between}
+.gcl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gcl span{height:50px;background:#fff;border:1px solid #E5E7EB;border-radius:10px;display:grid;place-items:center;font-size:15px;font-weight:700;color:#1F2433;transition:all .2s}
+.gcl span.is-on{transform:scale(.95);border-color:#4F46E5;background:#EEF0FF}
+.pils{display:flex;flex-wrap:wrap;gap:6px}
+.pils span{padding:7px 12px;border-radius:999px;border:1px solid #E5E7EB;background:#fff;font-size:12.5px;font-weight:600;color:#1F2433;display:inline-flex;align-items:center;gap:6px;transition:all .25s}
+.pils span i{font-style:normal;font-weight:400;opacity:.75}
+.pils span .pg{width:8px;height:8px;border-radius:50%}
+.pils span.is-on.g1{background:#6366F1;border-color:#6366F1;color:#fff}.pils span.is-on.ce{background:#4F46E5;border-color:#4F46E5;color:#fff}.pils span.is-on .pg{background:#fff!important}
+.ins{position:absolute;inset:-1px;margin:0}
+.salles{background:#fff;border-radius:14px;border:1px solid #E5E7EB;overflow:hidden}
+.salles div{display:flex;align-items:center;padding:11px 12px;border-bottom:1px solid #F1F5F9;font-size:13px;font-weight:650;color:#1F2433;transition:background .25s}
+.salles div small{font-weight:400;color:#6B7280;margin-left:8px;font-size:11.5px}
+.salles div .coche{margin-left:auto;width:18px;height:18px;border-radius:50%;background:#4F46E5;display:grid;place-items:center;opacity:0;transition:opacity .25s}
+.salles div .coche::after{content:'';width:7px;height:4px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+.salles div.is-on{background:#EEF0FF}.salles div.is-on .coche{opacity:1}
+.pied-db{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #E5E7EB;padding:10px 14px 16px;text-align:center}
+.pied-db small{display:block;font-size:11.5px;color:#6B7280;margin-bottom:8px}
+.lance{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.lance span{border-radius:10px;padding:10px 12px;font-size:13px;font-weight:650;display:flex;align-items:center;gap:8px;transition:transform .2s}
+.lance span.is-on{transform:scale(.97)}
+.lance .pri{background:#4F46E5;color:#fff}.lance .gh{background:#fff;border:1px solid #E5E7EB;color:#1F2433}
+.lance .res{background:#fff;border:1.5px solid #4F46E5;color:#1F2433}
+.lance .res small{display:block;font-size:11px;color:#6B7280;font-weight:500}
+.lance .res em{margin-left:auto;font-style:normal;font-size:10px;font-weight:700;color:#4F46E5;background:#EEF0FF;padding:2px 7px;border-radius:999px}
+.tri{width:0;height:0;border-left:8px solid currentColor;border-top:5px solid transparent;border-bottom:5px solid transparent}
+.mod{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:10px 12px;font-size:12px;color:#1F2433;margin-bottom:8px}
+.mod b{display:block;font-size:12.5px;margin-bottom:4px}
+.mod div{display:flex;justify-content:space-between;padding:3px 0;color:#6B7280}
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Séance sur tablette</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+    <li><a href="#demarrer">Démarrer une séance depuis le site</a></li>
+    <li><a href="#groupe-salle">Le groupe et la salle</a></li>
+    <li><a href="#theme">Le thème, et c'est parti</a></li>
+    <li><a href="#ecran">L'écran de séance</a></li>
+    <li><a href="#plan">Lire le plan en séance</a></li>
+    <li><a href="#radial">Le menu radial</a></li>
+    <li><a href="#sortie">Sortie, retour et absence annulée</a></li>
+    <li><a href="#aleatoire">Tirage au sort</a></li>
+    <li><a href="#oral">Évaluation orale</a></li>
+    <li><a href="#note">Note de séance</a></li>
+    <li><a href="#remarque">Remarque sur un élève, avec photo</a></li>
+    <li><a href="#supprimer">Supprimer un événement en séance</a></li>
+    <li><a href="#terminer">Réduire, terminer ou annuler la séance</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/seances.html">◀ Séances</a><a href="../enseignant/tp-en-groupes.html">TP en groupes ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Séance sur tablette</h1>
+      <p>Sans l'application, le site sait tenir une séance, à condition d'être ouvert sur un appareil tactile : tablette, téléphone, ou site installé comme application. Même déroulé qu'au téléphone, mais chaque geste part tout de suite vers la base : il faut du réseau.</p>
+      <div class="chap__resume"><span>Accueil › Démarrer une séance</span><span>Tablette ou téléphone tactile</span><span>Pas sur un ordinateur de bureau</span></div>
+    </header>
+
+
+    <!-- ============================================================ démarrer -->
+    <section class="fiche fiche--etroite" id="demarrer">
+      <div class="fiche__texte">
+        <h2>Démarrer une séance depuis le site</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Accueil › Démarrer une séance</span></p>
+        <p class="fiche__but">Pour faire cours sans l'application, par exemple sur un iPhone ou une tablette : choisir la classe, le groupe, la salle, puis noter les élèves sur le plan.</p>
+        <ol class="etapes">
+          <li data-cursor="#dm-go" data-action="tap" data-duration="3400">Sur l'accueil, en haut, toucher <span class="btn-nom">Démarrer une séance</span>. À côté : <b>Travail de groupe</b> et <b>Épreuve</b>.</li>
+          <li data-cursor="#dm-sec" data-duration="3000">L'écran <b>Nouvelle séance</b> s'ouvre par-dessus le site : <b>1 · Choisir une classe</b>.</li>
+          <li data-cursor="#dm-5b" data-action="tap">Toucher la classe. Le chevron de gauche abandonne le parcours.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Ces boutons n'existent que sur un appareil tactile de 1 024 pixels de large au plus, ou sur le site installé comme application. Sur un ordinateur de bureau, ils n'apparaissent pas.</li>
+            <li>L'application du téléphone reste le meilleur outil : elle marche sans réseau et synchronise ensuite. Ici, chaque geste est écrit tout de suite dans la base.</li>
+            <li>La séance créée est une vraie séance : elle arrive dans la page Séances, dans l'historique des élèves, et l'écran de classe la voit.</li>
+            <li>Les classes sont proposées par ordre alphabétique.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/demarrer-une-seance.html">Démarrer une séance avec l'application</a> · <a href="travail-de-groupe-sur-tablette.html">Travail de groupe sur tablette</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
+          <div class="tel__entete"><div class="tel__titre">Accueil</div><div class="tel__sous">Jeudi 26 novembre</div></div>
+          <div class="tel__corps">
+            <div class="lance"><span class="pri" id="dm-go" data-on="1"><i class="tri"></i>Démarrer une séance</span><div class="grille2" style="gap:6px"><span class="gh">Travail de groupe</span><span class="gh">Épreuve</span></div></div>
+            <div class="mod"><b>Aujourd'hui</b><div><span>08:05 · 3A</span><span>Salle 12</span></div><div><span>10:15 · 5B · G1</span><span>Salle 12</span></div><div><span>13:30 · 6A</span><span>Salle 12</span></div></div>
+            <div class="mod"><b>Dernières séances</b><div><span>5B · Météo et climat</span><span>+4 −2</span></div><div><span>4B · Séismes et tsunamis</span><span>+3</span></div></div>
+          </div>
+          <div class="tel__onglets"><span class="is-actif">Accueil</span><span>Cours</span><span>Classes</span><span>Évals</span><span>Plus</span></div>
+          <div class="ov" data-from="2" style="background:#F7F7F9;z-index:600">
+            <div class="nv-tete"><span class="db-chev">‹</span><b>Nouvelle séance</b></div>
+            <div style="padding:0 14px">
+              <div class="sec" id="dm-sec">1 · Choisir une classe</div>
+              <div class="gcl"><span>3A</span><span>3D</span><span>4B</span><span>4C</span><span>5A</span><span id="dm-5b" data-on="3">5B</span><span>6A</span><span>6E</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ groupe et salle -->
+    <section class="fiche fiche--etroite" id="groupe-salle">
+      <div class="fiche__texte">
+        <h2>Le groupe et la salle</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Nouvelle séance › 2 · Groupe › 3 · Choisir une salle</span></p>
+        <p class="fiche__but">Dire si la séance concerne la classe entière ou un demi-groupe, et dans quelle salle : c'est elle qui donne le plan de classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#gs-g1" data-duration="3600">Si la classe a des groupes, la section <b>2 · Groupe</b> en propose un, déjà choisi, avec sa raison écrite dessous.</li>
+          <li data-cursor="#gs-ce" data-action="tap">Toucher <span class="btn-nom">Classe entière</span> ou un autre groupe : un choix à la main l'emporte toujours.</li>
+          <li data-cursor="#gs-g1" data-action="tap">Retoucher le groupe voulu.</li>
+          <li data-cursor="#gs-s12" data-action="tap" data-duration="3200">Dans <b>3 · Choisir une salle</b>, toucher la salle : on passe directement à l'étape suivante.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le groupe proposé est d'abord celui qui suit la dernière séance en groupe de la classe (alternance). Si l'emploi du temps connaît le cours de maintenant et son groupe, c'est lui qui est proposé.</li>
+            <li>En demi-groupe, seuls les élèves du groupe s'affichent : sur le plan du groupe s'il existe, sinon à leur place dans le plan de la classe entière.</li>
+            <li>Sans groupes, la section n'existe pas et la salle devient « 2 · Choisir une salle ». « Annuler », en rouge, abandonne.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="groupes-de-classe.html">Groupes de classe</a> · <a href="plans-de-classe.html#plan-groupe">Un plan par groupe</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0">
+          <div class="nv-tete"><span class="db-chev">‹</span><div><b>Nouvelle séance</b><small>5B</small></div><span class="esp"></span><span class="db-ann">Annuler</span></div>
+          <div style="padding:0 14px">
+            <div class="sec">2 · Groupe</div>
+            <div class="pils">
+              <span id="gs-ce" data-on="2" style="--x:0" class="ce">Classe entière</span>
+              <span id="gs-g1" class="g1" data-on="1,3-4"><b class="pg" style="background:#6366F1"></b>Groupe 1 <i>14</i></span>
+              <span><b class="pg" style="background:#10B981"></b>Groupe 2 <i>13</i></span>
+            </div>
+            <div style="font-size:12px;color:#6B7280;margin-top:7px">Proposé en alternance avec la dernière séance en groupe</div>
+            <div class="sec">3 · Choisir une salle</div>
+            <div class="salles"><div id="gs-s12" data-on="4">Salle 12<small>5 × 6 places</small><span class="coche"></span></div><div>Labo SVT<small>4 × 6 places</small><span class="coche"></span></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ thème -->
+    <section class="fiche fiche--etroite" id="theme">
+      <div class="fiche__texte">
+        <h2>Le thème, et c'est parti</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Nouvelle séance › 4 · Thème de la séance</span></p>
+        <p class="fiche__but">Donner un titre à la séance (facultatif), puis la démarrer.</p>
+        <ol class="etapes">
+          <li data-cursor="#th-zone" data-duration="3400">Écrire le thème, si on veut : il deviendra le nom de la séance dans l'historique (200 caractères au plus).</li>
+          <li data-cursor="#th-rappel">En bas, un rappel : classe et salle.</li>
+          <li data-cursor="#th-go" data-action="tap">Toucher <span class="btn-nom">Démarrer la séance</span> (ou la touche Entrée).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Au démarrage, le site crée la séance (heure de début, classe, salle, groupe, thème), puis charge les élèves, le plan et les notes d'oral du trimestre.</li>
+            <li>Si l'écran de classe a été ouvert sur l'ordinateur du vidéoprojecteur, il affiche le tableau dès cet instant.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html#ecran-classe">Lancer la séance sur l'écran de classe</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0">
+          <div class="nv-tete"><span class="db-chev">‹</span><div><b>Nouvelle séance</b><small>5B · Groupe 1 · Salle 12</small></div><span class="esp"></span><span class="db-ann">Annuler</span></div>
+          <div style="padding:0 14px">
+            <div class="sec">4 · Thème de la séance<span style="letter-spacing:0;text-transform:none;font-weight:500">Optionnel</span></div>
+            <div class="zone" id="th-zone" style="min-height:70px"><span data-type="Météo et climat : lire un relevé" data-type-at="1">Météo et climat : lire un relevé</span></div>
+            <div style="text-align:right;font-size:11px;color:#9CA3AF;margin-top:4px">32/200</div>
+          </div>
+          <div class="pied-db"><small id="th-rappel">5B · Salle 12</small><div class="btn-db btn-db--vert" id="th-go" data-on="3"><span data-to="2">Démarrer la séance</span><span data-from="3">Démarrage…</span></div></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ l'écran de séance -->
+    <section class="fiche fiche--etroite" id="ecran">
+      <div class="fiche__texte">
+        <h2>L'écran de séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours</span></p>
+        <p class="fiche__but">Tout tient sur un écran : le plan de la salle pour noter les élèves, et une barre d'outils pour le reste.</p>
+        <ol class="etapes">
+          <li data-cursor="#ec-titre">Au centre de l'en-tête : classe, groupe et salle, et depuis combien de minutes la séance a commencé.</li>
+          <li data-cursor="#ec-alea" data-duration="3600">La barre d'outils : <b>Aléatoire</b>, <b>Oral</b> (évalués sur présents), <b>Note</b>, <b>Remarque</b>, <b>Supprimer</b> (grisé tant que rien n'est noté).</li>
+          <li data-cursor="#ec-plan" data-duration="3200">Le plan de la salle : chaque élève à sa place, avec ses implications et ses malus de la séance.</li>
+          <li data-cursor="#ec-term">À droite, <span class="btn-nom">Terminer</span> ; à gauche, le chevron réduit la séance et <b>Annuler</b> l'efface.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le compteur de minutes avance toutes les 30 secondes ; il n'y a ni compte à rebours ni alarme de fin d'heure.</li>
+            <li>Pendant la séance, l'écran bloque le geste de retour du bord de l'écran.</li>
+            <li>Les vibrations passent par le navigateur : elles marchent sur Android, pas sur iPhone.</li>
+            <li class="important">Pas de mode hors ligne sur le site : sans réseau, un geste échoue (bandeau rouge « Erreur d'enregistrement »). Recharger la page fait perdre l'écran de séance ; la séance reste non terminée dans la base.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="ec-chev" data-on="4">‹</span><span class="db-ann" id="ec-ann" data-on="4">Annuler</span><span class="db-titre" id="ec-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="ec-term" data-on="4">Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="ec-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="ec-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="ec-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="ec-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="ec-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="ec-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="bulle bulle--haut" data-at="1" style="left:70px;top:52px">Minutes écoulées depuis le démarrage</div>
+          <div class="bulle bulle--haut" data-at="2" style="left:30px;top:120px">La pastille d'Oral : 3 élèves évalués sur 24 présents</div>
+          <div class="bulle bulle--haut" data-at="3" style="left:40px;top:445px">+2 : implications ; 2 en ambre : malus ; ABS : absent</div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ le plan -->
+    <section class="fiche fiche--etroite" id="plan">
+      <div class="fiche__texte">
+        <h2>Lire le plan en séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › plan</span></p>
+        <p class="fiche__but">Chaque case dit l'essentiel d'un élève pendant l'heure, sans rien ouvrir.</p>
+        <ol class="etapes">
+          <li data-cursor="#pn-malo">Sous le prénom : les implications en vert (« +3 ») et le nombre de malus en ambre, seulement s'ils ne sont pas nuls.</li>
+          <li data-cursor="#pn-adam">Un absent : case rose et pastille <b>ABS</b>.</li>
+          <li data-cursor="#pn-tom" data-duration="3200">Un élève sorti : case violette, avec le temps passé dehors (« 7m »).</li>
+          <li data-cursor="#pn-ines" data-duration="3600">En haut à droite d'une case, une petite pastille PAP, PPRE ou PAI rappelle un aménagement.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Les pastilles d'aménagement ne s'affichent que sur l'écran de l'enseignant, jamais sur l'écran projeté.</li>
+            <li>Les prénoms sont coupés à 8 caractères. Un élève qui n'a pas de place dans le plan n'apparaît pas sur la grille, mais reste dans les listes de Remarque, Oral et Aléatoire.</li>
+            <li>Un absent ou un sorti n'ouvre pas le menu : il faut d'abord annuler l'absence ou marquer le retour.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="fiche-eleve.html">Aménagements d'un élève</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="pn-chev" >‹</span><span class="db-ann" id="pn-ann" >Annuler</span><span class="db-titre" id="pn-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="pn-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="pn-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="pn-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="pn-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="pn-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="pn-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="pn-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs" id="pn-adam" data-on="2">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel cel--sor" id="pn-tom" data-on="3">Tom SA<span class="bg"><i class="bsor">7m</i></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel" id="pn-malo" data-on="1">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel" id="pn-ines" data-on="4">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ le menu radial -->
+    <section class="fiche fiche--etroite" id="radial">
+      <div class="fiche__texte">
+        <h2>Le menu radial</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › toucher un élève</span></p>
+        <p class="fiche__but">Une action élève en un seul geste, en moins de deux secondes : poser le doigt, glisser, relâcher.</p>
+        <ol class="etapes">
+          <li data-cursor="#ra-lina" data-action="long" data-duration="3200">Poser le doigt sur l'élève : le menu s'ouvre autour du doigt. En haut <b>Implication</b>, à droite <b>Malus</b>, en bas <b>Sortie</b>, à gauche <b>Absence</b>.</li>
+          <li data-cursor="#ra-lina" data-action="drag" data-drag-to="#ra-qh">Glisser vers le quart voulu : il prend sa couleur.</li>
+          <li data-cursor="#ra-ban" data-duration="3400">Relâcher : c'est enregistré. Un bandeau vert confirme « Lina BO · +1 Implication » et la case passe à +3.</li>
+          <li data-cursor="#ra-annuler" data-action="tap" data-duration="3200">Dans les 4 secondes, <span class="btn-nom">Annuler</span> retire ce qui vient d'être noté.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>On peut aussi relâcher sans bouger, puis toucher un quart. Toucher le disque central annule sans rien noter.</li>
+            <li>Chaque action a sa vibration (Android) : un coup court pour une implication, deux courts pour un malus, un long pour une sortie, deux longs pour une absence.</li>
+            <li>Le menu reste dans l'écran, même pour un élève au bord.</li>
+            <li>Une remarque n'a pas de bouton Annuler : elle se retire avec <b>Supprimer</b>.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/seance-et-menu-radial.html">Le menu radial de l'application</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="ra-chev" >‹</span><span class="db-ann" id="ra-ann" >Annuler</span><span class="db-titre" id="ra-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="ra-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="ra-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="ra-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="ra-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="ra-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="ra-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="ra-plan">
+<div class="cel" id="ra-lina" data-on="1-2">Lina BO<span class="bg"><i class="bp" data-at="1-2,4">+2</i><i class="bp" data-at="3">+3</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="ov" data-at="1-2"></div>
+          
+<svg class="rad " viewBox="-140 -140 280 280" style="left:145px;top:175px" data-at="1-2">
+<path class="q-h" id="ra-qh" data-on="2" d="M-90.5 -98.8A134 134 0 0 1 90.5 -98.8L21.9 -28.6A36 36 0 0 0 -21.9 -28.6Z"/>
+<path class="q-d" id="ra-qd"  d="M98.8 -90.5A134 134 0 0 1 98.8 90.5L28.6 21.9A36 36 0 0 0 28.6 -21.9Z"/>
+<path class="q-b" id="ra-qb"  d="M90.5 98.8A134 134 0 0 1 -90.5 98.8L-21.9 28.6A36 36 0 0 0 21.9 28.6Z"/>
+<path class="q-g" id="ra-qg"  d="M-98.8 90.5A134 134 0 0 1 -98.8 -90.5L-28.6 -21.9A36 36 0 0 0 -28.6 21.9Z"/>
+<text x="0" y="-84">Implication</text><text x="88" y="4">Malus</text><text x="0" y="96">Sortie</text><text x="-88" y="4">Absence</text>
+<circle class="c" r="35"/><text class="n" y="4">Lina BO</text>
+</svg>
+
+          <div class="pill-bas" data-at="1-2">Lina BO · toucher le centre pour annuler</div>
+          <div class="ban glisse-bas" id="ra-ban" data-at="3-4"><span class="ck"></span>Lina BO · +1 Implication<u id="ra-annuler" data-on="4">Annuler</u></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ sorties -->
+    <section class="fiche fiche--etroite" id="sortie">
+      <div class="fiche__texte">
+        <h2>Sortie, retour et absence annulée</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Menu radial › Sortie</span></p>
+        <p class="fiche__but">Savoir qui est hors de la salle et depuis combien de temps, et corriger une absence notée par erreur.</p>
+        <ol class="etapes">
+          <li data-cursor="#so-tom" data-action="drag" data-drag-to="#so-qb" data-duration="3200">Glisser de l'élève vers <b>Sortie</b> : quatre ronds apparaissent, <b>Infirmerie</b>, <b>Toilettes</b>, <b>Convocation</b>, <b>Exclusion</b>.</li>
+          <li data-cursor="#so-toi" data-action="tap">Toucher le motif : la case passe en violet et le chronomètre de sortie démarre.</li>
+          <li data-cursor="#so-tom" data-duration="3000">Le temps dehors s'affiche sur la case : « &lt;1m », « 7m », « 1h05 ».</li>
+          <li data-cursor="#so-tom" data-action="tap" data-duration="3200">Au retour, toucher deux fois la case violette : l'élève revient dans la salle.</li>
+          <li data-cursor="#so-adam" data-action="tap" data-duration="3200">Absence par erreur : toucher deux fois la case rose ; elle redevient normale.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le retour est noté comme un événement : il sert à calculer le temps de sortie, par exemple dans la fiche d'un TP.</li>
+            <li>Annuler une absence retire le dernier événement « absence » de l'élève.</li>
+            <li>Le temps affiché se met à jour quand l'écran se redessine, pas à la seconde.</li>
+            <li>Dans le sous-menu, toucher à côté revient au menu principal.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="so-chev" >‹</span><span class="db-ann" id="so-ann" >Annuler</span><span class="db-titre" id="so-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="so-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="so-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="so-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="so-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="so-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="so-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="so-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel" id="so-adam" data-on="5">Adam KE<span class="bg"></span><div class="cel cel--abs ins" data-to="4">Adam KE<span class="bg"><i class="babs">ABS</i></span></div></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel" id="so-tom" data-on="1,4">Tom SA<span class="bg"></span><div class="cel cel--sor ins" data-at="2-3">Tom SA<span class="bg"><i class="bsor" data-at="2">&lt;1m</i><i class="bsor" data-at="3">7m</i></span></div></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="ov" data-at="1"></div>
+          
+<svg class="rad estompe" viewBox="-140 -140 280 280" style="left:150px;top:236px" data-at="1">
+<path class="q-h" id="so-qh"  d="M-90.5 -98.8A134 134 0 0 1 90.5 -98.8L21.9 -28.6A36 36 0 0 0 -21.9 -28.6Z"/>
+<path class="q-d" id="so-qd"  d="M98.8 -90.5A134 134 0 0 1 98.8 90.5L28.6 21.9A36 36 0 0 0 28.6 -21.9Z"/>
+<path class="q-b" id="so-qb" data-on="1" d="M90.5 98.8A134 134 0 0 1 -90.5 98.8L-21.9 28.6A36 36 0 0 0 21.9 28.6Z"/>
+<path class="q-g" id="so-qg"  d="M-98.8 90.5A134 134 0 0 1 -98.8 -90.5L-28.6 -21.9A36 36 0 0 0 -28.6 21.9Z"/>
+<text x="0" y="-84">Implication</text><text x="88" y="4">Malus</text><text x="0" y="96">Sortie</text><text x="-88" y="4">Absence</text>
+<circle class="c" r="35"/><text class="n" y="4">Tom SA</text>
+</svg>
+
+          <div class="sous" data-at="1" style="left:39px;top:445px"><span class="c-inf">Infirmerie</span><span class="c-toi" id="so-toi">Toilettes</span><span class="c-conv">Convocation</span><span class="c-excl">Exclusion</span></div>
+          <div class="ban glisse-bas" data-at="2"><span class="ck"></span>Tom SA · Sortie · Toilettes<u>Annuler</u></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ aléatoire -->
+    <section class="fiche fiche--etroite" id="aleatoire">
+      <div class="fiche__texte">
+        <h2>Tirage au sort</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › Aléatoire</span></p>
+        <p class="fiche__but">Interroger un élève au hasard, parmi ceux qui sont là.</p>
+        <ol class="etapes">
+          <li data-cursor="#al-alea" data-action="tap">Toucher <b>Aléatoire</b> : un élève est tiré aussitôt.</li>
+          <li data-cursor="#al-rel" data-action="tap"><span class="btn-nom">Relancer</span> tire un autre élève.</li>
+          <li data-cursor="#al-ok" data-action="tap"><span class="btn-nom">C'est lui !</span> referme la feuille.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les absents et les élèves sortis sont exclus ; en demi-groupe, seuls les membres du groupe sont tirés.</li>
+            <li>Le tirage n'enregistre rien.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="al-chev" >‹</span><span class="db-ann" id="al-ann" >Annuler</span><span class="db-titre" id="al-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="al-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="al-alea" data-on="1"><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="al-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="al-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="al-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="al-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="al-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="voile" data-at="1-2"></div>
+          <div class="feuille" data-at="1-2">
+            <div class="f-t"><b>Tirage au sort</b><span>24 présents</span></div>
+            <div class="tire"><small>ÉLÈVE TIRÉ</small><b data-at="1">Rose VI</b><b data-at="2">Malo RI</b><span>Parmi les élèves présents</span></div>
+            <div class="grille2" style="gap:8px"><span class="btn-db btn-db--bord" id="al-rel" data-on="2">Relancer</span><span class="btn-db btn-db--ind" id="al-ok" data-on="3">C'est lui !</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ oral -->
+    <section class="fiche fiche--etroite" id="oral">
+      <div class="fiche__texte">
+        <h2>Évaluation orale</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › Oral</span></p>
+        <p class="fiche__but">Noter l'oral sur 5, en interrogeant d'abord ceux qui ne l'ont pas encore été ce trimestre.</p>
+        <ol class="etapes">
+          <li data-cursor="#or-oral" data-action="tap">Toucher <b>Oral</b> : un élève pas encore évalué est tiré.</li>
+          <li data-cursor="#or-choisir" data-duration="3200"><b>Choisir</b>, en indigo, permet de prendre un autre élève dans la liste des non-évalués.</li>
+          <li data-cursor="#or-4" data-action="tap">Toucher une note de 0 à 5 : son libellé s'affiche (Insuffisant, Fragile, Satisfaisant, Bien, Très bien).</li>
+          <li data-cursor="#or-enr" data-action="tap">Toucher <span class="btn-nom">Enregistrer 4/5</span> : la pastille d'Oral passe à 4/24.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les notes d'oral sont rangées par trimestre (septembre-décembre, janvier-mars, avril-juillet) et nourrissent la carte « Notes d'oral » des analyses.</li>
+            <li>Quand tout le monde est évalué, Oral propose de réinitialiser : cela efface les notes d'oral de la classe pour le trimestre, définitivement.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="analyses.html#oral">Notes d'oral dans les analyses</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="or-chev" >‹</span><span class="db-ann" id="or-ann" >Annuler</span><span class="db-titre" id="or-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="or-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="or-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="or-oral" data-on="1,4"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas"><b data-to="3" style="font-weight:600">3/24</b><b data-at="4" style="font-weight:600">4/24</b></i></span>
+<span class="tbc" id="or-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="or-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="or-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="or-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="voile" data-at="1-3"></div>
+          <div class="feuille" data-at="1-3">
+            <div class="f-t"><b>Évaluation orale <i style="font-style:normal;font-size:10.5px;background:#EEF0FF;color:#4F46E5;padding:1px 6px;border-radius:6px">3/24 évalués</i></b><span>21 restants</span></div>
+            <div class="ligne" style="background:#F3F4F7;border-radius:12px;padding:10px">
+              <span class="avatar" style="background:#1F2433;color:#fff">H</span><div><b style="font-size:13.5px">Hugo PE</b><div style="font-size:11px;color:#6B7280">Tiré parmi les non-évalués</div></div><span class="esp"></span><span id="or-choisir" style="color:#4F46E5;font-weight:650;font-size:12.5px">Choisir</span>
+            </div>
+            <div class="notes"><span>0</span><span>1</span><span>2</span><span>3</span><span id="or-4" data-on="3">4</span><span>5</span></div>
+            <div style="text-align:center;font-size:12px;color:#4F46E5;font-weight:650;height:16px"><span data-at="3">Bien</span></div>
+            <div class="btn-db btn-db--vert" id="or-enr" style="margin-top:8px"><span data-to="2" style="opacity:.5">Enregistrer</span><span data-at="3">Enregistrer 4/5</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ note de séance -->
+    <section class="fiche fiche--etroite" id="note">
+      <div class="fiche__texte">
+        <h2>Note de séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › Note</span></p>
+        <p class="fiche__but">Garder une remarque générale sur l'heure : notions incomprises, ce qu'il faudra reprendre la prochaine fois.</p>
+        <ol class="etapes">
+          <li data-cursor="#nt-note" data-action="tap">Toucher <b>Note</b> : la feuille <b>Note de séance</b> monte.</li>
+          <li data-cursor="#nt-zone" data-duration="3400">Écrire dans « Vos notes sur cette séance… » (500 caractères au plus).</li>
+          <li data-cursor="#nt-enr" data-action="tap">Toucher <span class="btn-nom">Enregistrer</span> : un petit point indigo marque la carte Note.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La note se relit ensuite dans le volet de la séance et sur sa page de détail.</li>
+            <li>Vider le texte efface la note.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html#volet">Le volet d'une séance</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="nt-chev" >‹</span><span class="db-ann" id="nt-ann" >Annuler</span><span class="db-titre" id="nt-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="nt-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="nt-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="nt-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="nt-note" data-on="1"><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note<i class="pt" data-at="3"></i></span>
+<span class="tbc" id="nt-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="nt-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="nt-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="voile" data-at="1-2"></div>
+          <div class="feuille" data-at="1-2">
+            <div class="f-t"><b>Note de séance</b></div>
+            <div style="font-size:11.5px;color:#6B7280;margin-bottom:8px">Notions incomprises, remarques générales, à reprendre la prochaine fois…</div>
+            <div class="zone" id="nt-zone"><span data-at="1" style="color:#9CA3AF">Vos notes sur cette séance…</span><span data-type="Revoir la différence entre météo et climat : beaucoup de confusions." data-type-at="2"></span></div>
+            <div style="text-align:right;font-size:11px;color:#9CA3AF;margin:4px 0 8px"><span data-at="2">68/500</span></div>
+            <div class="grille2" style="gap:8px"><span class="btn-db btn-db--bord">Annuler</span><span class="btn-db btn-db--ind" id="nt-enr">Enregistrer</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ remarque -->
+    <section class="fiche fiche--etroite" id="remarque">
+      <div class="fiche__texte">
+        <h2>Remarque sur un élève, avec photo</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › Remarque</span></p>
+        <p class="fiche__but">La seule saisie de texte libre de la séance : noter un fait sur un élève, avec une photo si besoin (un cahier oublié, un beau schéma).</p>
+        <ol class="etapes">
+          <li data-cursor="#rq-rem" data-action="tap">Toucher <b>Remarque</b> : la liste <b>Sélectionner un élève</b> monte.</li>
+          <li data-cursor="#rq-zoe" data-action="tap">Toucher l'élève : la feuille <b>Remarque — Zoé FA</b> s'ouvre.</li>
+          <li data-cursor="#rq-zone" data-duration="3200">Écrire la remarque (500 caractères au plus), et/ou toucher l'appareil photo pour prendre ou choisir une photo.</li>
+          <li data-cursor="#rq-enr" data-action="tap" data-duration="3200">Toucher <span class="btn-nom">Enregistrer</span> : le bandeau vert confirme.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La remarque est visible dans l'historique de l'élève. La petite croix rouge de la vignette retire la photo avant l'envoi.</li>
+            <li>La photo est réduite avant l'envoi ; une remarque avec une photo seule est enregistrée avec le texte « (photo) ».</li>
+            <li>Seuls les élèves présents sont proposés, par ordre alphabétique.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html#evenements">Relire une remarque et sa photo</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="rq-chev" >‹</span><span class="db-ann" id="rq-ann" >Annuler</span><span class="db-titre" id="rq-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="rq-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="rq-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="rq-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="rq-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="rq-rem" data-on="1"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="rq-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="rq-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="voile" data-at="1-4"></div>
+          <div class="feuille" data-at="1-2">
+            <div class="f-t"><b>Sélectionner un élève</b></div>
+            <div class="lst"><div>Ali BE</div><div>Emma VA</div><div>Éva RO</div><div>Hugo PE</div><div id="rq-zoe" data-on="2">Zoé FA</div></div>
+          </div>
+          <div class="feuille" data-at="3-4">
+            <div class="f-t"><b>Remarque — Zoé FA</b></div>
+            <div style="font-size:11.5px;color:#6B7280;margin-bottom:8px">Texte et/ou photo, visible dans l'historique de l'élève.</div>
+            <div class="zone" id="rq-zone" style="min-height:70px"><span data-type="Cahier oublié, troisième fois" data-type-at="3"></span></div>
+            <div style="margin-top:8px;position:relative;width:80px"><svg viewBox="0 0 80 60" style="width:80px;height:60px;border-radius:8px;display:block"><rect width="80" height="60" fill="#E7E5E4"/><rect x="20" y="8" width="40" height="44" fill="#fff" stroke="#A8A29E"/><path d="M25 18h30M25 26h26M25 34h28" stroke="#93C5FD" stroke-width="2"/></svg><i style="position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;background:#EF4444;color:#fff;font-style:normal;font-size:12px;display:grid;place-items:center">×</i></div>
+            <div class="ligne" style="margin-top:10px"><span class="btn-db btn-db--bord" style="width:46px">
+              <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:none;stroke:#1F2433;stroke-width:1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></span><span class="btn-db btn-db--bord" style="flex:1">Annuler</span><span class="btn-db btn-db--ind" id="rq-enr" style="flex:1">Enregistrer</span></div>
+          </div>
+          <div class="ban glisse-bas" data-at="4"><span class="ck"></span>Zoé FA · Remarque</div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ supprimer -->
+    <section class="fiche fiche--etroite" id="supprimer">
+      <div class="fiche__texte">
+        <h2>Supprimer un événement en séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › Supprimer</span></p>
+        <p class="fiche__but">Retirer un événement noté par erreur, quand le bandeau d'annulation a déjà disparu.</p>
+        <ol class="etapes">
+          <li data-cursor="#su-sup" data-action="tap">Toucher <b>Supprimer</b> : la liste des élèves qui ont des événements s'ouvre.</li>
+          <li data-cursor="#su-noe" data-action="tap">Toucher l'élève : ses événements de la séance s'affichent.</li>
+          <li data-cursor="#su-x" data-action="tap">Toucher la croix rouge de l'événement, puis confirmer <span class="btn-nom">Supprimer</span>.</li>
+          <li data-cursor="#su-autre" data-duration="3200"><b>← Autre élève</b> pour changer d'élève, <span class="btn-nom">Fermer</span> pour sortir.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Supprimer une sortie remet l'élève dans la salle.</li>
+            <li>La suppression est définitive.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="su-chev" >‹</span><span class="db-ann" id="su-ann" >Annuler</span><span class="db-titre" id="su-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 12 min</span></span><span class="db-term" id="su-term" >Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="su-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="su-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="su-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="su-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="su-sup" data-on="1"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="su-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="voile"></div>
+          <div class="feuille" data-at="1">
+            <div class="f-t"><b>Supprimer un événement</b></div>
+            <div class="lst"><div>Jade LU<i>1 evts</i></div><div>Lina BO<i>2 evts</i></div><div>Malo RI<i>3 evts</i></div><div id="su-noe" data-on="1">Noé MA<i>2 evts</i></div><div>Tom SA<i>2 evts</i></div></div>
+          </div>
+          <div class="feuille" data-from="2">
+            <div class="f-t"><b>Événements — Noé MA</b></div>
+            <div class="lst">
+              <div data-to="3"><span>Malus <small style="color:#9CA3AF;font-weight:400">10:32</small></span><span class="croix" id="su-x" data-on="3">×</span></div>
+              <div><span>Malus <small style="color:#9CA3AF;font-weight:400">10:44</small></span><span class="croix">×</span></div>
+            </div>
+            <div class="ligne" style="margin-top:12px"><span id="su-autre" style="color:#4F46E5;font-weight:650;font-size:12.5px">← Autre élève</span><span class="esp"></span><span class="btn-db btn-db--bord" style="padding:0 18px">Fermer</span></div>
+          </div>
+          <div class="modale-fond zoom" data-at="3" style="background:rgba(15,23,42,.35)"><div class="modale" style="width:270px"><div class="modale__t">Supprimer cet événement ?</div><div class="ligne" style="justify-content:flex-end"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" style="background:#EF4444;border-color:#EF4444">Supprimer</span></div></div></div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ réduire, terminer, annuler -->
+    <section class="fiche fiche--etroite" id="terminer">
+      <div class="fiche__texte">
+        <h2>Réduire, terminer ou annuler la séance</h2>
+        <p class="fiche__ou"><span class="qui qui--tel">Tablette ou téléphone</span><span class="chemin">Séance en cours › en-tête</span></p>
+        <p class="fiche__but">Consulter une autre page sans arrêter la séance, la clore à la fin de l'heure, ou effacer une séance démarrée par erreur.</p>
+        <ol class="etapes">
+          <li data-cursor="#te-chev" data-action="tap" data-duration="3200">Le chevron de gauche réduit la séance : le site réapparaît, la séance continue.</li>
+          <li data-cursor="#te-rep" data-action="tap" data-duration="3200">Sur l'accueil, <span class="btn-nom">Reprendre la séance</span> (nom de la classe, étiquette « En cours ») rouvre l'écran.</li>
+          <li data-cursor="#te-term" data-action="tap">Toucher <span class="btn-nom">Terminer</span> : la feuille rappelle le nombre d'événements.</li>
+          <li data-cursor="#te-ok" data-action="tap">Toucher <span class="btn-nom">Terminer</span> (vert) pour clore, ou <span class="btn-nom">Continuer</span>.</li>
+          <li data-cursor="#te-oui" data-action="tap" data-duration="3600">Séance démarrée par erreur : le lien rouge <b>Annuler</b> de l'en-tête, puis <span class="btn-nom">Oui, annuler</span>. Aucun événement n'est gardé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Terminer pose l'heure de fin : la séance apparaît terminée dans l'historique, avec sa durée.</li>
+            <li>Une séance réduite reste ouverte dans la base. Si la page est rechargée, l'écran est perdu et la séance reste non terminée ; au bout de 6 heures elle ne compte plus comme « en cours ».</li>
+            <li class="important">Annuler la séance est définitif. Les notes d'oral déjà données restent.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html#supprimer">Supprimer une séance depuis l'ordinateur</a></p>
+      </div>
+      <div class="scene scene--tel"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="360" data-h="740"><div class="tel"><div class="tel__ecran"><div class="tel__statut"><span>10:24</span><span>5G</span></div>
+        <div style="position:relative;flex:1;min-height:0;background:#F7F7F9">
+          
+<div class="db-tete"><span class="db-chev" id="te-chev" data-on="1">‹</span><span class="db-ann" id="te-ann" data-on="5">Annuler</span><span class="db-titre" id="te-titre"><b>5B · Groupe 1 · Salle 12</b><span>● 48 min</span></span><span class="db-term" id="te-term" data-on="3">Terminer</span></div>
+<div class="tb">
+<span class="tbc" id="te-alea" ><svg viewBox="0 0 24 24"><path d="M3 7h3c4 0 6 10 10 10h4M17 14l3 3-3 3M3 17h3c1.5 0 2.7-1.3 3.7-3M14 9.5C15 8 16 7 17 7h3M17 4l3 3-3 3"/></svg>Aléatoire</span>
+<span class="tbc" id="te-oral" ><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Oral<i class="pas">3/24</i></span>
+<span class="tbc" id="te-note" ><svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.2L16 5l3 3L8.2 18.8z"/></svg>Note</span>
+<span class="tbc" id="te-rem" ><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg>Remarque</span>
+<span class="tbc" id="te-sup" ><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Supprimer</span>
+</div>
+<div class="aide">Appuyer sur un élève</div>
+
+          
+<div class="pl" id="te-plan">
+<div class="cel">Lina BO<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Noé MA<span class="bg"><i class="bm">2</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Iris TA<span class="bg"></span></div>
+<div class="cel cel--abs">Adam KE<span class="bg"><i class="babs">ABS</i></span></div>
+<div class="cel">Jade LU<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Tom SA<span class="bg"></span></div>
+<div class="cel">Zoé FA<span class="bg"></span></div>
+<div class="cel">Malo RI<span class="bg"><i class="bp">+3</i></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Rose VI<span class="bg"></span></div>
+<div class="cel">Inès DU<i class="bpap">PAP</i><span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Hugo PE<span class="bg"></span></div>
+<div class="cel">Mia CO<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Léa GA<span class="bg"></span></div>
+<div class="cel">Naël CH<span class="bg"><i class="bm">1</i></span></div>
+<div class="cel">Lou BE<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ana MO<span class="bg"></span></div>
+<div class="cel">Éva RO<span class="bg"></span></div>
+<div class="cel">Théo LE<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Ilyes HA<span class="bg"><i class="bp">+2</i></span></div>
+<div class="cel">Sami DA<span class="bg"></span></div>
+<div class="cel">Yanis GE<span class="bg"></span></div>
+<div class="cel">Nina PO<span class="bg"></span></div>
+<div class="cel cel--vide"></div>
+<div class="cel">Léo FR<span class="bg"></span></div>
+<div class="cel">Emma VA<span class="bg"><i class="bp">+1</i></span></div>
+<div class="cel">Ali BE<span class="bg"></span></div>
+<div class="cel">Maël JO<span class="bg"></span></div>
+</div>
+<div class="tabl">TABLEAU</div>
+
+          <div class="ov" data-at="1-2" style="background:#F7F7F9;z-index:600">
+            <div class="tel__entete"><div class="tel__titre">Accueil</div><div class="tel__sous">Jeudi 26 novembre</div></div>
+            <div class="tel__corps"><div class="lance"><span class="res" id="te-rep" data-on="2"><i class="tri" style="color:#4F46E5"></i><span>Reprendre la séance<small>5B</small></span><em>En cours</em></span><div class="grille2" style="gap:6px"><span class="gh">Travail de groupe</span><span class="gh">Épreuve</span></div></div><div class="mod"><b>Aujourd'hui</b><div><span>10:15 · 5B · G1</span><span>Salle 12</span></div><div><span>13:30 · 6A</span><span>Salle 12</span></div></div></div>
+          </div>
+          <div class="voile" data-at="3-5"></div>
+          <div class="feuille" data-at="3-4">
+            <div class="f-t"><b>Terminer la séance ?</b></div>
+            <div style="font-size:12.5px;color:#6B7280;margin-bottom:12px">18 événements enregistrés</div>
+            <div class="grille2" style="gap:8px"><span class="btn-db btn-db--bord">Continuer</span><span class="btn-db btn-db--vert" id="te-ok" data-on="4">Terminer</span></div>
+          </div>
+          <div class="feuille" data-at="5">
+            <div class="f-t"><b>Annuler la séance ?</b></div>
+            <div style="font-size:12.5px;color:#6B7280;margin-bottom:12px">La séance sera supprimée et aucun événement ne sera conservé.</div>
+            <div class="grille2" style="gap:8px"><span class="btn-db btn-db--bord">Non</span><span class="btn-db btn-db--rouge" id="te-oui">Oui, annuler</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
+

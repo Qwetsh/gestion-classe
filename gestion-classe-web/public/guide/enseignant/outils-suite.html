@@ -1,0 +1,1021 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Journal et frise chronologique — Guide Gestion Classe</title>
+<meta name="description" content="Composer une une de journal au format A4 et construire une frise chronologique (événements, périodes, catégories, frise à compléter), puis les exporter.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="92">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques propres au chapitre Outils (boîte à outils) */
+.app__side.side-e { width: 150px; }
+.corps-e { padding: 14px 16px; }
+.ot-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.corps-e .ot-tete { margin-bottom: 10px; }
+.ot-retour { width: 30px; height: 30px; flex: none; border: 1px solid var(--border); border-radius: 6px; background: #fff; display: grid; place-items: center; color: var(--text-muted); font-size: 15px; transition: all .25s; }
+.ot-retour.is-on { background: var(--surface-3); box-shadow: 0 0 0 3px rgba(79,70,229,.22); }
+.ot-ico { width: 34px; height: 34px; flex: none; border-radius: 6px; background: var(--indigo-soft); color: var(--indigo); display: grid; place-items: center; }
+.ot-ico svg { width: 19px; height: 19px; }
+.ot-titre { font-size: 18px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; white-space: nowrap; }
+.ot-desc { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ot-col { max-width: 540px; }
+.ot-lab { font-size: 11px; font-weight: 500; color: var(--text-dim); margin-bottom: 4px; }
+.ot-lab--f { font-size: 12.5px; color: var(--text-muted); margin-bottom: 6px; }
+.ot-in { min-height: 34px; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; font-size: 13.5px; display: flex; align-items: center; background: #fff; transition: all .25s; white-space: nowrap; overflow: hidden; }
+.ot-in.is-on { border-color: transparent; box-shadow: 0 0 0 2px var(--indigo); }
+.ot-in .ph { color: var(--text-dim); }
+.ot-in--p { min-height: 28px; border-radius: 7px; font-size: 12px; padding: 0 9px; }
+.ot-in--zone { align-items: flex-start; padding: 7px 10px; white-space: normal; line-height: 1.35; }
+.ot-g { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 500; background: var(--surface-3); color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.ot-g.is-on, .ot-g.actif { background: var(--indigo); color: #fff; }
+.ot-carte { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.ot-sec { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.ot-b { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 10px; font-size: 12.5px; font-weight: 560; background: var(--indigo); color: #fff; white-space: nowrap; transition: transform .15s, box-shadow .2s, background .3s, opacity .3s; }
+.ot-b--gris { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); }
+.ot-b--vert { background: var(--pos); }
+.ot-b--p { height: 26px; font-size: 11.5px; padding: 0 10px; border-radius: 7px; }
+.ot-b.is-on { transform: scale(.96); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.ot-b.off { opacity: .45; }
+.ot-zone { border: 2px dashed var(--border-strong); border-radius: 12px; display: grid; place-items: center; text-align: center; color: var(--text-dim); font-size: 12px; padding: 14px; transition: all .25s; }
+.ot-zone.is-on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.ot-zone b { display: block; font-size: 26px; font-weight: 300; line-height: 1; margin-bottom: 4px; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); background: rgba(249,115,22,.05); }
+.seg { display: inline-flex; gap: 2px; background: #F3F4F6; padding: 3px; border-radius: 9px; }
+.seg span { padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.seg span.actif, .seg span.is-on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,25,40,.14); }
+.res { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 10px 12px; }
+.res__t { font-size: 12.5px; font-weight: 650; color: var(--pos); margin-bottom: 4px; }
+.res__l { display: flex; align-items: center; gap: 9px; background: #fff; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; margin-top: 5px; }
+.res__l .nom { font-weight: 600; }
+.res__l .esp + .ot-b { flex: none; }
+.vg { width: 28px; height: 34px; border-radius: 4px; display: grid; place-items: center; color: #fff; font-size: 8.5px; font-weight: 700; flex: none; }
+.vg--pdf { background: #DC2626; } .vg--doc { background: #2563EB; }
+.vg--img { background: linear-gradient(135deg, #BAE6FD, #86EFAC); }
+.ot-err { font-size: 11.5px; color: var(--neg); }
+.ot-info { background: var(--surface-3); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
+.mono { font-family: var(--mono); }
+.chg { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; display: inline-block; animation: tourne .8s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.dl-barre { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #F1F1F4; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 12px; z-index: 500; color: var(--text-muted); }
+.dl-barre b { color: var(--text); font-weight: 600; }
+.dl-barre .vg { width: 20px; height: 24px; font-size: 7px; }
+.nav-dial { position: absolute; z-index: 650; left: 50%; top: 40px; translate: -50% 0; width: 380px; background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 16px 18px; font-size: 13px; }
+.nav-dial__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.nav-dial__pied span { padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); color: #1A56DB; }
+.nav-dial__pied span.ok { background: #1A56DB; border-color: #1A56DB; color: #fff; }
+.voile-o { position: absolute; inset: 0; background: rgba(20,25,40,.45); z-index: 600; }
+.ok-pastille { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--pos-soft); color: var(--pos); font-size: 12px; font-weight: 600; }
+/* textes de remplacement : un span caché ne prend pas de place */
+span.is-hidden:not(.garde) { display: none; }
+/* page 2 : journal et frise */
+.deux { display: flex; gap: 12px; height: 488px; }
+.ed { width: 290px; flex: none; border: 1px solid #E5E7EB; border-radius: 10px; background: #fff; padding: 10px 12px; overflow: hidden; display: flex; flex-direction: column; gap: 8px; position: relative; font-size: 11.5px; color: #374151; }
+.ed h5 { margin: 2px 0 0; font-size: 11.5px; font-weight: 700; color: #1F2937; padding-bottom: 3px; border-bottom: 1px solid #E5E7EB; }
+.ed .lab { font-size: 10.5px; font-weight: 600; color: #4B5563; margin-bottom: 2px; }
+.ed .in { border: 1px solid #D1D5DB; border-radius: 6px; padding: 4px 7px; font-size: 11px; background: #fff; min-height: 24px; white-space: nowrap; overflow: hidden; transition: box-shadow .25s; }
+.ed .grille2 > div { min-width: 0; }
+.ed .in.is-on { box-shadow: 0 0 0 2px #3B82F6; border-color: #3B82F6; }
+.ed .in .ph { color: #9CA3AF; }
+.eb { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 8px; border-radius: 6px; font-size: 10.5px; font-weight: 600; border: 1px solid #D1D5DB; background: #fff; color: #374151; white-space: nowrap; transition: all .25s; }
+.eb.is-on { box-shadow: 0 0 0 3px rgba(59,130,246,.3); }
+.eb--vio { border-color: #8B5CF6; color: #8B5CF6; background: #F5F3FF; }
+.eb--ver { border-color: #10B981; color: #059669; background: #F0FDF4; }
+.eb--amb { border-color: #F59E0B; color: #B45309; background: #FFFBEB; }
+.eb--bleu.actif, .eb--bleu.is-on { background: #3B82F6; border-color: #3B82F6; color: #fff; }
+.eb--pt { border-style: dashed; color: #6B7280; background: #fff; }
+.sty { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.sty span { border-radius: 6px; padding: 5px 7px; font-size: 10.5px; font-weight: 700; border: 1px solid #E5E7EB; transition: all .3s; }
+.sty .s1 { font-family: Georgia, serif; font-style: italic; }
+.sty .s2 { font-family: Georgia, serif; }
+.sty .s3 { letter-spacing: .06em; text-transform: uppercase; }
+.sty .s1.actif, .sty .s1.is-on { background: #FEFCF6; border-color: #111; }
+.sty .s2.actif, .sty .s2.is-on { background: #1B2A4A; color: #F5E6C8; border-color: #1B2A4A; }
+.sty .s4.actif, .sty .s4.is-on { background: #F8FBFF; color: #0066CC; border-color: #0066CC; }
+.apercu { flex: 1; background: #E5E7EB; border-radius: 10px; display: flex; justify-content: center; align-items: flex-start; padding: 14px; position: relative; overflow: hidden; }
+/* page A4 du journal */
+.jx { width: 318px; height: 450px; background: #FEFCF6; box-shadow: 0 4px 18px rgba(0,0,0,.18); padding: 14px 16px; font-family: Georgia, serif; color: #111; position: relative; flex: none; transition: background .4s; }
+.jx-ban { display: flex; justify-content: space-between; font-size: 7px; border-top: 2px solid #111; border-bottom: 1px solid #111; padding: 2px 0; margin-bottom: 5px; }
+.jx-nom { text-align: center; font-size: 22px; font-weight: 800; font-style: italic; line-height: 1.1; transition: all .4s; }
+.jx-slo { text-align: center; font-size: 7.5px; font-style: italic; color: #444; margin: 2px 0 4px; }
+.jx-dbl { border-top: 3px double #111; margin-bottom: 7px; }
+.jx-tit { font-size: 17px; font-weight: 800; line-height: 1.15; margin-bottom: 3px; min-height: 20px; }
+.jx-par { font-size: 7px; font-style: italic; color: #555; margin-bottom: 4px; }
+.jx-cha { font-size: 7.5px; font-weight: 700; line-height: 1.35; text-align: justify; margin-bottom: 8px; }
+.jx-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.jx-cols > div { padding: 0 6px; border-left: 1px solid #ccc; }
+.jx-cols > div:first-child { border-left: 0; padding-left: 0; }
+.jx-st { font-size: 8.5px; font-weight: 800; margin-bottom: 3px; line-height: 1.15; }
+.lg { height: 3px; background: #C9C9C9; border-radius: 2px; margin: 0 0 3.5px; }
+.lg.c { width: 70%; }
+.jx-photo { background: linear-gradient(135deg, #9CC5A1, #5E8C6A); border-radius: 2px; height: 70px; margin-bottom: 3px; }
+.jx-photo.b { background: linear-gradient(135deg, #8EC5FC, #3B6EA5); }
+.jx-leg { font-size: 6.5px; font-style: italic; color: #555; margin-bottom: 5px; }
+.jx-cit { border-top: 1px solid #111; border-bottom: 1px solid #111; padding: 4px 0; font-size: 8.5px; font-style: italic; margin-bottom: 5px; }
+.jx-pied { position: absolute; left: 16px; right: 16px; bottom: 8px; font-size: 6.5px; color: #777; text-align: center; border-top: 1px solid #ddd; padding-top: 3px; }
+/* style bandeau bleu */
+.jw.is-on .jx-nom { background: #1B2A4A; color: #F5E6C8; font-style: normal; font-weight: 700; padding: 5px 0; margin: 0 -4px; letter-spacing: .02em; }
+.jw.is-on .jx-ban, .jw.is-on .jx-dbl { border-color: #8B1A1A; }
+.jw.is-on .jx { background: #FDF8F0; }
+.jf.is-on .jx { background: #F2F7FF; }
+/* style scientifique */
+.jx--sci { background: #F8FBFF; font-family: 'Roboto Slab', Georgia, serif; }
+.jx--sci .jx-nom { font-style: normal; color: #0066CC; }
+.jx--sci .jx-ban, .jx--sci .jx-dbl { border-color: #0066CC; }
+.jx--sci .jx-st { color: #0066CC; }
+.jpages { display: flex; gap: 14px; transform-origin: 50% 0; transition: transform .5s; }
+.jpages.is-on { transform: scale(.74); }
+.blk { background: #FAFAFA; border: 1px solid #EEE; border-left: 3px solid #3B82F6; border-radius: 6px; padding: 5px 7px; display: flex; flex-direction: column; gap: 4px; }
+.blk--cit { border-left-color: #8B5CF6; } .blk--pho { border-left-color: #10B981; }
+.blk .t { display: flex; align-items: center; gap: 5px; font-size: 8.5px; font-weight: 700; letter-spacing: .06em; color: #6B7280; }
+.blk .t .poi { color: #9CA3AF; font-size: 11px; letter-spacing: 0; padding: 0 2px; border-radius: 3px; transition: all .25s; }
+.blk .t .poi.is-on { background: #DBEAFE; color: #1D4ED8; }
+.blk .t .act { margin-left: auto; color: #9CA3AF; letter-spacing: 0; font-size: 10px; }
+.blk .t .act b { color: #EF4444; font-weight: 600; margin-left: 4px; }
+.vign { width: 46px; height: 30px; border-radius: 4px; background: linear-gradient(135deg, #9CC5A1, #5E8C6A); flex: none; }
+.encart { border-radius: 8px; padding: 7px 8px; display: flex; flex-direction: column; gap: 4px; }
+.encart--vio { background: #F5F3FF; border: 1px solid #DDD6FE; }
+.encart--ver { background: #F0FDF4; border: 1px solid #BBF7D0; }
+.encart--amb { background: #FFFBEB; border: 1px solid #FDE68A; }
+.encart .it { background: #fff; border: 1px solid #E5E7EB; border-radius: 6px; padding: 4px 7px; transition: all .25s; }
+.encart .it b { display: block; font-size: 10.5px; color: #111; }
+.encart .it small { font-size: 9.5px; color: #6B7280; }
+.encart .it.is-on { border-color: #8B5CF6; box-shadow: 0 0 0 2px rgba(139,92,246,.25); }
+.alerte-a { position: absolute; left: 12px; right: 12px; top: 10px; background: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; border-radius: 8px; padding: 6px 10px; font-size: 10.5px; z-index: 3; transition: box-shadow .25s; }
+.alerte-a.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+/* frise */
+.fz { --bg: #fff; --axe: #1F2937; --carte: #fff; --bord: #E5E7EB; --txt: #111827; --dim: #6B7280;
+  background: var(--bg); color: var(--txt); border-radius: 10px; flex: 1; position: relative; overflow: hidden; transition: background .4s, color .4s; }
+.fz.parch, .fz.parch-on.is-on { --bg: #FDF6E3; --axe: #8B5E34; --carte: #FAF0D7; --bord: #D4A55A; --txt: #3E2A14; --dim: #7A5C3A; font-family: Georgia, serif; }
+.fz.mod { --bg: #0F172A; --axe: #3B82F6; --carte: #1E293B; --bord: #334155; --txt: #E2E8F0; --dim: #94A3B8; }
+.fz-t { position: absolute; left: 0; right: 0; top: 18px; text-align: center; font-weight: 700; font-size: 16px; }
+.fz-st { position: absolute; left: 0; right: 0; top: 40px; text-align: center; font-size: 11px; color: var(--dim); }
+.fz-axe { position: absolute; left: 6%; right: 6%; top: 52%; height: 4px; background: var(--axe); border-radius: 2px; transition: background .4s; }
+.fz-gr { position: absolute; top: calc(52% + 9px); font-size: 9px; color: var(--dim); translate: -50% 0; }
+.fz-ev { position: absolute; width: 118px; translate: -50% 0; }
+.fz-ev .c { background: var(--carte); border: 1px solid var(--bord); border-radius: 7px; padding: 5px 7px; font-size: 9.5px; line-height: 1.25; box-shadow: 0 1px 3px rgba(0,0,0,.08); position: relative; transition: all .4s; }
+.fz-ev .c b { display: block; font-size: 9px; color: var(--ec); }
+.fz-ev .tige { width: 2px; height: 26px; background: var(--ec); margin: 0 auto; }
+.fz-ev .pt { width: 10px; height: 10px; border-radius: 50%; background: var(--ec); margin: -1px auto 0; border: 2px solid var(--bg); }
+.fz-ev.haut { bottom: calc(48% - 7px); }
+.fz-ev.bas { top: calc(52% - 3px); }
+.fz-ev.bas .pt { margin: 0 auto -1px; }
+.fz-tag { position: absolute; top: -6px; right: 4px; font-size: 7.5px; font-weight: 700; padding: 0 5px; border-radius: 6px; color: #fff; line-height: 13px; }
+.fz-per { position: absolute; top: calc(52% - 9px); height: 22px; display: flex; align-items: center; justify-content: center; font-size: 8.5px; font-weight: 700; color: #1F2937; border-left: 1.5px solid #374151; border-right: 1.5px solid #374151; overflow: hidden; white-space: nowrap; }
+.fz-pern { position: absolute; top: calc(52% + 18px); font-size: 8.5px; font-weight: 600; color: var(--dim); translate: -50% 0; white-space: nowrap; }
+.fz-leg { position: absolute; left: 0; right: 0; top: 60px; display: flex; justify-content: center; gap: 14px; font-size: 10px; }
+.fz-leg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.fz-cmd { position: absolute; right: 10px; top: 10px; display: flex; gap: 4px; }
+.fz-cmd span { background: #1F2937; color: #fff; font-size: 10px; padding: 3px 7px; border-radius: 5px; }
+.fz-bulle { position: absolute; background: #111827; color: #fff; font-size: 10px; padding: 6px 9px; border-radius: 7px; width: 170px; line-height: 1.3; z-index: 4; }
+.fz-v { position: absolute; left: 50%; top: 66px; width: 300px; translate: -50% 0; }
+.fz-v .ax { position: absolute; left: 10px; top: 0; bottom: 0; width: 3px; background: var(--axe); }
+.fz-v .ev { margin-left: 30px; background: var(--carte); border: 1px solid var(--bord); border-left: 3px solid var(--ec); border-radius: 6px; padding: 5px 8px; font-size: 10px; margin-bottom: 9px; position: relative; }
+.fz-v .ev::before { content: ''; position: absolute; left: -25px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--ec); }
+.fz-v .ev b { color: var(--ec); font-size: 9.5px; display: block; }
+.ev-c { background: #F9FAFB; border: 1px solid #EEE; border-left: 3px solid var(--ec); border-radius: 6px; padding: 6px 7px; display: flex; flex-direction: column; gap: 4px; }
+.ev-c .t { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; }
+.ev-c .t .rond { width: 14px; height: 14px; border-radius: 50%; background: var(--ec); border: 2px solid #fff; box-shadow: 0 0 0 1px #D1D5DB; transition: box-shadow .25s; }
+.ev-c .t .rond.is-on { box-shadow: 0 0 0 3px #3B82F6; }
+.ev-c .t .act { margin-left: auto; color: #9CA3AF; font-weight: 500; font-size: 10px; }
+.ev-c .t .act b { color: #EF4444; margin-left: 4px; }
+.ev-c.per { border-left-style: dashed; }
+.cat { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; transition: all .25s; }
+.cat .x { opacity: .7; padding: 0 1px; border-radius: 3px; }
+.cat .x.is-on { background: rgba(0,0,0,.15); opacity: 1; }
+.cat-sup.is-on { opacity: .45; text-decoration: line-through; }
+.cat-sup.is-on .is-x { background: rgba(0,0,0,.18); opacity: 1; text-decoration: none; }
+.sel-e { border: 1px solid #D1D5DB; border-radius: 6px; padding: 3px 7px; font-size: 10.5px; background: #fff; display: flex; align-items: center; transition: box-shadow .25s; }
+.sel-e::after { content: '▾'; margin-left: auto; color: #9CA3AF; }
+.sel-e.is-on { box-shadow: 0 0 0 2px #3B82F6; }
+.ex-encart { background: #FEF3C7; border: 1px solid #FCD34D; border-radius: 8px; padding: 7px 8px; display: flex; flex-direction: column; gap: 5px; }
+.ex-encart .case.is-on, .ex-encart .case--on { background: #D97706; border-color: #D97706; }
+.eb--ambp { background: #F59E0B; border-color: #F59E0B; color: #fff; }
+.fichier-ex { position: absolute; inset: 0; background: rgba(20,25,40,.5); display: grid; place-items: center; z-index: 5; }
+.fichier-ex__p { width: 470px; height: 270px; background: #fff; border-radius: 4px; box-shadow: 0 8px 30px rgba(0,0,0,.35); position: relative; }
+.mod-t { position: absolute; z-index: 610; left: 50%; top: 40px; translate: -50% 0; width: 560px; background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); padding: 14px 16px; }
+.mod-t h6 { margin: 8px 0 5px; font-size: 10px; color: #6B7280; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.tpl-g { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tpl { border: 1px solid #E5E7EB; border-radius: 8px; padding: 6px 8px; display: flex; gap: 8px; align-items: center; transition: all .25s; }
+.tpl i { width: 24px; height: 24px; border-radius: 6px; background: var(--indigo-soft); color: var(--indigo); font-style: normal; font-size: 9px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.tpl b { display: block; font-size: 11px; }
+.tpl small { font-size: 9.5px; color: #6B7280; }
+.tpl.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.op-c { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #6B7280; }
+.op-c .curseur-m { flex: 1; height: 4px; background: #E5E7EB; border-radius: 2px; position: relative; }
+.op-c .curseur-m i { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; background: #3B82F6; transition: left .5s; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Outils › Journal et frise</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#journal">Journal : composer la une</a></li>
+      <li><a href="#journal-modeles">Journal : modèles</a></li>
+      <li><a href="#journal-sauvegardes">Journal : sauvegarder, charger</a></li>
+      <li><a href="#journal-contenu">Journal : articles et photos</a></li>
+      <li><a href="#journal-export">Journal : aperçu et export</a></li>
+      <li><a href="#frise">Frise : construire</a></li>
+      <li><a href="#frise-templates">Frise : templates</a></li>
+      <li><a href="#frise-fichiers">Frise : fichiers JSON</a></li>
+      <li><a href="#frise-categories">Frise : catégories et filtre</a></li>
+      <li><a href="#frise-evenements">Frise : événements</a></li>
+      <li><a href="#frise-periodes">Frise : périodes</a></li>
+      <li><a href="#frise-comparatif">Frise : mode comparatif</a></li>
+      <li><a href="#frise-exercice">Frise : frise à compléter</a></li>
+      <li><a href="#frise-export">Frise : export PNG, PDF, HTML</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/outils.html">◀ Boîte à outils</a><a href="../enseignant/outils-fin.html">Documents officiels et fichiers ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+<header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus › Outils</div>
+      <h1>Journal et frise chronologique</h1>
+      <p>Deux outils pour fabriquer des supports soignés : la une d'un journal au format A4, pour une gazette de classe ou un exposé, et une frise chronologique, des ères géologiques aux dates de l'histoire, jusqu'à la version trouée que les élèves complètent.</p>
+      <div class="chap__resume"><span>Menu Plus › Outils</span><span>Ordinateur</span><span>14 fiches</span><span><a href="outils.html">Début du chapitre</a></span></div>
+    </header>
+
+    <!-- ============================================================ journal : composer -->
+    <section class="fiche fiche--large" id="journal">
+      <div class="fiche__texte">
+        <h2>Générateur de journal : composer la une</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Générateur de Journal</span></p>
+        <p class="fiche__but">Composer une « une » de journal au format A4, une ou deux pages, pour une gazette de classe, un exposé ou un journal d'époque.</p>
+        <ol class="etapes">
+          <li data-cursor="#jr-ed">L'éditeur est à gauche, l'aperçu A4 à droite : chaque changement s'y voit aussitôt.</li>
+          <li data-cursor="#jr-s2" data-action="click"><b>Style du journal</b> : quatre allures (quotidien crème, quotidien à bandeau bleu nuit, <b>Moderne</b>, <b>Scientifique</b>). Le bouton choisi prend les couleurs du style.</li>
+          <li data-cursor="#jr-coul" data-action="click"><b>Fond de page</b> : <b>Par défaut</b> (couleur du style), <b>Couleur</b> (sélecteur et code couleur) ou <b>Texture</b> (une image couvre la page).</li>
+          <li data-cursor="#jr-titre" data-action="click" data-duration="3400"><b>Informations</b> : nom du journal, slogan, date, prix. Puis le <b>Titre principal</b>, le <b>Chapeau (introduction)</b> et l'<b>Auteur</b>.</li>
+          <li data-cursor="#jr-2p" data-action="click"><b>Pages :</b> <b>1 page</b> ou <b>2 pages</b>. En deux pages, la suite passe d'elle-même sur la page 2.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Au départ : « Le Courrier des Classes », « Toute l'actualité qui compte », la date du jour, « 1,50 € », « Un titre accrocheur ici », une page, aucun article.</li>
+            <li>Deux des styles portent sur le site le nom de grands quotidiens nationaux : le guide les décrit par leur allure.</li>
+            <li>La date s'écrit en toutes lettres dans le bandeau, le prix à droite. L'auteur (« Par … ») n'apparaît que si le titre principal est affiché. Le grand titre rapetisse tout seul quand la page se remplit.</li>
+            <li>L'éditeur garde ses propres couleurs, même avec le thème sombre du site. Les polices du journal se chargent depuis internet : hors connexion, l'aperçu et l'export prennent des polices ordinaires.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/newspaper</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="jr-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="jr-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13v16H6a2 2 0 01-2-2z"/><path d="M17 8h3v10a2 2 0 01-2 2"/><path d="M7 8h7M7 11h7M7 14h4"/></svg></span><div style="min-width:0"><div class="ot-titre">Générateur de Journal</div><div class="ot-desc">Créer une page de une de journal avec photos, articles et mise en page automatique</div></div></div>
+        <div class="deux">
+          <div class="ed zone-on" id="jr-ed" data-on="1">
+            <div class="ligne" style="gap:5px"><span class="eb eb--vio">Modèles</span><span class="eb eb--ver">Sauvegarder</span><span class="eb eb--amb">Charger</span></div>
+            <h5>Style du journal</h5>
+            <div class="sty"><span class="s1 actif" data-on="1">Quotidien crème</span><span class="s2" id="jr-s2" data-on="2-5">Bandeau bleu</span><span class="s3">Moderne</span><span class="s4">Scientifique</span></div>
+            <h5>Fond de page</h5>
+            <div class="ligne" style="gap:4px"><span class="eb eb--bleu" data-on="1-2" style="flex:1">Par défaut</span><span class="eb eb--bleu" id="jr-coul" data-on="3-5" style="flex:1">Couleur</span><span class="eb" style="flex:1">Texture</span></div>
+            <div class="ligne repli glisse-haut" data-from="3" style="gap:5px"><span style="width:24px;height:22px;border-radius:5px;background:#F2F7FF;border:1px solid #D1D5DB"></span><div class="in" style="flex:1">#F2F7FF</div></div>
+            <h5>Informations</h5>
+            <div class="grille2" style="gap:5px 7px"><div><div class="lab">Nom du journal</div><div class="in">Le Courrier des Classes</div></div><div><div class="lab">Slogan</div><div class="in">Toute l'actualité qui compte</div></div><div><div class="lab">Date</div><div class="in">26/11/2026</div></div><div><div class="lab">Prix</div><div class="in">1,50 €</div></div></div>
+            <div><div class="lab"><span class="case case--on" style="width:12px;height:12px;vertical-align:-2px;margin-right:4px"></span>Titre principal</div><div class="in" id="jr-titre" data-on="4" style="font-weight:700"><span data-to="3">Un titre accrocheur ici</span><span data-type="La 4B visite une carrière de calcaire" data-type-at="4"></span></div></div>
+            <div class="ligne" style="gap:5px;margin-top:2px"><span class="lab" style="margin:0">Pages :</span><span class="eb eb--bleu" data-on="1-4">1 page</span><span class="eb eb--bleu" id="jr-2p" data-on="5">2 pages</span></div>
+          </div>
+          <div class="apercu">
+            <div class="jpages" data-on="5">
+              <div class="jw" data-on="2-5"><div class="jf" data-on="3-5">
+                <div class="jx">
+                  <div class="jx-ban"><span>jeudi 26 novembre 2026</span><span>1,50 €</span></div>
+                  <div class="jx-nom">Le Courrier des Classes</div>
+                  <div class="jx-slo">Toute l'actualité qui compte</div>
+                  <div class="jx-dbl"></div>
+                  <div class="jx-tit"><span data-to="3">Un titre accrocheur ici</span><span data-from="4">La 4B visite une carrière de calcaire</span></div>
+                  <div class="jx-par" data-from="4">Par Mme Durand</div>
+                  <div class="jx-cha">Les élèves ont observé les couches de roches et récolté des fossiles, avant de les étudier au laboratoire du collège.</div>
+                  <div class="jx-cols">
+                    <div><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div>
+                    <div><div class="jx-photo"></div><div class="jx-leg">Les couches de calcaire</div><div class="lg"></div><div class="lg c"></div></div>
+                    <div><div class="jx-st">Au laboratoire</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg c"></div></div>
+                  </div>
+                  <div class="jx-pied">Le Courrier des Classes — Page 1</div>
+                </div>
+              </div></div>
+              <div class="jx repli" data-from="5" style="background:#F2F7FF"><div class="jx-cols"><div><div class="jx-st">Les fossiles trouvés</div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div></div><div><div class="jx-photo b"></div><div class="jx-leg">Ammonite</div></div><div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div></div><div class="jx-pied">Le Courrier des Classes — Page 2</div></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ journal : modèles -->
+    <section class="fiche fiche--large" id="journal-modeles">
+      <div class="fiche__texte">
+        <h2>Journal : partir d'un modèle</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Générateur de Journal › Modèles</span></p>
+        <p class="fiche__but">Démarrer d'une une déjà remplie, puis l'adapter.</p>
+        <ol class="etapes">
+          <li data-cursor="#jm-btn" data-action="click">Cliquer <span class="btn-nom">Modèles</span>, le bouton violet en haut de l'éditeur : la liste « Choisir un modèle : » se déplie.</li>
+          <li data-cursor="#jm-sci" data-action="click" data-duration="3400">Cliquer un modèle : <b>Journal scolaire</b>, <b>Revue scientifique</b>, <b>Gazette historique</b> ou <b>Magazine moderne</b>.</li>
+          <li data-cursor="#jm-apercu">Le modèle remplace tout le journal en cours, date remise à aujourd'hui : il reste à changer textes et photos.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Aucun avertissement avant le remplacement : sauvegarder d'abord le journal en cours s'il compte.</li>
+            <li>Les modèles : une gazette de classe (jardin pédagogique, club lecture, sport), une revue sur les fonds marins, un journal d'époque sur la prise de la Bastille, un magazine sur l'intelligence artificielle. Les prénoms et noms qu'ils citent sont fictifs.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/newspaper</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="jm-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="jm-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13v16H6a2 2 0 01-2-2z"/><path d="M17 8h3v10a2 2 0 01-2 2"/><path d="M7 8h7M7 11h7M7 14h4"/></svg></span><div style="min-width:0"><div class="ot-titre">Générateur de Journal</div><div class="ot-desc">Créer une page de une de journal avec photos, articles et mise en page automatique</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <div class="ligne" style="gap:5px"><span class="eb eb--vio" id="jm-btn" data-on="1">Modèles</span><span class="eb eb--ver">Sauvegarder</span><span class="eb eb--amb">Charger</span></div>
+            <div class="encart encart--vio glisse-haut repli" data-from="2" data-to="2">
+              <div style="font-size:10.5px;font-weight:700;color:#6D28D9">Choisir un modèle :</div>
+              <div class="it"><b>Journal scolaire</b><small>Gazette de classe avec articles élèves</small></div>
+              <div class="it" id="jm-sci" data-on="2"><b>Revue scientifique</b><small>Style magazine scientifique pour exposés</small></div>
+              <div class="it"><b>Gazette historique</b><small>Journal d'époque pour cours d'histoire</small></div>
+              <div class="it"><b>Magazine moderne</b><small>Style contemporain pour projets créatifs</small></div>
+            </div>
+            <h5>Style du journal</h5>
+            <div class="sty"><span class="s1" data-on="1-2">Quotidien crème</span><span class="s2">Bandeau bleu</span><span class="s3">Moderne</span><span class="s4" data-on="3">Scientifique</span></div>
+            <h5>Informations</h5>
+            <div class="grille2" style="gap:5px 7px"><div><div class="lab">Nom du journal</div><div class="in"><span data-to="2">Le Courrier des Classes</span><span data-from="3">Science Actu</span></div></div><div><div class="lab">Prix</div><div class="in"><span data-to="2">1,50 €</span><span data-from="3">2,50 €</span></div></div></div>
+          </div>
+          <div class="apercu" id="jm-apercu">
+            <div class="jx" data-to="2">
+              <div class="jx-ban"><span>jeudi 26 novembre 2026</span><span>1,50 €</span></div>
+              <div class="jx-nom">Le Courrier des Classes</div><div class="jx-slo">Toute l'actualité qui compte</div><div class="jx-dbl"></div>
+              <div class="jx-tit">Un titre accrocheur ici</div>
+            </div>
+            <div class="jx jx--sci zoom" data-from="3" style="position:absolute;top:14px">
+              <div class="jx-ban"><span>jeudi 26 novembre 2026</span><span>2,50 €</span></div>
+              <div class="jx-nom">Science Actu</div><div class="jx-slo">Comprendre le monde par la science</div><div class="jx-dbl"></div>
+              <div class="jx-tit">Les mystères des fonds marins</div>
+              <div class="jx-cha">À plus de 10 000 mètres de profondeur, la fosse des Mariannes abrite des formes de vie que les scientifiques commencent à peine à découvrir.</div>
+              <div class="jx-cols">
+                <div><div class="jx-st">Un monde d'obscurité</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div></div>
+                <div><div class="jx-photo b"></div><div class="jx-leg">Les abysses</div><div class="lg"></div><div class="lg c"></div></div>
+                <div><div class="jx-st">Les cheminées de vie</div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div></div>
+              </div>
+              <div class="jx-pied">Science Actu — Page 1</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ journal : sauvegardes -->
+    <section class="fiche fiche--large" id="journal-sauvegardes">
+      <div class="fiche__texte">
+        <h2>Journal : sauvegarder et charger</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Générateur de Journal › Sauvegarder · Charger</span></p>
+        <p class="fiche__but">Garder plusieurs journaux en cours et les reprendre plus tard, sur le même ordinateur.</p>
+        <ol class="etapes">
+          <li data-cursor="#js-sauv" data-action="click"><span class="btn-nom">Sauvegarder</span> : l'encadré vert « Nom de la sauvegarde : » propose le nom du journal.</li>
+          <li data-cursor="#js-ok" data-action="click">Modifier le nom si besoin, puis <span class="btn-nom">OK</span> (ou Entrée). <span class="btn-nom">Annuler</span> referme sans rien garder.</li>
+          <li data-cursor="#js-charger" data-action="click"><span class="btn-nom">Charger</span> déplie les « Journaux sauvegardés : ».</li>
+          <li data-cursor="#js-l2" data-action="click">Cliquer un nom pour rouvrir ce journal. La croix rouge le supprime ; <span class="btn-nom">Fermer</span> replie la liste.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les sauvegardes restent dans ce navigateur, sur cet ordinateur : invisibles depuis un autre poste, et perdues si l'on efface les données du site. Aucun partage avec les collègues ou les élèves.</li>
+            <li>Sauvegarder sous un nom existant écrase l'ancienne version sans prévenir ; supprimer est immédiat, sans confirmation.</li>
+            <li>Les photos sont gardées dans la sauvegarde : un journal riche en grandes photos peut dépasser la place du navigateur, et la sauvegarde échoue alors sans message.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/newspaper</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="js-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="js-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13v16H6a2 2 0 01-2-2z"/><path d="M17 8h3v10a2 2 0 01-2 2"/><path d="M7 8h7M7 11h7M7 14h4"/></svg></span><div style="min-width:0"><div class="ot-titre">Générateur de Journal</div><div class="ot-desc">Créer une page de une de journal avec photos, articles et mise en page automatique</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <div class="ligne" style="gap:5px"><span class="eb eb--vio">Modèles</span><span class="eb eb--ver" id="js-sauv" data-on="1">Sauvegarder</span><span class="eb eb--amb" id="js-charger" data-on="3">Charger</span></div>
+            <div class="encart encart--ver glisse-haut repli" data-from="2" data-to="2">
+              <div style="font-size:10.5px;font-weight:700;color:#047857">Nom de la sauvegarde :</div>
+              <div class="in" style="border-color:#10B981">Gazette 4B novembre</div>
+              <div class="ligne" style="gap:5px;justify-content:flex-end"><span class="eb">Annuler</span><span class="eb" id="js-ok" data-on="2" style="background:#10B981;border-color:#10B981;color:#fff">OK</span></div>
+            </div>
+            <div class="encart encart--amb glisse-haut repli" data-from="4">
+              <div style="font-size:10.5px;font-weight:700;color:#92400E">Journaux sauvegardés :</div>
+              <div class="it ligne"><span style="flex:1;font-size:10.5px">Le Courrier des Classes</span><b style="color:#EF4444;display:inline;font-size:11px">×</b></div>
+              <div class="it ligne" id="js-l2" data-on="4"><span style="flex:1;font-size:10.5px">Gazette 4B novembre</span><b style="color:#EF4444;display:inline;font-size:11px">×</b></div>
+              <div class="it ligne"><span style="flex:1;font-size:10.5px">Exposé volcans 5E</span><b style="color:#EF4444;display:inline;font-size:11px">×</b></div>
+              <div class="ligne" style="justify-content:flex-end"><span class="eb">Fermer</span></div>
+            </div>
+            <h5>Style du journal</h5>
+            <div class="sty"><span class="s1 actif">Quotidien crème</span><span class="s2">Bandeau bleu</span><span class="s3">Moderne</span><span class="s4">Scientifique</span></div>
+            <h5>Informations</h5>
+            <div class="grille2" style="gap:5px 7px"><div><div class="lab">Nom du journal</div><div class="in">Le Courrier des Classes</div></div><div><div class="lab">Prix</div><div class="in">1,50 €</div></div></div>
+          </div>
+          <div class="apercu">
+            <div class="jx">
+              <div class="jx-ban"><span>jeudi 26 novembre 2026</span><span>1,50 €</span></div>
+              <div class="jx-nom">Le Courrier des Classes</div><div class="jx-slo">Toute l'actualité qui compte</div><div class="jx-dbl"></div>
+              <div class="jx-tit">La 4B visite une carrière de calcaire</div>
+              <div class="jx-par">Par Mme Durand</div>
+              <div class="jx-cha">Les élèves ont observé les couches de roches et récolté des fossiles.</div>
+              <div class="jx-cols"><div><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div></div><div><div class="jx-photo"></div><div class="lg"></div></div><div><div class="jx-st">Au laboratoire</div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ journal : blocs -->
+    <section class="fiche fiche--large" id="journal-contenu">
+      <div class="fiche__texte">
+        <h2>Journal : paragraphes, citations et photos</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Générateur de Journal › Contenu</span></p>
+        <p class="fiche__but">Écrire les articles et placer les images : la mise en colonnes est automatique.</p>
+        <ol class="etapes">
+          <li data-cursor="#jb-para" data-action="click"><span class="btn-nom">+ Paragraphe</span> : un bloc avec <b>Sous-titre (optionnel)</b>, le texte et la case <b>Pleine largeur</b>.</li>
+          <li data-cursor="#jb-cit" data-action="click"><span class="btn-nom">+ Citation</span> : le texte, son auteur et deux présentations, <b>Citation</b> (filets et guillemet) ou <b>Encadré</b>.</li>
+          <li data-cursor="#jb-pho" data-action="click"><span class="btn-nom">+ Photo</span> : choisir une image, écrire la <b>Légende de la photo</b>. <b>Ajuster (sans crop)</b> la montre en entier.</li>
+          <li data-cursor="#jb-poi" data-action="drag" data-drag-to="#jb-cible">Réordonner en tirant la poignée ⠿, ou avec les flèches ▲ ▼. La croix rouge supprime le bloc.</li>
+          <li data-cursor="#jb-apercu" data-duration="3200">Dans l'aperçu, les blocs se rangent d'eux-mêmes sur trois colonnes séparées de filets.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un paragraphe ou une citation prend une colonne ; une photo recadrée deux colonnes, une photo ajustée une seule. Un paragraphe ou une photo « Pleine largeur » occupe toute une rangée.</li>
+            <li><span class="important">Limite actuelle :</span> la case « Pleine largeur » d'une citation n'a aucun effet sur la mise en page.</li>
+            <li>Pas de mise en forme dans le texte (ni gras, ni listes), et les retours à la ligne ne sont pas gardés à l'affichage.</li>
+            <li>Supprimer un bloc est immédiat, sans confirmation ni annulation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/newspaper</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="jb-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="jb-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13v16H6a2 2 0 01-2-2z"/><path d="M17 8h3v10a2 2 0 01-2 2"/><path d="M7 8h7M7 11h7M7 14h4"/></svg></span><div style="min-width:0"><div class="ot-titre">Générateur de Journal</div><div class="ot-desc">Créer une page de une de journal avec photos, articles et mise en page automatique</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Contenu</h5>
+            <div class="blk"><div class="t"><span class="poi">⠿</span>PARAGRAPHE<span class="act">▲ ▼<b>×</b></span></div><div class="in">Une journée sur le terrain</div><div class="in" style="height:30px;white-space:normal;font-size:10px">Départ à 8 h en car pour la carrière…</div><div style="font-size:10px"><span class="case" style="width:11px;height:11px"></span> Pleine largeur</div></div>
+            <div class="blk blk--cit glisse-haut repli" data-from="2" data-to="4"><div class="t"><span class="poi" id="jb-poi" data-on="4">⠿</span>CITATION<span class="act">▲ ▼<b>×</b></span></div><div class="in">« On dirait des escargots en pierre ! »</div><div class="ligne" style="gap:8px;font-size:10px"><span><span class="case case--on" style="width:11px;height:11px;border-radius:50%"></span> Citation</span><span><span class="case" style="width:11px;height:11px;border-radius:50%"></span> Encadré</span></div></div>
+            <div class="blk blk--pho repli glisse-haut" data-from="3"><div class="t"><span class="poi">⠿</span>PHOTO<span class="act">▲ ▼<b>×</b></span></div><div class="ligne" style="gap:6px"><span class="vign"></span><div class="in" style="flex:1">Les couches de calcaire</div></div><div class="ligne" style="gap:8px;font-size:10px"><span><span class="case" style="width:11px;height:11px"></span> Pleine largeur</span><span><span class="case" style="width:11px;height:11px"></span> Ajuster (sans crop)</span></div></div>
+            <span id="jb-cible" style="height:0;display:block"></span>
+            <div class="blk blk--cit glisse-haut repli" data-from="5"><div class="t"><span class="poi">⠿</span>CITATION<span class="act">▲ ▼<b>×</b></span></div><div class="in">« On dirait des escargots en pierre ! »</div><div class="ligne" style="gap:8px;font-size:10px"><span><span class="case case--on" style="width:11px;height:11px;border-radius:50%"></span> Citation</span><span><span class="case" style="width:11px;height:11px;border-radius:50%"></span> Encadré</span></div></div>
+            <div class="ligne" style="gap:5px"><span class="eb eb--pt" id="jb-para" data-on="1" style="flex:1">+ Paragraphe</span><span class="eb eb--pt" id="jb-cit" data-on="2" style="flex:1">+ Citation</span><span class="eb eb--pt" id="jb-pho" data-on="3" style="flex:1">+ Photo</span></div>
+          </div>
+          <div class="apercu zone-on" id="jb-apercu" data-on="5">
+            <div class="jx">
+              <div class="jx-ban"><span>jeudi 26 novembre 2026</span><span>1,50 €</span></div>
+              <div class="jx-nom">Le Courrier des Classes</div><div class="jx-slo">Toute l'actualité qui compte</div><div class="jx-dbl"></div>
+              <div class="jx-tit">La 4B visite une carrière de calcaire</div>
+              <div class="jx-cha">Les élèves ont observé les couches de roches et récolté des fossiles.</div>
+              <div class="jx-cols repli" data-at="1"><div style="grid-column:span 3"><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div></div>
+              <div class="jx-cols repli" data-at="2"><div style="grid-column:span 2"><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div><div><div class="jx-cit">« On dirait des escargots en pierre ! »<br><span style="font-size:7px;font-style:normal">— Noé MA, 4B</span></div></div></div>
+              <div class="repli" data-at="3-4"><div class="jx-cols"><div style="grid-column:span 2"><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div><div><div class="jx-cit">« On dirait des escargots en pierre ! »<br><span style="font-size:7px;font-style:normal">— Noé MA, 4B</span></div></div></div><div class="jx-cols" style="margin-top:8px"><div style="grid-column:span 2"><div class="jx-photo" style="height:84px"></div><div class="jx-leg">Les couches de calcaire</div></div></div></div>
+              <div class="repli" data-from="5"><div class="jx-cols"><div style="grid-column:span 1"><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div><div style="grid-column:span 2"><div class="jx-photo" style="height:84px"></div><div class="jx-leg">Les couches de calcaire</div></div></div><div class="jx-cols" style="margin-top:8px"><div><div class="jx-cit">« On dirait des escargots en pierre ! »<br><span style="font-size:7px;font-style:normal">— Noé MA, 4B</span></div></div></div></div>
+              <div class="jx-pied">Le Courrier des Classes — Page 1</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ journal : export -->
+    <section class="fiche fiche--large" id="journal-export">
+      <div class="fiche__texte">
+        <h2>Journal : aperçu A4 et export PNG ou PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Générateur de Journal › Exporter</span></p>
+        <p class="fiche__but">Voir la page telle qu'elle sera enregistrée, puis la télécharger pour l'imprimer ou la diffuser.</p>
+        <ol class="etapes">
+          <li data-cursor="#je-apercu">L'aperçu montre la page A4 telle qu'elle sera exportée, mise à l'échelle du volet.</li>
+          <li data-cursor="#je-alerte" data-duration="3600">Si le texte déborde, un bandeau ambre prévient : « Le contenu dépasse le format A4… Réduisez le texte ou passez en 2 pages. »</li>
+          <li data-cursor="#je-png" data-action="click"><span class="btn-nom">Télécharger PNG</span> ou <span class="btn-nom">Télécharger PDF</span> : les boutons affichent « Export... » pendant le calcul. Le fichier porte le nom du journal.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'export est une photo de l'aperçu, en double résolution : le texte n'y est pas sélectionnable.</li>
+            <li><span class="important">Limite actuelle :</span> le PDF tient sur une seule page A4. En mode 2 pages, les deux pages côte à côte y sont écrasées et déformées : exporter en PNG pour deux pages.</li>
+            <li>Une photo ou une texture venue d'un autre site peut manquer à l'export. En cas d'échec, le navigateur affiche « Erreur lors de l'export ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/newspaper</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="je-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="je-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13v16H6a2 2 0 01-2-2z"/><path d="M17 8h3v10a2 2 0 01-2 2"/><path d="M7 8h7M7 11h7M7 14h4"/></svg></span><div style="min-width:0"><div class="ot-titre">Générateur de Journal</div><div class="ot-desc">Créer une page de une de journal avec photos, articles et mise en page automatique</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Contenu</h5>
+            <div class="blk"><div class="t"><span class="poi">⠿</span>PARAGRAPHE<span class="act">▲ ▼<b>×</b></span></div><div class="in">Une journée sur le terrain</div></div>
+            <div class="blk blk--pho"><div class="t"><span class="poi">⠿</span>PHOTO<span class="act">▲ ▼<b>×</b></span></div><div class="ligne" style="gap:6px"><span class="vign"></span><div class="in" style="flex:1">Les couches de calcaire</div></div></div>
+            <div class="blk"><div class="t"><span class="poi">⠿</span>PARAGRAPHE<span class="act">▲ ▼<b>×</b></span></div><div class="in">Au laboratoire</div></div>
+            <div class="blk"><div class="t"><span class="poi">⠿</span>PARAGRAPHE<span class="act">▲ ▼<b>×</b></span></div><div class="in">Les fossiles trouvés</div></div>
+            <h5>Exporter</h5>
+            <div class="ligne" style="gap:6px"><span class="eb" id="je-png" data-on="3" style="flex:1;background:#3B82F6;border-color:#3B82F6;color:#fff;padding:7px"><span data-to="2">Télécharger PNG</span><span data-from="3">Export...</span></span><span class="eb" style="flex:1;background:#EF4444;border-color:#EF4444;color:#fff;padding:7px"><span data-to="2">Télécharger PDF</span><span data-from="3">Export...</span></span></div>
+          </div>
+          <div class="apercu" id="je-apercu">
+            <div class="alerte-a glisse-bas" id="je-alerte" data-from="2" data-on="2">Le contenu dépasse le format A4. Le rendu exporté risque d'être coupé ou déformé. Réduisez le texte ou passez en 2 pages.</div>
+            <div class="jx" style="margin-top:22px">
+              <div class="jx-ban"><span>jeudi 26 novembre 2026</span><span>1,50 €</span></div>
+              <div class="jx-nom">Le Courrier des Classes</div><div class="jx-slo">Toute l'actualité qui compte</div><div class="jx-dbl"></div>
+              <div class="jx-tit" style="font-size:14px">La 4B visite une carrière de calcaire</div>
+              <div class="jx-cols"><div><div class="jx-st">Une journée sur le terrain</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div></div><div style="grid-column:span 2"><div class="jx-photo" style="height:80px"></div><div class="jx-leg">Les couches de calcaire</div></div></div>
+              <div class="jx-cols" style="margin-top:6px"><div><div class="jx-st">Au laboratoire</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div></div><div><div class="jx-st">Les fossiles trouvés</div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg c"></div><div class="lg"></div><div class="lg"></div></div><div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div><div class="lg"></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="dl-barre glisse-haut" data-from="3"><span class="vg vg--img"></span><b>Le_Courrier_des_Classes.png</b><span>Téléchargement terminé</span></div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : construire -->
+    <section class="fiche fiche--large" id="frise">
+      <div class="fiche__texte">
+        <h2>Frise chronologique : style, bornes et orientation</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Frise Chronologique</span></p>
+        <p class="fiche__but">Construire une frise horizontale ou verticale, des millions d'années de la géologie aux dates de l'histoire.</p>
+        <ol class="etapes">
+          <li data-cursor="#fr-ed">L'éditeur est à gauche, l'aperçu à droite. Dans l'aperçu, on glisse pour se déplacer et la molette zoome.</li>
+          <li data-cursor="#fr-parch" data-action="click"><b>Style</b> : <b>Classique</b>, <b>Moderne</b> (bleu nuit) ou <b>Parchemin</b> (crème et brun).</li>
+          <li data-cursor="#fr-st" data-action="click" data-duration="3400"><b>Informations</b> : <b>Titre</b>, <b>Sous-titre</b>, bornes <b>Début</b> et <b>Fin</b>. Une date est une année, négative avant J.-C. (« -3500 »), ou suivie de Ga, Ma ou Ka (milliards, millions, milliers d'années).</li>
+          <li data-cursor="#fr-vert" data-action="click"><b>Orientation :</b> <b>Horizontale</b> ou <b>Verticale</b>.</li>
+          <li data-cursor="#fr-aj" data-action="click"><b>Zoom</b> : <span class="btn-nom">Ajuster</span> met la frise à la taille du volet (« Auto ») ; − et + ou le curseur vont de 20 % à 300 %.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La frise en cours est gardée toute seule dans ce navigateur : on la retrouve en revenant. Une seule frise à la fois ; pour en garder plusieurs, <a href="#frise-fichiers">Exporter JSON</a>.</li>
+            <li>Au départ : « Ma frise chronologique », de 1789 à 1799, style Classique, horizontale, vide.</li>
+            <li>En horizontal, les événements sont placés à l'échelle du temps, alternativement au-dessus et au-dessous de l'axe. En vertical, ils forment une simple liste dans l'ordre des dates.</li>
+            <li>La molette sur l'aperçu zoome toujours, elle ne fait pas défiler la page. Les polices de la frise se chargent depuis internet.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fr-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fr-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed zone-on" id="fr-ed" data-on="1">
+            <span class="eb" style="background:#8B5CF6;border-color:#8B5CF6;color:#fff;padding:6px">Templates</span>
+            <div class="ligne" style="gap:4px"><span class="eb" style="flex:1;background:#10B981;border-color:#10B981;color:#fff">Exporter JSON</span><span class="eb" style="flex:1;background:#3B82F6;border-color:#3B82F6;color:#fff">Importer JSON</span><span class="eb" style="flex:1;background:#EF4444;border-color:#EF4444;color:#fff">Réinitialiser</span></div>
+            <h5>Style</h5>
+            <div class="ligne" style="gap:4px"><span class="eb" data-on="1" style="flex:1">Classique</span><span class="eb" style="flex:1">Moderne</span><span class="eb" id="fr-parch" data-on="2-5" style="flex:1;background:#FDF6E3">Parchemin</span></div>
+            <h5>Informations</h5>
+            <div><div class="lab">Titre</div><div class="in">La Révolution française</div></div>
+            <div><div class="lab">Sous-titre</div><div class="in" id="fr-st" data-on="3"><span class="ph" data-to="2">Ex: Les grandes dates</span><span data-type="Les grandes dates, 1789-1799" data-type-at="3"></span></div></div>
+            <div class="grille2" style="gap:6px"><div><div class="lab">Début</div><div class="in">1789</div></div><div><div class="lab">Fin</div><div class="in">1799</div></div></div>
+            <div class="ligne" style="gap:4px"><span class="lab" style="margin:0">Orientation :</span><span class="eb eb--bleu" data-on="1-3">Horizontale</span><span class="eb eb--bleu" id="fr-vert" data-on="4-5">Verticale</span></div>
+            <h5>Zoom</h5>
+            <div class="ligne" style="gap:5px"><span class="eb" id="fr-aj" data-on="5">Ajuster</span><span class="eb">−</span><div class="op-c" style="flex:1"><div class="curseur-m"><i data-to="4" style="left:28%"></i><i data-from="5" style="left:22%"></i></div></div><span class="eb">+</span><span style="font-size:10px;width:30px"><span data-to="4">100%</span><span data-from="5">Auto</span></span></div>
+          </div>
+          <div class="fz parch-on" data-on="2-5">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-st" data-from="3">Les grandes dates, 1789-1799</div>
+            <div data-to="3">
+              <div class="fz-axe"></div>
+              <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span><span class="fz-gr" style="left:41.2%">1793</span><span class="fz-gr" style="left:67.6%">1796</span>
+              <div class="fz-ev haut" style="left:12%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+              <div class="fz-ev bas" style="left:30%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><b>1791</b>Fuite à Varennes</div></div>
+              <div class="fz-ev haut" style="left:41%;--ec:#10B981"><div class="c"><b>1793</b>Exécution de Louis XVI</div><div class="tige"></div><div class="pt"></div></div>
+              <div class="fz-ev bas" style="left:52%;--ec:#F59E0B"><div class="pt"></div><div class="tige"></div><div class="c"><b>1794</b>Chute de Robespierre</div></div>
+              <div class="fz-ev haut" style="left:86%;--ec:#8B5CF6"><div class="c"><b>1799</b>Coup d'État du 18 Brumaire</div><div class="tige"></div><div class="pt"></div></div>
+            </div>
+            <div class="fz-v zoom" data-from="4" style="top:70px">
+              <div class="ax"></div>
+              <div class="ev" style="--ec:#EF4444"><b>1789</b>Prise de la Bastille</div>
+              <div class="ev" style="--ec:#3B82F6"><b>1791</b>Fuite à Varennes</div>
+              <div class="ev" style="--ec:#10B981"><b>1793</b>Exécution de Louis XVI</div>
+              <div class="ev" style="--ec:#F59E0B"><b>1794</b>Chute de Robespierre</div>
+              <div class="ev" style="--ec:#8B5CF6"><b>1799</b>Coup d'État du 18 Brumaire</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : templates -->
+    <section class="fiche fiche--large" id="frise-templates">
+      <div class="fiche__texte">
+        <h2>Frise : partir d'un template</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Templates</span></p>
+        <p class="fiche__but">Charger une frise toute faite d'un programme du collège, prête à adapter.</p>
+        <ol class="etapes">
+          <li data-cursor="#fm-btn" data-action="click">Cliquer <span class="btn-nom">Templates</span>, le bouton violet en haut de l'éditeur.</li>
+          <li data-cursor="#fm-geo" data-action="click" data-duration="3400">Dans « Templates de frises », cliquer une tuile. Onze modèles, rangés par thème : Histoire, Géologie, Sciences, Histoire 5e, 4e et 3e.</li>
+          <li data-cursor="#fm-apercu">La frise en cours est remplacée par le modèle, zoom remis à 100 %.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Remplacement sans confirmation, et la sauvegarde automatique écrase aussitôt l'ancienne frise : l'exporter en JSON avant, si elle compte.</li>
+            <li>Les modèles : la Révolution française, la Seconde Guerre mondiale, l'Antiquité, les ères géologiques, l'histoire de l'informatique, la formation du système solaire, le Moyen Âge, les Grandes Découvertes, la Première Guerre mondiale, la Guerre froide, les Lumières et la révolution industrielle.</li>
+            <li>Les modèles n'ont pas de catégories. On ferme la fenêtre par la croix ou en cliquant à côté.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fm-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fm-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <span class="eb" id="fm-btn" data-on="1" style="background:#8B5CF6;border-color:#8B5CF6;color:#fff;padding:6px">Templates</span>
+            <div class="ligne" style="gap:4px"><span class="eb" style="flex:1;background:#10B981;border-color:#10B981;color:#fff">Exporter JSON</span><span class="eb" style="flex:1;background:#3B82F6;border-color:#3B82F6;color:#fff">Importer JSON</span><span class="eb" style="flex:1;background:#EF4444;border-color:#EF4444;color:#fff">Réinitialiser</span></div>
+            <h5>Style</h5>
+            <div class="ligne" style="gap:4px"><span class="eb" style="flex:1">Classique</span><span class="eb" data-on="3" style="flex:1">Moderne</span><span class="eb" data-on="1-2" style="flex:1">Parchemin</span></div>
+            <h5>Informations</h5>
+            <div><div class="lab">Titre</div><div class="in"><span data-to="2">La Révolution française</span><span data-from="3">Les ères géologiques</span></div></div>
+            <div class="grille2" style="gap:6px"><div><div class="lab">Début</div><div class="in"><span data-to="2">1789</span><span data-from="3">-4600000000</span></div></div><div><div class="lab">Fin</div><div class="in"><span data-to="2">1799</span><span data-from="3">2025</span></div></div></div>
+            <h5>Périodes <span data-from="3">(6)</span><span data-to="2">(3)</span></h5>
+          </div>
+          <div class="fz parch repli" data-to="2" style="flex:1">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-axe"></div>
+            <div class="fz-ev haut" style="left:12%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:41%;--ec:#10B981"><div class="pt"></div><div class="tige"></div><div class="c"><b>1793</b>Exécution de Louis XVI</div></div>
+          </div>
+          <div class="fz mod zoom" id="fm-apercu" data-from="3" style="flex:1">
+            <div class="fz-t">Les ères géologiques</div>
+            <div class="fz-per" style="left:6%;width:11.5%;background:#FCA5A5">Hadéen</div>
+            <div class="fz-per" style="left:17.5%;width:28.7%;background:#FCD34D">Archéen</div>
+            <div class="fz-per" style="left:46.2%;width:37.5%;background:#86EFAC">Protérozoïque</div>
+            <div class="fz-per" style="left:83.7%;width:5.6%;background:#93C5FD"></div>
+            <div class="fz-per" style="left:89.3%;width:3.4%;background:#C4B5FD"></div>
+            <div class="fz-per" style="left:92.7%;width:1.3%;background:#F9A8D4"></div>
+            <span class="fz-gr" style="left:6%;top:calc(52% - 26px)">4.6 Ga</span><span class="fz-gr" style="left:94%;top:calc(52% - 26px)">2025</span>
+            <div class="fz-ev haut" style="left:12%;--ec:#F97316"><div class="c"><b>4.6 Ga</b>Formation de la Terre</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:30%;--ec:#22C55E;top:calc(52% + 14px)"><div class="pt"></div><div class="tige"></div><div class="c"><b>3.8 Ga</b>Plus anciennes traces de vie</div></div>
+            <div class="fz-ev haut" style="left:84%;--ec:#3B82F6"><div class="c"><b>540 Ma</b>Explosion cambrienne</div><div class="tige"></div><div class="pt"></div></div>
+          </div>
+        </div>
+        <div class="voile-o" data-at="2"></div>
+        <div class="mod-t zoom" data-at="2">
+          <div class="ligne"><b style="font-size:14px">Templates de frises</b><span class="esp"></span><span style="color:#9CA3AF">×</span></div>
+          <h6>Histoire</h6>
+          <div class="tpl-g"><div class="tpl"><i>RF</i><span><b>La Révolution française</b><small>10 événements · 3 périodes</small></span></div><div class="tpl"><i>39</i><span><b>La Seconde Guerre mondiale</b><small>14 événements · 3 périodes</small></span></div><div class="tpl"><i>Ant</i><span><b>L'Antiquité</b><small>12 événements · 3 périodes</small></span></div></div>
+          <h6>Géologie</h6>
+          <div class="tpl-g"><div class="tpl" id="fm-geo" data-on="2"><i>Ga</i><span><b>Les ères géologiques</b><small>10 événements · 6 périodes</small></span></div></div>
+          <h6>Sciences</h6>
+          <div class="tpl-g"><div class="tpl"><i>Inf</i><span><b>Histoire de l'informatique</b><small>12 événements · 4 périodes</small></span></div><div class="tpl"><i>Sol</i><span><b>Formation du système solaire</b><small>10 événements · 5 périodes</small></span></div></div>
+          <h6>Histoire 5e · 4e · 3e</h6>
+          <div class="tpl-g"><div class="tpl"><i>MA</i><span><b>Le Moyen Âge</b><small>12 événements · 3 périodes</small></span></div><div class="tpl"><i>GF</i><span><b>La Guerre froide</b><small>11 événements · 4 périodes</small></span></div></div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : fichiers -->
+    <section class="fiche fiche--large" id="frise-fichiers">
+      <div class="fiche__texte">
+        <h2>Frise : Exporter JSON, Importer JSON, Réinitialiser</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › sous Templates</span></p>
+        <p class="fiche__but">Garder une frise dans un fichier, la recharger, la passer à un collègue, ou repartir de zéro.</p>
+        <ol class="etapes">
+          <li data-cursor="#ff-exp" data-action="click"><span class="btn-nom">Exporter JSON</span> télécharge la frise dans un fichier « titre_frise.json », images comprises.</li>
+          <li data-cursor="#ff-imp" data-action="click"><span class="btn-nom">Importer JSON</span> recharge un fichier exporté auparavant : il remplace la frise en cours.</li>
+          <li data-cursor="#ff-reset" data-action="click"><span class="btn-nom">Réinitialiser</span> demande confirmation (« Réinitialiser la frise ? Les données non exportées seront perdues. ») puis vide la frise.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>C'est le seul moyen de garder plusieurs frises ou d'en transmettre une à un collègue : l'application ne les partage pas.</li>
+            <li>Un fichier illisible affiche « Fichier JSON invalide ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="ff-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="ff-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <span class="eb" style="background:#8B5CF6;border-color:#8B5CF6;color:#fff;padding:6px">Templates</span>
+            <div class="ligne" style="gap:4px"><span class="eb" id="ff-exp" data-on="1" style="flex:1;background:#10B981;border-color:#10B981;color:#fff">Exporter JSON</span><span class="eb" id="ff-imp" data-on="2" style="flex:1;background:#3B82F6;border-color:#3B82F6;color:#fff">Importer JSON</span><span class="eb" id="ff-reset" data-on="3" style="flex:1;background:#EF4444;border-color:#EF4444;color:#fff">Réinitialiser</span></div>
+            <h5>Style</h5>
+            <div class="ligne" style="gap:4px"><span class="eb" style="flex:1">Classique</span><span class="eb" style="flex:1">Moderne</span><span class="eb" style="flex:1;background:#FDF6E3">Parchemin</span></div>
+            <h5>Informations</h5>
+            <div><div class="lab">Titre</div><div class="in">La Révolution française</div></div>
+            <div class="grille2" style="gap:6px"><div><div class="lab">Début</div><div class="in">1789</div></div><div><div class="lab">Fin</div><div class="in">1799</div></div></div>
+            <h5>Événements (5)</h5>
+          </div>
+          <div class="fz parch">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-axe"></div>
+            <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+            <div class="fz-ev haut" style="left:12%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:30%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><b>1791</b>Fuite à Varennes</div></div>
+            <div class="fz-ev haut" style="left:41%;--ec:#10B981"><div class="c"><b>1793</b>Exécution de Louis XVI</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev haut" style="left:86%;--ec:#8B5CF6"><div class="c"><b>1799</b>Coup d'État du 18 Brumaire</div><div class="tige"></div><div class="pt"></div></div>
+          </div>
+        </div>
+        <div class="dl-barre glisse-haut" data-at="1"><span class="vg" style="background:#10B981">JSON</span><b>La_Révolution_française_frise.json</b><span>Téléchargement terminé</span></div>
+        <div class="bulle bulle--haut" data-at="2" style="left:330px;top:150px">Choisir un fichier .json exporté auparavant : il remplace la frise affichée</div>
+        <div class="voile-o" data-at="3"></div>
+        <div class="nav-dial zoom" data-at="3"><div style="font-size:11px;color:#555;margin-bottom:6px">qwetsh.github.io indique</div>Réinitialiser la frise ? Les données non exportées seront perdues.<div class="nav-dial__pied"><span class="ok">OK</span><span>Annuler</span></div></div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : catégories -->
+    <section class="fiche fiche--large" id="frise-categories">
+      <div class="fiche__texte">
+        <h2>Frise : catégories et filtre</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Catégories</span></p>
+        <p class="fiche__but">Classer les événements (« Politique », « Sciences »…) pour les distinguer d'une étiquette colorée, n'en montrer qu'une partie, ou préparer le mode comparatif.</p>
+        <ol class="etapes">
+          <li data-cursor="#fc-champ" data-action="click">Taper un nom dans « Nouvelle catégorie... », puis Entrée ou <span class="btn-nom">+</span>.</li>
+          <li data-cursor="#fc-sel" data-action="click">Dans chaque événement, choisir sa catégorie (« Sans catégorie » au départ) : une étiquette colorée apparaît sur la carte.</li>
+          <li data-cursor="#fc-filtre" data-action="click"><b>Filtrer :</b> <b>Tous</b> ou une catégorie : seule celle-ci reste dans l'aperçu.</li>
+          <li data-cursor="#fc-x" data-action="click">La croix d'une pastille supprime la catégorie, retirée aussi de tous ses événements.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les couleurs viennent d'une palette de dix, attribuées dans l'ordre de création.</li>
+            <li>Le filtre s'applique aussi aux exports PNG, PDF et HTML : seuls les événements visibles partent. Il n'est pas gardé quand on revient sur l'outil.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fc-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fc-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Catégories (2)</h5>
+            <div class="ligne" style="gap:5px"><div class="in" id="fc-champ" data-on="1" style="flex:1"><span class="ph" data-to="0">Nouvelle catégorie...</span><span data-type="Sciences" data-type-at="1"></span></div><span class="eb">+</span></div>
+            <div class="ligne" style="gap:5px;flex-wrap:wrap"><span class="cat" style="background:#FEE2E2;color:#B91C1C">Politique <span class="x">×</span></span><span class="cat cat-sup glisse-gauche" data-from="1" data-on="4" style="background:#DBEAFE;color:#1D4ED8">Sciences <span class="x is-x" id="fc-x">×</span></span></div>
+            <div class="ligne" style="gap:4px;font-size:10.5px"><span class="lab" style="margin:0">Filtrer :</span><span class="eb eb--bleu" data-on="1-2,4">Tous</span><span class="eb">Politique</span><span class="eb eb--bleu" id="fc-filtre" data-on="3" data-from="1">Sciences</span></div>
+            <h5>Événements (3)</h5>
+            <div class="ev-c" style="--ec:#3B82F6"><div class="t"><span class="rond"></span>Événement 2<span class="act">▲ ▼<b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1795</div><div class="in">Création de l'Institut</div></div><div class="sel-e" id="fc-sel" data-on="2"><span data-to="1">Sans catégorie</span><span data-from="2" data-to="3">Sciences</span><span data-from="4">Sans catégorie</span></div></div>
+            <div class="ev-c" style="--ec:#EF4444"><div class="t"><span class="rond"></span>Événement 1<span class="act">▲ ▼<b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1789</div><div class="in">Prise de la Bastille</div></div><div class="sel-e">Politique</div></div>
+          </div>
+          <div class="fz">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-axe"></div>
+            <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+            <div class="fz-ev haut" data-at="1,2,4" style="left:12%;--ec:#EF4444"><div class="c"><span class="fz-tag" style="background:#EF4444">Politique</span><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" data-at="1,2,4" style="left:41%;--ec:#10B981"><div class="pt"></div><div class="tige"></div><div class="c"><span class="fz-tag" style="background:#EF4444">Politique</span><b>1793</b>Exécution de Louis XVI</div></div>
+            <div class="fz-ev haut" style="left:63%;--ec:#3B82F6"><div class="c"><span class="fz-tag" style="background:#3B82F6" data-from="2" data-to="3">Sciences</span><b>1795</b>Création de l'Institut</div><div class="tige"></div><div class="pt"></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : événements -->
+    <section class="fiche fiche--large" id="frise-evenements">
+      <div class="fiche__texte">
+        <h2>Frise : ajouter des événements</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Événements</span></p>
+        <p class="fiche__but">Poser chaque date de la frise avec son titre, sa description, sa couleur et, si on veut, une image.</p>
+        <ol class="etapes">
+          <li data-cursor="#fe-plus" data-action="click"><span class="btn-nom">+ Événement</span> ajoute une carte « Événement 4 » en bas de la liste.</li>
+          <li data-cursor="#fe-date" data-action="click" data-duration="3400">Remplir <b>Date</b>, <b>Titre</b> et <b>Description (optionnel)</b>.</li>
+          <li data-cursor="#fe-rond" data-action="click">La pastille ronde à gauche du titre de la carte choisit la couleur de l'événement.</li>
+          <li data-cursor="#fe-photo" data-action="click"><span class="btn-nom">+ Photo</span> ajoute une image (vignette, croix pour la retirer) ; le bouton devient « Changer photo ».</li>
+          <li data-cursor="#fe-apercu">L'événement prend sa place dans l'aperçu, toujours trié par date.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un événement sans date n'apparaît pas dans l'aperçu ; un événement hors des bornes Début et Fin est collé au bord de l'axe.</li>
+            <li>Les flèches ▲ ▼ ne changent que l'ordre de la liste dans l'éditeur, pas la frise.</li>
+            <li>Les couleurs sont proposées à tour de rôle (bleu, rouge, vert, ambre, violet, rose, cyan, orange).</li>
+            <li>Les images sont gardées dans la sauvegarde automatique : trop d'images lourdes dépassent la place du navigateur, et la sauvegarde s'arrête alors sans prévenir.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fe-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fe-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Événements (4)</h5>
+            <div class="ev-c" style="--ec:#EF4444"><div class="t"><span class="rond"></span>Événement 1<span class="act">▲ ▼<b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1789</div><div class="in">Prise de la Bastille</div></div></div>
+            <div class="ev-c" style="--ec:#3B82F6"><div class="t"><span class="rond"></span>Événement 2<span class="act">▲ ▼<b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1791</div><div class="in">Fuite à Varennes</div></div></div>
+            <div class="ev-c" style="--ec:#10B981"><div class="t"><span class="rond"></span>Événement 3<span class="act">▲ ▼<b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1793</div><div class="in">Exécution de Louis XVI</div></div></div>
+            <div class="ev-c glisse-haut repli" data-from="1" style="--ec:#F59E0B"><div class="t"><span class="rond" id="fe-rond" data-on="3"></span>Événement 4<span class="act">▲ ▼<b>×</b></span></div>
+              <div class="grille2" style="gap:5px"><div class="in" id="fe-date" data-on="2"><span data-type="1792" data-type-at="2"></span></div><div class="in"><span data-type="Valmy" data-type-at="2"></span></div></div>
+              <div class="in" style="color:#4B5563"><span data-type="Première victoire de l'armée française" data-type-at="2"></span></div>
+              <div class="ligne" style="gap:6px"><span class="vign repli zoom" data-from="5"></span><span class="eb" id="fe-photo" data-on="4"><span data-to="4">+ Photo</span><span data-from="5">Changer photo</span></span></div>
+            </div>
+            <span class="eb eb--pt" id="fe-plus" data-on="1" style="padding:6px">+ Événement</span>
+          </div>
+          <div class="fz parch" id="fe-apercu">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-axe"></div>
+            <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+            <div class="fz-ev haut" style="left:12%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:24%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><b>1791</b>Fuite à Varennes</div></div>
+            <div class="fz-ev haut zoom" data-from="3" style="left:33%;--ec:#F59E0B"><div class="c"><div class="vign repli" data-from="5" style="width:100%;height:26px;margin-bottom:4px"></div><b>1792</b>Valmy</div><div class="tige" style="height:76px"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:47%;--ec:#10B981"><div class="pt"></div><div class="tige"></div><div class="c"><b>1793</b>Exécution de Louis XVI</div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : périodes -->
+    <section class="fiche fiche--large" id="frise-periodes">
+      <div class="fiche__texte">
+        <h2>Frise : colorer des périodes</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Périodes</span></p>
+        <p class="fiche__but">Colorer des intervalles sur l'axe (règnes, républiques, ères), façon frise géologique.</p>
+        <ol class="etapes">
+          <li data-cursor="#fp-plus" data-action="click"><span class="btn-nom">+ Période</span> ajoute une carte « Période N », à liseré pointillé.</li>
+          <li data-cursor="#fp-champs" data-action="click" data-duration="3400">Remplir <b>Début</b>, <b>Fin</b>, <b>Nom</b> et, si on veut, la description ; choisir la couleur (pastel au départ).</li>
+          <li data-cursor="#fp-op" data-action="drag" data-drag-to="#fp-op2"><b>Opacité</b> : de 10 % à 100 % (50 % au départ).</li>
+          <li data-cursor="#fp-apercu" data-duration="3200">Dès qu'une période est complète, l'axe devient une suite de bandes colorées, avec le nom sous chaque bande et les dates aux frontières.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une période sans début ou sans fin est ignorée ; début et fin peuvent être saisis dans n'importe quel ordre.</li>
+            <li>Des périodes qui se chevauchent s'empilent sur plusieurs rangs. Quand des dates de frontière sont trop proches, toutes ne s'affichent pas.</li>
+            <li>En vertical, les périodes deviennent des bandes le long de l'axe, nom à côté.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fp-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fp-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Périodes (3)</h5>
+            <div class="ev-c per" style="--ec:#FDE68A"><div class="t"><span class="rond"></span>Période 1<span class="act"><b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1789</div><div class="in">1792</div></div><div class="in">Monarchie constitutionnelle</div></div>
+            <div class="ev-c per" style="--ec:#BFDBFE"><div class="t"><span class="rond"></span>Période 2<span class="act"><b>×</b></span></div><div class="grille2" style="gap:5px"><div class="in">1792</div><div class="in">1795</div></div><div class="in">Première République (Convention)</div></div>
+            <div class="ev-c per glisse-haut repli" data-from="1" style="--ec:#BBF7D0"><div class="t"><span class="rond"></span>Période 3<span class="act"><b>×</b></span></div>
+              <div class="grille2 zone-on" id="fp-champs" data-on="2" style="gap:5px"><div class="in"><span data-type="1795" data-type-at="2"></span></div><div class="in"><span data-type="1799" data-type-at="2"></span></div></div>
+              <div class="in"><span data-type="Le Directoire" data-type-at="2"></span></div>
+              <div class="op-c">Opacité<div class="curseur-m"><i id="fp-op" data-to="3" style="left:44%"></i><i data-from="4" style="left:78%"></i><span id="fp-op2" style="position:absolute;left:78%;top:0"></span></div><span><span data-to="3">50%</span><span data-from="4">80%</span></span></div>
+            </div>
+            <span class="eb eb--pt" id="fp-plus" data-on="1" style="padding:6px">+ Période</span>
+          </div>
+          <div class="fz zone-on" id="fp-apercu" data-on="4">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-per" style="left:6%;width:26.4%;background:rgba(253,230,138,.5)"></div>
+            <div class="fz-per" style="left:32.4%;width:26.4%;background:rgba(191,219,254,.5)"></div>
+            <div class="fz-per glisse-droite" data-from="3" style="left:58.8%;width:35.2%;background:rgba(187,247,208,.5)"></div>
+            <div class="fz-per" data-from="4" style="left:58.8%;width:35.2%;background:rgba(187,247,208,.85)"></div>
+            <span class="fz-pern" style="left:19.2%">Monarchie constitutionnelle</span><span class="fz-pern" style="left:45.6%">Première République</span><span class="fz-pern" data-from="3" style="left:76.4%">Le Directoire</span>
+            <span class="fz-gr" style="left:6%;top:calc(52% - 26px)">1789</span><span class="fz-gr" style="left:32.4%;top:calc(52% - 26px)">1792</span><span class="fz-gr" style="left:58.8%;top:calc(52% - 26px)">1795</span><span class="fz-gr" style="left:94%;top:calc(52% - 26px)">1799</span>
+            <div class="fz-ev haut" style="left:12%;--ec:#EF4444;bottom:calc(48% + 26px)"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev haut" style="left:41%;--ec:#10B981;bottom:calc(48% + 26px)"><div class="c"><b>1793</b>Exécution de Louis XVI</div><div class="tige"></div><div class="pt"></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : comparatif -->
+    <section class="fiche fiche--large" id="frise-comparatif">
+      <div class="fiche__texte">
+        <h2>Frise : mode comparatif</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Mode comparatif</span></p>
+        <p class="fiche__but">Opposer deux séries d'événements de part et d'autre de l'axe, par exemple « France » au-dessus et « Monde » au-dessous.</p>
+        <ol class="etapes">
+          <li data-cursor="#fco-cats">Créer au moins deux catégories et les donner aux événements.</li>
+          <li data-cursor="#fco-btn" data-action="click">Dans <b>Mode comparatif</b>, cliquer <span class="btn-nom">Inactif</span> : il passe à <span class="btn-nom">Actif</span>.</li>
+          <li data-cursor="#fco-rappel">L'éditeur rappelle « Ligne haut : France » et « Ligne bas : Monde ».</li>
+          <li data-cursor="#fco-apercu" data-duration="3200">Dans l'aperçu, la deuxième catégorie passe sous l'axe ; une légende rappelle les deux lignes sous le titre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ce sont toujours les deux premières catégories créées qui font les deux lignes. Avec moins de deux catégories, un message rouge le rappelle : « Ajoutez au moins 2 categories et assignez-les aux evenements ».</li>
+            <li>Sans effet en orientation verticale et dans l'export HTML interactif.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fco-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fco-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Catégories (2)</h5>
+            <div class="ligne zone-on" id="fco-cats" data-on="1" style="gap:5px;padding:3px"><span class="cat" style="background:#FEE2E2;color:#B91C1C">France <span class="x">×</span></span><span class="cat" style="background:#DBEAFE;color:#1D4ED8">Monde <span class="x">×</span></span></div>
+            <h5>Événements (4)</h5>
+            <div class="ev-c" style="--ec:#EF4444"><div class="t"><span class="rond"></span>Événement 1</div><div class="grille2" style="gap:5px"><div class="in">1789</div><div class="sel-e">France</div></div></div>
+            <div class="ev-c" style="--ec:#3B82F6"><div class="t"><span class="rond"></span>Événement 2</div><div class="grille2" style="gap:5px"><div class="in">1787</div><div class="sel-e">Monde</div></div></div>
+            <h5>Mode comparatif</h5>
+            <span class="eb" id="fco-btn" data-on="2" style="align-self:flex-start"><span data-to="1">Inactif</span><span data-from="2" style="color:#059669">Actif</span></span>
+            <div class="glisse-haut zone-on" data-from="3" id="fco-rappel" style="font-size:10.5px;line-height:1.5;padding:3px"><div>Ligne haut : <b style="color:#B91C1C">France</b></div><div>Ligne bas : <b style="color:#1D4ED8">Monde</b></div><div style="color:#9CA3AF">Les 2 premieres categories definissent les 2 lignes</div></div>
+          </div>
+          <div class="fz zone-on" id="fco-apercu" data-on="4">
+            <div class="fz-t">Révolutions, 1775-1800</div>
+            <div class="fz-leg" data-from="2"><span><i style="background:#EF4444"></i>France (haut)</span><span><i style="background:#3B82F6"></i>Monde (bas)</span></div>
+            <div class="fz-axe"></div>
+            <span class="fz-gr" style="left:6%">1775</span><span class="fz-gr" style="left:94%">1800</span>
+            <div class="fz-ev haut" style="left:55%;--ec:#EF4444"><div class="c"><span class="fz-tag" style="background:#EF4444">France</span><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" data-to="1" style="left:87%;--ec:#EF4444"><div class="pt"></div><div class="tige"></div><div class="c"><span class="fz-tag" style="background:#EF4444">France</span><b>1799</b>Coup d'État du 18 Brumaire</div></div>
+            <div class="fz-ev haut" data-from="2" style="left:87%;--ec:#EF4444"><div class="c"><span class="fz-tag" style="background:#EF4444">France</span><b>1799</b>Coup d'État du 18 Brumaire</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev haut" data-to="1" style="left:12%;--ec:#3B82F6"><div class="c"><span class="fz-tag" style="background:#3B82F6">Monde</span><b>1776</b>Indépendance américaine</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" data-from="2" style="left:12%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><span class="fz-tag" style="background:#3B82F6">Monde</span><b>1776</b>Indépendance américaine</div></div>
+            <div class="fz-ev bas" style="left:44%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><span class="fz-tag" style="background:#3B82F6">Monde</span><b>1787</b>Constitution américaine</div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : exercice -->
+    <section class="fiche fiche--large" id="frise-exercice">
+      <div class="fiche__texte">
+        <h2>Frise : frise à compléter</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Frise a completer</span></p>
+        <p class="fiche__but">Imprimer une version trouée de la frise, que les élèves complètent.</p>
+        <ol class="etapes">
+          <li data-cursor="#fx-btn" data-action="click">Dans <b>Frise a completer</b>, cliquer <span class="btn-nom">Generer un exercice</span> : un encadré jaune pâle s'ouvre (le bouton devient « Masquer les options »).</li>
+          <li data-cursor="#fx-c1" data-action="click">Cocher ce qu'il faut masquer : <b>Masquer les dates</b>, <b>Masquer les titres</b>, <b>Masquer les descriptions</b>.</li>
+          <li data-cursor="#fx-png" data-action="click"><span class="btn-nom">Exercice PNG</span> ou <span class="btn-nom">Exercice PDF</span> (« Export... » pendant le calcul).</li>
+          <li data-cursor="#fx-res" data-duration="3400">Le fichier montre la frise trouée. L'aperçu à l'écran, lui, ne change pas : les masques ne servent que le temps de l'export.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les dates deviennent « ??? » et les titres « ________ » ; les descriptions masquées disparaissent. Les images restent visibles.</li>
+            <li>Fichiers « titre_exercice.png » ou « .pdf ». Le corrigé est l'export normal de la même frise.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fx-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fx-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Mode comparatif</h5>
+            <span class="eb" style="align-self:flex-start">Inactif</span>
+            <h5>Frise a completer</h5>
+            <span class="eb" id="fx-btn" data-on="1" style="align-self:flex-start;background:#FEF3C7;border-color:#F59E0B;color:#92400E"><span data-to="1">Generer un exercice</span><span data-from="2">Masquer les options</span></span>
+            <div class="ex-encart glisse-haut repli" data-from="2">
+              <div class="ligne" style="gap:6px;font-size:10.5px"><span class="case" id="fx-c1" data-on="2-5"></span>Masquer les dates (remplace par « ? »)</div>
+              <div class="ligne" style="gap:6px;font-size:10.5px"><span class="case" data-on="2-5"></span>Masquer les titres (remplace par « ___ »)</div>
+              <div class="ligne" style="gap:6px;font-size:10.5px"><span class="case"></span>Masquer les descriptions</div>
+              <div class="ligne" style="gap:5px"><span class="eb eb--ambp" id="fx-png" data-on="3" style="flex:1"><span data-to="2">Exercice PNG</span><span data-from="3">Export...</span></span><span class="eb eb--ambp" style="flex:1">Exercice PDF</span></div>
+            </div>
+            <h5>Exporter</h5>
+            <div class="ligne" style="gap:5px"><span class="eb" style="flex:1;background:#3B82F6;border-color:#3B82F6;color:#fff">PNG</span><span class="eb" style="flex:1;background:#EF4444;border-color:#EF4444;color:#fff">PDF</span></div>
+          </div>
+          <div class="fz parch">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-axe"></div>
+            <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+            <div class="fz-ev haut" style="left:12%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:30%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><b>1791</b>Fuite à Varennes</div></div>
+            <div class="fz-ev haut" style="left:41%;--ec:#10B981"><div class="c"><b>1793</b>Exécution de Louis XVI</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev haut" style="left:86%;--ec:#8B5CF6"><div class="c"><b>1799</b>Coup d'État du 18 Brumaire</div><div class="tige"></div><div class="pt"></div></div>
+          </div>
+        </div>
+        <div class="fichier-ex zoom" data-from="4" id="fx-res">
+          <div class="fichier-ex__p">
+            <div class="fz parch" style="position:absolute;inset:0;border-radius:4px">
+              <div class="fz-t" style="font-size:14px">La Révolution française</div>
+              <div class="fz-axe"></div>
+              <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+              <div class="fz-ev haut" style="left:14%;--ec:#EF4444;width:100px"><div class="c"><b>???</b>________</div><div class="tige"></div><div class="pt"></div></div>
+              <div class="fz-ev bas" style="left:32%;--ec:#3B82F6;width:100px"><div class="pt"></div><div class="tige"></div><div class="c"><b>???</b>________</div></div>
+              <div class="fz-ev haut" style="left:45%;--ec:#10B981;width:100px"><div class="c"><b>???</b>________</div><div class="tige"></div><div class="pt"></div></div>
+              <div class="fz-ev haut" style="left:84%;--ec:#8B5CF6;width:100px"><div class="c"><b>???</b>________</div><div class="tige"></div><div class="pt"></div></div>
+            </div>
+          </div>
+          <div style="position:absolute;bottom:14px;color:#fff;font-size:12px">La_Révolution_française_exercice.png</div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ frise : export -->
+    <section class="fiche fiche--large" id="frise-export">
+      <div class="fiche__texte">
+        <h2>Frise : export PNG, PDF et page web interactive</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Frise Chronologique › Exporter</span></p>
+        <p class="fiche__but">Imprimer la frise, l'insérer dans un document, ou la publier comme petite page web que les élèves explorent.</p>
+        <ol class="etapes">
+          <li data-cursor="#fo-png" data-action="click"><span class="btn-nom">PNG</span> ou <span class="btn-nom">PDF</span> : la frise est photographiée à 100 %, puis le zoom revient comme avant.</li>
+          <li data-cursor="#fo-html" data-action="click"><span class="btn-nom">Export HTML interactif</span> télécharge une page web autonome, « titre_interactive.html ».</li>
+          <li data-cursor="#fo-page" data-duration="3600">Ouverte dans un navigateur ou déposée sur l'ENT, cette page se zoome (− + Reset) et affiche une bulle avec la date, le titre et la description au survol d'un événement.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le PNG est en double résolution (« titre_frise.png »).</li>
+            <li><span class="important">Limite actuelle :</span> le PDF tient sur une seule page A4 (paysage pour une frise horizontale, portrait pour une verticale) ; une frise très longue ou très haute y est tassée.</li>
+            <li>La page HTML est toujours horizontale et sans mode comparatif ; elle embarque les images mais charge ses polices sur internet.</li>
+            <li>Un export qui échoue ne donne aucun message à l'écran.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/timeline</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="fo-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="fo-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><div style="min-width:0"><div class="ot-titre">Frise Chronologique</div><div class="ot-desc">Créer une frise chronologique avec événements, images et export PNG/PDF</div></div></div>
+        <div class="deux">
+          <div class="ed">
+            <h5>Frise a completer</h5>
+            <span class="eb" style="align-self:flex-start;background:#FEF3C7;border-color:#F59E0B;color:#92400E">Generer un exercice</span>
+            <h5>Exporter</h5>
+            <div class="ligne" style="gap:5px"><span class="eb" id="fo-png" data-on="1" style="flex:1;background:#3B82F6;border-color:#3B82F6;color:#fff;padding:6px">PNG</span><span class="eb" style="flex:1;background:#EF4444;border-color:#EF4444;color:#fff;padding:6px">PDF</span></div>
+            <span class="eb" id="fo-html" data-on="2" style="background:#8B5CF6;border-color:#8B5CF6;color:#fff;padding:6px">Export HTML interactif</span>
+          </div>
+          <div class="fz parch">
+            <div class="fz-t">La Révolution française</div>
+            <div class="fz-axe"></div>
+            <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+            <div class="fz-ev haut" style="left:12%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+            <div class="fz-ev bas" style="left:30%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><b>1791</b>Fuite à Varennes</div></div>
+            <div class="fz-ev haut" style="left:41%;--ec:#10B981"><div class="c"><b>1793</b>Exécution de Louis XVI</div><div class="tige"></div><div class="pt"></div></div>
+          </div>
+        </div>
+        <div class="dl-barre glisse-haut" data-at="1"><span class="vg vg--img"></span><b>La_Révolution_française_frise.png</b><span>Téléchargement terminé</span></div>
+        <div class="dl-barre glisse-haut" data-at="2"><span class="vg" style="background:#8B5CF6">HTML</span><b>La_Révolution_française_interactive.html</b><span>Téléchargement terminé</span></div>
+        <div class="fichier-ex zoom" data-from="3" style="background:rgba(20,25,40,.55)">
+          <div class="fenetre" id="fo-page" style="width:640px;height:380px">
+            <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">La_Révolution_française_interactive.html</div></div>
+            <div class="fz" style="flex:1;border-radius:0">
+              <div class="fz-cmd"><span>-</span><span>100%</span><span>+</span><span>Reset</span></div>
+              <div class="fz-t" style="top:26px">La Révolution française</div>
+              <div class="fz-axe"></div>
+              <span class="fz-gr" style="left:6%">1789</span><span class="fz-gr" style="left:94%">1799</span>
+              <div class="fz-ev haut" style="left:14%;--ec:#EF4444"><div class="c"><b>1789</b>Prise de la Bastille</div><div class="tige"></div><div class="pt"></div></div>
+              <div class="fz-ev haut" style="left:44%;--ec:#10B981"><div class="c"><b>1793</b>Exécution de Louis XVI</div><div class="tige"></div><div class="pt"></div></div>
+              <div class="fz-ev bas" style="left:30%;--ec:#3B82F6"><div class="pt"></div><div class="tige"></div><div class="c"><b>1791</b>Fuite à Varennes</div></div>
+              <div class="fz-bulle" style="left:280px;top:200px">1791 - Fuite à Varennes<br><span style="color:#CBD5E1">Le roi et sa famille sont arrêtés alors qu'ils tentent de quitter la France.</span></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

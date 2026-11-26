@@ -1,0 +1,920 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Documents officiels et fichiers — Guide Gestion Classe</title>
+<meta name="description" content="Remplir les documents administratifs (captation, sorties, rapport d'incident, autorisations), découper un PDF, convertir et retoucher des images, passer de Word à PDF.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="94">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques propres au chapitre Outils (boîte à outils) */
+.app__side.side-e { width: 150px; }
+.corps-e { padding: 14px 16px; }
+.ot-tete { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.corps-e .ot-tete { margin-bottom: 10px; }
+.ot-retour { width: 30px; height: 30px; flex: none; border: 1px solid var(--border); border-radius: 6px; background: #fff; display: grid; place-items: center; color: var(--text-muted); font-size: 15px; transition: all .25s; }
+.ot-retour.is-on { background: var(--surface-3); box-shadow: 0 0 0 3px rgba(79,70,229,.22); }
+.ot-ico { width: 34px; height: 34px; flex: none; border-radius: 6px; background: var(--indigo-soft); color: var(--indigo); display: grid; place-items: center; }
+.ot-ico svg { width: 19px; height: 19px; }
+.ot-titre { font-size: 18px; font-weight: 600; letter-spacing: -.01em; line-height: 1.2; white-space: nowrap; }
+.ot-desc { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ot-col { max-width: 540px; }
+.ot-lab { font-size: 11px; font-weight: 500; color: var(--text-dim); margin-bottom: 4px; }
+.ot-lab--f { font-size: 12.5px; color: var(--text-muted); margin-bottom: 6px; }
+.ot-in { min-height: 34px; border: 1px solid var(--border); border-radius: 10px; padding: 0 12px; font-size: 13.5px; display: flex; align-items: center; background: #fff; transition: all .25s; white-space: nowrap; overflow: hidden; }
+.ot-in.is-on { border-color: transparent; box-shadow: 0 0 0 2px var(--indigo); }
+.ot-in .ph { color: var(--text-dim); }
+.ot-in--p { min-height: 28px; border-radius: 7px; font-size: 12px; padding: 0 9px; }
+.ot-in--zone { align-items: flex-start; padding: 7px 10px; white-space: normal; line-height: 1.35; }
+.ot-g { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 7px; font-size: 11.5px; font-weight: 500; background: var(--surface-3); color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.ot-g.is-on, .ot-g.actif { background: var(--indigo); color: #fff; }
+.ot-carte { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+.ot-sec { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.ot-b { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: 10px; font-size: 12.5px; font-weight: 560; background: var(--indigo); color: #fff; white-space: nowrap; transition: transform .15s, box-shadow .2s, background .3s, opacity .3s; }
+.ot-b--gris { background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); }
+.ot-b--vert { background: var(--pos); }
+.ot-b--p { height: 26px; font-size: 11.5px; padding: 0 10px; border-radius: 7px; }
+.ot-b.is-on { transform: scale(.96); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.ot-b.off { opacity: .45; }
+.ot-zone { border: 2px dashed var(--border-strong); border-radius: 12px; display: grid; place-items: center; text-align: center; color: var(--text-dim); font-size: 12px; padding: 14px; transition: all .25s; }
+.ot-zone.is-on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.ot-zone b { display: block; font-size: 26px; font-weight: 300; line-height: 1; margin-bottom: 4px; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); background: rgba(249,115,22,.05); }
+.seg { display: inline-flex; gap: 2px; background: #F3F4F6; padding: 3px; border-radius: 9px; }
+.seg span { padding: 5px 10px; border-radius: 7px; font-size: 11.5px; font-weight: 500; color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.seg span.actif, .seg span.is-on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,25,40,.14); }
+.res { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 12px; padding: 10px 12px; }
+.res__t { font-size: 12.5px; font-weight: 650; color: var(--pos); margin-bottom: 4px; }
+.res__l { display: flex; align-items: center; gap: 9px; background: #fff; border-radius: 8px; padding: 6px 8px; font-size: 11.5px; margin-top: 5px; }
+.res__l .nom { font-weight: 600; }
+.res__l .esp + .ot-b { flex: none; }
+.vg { width: 28px; height: 34px; border-radius: 4px; display: grid; place-items: center; color: #fff; font-size: 8.5px; font-weight: 700; flex: none; }
+.vg--pdf { background: #DC2626; } .vg--doc { background: #2563EB; }
+.vg--img { background: linear-gradient(135deg, #BAE6FD, #86EFAC); }
+.ot-err { font-size: 11.5px; color: var(--neg); }
+.ot-info { background: var(--surface-3); border-radius: 10px; padding: 10px 12px; font-size: 11.5px; color: var(--text-muted); line-height: 1.45; }
+.mono { font-family: var(--mono); }
+.chg { width: 13px; height: 13px; border-radius: 50%; border: 2px solid currentColor; border-top-color: transparent; display: inline-block; animation: tourne .8s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.dl-barre { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #F1F1F4; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 12px; z-index: 500; color: var(--text-muted); }
+.dl-barre b { color: var(--text); font-weight: 600; }
+.dl-barre .vg { width: 20px; height: 24px; font-size: 7px; }
+.nav-dial { position: absolute; z-index: 650; left: 50%; top: 40px; translate: -50% 0; width: 380px; background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 16px 18px; font-size: 13px; }
+.nav-dial__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.nav-dial__pied span { padding: 5px 14px; border-radius: 16px; font-size: 12px; font-weight: 600; border: 1px solid var(--border-strong); color: #1A56DB; }
+.nav-dial__pied span.ok { background: #1A56DB; border-color: #1A56DB; color: #fff; }
+.voile-o { position: absolute; inset: 0; background: rgba(20,25,40,.45); z-index: 600; }
+.ok-pastille { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; background: var(--pos-soft); color: var(--pos); font-size: 12px; font-weight: 600; }
+/* textes de remplacement : un span caché ne prend pas de place */
+span.is-hidden:not(.garde) { display: none; }
+/* page 3 : documents, PDF, convertisseur */
+.ong { display: flex; gap: 6px; flex-wrap: wrap; }
+.ong span { padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 500; background: var(--surface-3); color: var(--text-muted); border: 1px solid var(--border); transition: all .25s; white-space: nowrap; }
+.ong span.actif, .ong span.is-on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.dg { display: flex; gap: 0; height: 452px; margin-top: 10px; }
+.dg-f { width: 40%; flex: none; display: flex; flex-direction: column; gap: 8px; overflow: hidden; padding-right: 8px; transition: width .6s; }
+.dg-f.is-on { width: 52%; }
+.dg-barre { width: 9px; flex: none; display: grid; place-items: center; }
+.dg-barre i { width: 3px; height: 100%; border-radius: 2px; background: var(--border); transition: background .25s; }
+.dg-barre.is-on i { background: var(--indigo); }
+.dg-p { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.dg-p .t { font-size: 11px; font-weight: 600; color: var(--text-muted); }
+.lect { flex: 1; background: #525659; border-radius: 6px; display: flex; justify-content: center; padding: 10px; overflow: hidden; position: relative; }
+.lect__barre { position: absolute; left: 0; right: 0; top: 0; height: 22px; background: #323639; color: #ddd; font-size: 9px; display: flex; align-items: center; padding: 0 8px; gap: 8px; }
+.pdf { width: 330px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.4); margin-top: 18px; padding: 12px 14px; font-family: Helvetica, Arial, sans-serif; font-size: 7.6px; color: #111; line-height: 1.35; position: relative; flex: none; }
+.pdf .ban { background: #1E3A5F; color: #fff; font-weight: 700; font-size: 8.5px; padding: 4px 6px; margin: -12px -14px 6px; }
+.pdf .tete { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 6px; }
+.pdf .logo { width: 30px; height: 22px; border: 1px solid #94A3B8; border-radius: 2px; display: grid; place-items: center; font-size: 5px; color: #64748B; flex: none; }
+.pdf h6 { margin: 4px 0; font-size: 9.5px; text-align: center; }
+.pdf .sec { font-weight: 700; color: #1E3A5F; border-bottom: 1px solid #3B82F6; margin: 6px 0 3px; font-size: 8px; }
+.pdf .box { border: 1px solid #CBD5E1; background: #F1F5F9; padding: 4px; margin: 4px 0; }
+.pdf .l { height: 2.5px; background: #D4D4D8; margin: 2.5px 0; }
+.pdf .l.c { width: 60%; }
+.pdf .orange { background: #F97316; color: #fff; font-weight: 700; padding: 3px 5px; margin: 4px 0; }
+.pdf .coupe { border-top: 1px dashed #555; margin: 7px -14px 5px; position: relative; }
+.pdf table { width: 100%; border-collapse: collapse; font-size: 7px; }
+.pdf td, .pdf th { border: 1px solid #94A3B8; padding: 1.5px 3px; text-align: left; }
+.pdf .rouge { color: #DC2626; }
+.pdf .maj { transition: background .4s; border-radius: 2px; }
+.pdf .maj.is-on { background: #FEF08A; }
+.dc { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 9px 10px; display: flex; flex-direction: column; gap: 6px; transition: box-shadow .25s; }
+.dc.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.dc h6 { margin: 0; font-size: 11px; color: var(--indigo); font-weight: 650; }
+.df { font-size: 9.5px; color: var(--text-dim); margin-bottom: 2px; }
+.di { border: 1px solid var(--border); border-radius: 7px; padding: 4px 7px; font-size: 10.5px; background: #fff; min-height: 24px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: box-shadow .25s; }
+.di.is-on { box-shadow: 0 0 0 2px var(--indigo); border-color: transparent; }
+.di .ph { color: var(--text-dim); }
+.dl2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.dl2 > div { min-width: 0; }
+.sup { background: var(--surface-3); border-radius: 7px; padding: 4px 7px; font-size: 10px; display: flex; gap: 6px; align-items: center; transition: box-shadow .25s; }
+.sup .case { width: 12px; height: 12px; }
+.sup.is-on { box-shadow: 0 0 0 2px var(--indigo); }
+.radio { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--border-strong); display: inline-block; vertical-align: -1px; margin-right: 3px; }
+.radio.on { border: 3.5px solid var(--indigo); }
+.tot { background: var(--indigo-soft); border-radius: 7px; padding: 4px 8px; font-size: 10.5px; font-weight: 600; color: var(--indigo); }
+.solde { border-radius: 7px; padding: 5px 8px; font-size: 11px; font-weight: 700; text-align: center; transition: all .4s; }
+.solde--neg { background: var(--neg-soft); color: var(--neg); }
+.solde--pos { background: var(--pos-soft); color: var(--pos); }
+.tab-el { width: 100%; border-collapse: collapse; font-size: 10px; }
+.tab-el th { text-align: left; color: var(--text-dim); font-weight: 600; padding: 3px 4px; border-bottom: 1px solid var(--border); }
+.tab-el td { padding: 3px 4px; }
+.tab-el tr:nth-child(even) td { background: var(--surface-2); }
+.hist { position: absolute; z-index: 620; left: 50%; top: 70px; translate: -50% 0; width: 430px; background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); padding: 14px 16px; }
+.hist__l { display: flex; align-items: center; gap: 9px; padding: 7px 8px; border-radius: 8px; font-size: 12px; transition: background .25s; }
+.hist__l .p { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.hist__l small { color: var(--text-dim); font-size: 10.5px; }
+.hist__l .sup2 { margin-left: auto; font-size: 10.5px; color: var(--neg); opacity: 0; padding: 2px 6px; border-radius: 5px; transition: all .25s; }
+.hist__l.is-on { background: var(--surface-3); }
+.hist__l.is-on .sup2 { opacity: 1; }
+.hist__l .sup2.is-on { background: var(--neg-soft); }
+.billets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.billets > div { border: 1px solid #333; padding: 4px 6px; font-size: 6.6px; line-height: 1.6; }
+/* séparateur PDF */
+.sp { display: flex; gap: 12px; height: 488px; }
+.sp-g { width: 400px; flex: none; display: flex; flex-direction: column; gap: 8px; overflow: hidden; position: relative; }
+.sp-d { flex: 1; border: 1px solid var(--border); border-radius: 12px; background: #fff; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.fic { display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; font-size: 11.5px; }
+.fic .nom { font-weight: 600; }
+.mini-g { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+.mini { aspect-ratio: .71; background: #fff; border: 1.5px solid var(--border); border-radius: 5px; position: relative; padding: 5px; transition: all .3s; overflow: hidden; }
+.mini .l { height: 2.5px; background: #D4D4D8; margin: 2.5px 0; border-radius: 1px; }
+.mini .l.c { width: 60%; }
+.mini .l.t { height: 4px; background: #94A3B8; width: 70%; margin-bottom: 4px; }
+.mini .n { position: absolute; right: 3px; bottom: 3px; background: rgba(24,24,27,.75); color: #fff; font-size: 8.5px; font-weight: 600; border-radius: 4px; padding: 0 4px; }
+.mini.vu { border-color: var(--indigo); box-shadow: 0 0 0 2px rgba(79,70,229,.25); }
+.mini .marque { position: absolute; inset: 0; display: grid; place-items: center; font-size: 26px; font-weight: 800; opacity: 0; transition: opacity .3s; }
+.mini.sup-on { border-color: #EF4444; }
+.mini.sup-on .l, .mini.sup-on .n { opacity: .4; }
+.mini.sup-on .marque { opacity: 1; background: rgba(239,68,68,.15); color: #EF4444; }
+.mini.ext-on { border-color: #3B82F6; }
+.mini.ext-on .marque { opacity: 1; background: rgba(59,130,246,.15); color: #3B82F6; }
+.mini.is-on.sup-x { border-color: #EF4444; }
+.mini.is-on.sup-x .l, .mini.is-on.sup-x .n { opacity: .4; }
+.mini.is-on.sup-x .marque { opacity: 1; background: rgba(239,68,68,.15); color: #EF4444; }
+.mini.is-on.ext-x { border-color: #3B82F6; }
+.mini.is-on.ext-x .marque { opacity: 1; background: rgba(59,130,246,.15); color: #3B82F6; }
+.pp-b { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 26px; border-radius: 7px; border: 1px solid var(--border); font-size: 11.5px; font-weight: 600; background: #fff; transition: all .25s; padding: 0 7px; }
+.pp-b.actif, .pp-b.is-on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+/* convertisseur */
+.cv { max-width: 600px; display: flex; flex-direction: column; gap: 9px; position: relative; }
+.cv .seg span { font-size: 11px; padding: 5px 9px; }
+.img-c { display: flex; align-items: center; gap: 9px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 6px 9px; font-size: 11.5px; }
+.img-c .nom { font-weight: 600; }
+.img-c .x { margin-left: auto; color: var(--text-dim); }
+.vgi { width: 40px; height: 30px; border-radius: 5px; flex: none; }
+.vgi.a { background: linear-gradient(135deg, #FDE68A, #F59E0B 60%, #92400E); }
+.vgi.b { background: linear-gradient(135deg, #BAE6FD, #0EA5E9 60%, #075985); }
+.vgi.c { background: linear-gradient(135deg, #BBF7D0, #22C55E 60%, #14532D); }
+.vgi.nb { filter: grayscale(1); }
+.fmt-b { display: inline-flex; gap: 4px; }
+.fmt-b span { padding: 5px 13px; border-radius: 8px; border: 1px solid var(--border); font-size: 11.5px; font-weight: 600; background: #fff; transition: all .25s; }
+.fmt-b span.actif, .fmt-b span.is-on { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+.ecart { font-size: 10.5px; font-weight: 700; }
+.ecart.v { color: var(--pos); } .ecart.o { color: #EA580C; }
+.qual { display: flex; align-items: center; gap: 10px; font-size: 11.5px; }
+.qual .curseur-q { flex: 1; height: 5px; border-radius: 3px; background: var(--surface-3); position: relative; }
+.qual .curseur-q b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 3px; background: var(--indigo); }
+.qual .curseur-q i { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: #fff; border: 3px solid var(--indigo); transition: left .5s; }
+.filig { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(0,0,0,.35); font-size: 7px; font-weight: 800; transform: rotate(-25deg); letter-spacing: .05em; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Outils › Documents et fichiers</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#documents">Documents officiels : l'outil</a></li>
+      <li><a href="#doc-captation">Autorisation de captation</a></li>
+      <li><a href="#doc-sortie">Information de sortie obligatoire</a></li>
+      <li><a href="#doc-demande">Demande de sortie ou de séjour</a></li>
+      <li><a href="#doc-rapport">Rapport d'incident</a></li>
+      <li><a href="#doc-deplacement">Billets de déplacement</a></li>
+      <li><a href="#doc-historique">Historique des documents</a></li>
+      <li><a href="#pdf">Séparateur PDF : découper</a></li>
+      <li><a href="#pdf-pages">Séparateur PDF : supprimer, extraire</a></li>
+      <li><a href="#convertisseur">Convertisseur : changer de format</a></li>
+      <li><a href="#conv-redimensionner">Convertisseur : redimensionner</a></li>
+      <li><a href="#conv-effets">Convertisseur : effets et filigrane</a></li>
+      <li><a href="#conv-images-pdf">Convertisseur : images vers PDF</a></li>
+      <li><a href="#conv-word">Convertisseur : PDF et Word</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/outils-suite.html">◀ Journal et frise chronologique</a><a href="../telephone/prise-en-main.html">Prise en main ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+<header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus › Outils</div>
+      <h1>Documents officiels et fichiers</h1>
+      <p>Les formulaires administratifs d'un enseignant remplis en quelques minutes et rendus en PDF, puis trois utilitaires pour les fichiers du quotidien : découper un PDF, retoucher et convertir des images, passer de Word à PDF et inversement. Tout se fait sur l'ordinateur, sans envoi.</p>
+      <div class="chap__resume"><span>Menu Plus › Outils</span><span>Ordinateur</span><span>14 fiches</span><span><a href="outils.html">Début du chapitre</a></span></div>
+    </header>
+
+    <!-- ============================================================ documents : l'outil -->
+    <section class="fiche fiche--large" id="documents">
+      <div class="fiche__texte">
+        <h2>Documents officiels : remplir et télécharger</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Documents Officiels</span></p>
+        <p class="fiche__but">Remplir un formulaire administratif et obtenir un PDF propre, prêt à imprimer et à faire signer : captation d'image, sortie, demande de sortie ou de séjour, rapport d'incident, billets de déplacement.</p>
+        <ol class="etapes">
+          <li data-cursor="#do-ong" data-action="click">Choisir le document dans la rangée d'onglets : <b>Captation Image/Son</b>, <b>Sortie Obligatoire</b>, <b>Demande Sortie/Sejour</b>, <b>Rapport d'Incident</b> ou <b>Autorisation Deplacement</b>.</li>
+          <li data-cursor="#do-champ" data-action="click" data-duration="3400">Remplir le formulaire à gauche : l'aperçu PDF à droite se met à jour une demi-seconde après chaque frappe.</li>
+          <li data-cursor="#do-barre" data-action="drag" data-drag-to="#do-cible">Tirer la barre verticale pour donner plus de place au formulaire ou à l'aperçu (de 25 % à 70 % de la largeur).</li>
+          <li data-cursor="#do-dl" data-action="click"><span class="btn-nom">Telecharger PDF</span>, sous le formulaire, enregistre le document et l'ajoute à l'<b>Historique</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Plusieurs champs se remplissent d'après les réglages du compte : nom, téléphone et code postal de l'établissement, année scolaire, nom et fonction de l'enseignant. À défaut, ce sont les coordonnées d'un établissement précis, écrites dans l'application : un collègue d'un autre collège doit les corriger.</li>
+            <li><span class="important">Limite actuelle :</span> certains textes fixes des PDF (en-têtes, pieds de page, mentions sur les données personnelles) visent un établissement et une académie précis, quels que soient les réglages. L'outil a été pensé pour un collège donné : relire chaque PDF ailleurs.</li>
+            <li>Libellés et PDF sont écrits sans accents. Changer d'onglet garde ce qui a été saisi tant qu'on reste sur la page ; la quitter efface tout, sauf l'historique.</li>
+            <li>Les PDF sont fabriqués sur l'ordinateur ; rien n'est envoyé à un serveur.</li>
+            <li>Contrairement au reste de l'application, ces documents peuvent contenir de vrais noms d'élèves : ils restent sur l'ordinateur mais sont gardés dans l'<a href="#doc-historique">historique</a>.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="do-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="do-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span class="actif" id="do-ong" data-on="1">Captation Image/Son</span><span>Sortie Obligatoire</span><span>Demande Sortie/Sejour</span><span>Rapport d'Incident</span><span>Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" data-on="3-4">
+            <div class="dc"><h6>Etablissement</h6><div><div class="df">Ecole ou etablissement</div><div class="di">Collège exemple</div></div><div class="dl2"><div><div class="df">Annee scolaire</div><div class="di">2026-2027</div></div><div><div class="df">Classe de</div><div class="di" id="do-champ" data-on="2"><span class="ph" data-to="1">Ex: Cinquieme</span><span data-type="Cinquieme" data-type-at="2"></span></div></div></div></div>
+            <div class="dc"><h6>2 - Designation du projet audio-visuel</h6><div><div class="df">Nom du projet</div><div class="di">La météo du futur</div></div></div>
+            <div class="ligne" style="gap:6px;margin-top:auto"><span class="ot-b" id="do-dl" data-on="4">Telecharger PDF</span><span class="ot-b ot-b--gris"><span>Historique (<span data-to="3">3</span><span data-from="4">4</span>)</span></span></div>
+          </div>
+          <div class="dg-barre" id="do-barre" data-on="3"><i></i></div>
+          <span id="do-cible" style="position:absolute;left:441px;top:330px"></span>
+          <div class="dg-p">
+            <div class="t">Apercu</div>
+            <div class="lect"><div class="lect__barre">Autorisation_captation.pdf<span class="esp"></span>1 / 2</div>
+              <div class="pdf">
+                <div class="ban">AUTORISATION DE CAPTATION ET D'UTILISATION D'IMAGE/VOIX</div>
+                <div class="tete"><div class="box" style="flex:1;margin:0">Collège exemple<br>Annee scolaire 2026-2027<br>Classe de : <span class="maj" data-on="2"><span data-to="1">…</span><span data-from="2">Cinquieme</span></span></div><span class="logo">logo</span></div>
+                <div class="sec">1 - Finalites envisagees</div><div class="l"></div><div class="l c"></div>
+                <div class="sec">2 - Projet</div><div>La météo du futur, du <span class="rouge">01/12/2026</span> au <span class="rouge">19/12/2026</span></div>
+                <div class="sec">3 - Modes d'exploitation envisagees</div>
+                <table><tr><th>OUI</th><th>NON</th><th>Support</th></tr><tr><td>☐</td><td>☐</td><td>Usage collectif en classe</td></tr><tr><td>☐</td><td>☐</td><td>Projection collective</td></tr><tr><td>☐</td><td>☐</td><td>Usage collectif dans les classes</td></tr></table>
+                <div class="sec">4 - Consentement de l'eleve</div><div class="l"></div><div class="l c"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="dl-barre glisse-haut" data-at="4"><span class="vg vg--pdf">PDF</span><b>Autorisation_captation_Cinquieme_La_meteo_du_futur.pdf</b><span>Téléchargement terminé</span></div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ captation -->
+    <section class="fiche fiche--large" id="doc-captation">
+      <div class="fiche__texte">
+        <h2>Autorisation de captation d'image et de voix</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Documents Officiels › Captation Image/Son</span></p>
+        <p class="fiche__but">Préparer l'autorisation parentale de filmer, photographier ou enregistrer des élèves pour un projet, avec la liste des supports de diffusion que les parents acceptent ou refusent un par un.</p>
+        <ol class="etapes">
+          <li data-cursor="#dc-etab">Carte <b>Etablissement</b> : établissement, téléphone, commune, année scolaire et <b>Classe de</b>.</li>
+          <li data-cursor="#dc-fin" data-action="click"><b>1 - Finalites envisagees</b> : à quoi serviront les images.</li>
+          <li data-cursor="#dc-projet"><b>2 - Designation du projet audio-visuel</b> : nom du projet, titre de l'œuvre, dates, lieux d'enregistrement.</li>
+          <li data-cursor="#dc-ent" data-action="click" data-duration="3400"><b>3 - Supports envisages</b> : cocher les supports prévus (trois le sont d'avance). Certains demandent une précision.</li>
+          <li data-cursor="#dc-pdf" data-duration="3400">Le PDF, sur deux pages, ajoute un tableau OUI / NON par support, le consentement de l'élève, l'autorisation parentale et les droits sur les données.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Seuls les supports cochés figurent dans le tableau du PDF, avec la mention « Conservation : 1 annee scolaire pour tous les supports ».</li>
+            <li>La dernière section cite l'adresse du délégué à la protection des données d'une académie précise, écrite dans l'application : à vérifier pour un autre établissement.</li>
+            <li>Fichier « Autorisation_captation_classe_projet.pdf ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="dc-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="dc-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span class="actif">Captation Image/Son</span><span>Sortie Obligatoire</span><span>Demande Sortie/Sejour</span><span>Rapport d'Incident</span><span>Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" style="width:44%">
+            <div class="dc" id="dc-etab" data-on="1"><h6>Etablissement</h6><div class="dl2"><div><div class="df">Ecole ou etablissement</div><div class="di">Collège exemple</div></div><div><div class="df">Telephone</div><div class="di">01 00 00 00 00</div></div></div><div class="dl2"><div><div class="df">Annee scolaire</div><div class="di">2026-2027</div></div><div><div class="df">Classe de</div><div class="di">Cinquieme</div></div></div></div>
+            <div class="dc"><h6>1 - Finalites envisagees</h6><div class="di" id="dc-fin" data-on="2" style="height:34px;white-space:normal;line-height:1.3"><span class="ph" data-to="1">Detaillez les finalites envisagees...</span><span data-type="Bulletin météo filmé, présenté en classe" data-type-at="2"></span></div></div>
+            <div class="dc" id="dc-projet" data-on="3"><h6>2 - Designation du projet audio-visuel</h6><div class="dl2"><div><div class="df">Nom du projet</div><div class="di">La météo du futur</div></div><div><div class="df">Date debut</div><div class="di">01/12/2026</div></div></div></div>
+            <div class="dc"><h6>3 - Supports envisages</h6>
+              <div class="sup"><span class="case case--on"></span>Usage collectif en classe</div>
+              <div class="sup" id="dc-ent" data-on="4"><span class="case" data-on="4-5"></span>En ligne (acces reserve : ENT, plateforme, extranet)</div>
+              <div class="di repli glisse-haut" data-from="4" style="margin-left:18px">ENT du collège, classe de 5E</div>
+              <div class="sup"><span class="case case--on"></span>Projection collective</div>
+            </div>
+          </div>
+          <div class="dg-barre"><i></i></div>
+          <div class="dg-p zone-on" id="dc-pdf" data-on="5">
+            <div class="t">Apercu</div>
+            <div class="lect"><div class="lect__barre">Autorisation_captation.pdf<span class="esp"></span>1 / 2</div>
+              <div class="pdf">
+                <div class="ban">AUTORISATION DE CAPTATION ET D'UTILISATION D'IMAGE/VOIX</div>
+                <div class="tete"><div class="box maj" data-on="1" style="flex:1;margin:0">Collège exemple · 01 00 00 00 00<br>Annee scolaire 2026-2027 · Classe de : Cinquieme</div><span class="logo">logo</span></div>
+                <div class="sec">1 - Finalites envisagees</div><div class="maj" data-on="2"><span data-to="1">&nbsp;</span><span data-from="2">Bulletin météo filmé, présenté en classe</span></div>
+                <div class="sec">2 - Projet</div><div class="maj" data-on="3">La météo du futur, du <span class="rouge">01/12/2026</span> au <span class="rouge">19/12/2026</span></div>
+                <div class="sec">3 - Modes d'exploitation envisagees</div>
+                <table><tr><th>OUI</th><th>NON</th><th>Support</th><th>Precision</th></tr><tr><td>☐</td><td>☐</td><td>Usage collectif en classe</td><td></td></tr><tr class="maj repli" data-from="4" data-on="4"><td>☐</td><td>☐</td><td>En ligne (acces reserve)</td><td>ENT du collège</td></tr><tr><td>☐</td><td>☐</td><td>Projection collective</td><td></td></tr><tr><td>☐</td><td>☐</td><td>Usage collectif dans les classes</td><td></td></tr></table>
+                <div style="font-style:italic;margin-top:2px">Conservation : 1 annee scolaire pour tous les supports</div>
+                <div class="sec">4 - Consentement de l'eleve</div><div>☐ mon image ☐ ma voix · Nom : ________ Signature : ______</div>
+                <div class="sec">5 - Autorisation parentale</div><div class="l"></div><div class="l c"></div><div class="l"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ sortie obligatoire -->
+    <section class="fiche fiche--large" id="doc-sortie">
+      <div class="fiche__texte">
+        <h2>Information de sortie obligatoire</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Documents Officiels › Sortie Obligatoire</span></p>
+        <p class="fiche__but">Informer les familles d'une sortie gratuite sur le temps scolaire, donc obligatoire, avec un coupon-réponse à détacher.</p>
+        <ol class="etapes">
+          <li data-cursor="#ds-org"><b>Organisateur</b> : nom et fonction (« Professeur de SVT »).</li>
+          <li data-cursor="#ds-lieu" data-action="click" data-duration="3400"><b>Details de la sortie</b> : date, classes, lieu, heures de départ et de retour, matières, objectifs.</li>
+          <li data-cursor="#ds-transport" data-action="click"><b>Transport &amp; Retour</b> : mode de transport (bus, à pied, transports en commun, train, véhicules personnels), date de retour du coupon, lieux de départ et d'arrivée.</li>
+          <li data-cursor="#ds-pdf" data-duration="3400">Le PDF tient sur une page : la lettre aux parents, le bandeau orange « gratuite et donc obligatoire », puis le coupon d'accusé de réception sous la ligne de découpe.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li><span class="important">Limite actuelle :</span> l'en-tête et le pied de page de ce PDF portent toujours le même établissement, écrit dans l'application, quels que soient les réglages ; les lieux de départ et d'arrivée sont préremplis avec lui. Un collègue d'un autre collège ne peut pas changer l'en-tête.</li>
+            <li>Le coupon demande l'assurance, un éventuel problème de santé, coche « Un PAI … a ete complete » et l'autorisation des mesures d'urgence.</li>
+            <li>Fichier « Sortie_scolaire_classe_date.pdf ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="ds-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="ds-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span>Captation Image/Son</span><span class="actif">Sortie Obligatoire</span><span>Demande Sortie/Sejour</span><span>Rapport d'Incident</span><span>Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" style="width:44%">
+            <div class="dc" id="ds-org" data-on="1"><h6>Organisateur</h6><div class="dl2"><div><div class="df">Nom Prenom</div><div class="di">MARTIN Paul</div></div><div><div class="df">Fonction</div><div class="di">Professeur de SVT</div></div></div></div>
+            <div class="dc"><h6>Details de la sortie</h6><div class="dl2"><div><div class="df">Date</div><div class="di">12/03/2027</div></div><div><div class="df">Classe(s)</div><div class="di">5E, 5D</div></div></div><div><div class="df">Lieu</div><div class="di" id="ds-lieu" data-on="2"><span class="ph" data-to="1">Musee, parc...</span><span data-type="Muséum d'histoire naturelle" data-type-at="2"></span></div></div><div class="dl2"><div><div class="df">Heure depart</div><div class="di">08:30</div></div><div><div class="df">Heure retour</div><div class="di">16:00</div></div></div></div>
+            <div class="dc"><h6>Transport &amp; Retour</h6><div class="dl2"><div><div class="df">Mode de transport</div><div class="di" id="ds-transport" data-on="3" style="display:flex">Bus<span class="esp"></span>▾</div></div><div><div class="df">Date retour coupon</div><div class="di">05/03/2027</div></div></div></div>
+          </div>
+          <div class="dg-barre"><i></i></div>
+          <div class="dg-p zone-on" id="ds-pdf" data-on="4">
+            <div class="t">Apercu</div>
+            <div class="lect"><div class="lect__barre">Sortie_scolaire.pdf<span class="esp"></span>1 / 1</div>
+              <div class="pdf">
+                <div class="tete"><span>Collège exemple<br>00000 VILLE</span><span class="logo">logo</span></div>
+                <h6>INFORMATION AUX PARENTS<br><span style="font-weight:400">Sortie scolaire obligatoire</span></h6>
+                <div>Madame, Monsieur,</div>
+                <div class="box">Date : 12/03/2027 · Classes : 5E, 5D<br>Lieu : <span class="maj" data-on="2"><span data-to="1">…</span><span data-from="2">Muséum d'histoire naturelle</span></span><br>Depart 08:30 · Retour 16:00 · <span class="maj" data-on="3">Transport : Bus</span></div>
+                <div class="orange">Cette sortie, organisee sur le temps scolaire, est gratuite et donc obligatoire.</div>
+                <div class="l"></div><div class="l"></div><div class="l c"></div>
+                <div style="text-align:right;margin-top:4px">Le chef d'etablissement</div>
+                <div class="coupe"></div>
+                <div style="font-weight:700;text-align:center">ACCUSE DE RECEPTION D'INFORMATION DE SORTIE SCOLAIRE OBLIGATOIRE</div>
+                <div class="l"></div><div class="l c"></div><div>☐ Un PAI … a ete complete &nbsp; ☐ J'autorise les mesures d'urgence</div><div style="text-align:right">Signature : ________</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ demande sortie / séjour -->
+    <section class="fiche fiche--large" id="doc-demande">
+      <div class="fiche__texte">
+        <h2>Demande de sortie ou de séjour</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Documents Officiels › Demande Sortie/Sejour</span></p>
+        <p class="fiche__but">Monter le dossier d'une sortie ou d'un séjour collectif à soumettre au chef d'établissement, avec budget prévisionnel et listes nominatives.</p>
+        <ol class="etapes">
+          <li data-cursor="#dd-type" data-action="click"><b>Destination</b> (France ou Etranger) et <b>Type de deplacement</b> : obligatoire ou facultatif, <b>Sortie (sans nuitee)</b> ou <b>Sejour avec nuitee</b> (qui ajoute réciprocité et hébergement).</li>
+          <li data-cursor="#dd-groupe">Puis responsable, horaires, <b>Composition du groupe</b> (classes et effectifs) et <b>Contenu pedagogique</b> (domaines, objectifs, activités, préparation, bilan).</li>
+          <li data-cursor="#dd-bus" data-action="click" data-duration="3400"><b>Budget previsionnel</b> : recettes et dépenses. Les totaux et le <b>Solde</b> se calculent en direct, en vert s'il est positif, en rouge sinon.</li>
+          <li data-cursor="#dd-csv" data-action="click"><b>Liste des eleves</b> : <span class="btn-nom">Importer un CSV</span> ou <span class="btn-nom">+ Ajouter un eleve</span> ; nom, prénom, sexe, téléphone d'urgence. Même chose pour les <b>Accompagnateurs</b>.</li>
+          <li data-cursor="#dd-pdf">Le PDF, de trois pages ou plus, se termine par le budget (annexe 1) et les listes nominatives (annexe 2).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'import attend une liste d'élèves séparée par des points-virgules, avec des colonnes « Élèves » et « Sexe » (export de type Pronote) : les mots en capitales deviennent le nom, les autres le prénom. L'import remplace la liste existante.</li>
+            <li>Cette liste contient de vrais noms et des numéros de téléphone : c'est voulu pour un document administratif, mais c'est une exception à la pseudonymisation du reste de l'application. Ils restent sur l'ordinateur, y compris dans l'historique : y penser sur un poste partagé.</li>
+            <li>Les annexes comptent au moins 4 lignes d'accompagnateurs et 30 lignes d'élèves, vides au besoin pour compléter à la main.</li>
+            <li>En-tête et pied de page portent l'établissement écrit dans l'application. Fichier « Demande_sortie_classes.pdf ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="dd-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="dd-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span>Captation Image/Son</span><span>Sortie Obligatoire</span><span class="actif">Demande Sortie/Sejour</span><span>Rapport d'Incident</span><span>Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" style="width:48%;position:relative">
+            <div class="col repli" data-to="2" style="gap:8px">
+              <div class="dc"><h6>Destination</h6><div style="font-size:10.5px"><span class="radio on"></span>France &nbsp; <span class="radio"></span>Etranger</div><div class="dl2"><div><div class="df">Departement / Pays</div><div class="di">Paris</div></div><div><div class="df">Adresse du lieu</div><div class="di">Jardin des Plantes</div></div></div></div>
+              <div class="dc" id="dd-type" data-on="1"><h6>Type de deplacement</h6><div style="font-size:10.5px">Nature : <span class="radio on"></span>Obligatoire <span class="radio"></span>Facultatif</div><div style="font-size:10.5px">Type : <span class="radio on"></span>Sortie (sans nuitee) <span class="radio"></span>Sejour avec nuitee</div></div>
+              <div class="dc zone-on" id="dd-groupe" data-on="2"><h6>Composition du groupe</h6><div class="dl2" style="grid-template-columns:1fr 1fr 1fr"><div><div class="df">Classe</div><div class="di">5E</div></div><div><div class="df">Effectif</div><div class="di">27</div></div><div><div class="df">Participants</div><div class="di">27</div></div></div><span class="ot-g" style="align-self:flex-start">+ Ajouter une classe</span></div>
+            </div>
+            <div class="col repli" data-at="3" style="gap:8px">
+              <div class="dc"><h6>Budget previsionnel</h6>
+                <div class="dl2"><div><div class="ot-sec" style="margin:0 0 4px">Recettes</div><div class="df">Nb familles x Montant</div><div class="di">27 x 8</div><div class="df" style="margin-top:4px">Etablissement</div><div class="di">150</div></div><div><div class="ot-sec" style="margin:0 0 4px">Depenses</div><div class="df">Bus</div><div class="di" id="dd-bus" data-on="3"><span data-type="320" data-type-at="3"></span></div><div class="df" style="margin-top:4px">Activites / Visites</div><div class="di">90</div></div></div>
+                <div class="dl2"><div class="tot">Total Recettes : 366 EUR</div><div class="tot">Total Depenses : 410 EUR</div></div>
+                <div class="solde solde--neg">Solde : -44 EUR</div>
+              </div>
+            </div>
+            <div class="col repli" data-from="4" style="gap:8px">
+              <div class="dc"><h6>Liste des eleves</h6>
+                <div class="ligne" style="gap:6px"><span class="ot-g" id="dd-csv" data-on="4" style="background:var(--indigo-soft);color:var(--indigo)">Importer un CSV</span><span class="ot-g">+ Ajouter un eleve</span></div>
+                <table class="tab-el"><tr><th>#</th><th>Nom</th><th>Prenom</th><th>Sexe</th><th>Tel. urgence</th></tr><tr><td>1</td><td>BO</td><td>Lina</td><td>F</td><td>06 00 00 00 01</td></tr><tr><td>2</td><td>MA</td><td>Noé</td><td>M</td><td>06 00 00 00 02</td></tr><tr><td>3</td><td>TA</td><td>Iris</td><td>F</td><td>06 00 00 00 03</td></tr><tr><td>4</td><td>KE</td><td>Adam</td><td>M</td><td>06 00 00 00 04</td></tr></table>
+              </div>
+            </div>
+          </div>
+          <div class="dg-barre"><i></i></div>
+          <div class="dg-p zone-on" id="dd-pdf" data-on="5">
+            <div class="t">Apercu</div>
+            <div class="lect"><div class="lect__barre">Demande_sortie.pdf<span class="esp"></span><span data-to="2">1 / 3</span><span data-at="3">2 / 3</span><span data-from="4">3 / 3</span></div>
+              <div class="pdf repli" data-to="2">
+                <div class="tete"><span>Collège exemple</span><span class="logo">logo</span></div>
+                <h6>SORTIES ET SEJOURS COLLECTIFS D'ELEVES DU SECOND DEGRE</h6>
+                <div class="ban" style="margin:4px 0">DESTINATION ET TYPE</div><div class="maj" data-on="1">France · Paris · Obligatoire · Sortie (sans nuitee)</div>
+                <div class="ban" style="margin:4px 0">COMPOSITION DU GROUPE</div><div class="maj" data-on="2">5E · effectif 27 · participants 27</div>
+                <div class="ban" style="margin:4px 0">CONTENU PEDAGOGIQUE</div><div class="l"></div><div class="l"></div><div class="l c"></div>
+                <div class="box">Avis du chef d'etablissement : ☐ Avis favorable ☐ Avis defavorable</div>
+              </div>
+              <div class="pdf repli" data-at="3">
+                <h6>Annexe 1 : Budget previsionnel</h6>
+                <table><tr><th>RECETTES</th><th>EUR</th></tr><tr><td>Familles (27 x 8)</td><td>216</td></tr><tr><td>Etablissement</td><td>150</td></tr><tr><th>Total</th><th>366</th></tr></table>
+                <table style="margin-top:5px"><tr><th>DEPENSES</th><th>EUR</th></tr><tr class="maj is-on"><td>Bus</td><td>320</td></tr><tr><td>Activites / Visites</td><td>90</td></tr><tr><th>Total</th><th>410</th></tr></table>
+              </div>
+              <div class="pdf repli" data-from="4">
+                <h6>Annexe 2 : Listes nominatives</h6>
+                <table><tr><th>#</th><th>Nom</th><th>Prenom</th><th>Sexe</th><th>Tel. urgence</th></tr><tr><td>1</td><td>BO</td><td>Lina</td><td>F</td><td>06 00 00 00 01</td></tr><tr><td>2</td><td>MA</td><td>Noé</td><td>M</td><td>06 00 00 00 02</td></tr><tr><td>3</td><td>TA</td><td>Iris</td><td>F</td><td>06 00 00 00 03</td></tr><tr><td>4</td><td>KE</td><td>Adam</td><td>M</td><td>06 00 00 00 04</td></tr><tr><td>5</td><td></td><td></td><td></td><td></td></tr><tr><td>6</td><td></td><td></td><td></td><td></td></tr><tr><td>7</td><td></td><td></td><td></td><td></td></tr></table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ rapport d'incident -->
+    <section class="fiche fiche--large" id="doc-rapport">
+      <div class="fiche__texte">
+        <h2>Rapport d'incident</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Documents Officiels › Rapport d'Incident</span></p>
+        <p class="fiche__but">Rédiger le rapport d'un incident qui ne relève pas de l'exclusion de cours, à transmettre à la vie scolaire, avec punition demandée et sanction suggérée.</p>
+        <ol class="etapes">
+          <li data-cursor="#dr-tete"><b>En-tete academique</b> et <b>Etablissement</b> : préremplis, modifiables ici.</li>
+          <li data-cursor="#dr-ctx"><b>Informations du rapport</b> (date, rédacteur) et <b>Contexte de l'incident</b> : lieu, date et heure, élèves concernés et classes.</li>
+          <li data-cursor="#dr-faits" data-action="click" data-duration="3600"><b>Faits</b> : décrire de façon factuelle et chronologique, en précisant l'action de chacun si plusieurs élèves sont impliqués.</li>
+          <li data-cursor="#dr-ret" data-action="click" data-duration="3400">Cocher la <b>Punition demandee / suggeree</b> (« A saisir sur Pronote ») et, si besoin, la <b>Sanction suggeree</b> (« Decision reservee au chef d'etablissement »).</li>
+          <li data-cursor="#dr-pdf">Le PDF tient sur une page, en noir et blanc, avec la partie « SUITE », les signatures et les coordonnées de l'établissement en pied de page.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les faits ne passent pas sur une deuxième page : le PDF prévoit « Si besoin, TSVP → » pour un complément écrit à la main.</li>
+            <li>Le rapport contient le nom réel des élèves concernés : il est gardé dans l'historique de l'ordinateur au téléchargement.</li>
+            <li>Punitions proposées : observation écrite dans le carnet, excuse publique, devoir supplémentaire, retenue. Sanctions : avertissement, blâme, exclusion temporaire (de classe ou du collège), saisine du conseil de discipline.</li>
+            <li>Fichier « Rapport_incident_eleves.pdf ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="dr-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="dr-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span>Captation Image/Son</span><span>Sortie Obligatoire</span><span>Demande Sortie/Sejour</span><span class="actif">Rapport d'Incident</span><span>Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" style="width:46%">
+            <div class="dc" id="dr-tete" data-on="1"><h6>En-tete academique</h6><div class="dl2"><div><div class="df">Academie</div><div class="di">Académie exemple</div></div><div><div class="df">Etablissement · Nom</div><div class="di">Collège exemple</div></div></div></div>
+            <div class="dc" id="dr-ctx" data-on="2"><h6>Contexte de l'incident</h6><div class="dl2"><div><div class="df">Lieu, date et heure</div><div class="di">Salle 204, le 15/01/2027 a 10h30</div></div><div><div class="df">Eleve(s) concerne(s)</div><div class="di">Tom SA, 4B</div></div></div></div>
+            <div class="dc"><h6>Faits</h6><div class="di" id="dr-faits" data-on="3" style="height:44px;white-space:normal;line-height:1.3"><span class="ph" data-to="2">Decrivez les faits de maniere factuelle et chronologique...</span><span data-type="Pendant le TP, l'élève a renversé volontairement le flacon d'eau iodée sur la paillasse voisine." data-type-at="3"></span></div></div>
+            <div class="dc"><h6>Punition demandee / suggeree</h6>
+              <div class="sup"><span class="case"></span>Observation ecrite et le carnet de liaison…</div>
+              <div class="sup"><span class="case"></span>Devoir supplementaire signe par les parents</div>
+              <div class="sup" id="dr-ret" data-on="4"><span class="case" data-on="4-5"></span>Retenue</div>
+            </div>
+          </div>
+          <div class="dg-barre"><i></i></div>
+          <div class="dg-p zone-on" id="dr-pdf" data-on="5">
+            <div class="t">Apercu</div>
+            <div class="lect"><div class="lect__barre">Rapport_incident.pdf<span class="esp"></span>1 / 1</div>
+              <div class="pdf" style="color:#000">
+                <div class="tete"><span class="maj" data-on="1">Académie exemple<br>Collège exemple</span><span class="logo">logo</span><span style="text-align:right;font-weight:700;font-size:8px">RAPPORT D'INCIDENT<br><span style="font-weight:400;font-size:5.5px">(pour tout fait ne relevant pas de l'exclusion de cours)</span></span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid #000" class="maj" data-on="2"><div style="padding:3px;border-right:1px solid #000">Salle 204, le 15/01/2027 a 10h30</div><div style="padding:3px">Tom SA, 4B</div></div>
+                <div style="font-weight:700;text-decoration:underline;margin-top:5px">FAITS :</div>
+                <div class="maj" data-on="3" style="min-height:24px"><span data-from="3">Pendant le TP, l'élève a renversé volontairement le flacon d'eau iodée sur la paillasse voisine.</span></div>
+                <div class="l"></div><div class="l c"></div>
+                <div style="text-align:right;font-style:italic">Si besoin, TSVP →</div>
+                <div style="font-weight:700;margin-top:4px">SUITE</div>
+                <div>☐ Observation ecrite &nbsp; ☐ Excuse &nbsp; ☐ Devoir <span class="maj" data-on="4"><span data-to="3">☐</span><span data-from="4">×</span> Retenue</span></div>
+                <div style="display:flex;justify-content:space-between;margin-top:8px"><span>Signature du redacteur</span><span>Le chef d'etablissement</span></div>
+                <div style="border-top:1px solid #000;margin-top:16px;padding-top:2px;text-align:center;font-size:5.5px">Collège exemple · coordonnées de l'établissement</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ autorisation de déplacement -->
+    <section class="fiche fiche--large" id="doc-deplacement">
+      <div class="fiche__texte">
+        <h2>Autorisations de déplacement</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Documents Officiels › Autorisation Deplacement</span></p>
+        <p class="fiche__but">Imprimer une planche de billets d'autorisation (toilettes en cas d'urgence, autre déplacement), à remplir à la main pendant le cours.</p>
+        <ol class="etapes">
+          <li data-cursor="#dp-ong" data-action="click">Ouvrir l'onglet <b>Autorisation Deplacement</b> : il n'y a rien à remplir.</li>
+          <li data-cursor="#dp-dl" data-action="click">Cliquer <span class="btn-nom">Telecharger PDF</span>.</li>
+          <li data-cursor="#dp-pdf" data-duration="3600">Une page de six billets (deux colonnes, trois lignes) : date, nom, prénom, classe, professeur, « aux toilettes (cas d'urgence uniquement) » ou « autre », heures de sortie et de retour, visa.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'année scolaire et l'établissement de l'en-tête viennent des réglages ; à défaut, de valeurs écrites dans l'application.</li>
+            <li><span class="important">Limite actuelle :</span> dans l'historique, ce document apparaît sous le libellé et la pastille rouge du rapport d'incident. La description de la carte de l'outil, dans la grille, ne le mentionne pas.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="dp-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="dp-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span>Captation Image/Son</span><span>Sortie Obligatoire</span><span>Demande Sortie/Sejour</span><span>Rapport d'Incident</span><span id="dp-ong" data-on="1-3">Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" style="width:44%">
+            <div class="dc"><h6>Autorisation de deplacement</h6><div style="font-size:11px;color:var(--text-muted);line-height:1.45">Fiche pre-formatee avec 6 autorisations de deplacement par page (2 colonnes x 3 lignes), a remplir a la main.</div><div style="font-size:10.5px;color:var(--text-dim)">Les informations (annee scolaire, etablissement) sont recuperees depuis vos parametres.</div></div>
+            <div class="ligne" style="gap:6px"><span class="ot-b" id="dp-dl" data-on="2">Telecharger PDF</span><span class="ot-b ot-b--gris">Historique (4)</span></div>
+          </div>
+          <div class="dg-barre"><i></i></div>
+          <div class="dg-p zone-on" id="dp-pdf" data-on="3">
+            <div class="t">Apercu</div>
+            <div class="lect"><div class="lect__barre">Autorisation_deplacement.pdf<span class="esp"></span>1 / 1</div>
+              <div class="pdf">
+                <div class="tete"><span>Annee Scolaire 2026-2027 — Collège exemple</span><span class="logo">logo</span></div>
+                <div class="billets">
+                  <div>Date : ______ <br>Nom : ________ Prenom : ______<br>Classe : ____ Professeur : ______<br>est autorise·e a se rendre<br>☐ aux toilettes (cas d'urgence uniquement)<br>☐ autre : ________<br>Heure : ____ Retour en classe heure : ____<br>Visa du chef d'etab. :</div>
+                  <div>Date : ______ <br>Nom : ________ Prenom : ______<br>Classe : ____ Professeur : ______<br>est autorise·e a se rendre<br>☐ aux toilettes (cas d'urgence uniquement)<br>☐ autre : ________<br>Heure : ____ Retour en classe heure : ____<br>Visa du chef d'etab. :</div>
+                  <div>Date : ______ <br>Nom : ________ Prenom : ______<br>Classe : ____ Professeur : ______<br>est autorise·e a se rendre<br>☐ aux toilettes (cas d'urgence uniquement)<br>☐ autre : ________<br>Heure : ____ Retour en classe heure : ____<br>Visa du chef d'etab. :</div>
+                  <div>Date : ______ <br>Nom : ________ Prenom : ______<br>Classe : ____ Professeur : ______<br>est autorise·e a se rendre<br>☐ aux toilettes (cas d'urgence uniquement)<br>☐ autre : ________<br>Heure : ____ Retour en classe heure : ____<br>Visa du chef d'etab. :</div>
+                  <div>Date : ______ <br>Nom : ________ Prenom : ______<br>Classe : ____ Professeur : ______<br>est autorise·e a se rendre<br>☐ aux toilettes (cas d'urgence uniquement)<br>☐ autre : ________<br>Heure : ____ Retour en classe heure : ____<br>Visa du chef d'etab. :</div>
+                  <div>Date : ______ <br>Nom : ________ Prenom : ______<br>Classe : ____ Professeur : ______<br>est autorise·e a se rendre<br>☐ aux toilettes (cas d'urgence uniquement)<br>☐ autre : ________<br>Heure : ____ Retour en classe heure : ____<br>Visa du chef d'etab. :</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ historique -->
+    <section class="fiche fiche--large" id="doc-historique">
+      <div class="fiche__texte">
+        <h2>Historique des documents</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Documents Officiels › Historique (N)</span></p>
+        <p class="fiche__but">Retrouver un document déjà téléchargé et le rouvrir pour le modifier ou le réimprimer.</p>
+        <ol class="etapes">
+          <li data-cursor="#dh-btn" data-action="click">Cliquer <span class="btn-nom">Historique (N)</span>, sous le formulaire : la fenêtre « Historique des documents » s'ouvre.</li>
+          <li data-cursor="#dh-l2" data-action="click" data-duration="3400">Cliquer une ligne : l'onglet correspondant s'ouvre avec tous les champs remplis comme au moment du téléchargement. Une pastille donne le type : bleue captation, ambre sortie, verte demande, rouge rapport.</li>
+          <li data-cursor="#dh-sup" data-action="click">Survoler une ligne puis <span class="btn-nom">Suppr.</span> pour l'effacer. La croix ou un clic à côté referme la fenêtre.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Chaque « Telecharger PDF » ajoute une entrée (le même document téléchargé deux fois en fait deux), cinquante au plus : les plus anciennes disparaissent.</li>
+            <li>L'historique reste dans ce navigateur : vrais noms d'élèves, téléphones d'urgence et faits d'incident y restent jusqu'à leur suppression ou l'effacement des données du site. Sur un ordinateur partagé (salle des professeurs), supprimer les entrées.</li>
+            <li><span class="btn-nom">Suppr.</span> agit tout de suite, sans confirmation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/docgenerator</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="dh-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="dh-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 16.5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Documents Officiels</div><div class="ot-desc">Générer des documents officiels (captation image/son, sortie scolaire, demande sortie/séjour, rapport d'incident)</div></div></div>
+        <div class="ong"><span class="actif">Captation Image/Son</span><span>Sortie Obligatoire</span><span>Demande Sortie/Sejour</span><span>Rapport d'Incident</span><span>Autorisation Deplacement</span></div>
+        <div class="dg">
+          <div class="dg-f" style="width:44%">
+            <div class="dc"><h6>Etablissement</h6><div><div class="df">Ecole ou etablissement</div><div class="di">Collège exemple</div></div><div class="dl2"><div><div class="df">Annee scolaire</div><div class="di">2026-2027</div></div><div><div class="df">Classe de</div><div class="di">Cinquieme</div></div></div></div>
+            <div class="dc"><h6>2 - Designation du projet audio-visuel</h6><div><div class="df">Nom du projet</div><div class="di">La météo du futur</div></div></div>
+            <div class="ligne" style="gap:6px;margin-top:auto"><span class="ot-b">Telecharger PDF</span><span class="ot-b ot-b--gris" id="dh-btn" data-on="1">Historique (4)</span></div>
+          </div>
+          <div class="dg-barre"><i></i></div>
+          <div class="dg-p"><div class="t">Apercu</div><div class="lect"><div class="pdf"><div class="ban">AUTORISATION DE CAPTATION ET D'UTILISATION D'IMAGE/VOIX</div><div class="l"></div><div class="l"></div><div class="l c"></div><div class="l"></div><div class="l c"></div></div></div></div>
+        </div>
+        <div class="voile-o" data-from="2"></div>
+        <div class="hist zoom" data-from="2">
+          <div class="ligne" style="margin-bottom:6px"><b style="font-size:14px">Historique des documents</b><span class="esp"></span><span style="color:var(--text-dim);font-size:16px">×</span></div>
+          <div class="hist__l"><span class="p" style="background:#3B82F6"></span><span>Captation - Cinquieme<br><small>26/11/2026 14:12</small></span><span class="sup2">Suppr.</span></div>
+          <div class="hist__l" id="dh-l2" data-on="2"><span class="p" style="background:#F59E0B"></span><span>Sortie - 5E, 5D<br><small>24/11/2026 18:40</small></span><span class="sup2">Suppr.</span></div>
+          <div class="hist__l" data-on="3"><span class="p" style="background:#EF4444"></span><span>Rapport - Tom SA, 4B<br><small>15/11/2026 11:05</small></span><span class="sup2" id="dh-sup" data-on="3">Suppr.</span></div>
+          <div class="hist__l"><span class="p" style="background:#10B981"></span><span>Demande - SVT<br><small>02/11/2026 09:30</small></span><span class="sup2">Suppr.</span></div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ séparateur PDF -->
+    <section class="fiche fiche--large" id="pdf">
+      <div class="fiche__texte">
+        <h2>Séparateur PDF : charger et découper</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Separateur PDF</span></p>
+        <p class="fiche__but">Couper un PDF (un sujet scanné, un manuel) en plusieurs fichiers réguliers, sans logiciel et sans envoyer le fichier sur internet.</p>
+        <ol class="etapes">
+          <li data-cursor="#pf-zone" data-action="click">Glisser un PDF dans la zone « Glisser un fichier PDF ici ou cliquer pour parcourir », ou cliquer pour le choisir.</li>
+          <li data-cursor="#pf-m3" data-action="click" data-duration="3400">Les miniatures se calculent une à une (« Generation des miniatures »). Cliquer une miniature l'affiche dans l'aperçu à droite (« Apercu — Page n / N »).</li>
+          <li data-cursor="#pf-2" data-action="click">En mode <b>Decouper</b> (choisi au départ), régler <b>Pages par fichier</b> : 1, 2, 3, 5 ou 10, ou un nombre au choix.</li>
+          <li data-cursor="#pf-go" data-action="click">Cliquer le grand bouton : <span class="btn-nom">Decouper en 4 fichiers (2 pages/fichier)</span>.</li>
+          <li data-cursor="#pf-tout" data-action="click">Dans « Traitement termine ! », <span class="btn-nom">Telecharger</span> chaque fichier, ou <span class="btn-nom">Tout telecharger</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tout se fait sur l'ordinateur. Un PDF protégé ou abîmé affiche « Impossible de lire ce PDF. Verifiez qu'il n'est pas protege. » ; un fichier qui n'est pas un PDF est ignoré sans message.</li>
+            <li>Un gros PDF (des centaines de pages) met du temps à afficher ses miniatures. <span class="btn-nom">Changer</span> remplace le fichier ; changer de mode efface la sélection et les résultats.</li>
+            <li>La dernière tranche peut être plus courte. Les fichiers s'appellent « nom_pages1-2.pdf » (ou « nom_page3.pdf » à une page par fichier).</li>
+            <li>« Tout telecharger » lance plusieurs téléchargements d'affilée : le navigateur peut demander une autorisation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/pdfsplitter</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="pf-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="pf-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.6"/><circle cx="6" cy="17" r="2.6"/><path d="M8.2 8.6L20 18M8.2 15.4L20 6"/></svg></span><div style="min-width:0"><div class="ot-titre">Separateur PDF</div><div class="ot-desc">Decouper, extraire ou supprimer des pages d'un fichier PDF</div></div></div>
+        <div class="col repli" data-to="1" style="gap:12px;max-width:560px;margin:0 auto">
+          <div class="seg" style="align-self:center"><span class="actif">Decouper</span><span>Supprimer pages</span><span>Extraire pages</span></div>
+          <div class="ot-zone" id="pf-zone" data-on="1" style="height:200px"><div><b>+</b>Glisser un fichier PDF ici ou cliquer pour parcourir<br><span style="font-size:11px">PDF uniquement</span></div></div>
+        </div>
+        <div class="sp repli" data-from="2">
+          <div class="sp-g">
+            <div class="seg"><span class="actif">Decouper</span><span>Supprimer pages</span><span>Extraire pages</span></div>
+            <div class="fic"><span class="vg vg--pdf">PDF</span><span><span class="nom">sujet-4B.pdf</span><br><span class="muet">8 pages · 2,4 Mo</span></span><span class="esp"></span><span class="ot-g">Changer</span></div>
+            <div class="ligne repli" data-to="4" style="gap:5px;font-size:11.5px"><span style="font-weight:600;margin-right:4px">Pages par fichier</span><span class="pp-b" data-on="2">1</span><span class="pp-b" id="pf-2" data-on="3-5">2</span><span class="pp-b">3</span><span class="pp-b">5</span><div class="ot-in ot-in--p" style="width:46px;min-height:26px"><span data-to="2">1</span><span data-from="3">2</span></div></div>
+            <div class="mini-g repli" data-to="4">
+              <div class="mini"><div class="l t"></div><div class="l"></div><div class="l"></div><div class="l c"></div><span class="n">1</span></div>
+              <div class="mini"><div class="l"></div><div class="l"></div><div class="l c"></div><div class="l"></div><span class="n">2</span></div>
+              <div class="mini" id="pf-m3" data-on="2-4"><div class="l t"></div><div class="l"></div><div class="l c"></div><span class="n">3</span></div>
+              <div class="mini"><div class="l"></div><div class="l"></div><div class="l"></div><span class="n">4</span></div>
+              <div class="mini"><div class="l t"></div><div class="l"></div><div class="l c"></div><span class="n">5</span></div>
+              <div class="mini"><div class="l"></div><div class="l c"></div><span class="n">6</span></div>
+              <div class="mini"><div class="l t"></div><div class="l"></div><span class="n">7</span></div>
+              <div class="mini"><div class="l"></div><div class="l"></div><div class="l c"></div><span class="n">8</span></div>
+            </div>
+            <span class="ot-b repli" id="pf-go" data-to="4" data-on="4" style="height:36px"><span data-to="2">Decouper en 8 fichiers (1 page/fichier)</span><span data-from="3">Decouper en 4 fichiers (2 pages/fichier)</span></span>
+            <div class="res repli glisse-haut" data-from="5">
+              <div class="ligne"><span class="res__t">Traitement termine !</span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p" id="pf-tout" data-on="5">Tout telecharger</span></div>
+              <div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">sujet-4B_pages1-2.pdf</span><br><span class="muet">2 pages · 610 Ko</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div>
+              <div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">sujet-4B_pages3-4.pdf</span><br><span class="muet">2 pages · 590 Ko</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div>
+              <div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">sujet-4B_pages5-6.pdf</span><br><span class="muet">2 pages · 640 Ko</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div>
+              <div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">sujet-4B_pages7-8.pdf</span><br><span class="muet">2 pages · 580 Ko</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div>
+            </div>
+          </div>
+          <div class="sp-d">
+            <div class="ligne" style="font-size:11.5px;font-weight:600;color:var(--text-muted)">Apercu — Page 3 / 8<span class="esp"></span><span class="pp-b">◀</span><span class="pp-b">▶</span></div>
+            <div class="lect"><div class="pdf" style="width:280px;height:380px"><h6>Exercice 2 : la digestion</h6><div class="l"></div><div class="l"></div><div class="l c"></div><div style="height:90px;border:1px solid #CBD5E1;margin:6px 0;background:#F8FAFC"></div><div class="l"></div><div class="l"></div><div class="l"></div><div class="l c"></div></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ supprimer / extraire -->
+    <section class="fiche fiche--large" id="pdf-pages">
+      <div class="fiche__texte">
+        <h2>Séparateur PDF : supprimer ou extraire des pages</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Separateur PDF › Supprimer pages · Extraire pages</span></p>
+        <p class="fiche__but">Retirer des pages blanches ou inutiles, ou faire un nouveau PDF avec quelques pages seulement (un exercice d'un manuel scanné, par exemple).</p>
+        <ol class="etapes">
+          <li data-cursor="#pp-m2" data-action="click">Mode <b>Supprimer pages</b> : « Cliquez les pages a supprimer ». Une page choisie pâlit, se borde de rouge et prend un grand X.</li>
+          <li data-cursor="#pp-sup" data-action="click"><span class="btn-nom">Supprimer 2 pages</span> donne un seul fichier, « nom_modifie.pdf ».</li>
+          <li data-cursor="#pp-m5" data-action="click">Mode <b>Extraire pages</b> : cliquer les pages à garder, marquées d'une coche bleue. <span class="btn-nom">Tout</span> et <span class="btn-nom">Aucun</span> sélectionnent ou désélectionnent tout.</li>
+          <li data-cursor="#pp-ext" data-action="click"><span class="btn-nom">Extraire 3 pages</span> donne « nom_extrait.pdf ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Impossible de supprimer toutes les pages : le bouton reste grisé. Sans sélection, le bouton d'extraction aussi.</li>
+            <li>Les pages extraites gardent l'ordre du document, quel que soit l'ordre des clics : on ne peut pas les réordonner.</li>
+            <li>Le PDF d'origine n'est jamais modifié.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/pdfsplitter</div></div><div class="app"><aside class="app__side side-e"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="pp-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps corps-e"><div class="ot-tete"><span class="ot-retour" id="pp-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="2.6"/><circle cx="6" cy="17" r="2.6"/><path d="M8.2 8.6L20 18M8.2 15.4L20 6"/></svg></span><div style="min-width:0"><div class="ot-titre">Separateur PDF</div><div class="ot-desc">Decouper, extraire ou supprimer des pages d'un fichier PDF</div></div></div>
+        <div class="sp">
+          <div class="sp-g">
+            <div class="seg"><span>Decouper</span><span data-on="1-2" class="">Supprimer pages</span><span data-on="3-4">Extraire pages</span></div>
+            <div class="fic"><span class="vg vg--pdf">PDF</span><span><span class="nom">manuel-chap3.pdf</span><br><span class="muet">8 pages · 5,1 Mo</span></span><span class="esp"></span><span class="ot-g">Changer</span></div>
+            <div class="ligne" style="font-size:11.5px"><span style="font-weight:600"><span data-to="2">Cliquez les pages a supprimer</span><span data-from="3">Cliquez les pages a extraire</span></span><span class="esp"></span><span class="ot-g">Tout</span>&nbsp;<span class="ot-g">Aucun</span></div>
+            <div class="mini-g">
+              <div class="mini"><div class="l t"></div><div class="l"></div><div class="l"></div><span class="n">1</span><span class="marque">X</span></div>
+              <div class="mini sup-x" id="pp-m2" data-on="1-2"><span class="n">2</span><span class="marque">X</span></div>
+              <div class="mini"><div class="l t"></div><div class="l"></div><div class="l c"></div><span class="n">3</span></div>
+              <div class="mini ext-x" data-on="3-4"><div class="l"></div><div class="l"></div><div class="l"></div><span class="n">4</span><span class="marque"><span class="ic ic-ok" aria-hidden="true"></span></span></div>
+              <div class="mini ext-x" id="pp-m5" data-on="3-4"><div class="l t"></div><div class="l"></div><div class="l c"></div><span class="n">5</span><span class="marque"><span class="ic ic-ok" aria-hidden="true"></span></span></div>
+              <div class="mini ext-x" data-on="3-4"><div class="l"></div><div class="l c"></div><span class="n">6</span><span class="marque"><span class="ic ic-ok" aria-hidden="true"></span></span></div>
+              <div class="mini sup-x" data-on="1-2"><span class="n">7</span><span class="marque">X</span></div>
+              <div class="mini"><div class="l"></div><div class="l"></div><div class="l c"></div><span class="n">8</span></div>
+            </div>
+            <span class="ot-b" style="height:36px" id="pp-btn"><span data-to="2" id="pp-sup" style="display:inline-flex">Supprimer 2 pages</span><span data-from="3" id="pp-ext" style="display:inline-flex">Extraire 3 pages</span></span>
+            <div class="res glisse-haut repli" data-at="2"><span class="res__t">Traitement termine !</span><div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">manuel-chap3_modifie.pdf</span><br><span class="muet">6 pages · 3,9 Mo</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div></div>
+            <div class="res glisse-haut repli" data-at="4"><span class="res__t">Traitement termine !</span><div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">manuel-chap3_extrait.pdf</span><br><span class="muet">3 pages · 1,8 Mo</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div></div>
+          </div>
+          <div class="sp-d">
+            <div class="ligne" style="font-size:11.5px;font-weight:600;color:var(--text-muted)"><span>Apercu — Page <span data-to="2">2</span><span data-from="3">5</span> / 8</span><span class="esp"></span><span class="pp-b">◀</span><span class="pp-b">▶</span></div>
+            <div class="lect"><div class="pdf repli" data-to="2" style="width:280px;height:380px"></div><div class="pdf repli" data-from="3" style="width:280px;height:380px"><h6>Exercice 4 : le volcanisme</h6><div class="l"></div><div class="l"></div><div class="l c"></div><div style="height:90px;border:1px solid #CBD5E1;margin:6px 0;background:#F8FAFC"></div><div class="l"></div><div class="l c"></div></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ convertisseur : convertir -->
+    <section class="fiche" id="convertisseur">
+      <div class="fiche__texte">
+        <h2>Convertisseur : changer le format des images</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Outils › Convertisseur de fichiers</span></p>
+        <p class="fiche__but">Transformer des images en PNG, JPG ou WebP et alléger des photos trop lourdes pour l'ENT, un courriel ou une fiche.</p>
+        <ol class="etapes">
+          <li data-cursor="#cv-modes">Six modes dans la barre : <b>Convertir</b>, <b>Redimensionner</b>, <b>Effets</b>, <b>Images → PDF</b>, <b>PDF → Word</b>, <b>Word → PDF</b>.</li>
+          <li data-cursor="#cv-zone" data-action="click">Glisser une ou plusieurs images (PNG, JPG, WebP, GIF, SVG, BMP) : chacune s'affiche avec ses dimensions et son poids.</li>
+          <li data-cursor="#cv-q" data-action="click" data-duration="3400"><b>Format de sortie</b> : PNG, JPG (au départ) ou WEBP. Pour JPG et WebP, régler la <b>Qualite</b> (85 % au départ, haute, moyenne ou basse).</li>
+          <li data-cursor="#cv-go" data-action="click">Cliquer <span class="btn-nom">Convertir en JPG (2)</span> : « Conversion en cours... ».</li>
+          <li data-cursor="#cv-res" data-duration="3400">« Conversion terminee ! » : nouveau poids et écart avec l'original (en vert s'il baisse). <span class="btn-nom">Telecharger</span> ou <span class="btn-nom">Tout telecharger</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Tout se fait sur l'ordinateur, sans envoi.</li>
+            <li>La qualité ne s'applique pas au PNG. Une image transparente convertie en JPG perd sa transparence ; un GIF animé n'en garde que la première image.</li>
+            <li>Changer de mode garde les images déposées mais efface les résultats.</li>
+            <li>En cas d'échec, une alerte du navigateur s'affiche (« Erreur lors de la conversion »).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/fileconverter</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="cv-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="cv-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11a7.5 7.5 0 0113.3-4.2L20 9"/><path d="M20 4v5h-5"/><path d="M19.5 13a7.5 7.5 0 01-13.3 4.2L4 15"/><path d="M4 20v-5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Convertisseur de fichiers</div><div class="ot-desc">Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF</div></div></div>
+        <div class="cv">
+          <div class="seg zone-on" id="cv-modes" data-on="1"><span class="actif">Convertir</span><span>Redimensionner</span><span>Effets</span><span>Images → PDF</span><span>PDF → Word</span><span>Word → PDF</span></div>
+          <div class="ot-zone" id="cv-zone" data-on="2" style="height:70px;padding:8px"><div><b style="font-size:20px">+</b>Glisser des images ici ou cliquer pour parcourir · <span style="font-size:10.5px">PNG, JPG, WebP, GIF, SVG, BMP</span></div></div>
+          <div class="col repli" data-from="2" data-to="4" style="gap:5px">
+            <div class="ligne"><b style="font-size:12px">2 image(s)</b><span class="esp"></span><span class="muet">Tout retirer</span></div>
+            <div class="img-c"><span class="vgi a"></span><span><span class="nom">sortie-geologie.png</span><br><span class="muet">4032 x 3024 · 8,6 Mo</span></span><span class="x">x</span></div>
+            <div class="img-c"><span class="vgi b"></span><span><span class="nom">schema-volcan.png</span><br><span class="muet">1600 x 1200 · 2,1 Mo</span></span><span class="x">x</span></div>
+          </div>
+          <div class="ot-carte repli" data-from="2" data-to="4" style="padding:10px;display:flex;flex-direction:column;gap:9px">
+            <div class="ligne" style="gap:10px"><span style="font-size:11.5px;font-weight:600">Format de sortie</span><div class="fmt-b"><span>PNG</span><span class="actif">JPG</span><span>WEBP</span></div></div>
+            <div class="qual" id="cv-q" data-on="3"><span style="white-space:nowrap">Qualite : <b><span data-to="2">85%</span><span data-from="3">75%</span></b> <span class="muet">(<span data-to="2">haute</span><span data-from="3">moyenne</span>)</span></span><div class="curseur-q"><b style="width:83%" data-to="2"></b><b style="width:72%" data-from="3"></b><i data-to="2" style="left:83%"></i><i data-from="3" style="left:72%"></i></div></div>
+          </div>
+          <span class="ot-b repli" id="cv-go" data-from="2" data-to="4" data-on="4" style="height:38px"><span data-to="3">Convertir en JPG (2)</span><span data-at="4" style="display:contents"><span class="chg"></span>Conversion en cours...</span></span>
+          <div class="res glisse-haut repli" id="cv-res" data-from="5">
+            <div class="ligne"><span class="res__t">Conversion terminee !</span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Tout telecharger</span></div>
+            <div class="res__l"><span class="vgi a"></span><span><span class="nom">sortie-geologie.jpg</span><br><span class="muet">4032 x 3024 · 1,9 Mo</span> <span class="ecart v">-78%</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div>
+            <div class="res__l"><span class="vgi b"></span><span><span class="nom">schema-volcan.jpg</span><br><span class="muet">1600 x 1200 · 410 Ko</span> <span class="ecart v">-81%</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ redimensionner -->
+    <section class="fiche" id="conv-redimensionner">
+      <div class="fiche__texte">
+        <h2>Convertisseur : redimensionner et recadrer</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Convertisseur de fichiers › Redimensionner</span></p>
+        <p class="fiche__but">Réduire des images à une taille donnée ou les recadrer à un format (carré, 16:9…), toutes en une fois.</p>
+        <ol class="etapes">
+          <li data-cursor="#cr-mode" data-action="click">Mode <b>Redimensionner</b>. <b>Format de sortie</b> et <b>Qualite</b> se règlent comme pour Convertir.</li>
+          <li data-cursor="#cr-169" data-action="click"><b>Recadrage</b> : Libre, 1:1, 4:3, 16:9, 3:4 ou 9:16 (recadrage centré).</li>
+          <li data-cursor="#cr-1920" data-action="click" data-duration="3400"><b>Dimensions max (px)</b> : largeur et hauteur, case <b>Garder les proportions</b> (cochée), ou un raccourci : 50%, 25%, 800px, 1920px.</li>
+          <li data-cursor="#cr-go" data-action="click">Cliquer <span class="btn-nom">Redimensionner (2 images)</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ce sont des maximums : une image plus petite n'est jamais agrandie.</li>
+            <li>Les proportions et les raccourcis se calculent d'après la première image de la liste, puis s'appliquent à toutes.</li>
+            <li>Les fichiers obtenus portent la fin « _resized ».</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/fileconverter</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="cr-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="cr-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11a7.5 7.5 0 0113.3-4.2L20 9"/><path d="M20 4v5h-5"/><path d="M19.5 13a7.5 7.5 0 01-13.3 4.2L4 15"/><path d="M4 20v-5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Convertisseur de fichiers</div><div class="ot-desc">Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF</div></div></div>
+        <div class="cv">
+          <div class="seg"><span data-on="0">Convertir</span><span id="cr-mode" data-on="1-4">Redimensionner</span><span>Effets</span><span>Images → PDF</span><span>PDF → Word</span><span>Word → PDF</span></div>
+          <div class="img-c"><span class="vgi a"></span><span><span class="nom">sortie-geologie.png</span><br><span class="muet">4032 x 3024 · 8,6 Mo</span></span><span class="x">x</span></div>
+          <div class="img-c"><span class="vgi c"></span><span><span class="nom">feuille-erable.png</span><br><span class="muet">3000 x 4000 · 6,2 Mo</span></span><span class="x">x</span></div>
+          <div class="ot-carte" style="padding:10px;display:flex;flex-direction:column;gap:10px">
+            <div class="ligne" style="gap:10px"><span style="font-size:11.5px;font-weight:600">Format de sortie</span><div class="fmt-b"><span>PNG</span><span class="actif">JPG</span><span>WEBP</span></div></div>
+            <div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Recadrage</div><div class="fmt-b"><span data-on="1">Libre</span><span>1:1</span><span>4:3</span><span id="cr-169" data-on="2-4">16:9</span><span>3:4</span><span>9:16</span></div></div>
+            <div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Dimensions max (px)</div>
+              <div class="ligne" style="gap:6px"><div class="ot-in ot-in--p" style="width:80px"><span data-to="2">4032</span><span data-from="3">1920</span></div>x<div class="ot-in ot-in--p" style="width:80px"><span data-to="2">2268</span><span data-from="3">1080</span></div><span style="font-size:11px;margin-left:8px"><span class="case case--on" style="width:12px;height:12px;vertical-align:-2px"></span> Garder les proportions</span></div>
+              <div class="ligne" style="gap:4px;margin-top:6px"><span class="ot-g">50%</span><span class="ot-g">25%</span><span class="ot-g">800px</span><span class="ot-g" id="cr-1920" data-on="3-4">1920px</span></div>
+            </div>
+          </div>
+          <span class="ot-b" id="cr-go" data-on="4" style="height:38px">Redimensionner (2 images)</span>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ effets -->
+    <section class="fiche" id="conv-effets">
+      <div class="fiche__texte">
+        <h2>Convertisseur : effets, rotation, filigrane</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Convertisseur de fichiers › Effets</span></p>
+        <p class="fiche__but">Passer des images en noir et blanc pour la photocopie, les tourner, ou les marquer d'un filigrane (« BROUILLON », « NE PAS DIFFUSER »).</p>
+        <ol class="etapes">
+          <li data-cursor="#ce-nb" data-action="click"><b>Filtre</b> : Aucun, Noir &amp; Blanc, Sepia, Inverser, Contraste+ ou Flou.</li>
+          <li data-cursor="#ce-90" data-action="click"><b>Rotation</b> (Normal, 90°, 180°, 270°) et <b>Miroir</b> (Horizontal, Vertical).</li>
+          <li data-cursor="#ce-fil" data-action="click" data-duration="3400"><b>Filigrane (watermark)</b> : taper le texte ; un curseur <b>Opacite</b> apparaît (15 % au départ, de 5 à 50 %).</li>
+          <li data-cursor="#ce-go" data-action="click">Cliquer <span class="btn-nom">Appliquer (1 image)</span> : le résultat se voit dans la vignette.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pas d'aperçu avant de cliquer : on voit l'effet sur la vignette du résultat.</li>
+            <li>Le filigrane est répété en diagonale sur toute l'image, en noir. « Contraste+ » est une simple hausse du contraste.</li>
+            <li>Les fichiers obtenus portent le nom de l'effet en fin de nom (« _grayscale »…).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/fileconverter</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="ce-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="ce-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11a7.5 7.5 0 0113.3-4.2L20 9"/><path d="M20 4v5h-5"/><path d="M19.5 13a7.5 7.5 0 01-13.3 4.2L4 15"/><path d="M4 20v-5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Convertisseur de fichiers</div><div class="ot-desc">Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF</div></div></div>
+        <div class="cv">
+          <div class="seg"><span>Convertir</span><span>Redimensionner</span><span class="actif">Effets</span><span>Images → PDF</span><span>PDF → Word</span><span>Word → PDF</span></div>
+          <div class="img-c"><span class="vgi c"></span><span><span class="nom">feuille-erable.png</span><br><span class="muet">3000 x 4000 · 6,2 Mo</span></span><span class="x">x</span></div>
+          <div class="ot-carte" style="padding:10px;display:flex;flex-direction:column;gap:9px">
+            <div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Filtre</div><div class="fmt-b"><span data-on="0">Aucun</span><span id="ce-nb" data-on="1-4">Noir &amp; Blanc</span><span>Sepia</span><span>Inverser</span><span>Contraste+</span><span>Flou</span></div></div>
+            <div class="ligne" style="gap:16px"><div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Rotation</div><div class="fmt-b"><span data-on="1">Normal</span><span id="ce-90" data-on="2-4">90°</span><span>180°</span><span>270°</span></div></div><div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Miroir</div><div class="fmt-b"><span>Horizontal</span><span>Vertical</span></div></div></div>
+            <div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Filigrane (watermark)</div><div class="ot-in ot-in--p" id="ce-fil" data-on="3"><span class="ph" data-to="2">Ex: BROUILLON, NE PAS DIFFUSER...</span><span data-type="NE PAS DIFFUSER" data-type-at="3"></span></div>
+              <div class="qual repli glisse-haut" data-from="3" style="margin-top:7px"><span>Opacite : <b>15%</b></span><div class="curseur-q"><b style="width:22%"></b><i style="left:22%"></i></div></div></div>
+          </div>
+          <span class="ot-b" id="ce-go" data-on="4" style="height:38px">Appliquer (1 image)</span>
+          <div class="res glisse-haut repli" data-from="4"><span class="res__t">Conversion terminee !</span><div class="res__l"><span class="vgi c nb" style="position:relative;width:30px;height:40px;transform:rotate(0)"><span class="filig">NE PAS DIFFUSER</span></span><span><span class="nom">feuille-erable_grayscale.jpg</span><br><span class="muet">4000 x 3000 · 1,2 Mo</span> <span class="ecart v">-81%</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div></div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ images → PDF -->
+    <section class="fiche" id="conv-images-pdf">
+      <div class="fiche__texte">
+        <h2>Convertisseur : assembler des images en PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Convertisseur de fichiers › Images → PDF</span></p>
+        <p class="fiche__but">Rassembler des photos (pages photographiées, documents, copies) en un seul PDF A4, une image par page.</p>
+        <ol class="etapes">
+          <li data-cursor="#ci-liste">Déposer les images dans l'ordre voulu : l'ordre de la liste est l'ordre des pages.</li>
+          <li data-cursor="#ci-pay" data-action="click"><b>Orientation</b> : Portrait ou Paysage ; <b>Ajustement</b> : Ajuster (contenir), Remplir (rogner) ou Etirer.</li>
+          <li data-cursor="#ci-marge" data-action="click"><b>Marge</b> : de 0 à 30 mm (10 mm au départ).</li>
+          <li data-cursor="#ci-go" data-action="click">Cliquer <span class="btn-nom">Assembler en PDF (3 images)</span> : un seul fichier, « images_3p.pdf ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>On ne peut pas réordonner les images après les avoir déposées : il faut les retirer et les redéposer dans le bon ordre.</li>
+            <li>« Etirer » déforme les images. Ce mode n'a ni format de sortie ni qualité à régler.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/fileconverter</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="ci-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="ci-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11a7.5 7.5 0 0113.3-4.2L20 9"/><path d="M20 4v5h-5"/><path d="M19.5 13a7.5 7.5 0 01-13.3 4.2L4 15"/><path d="M4 20v-5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Convertisseur de fichiers</div><div class="ot-desc">Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF</div></div></div>
+        <div class="cv">
+          <div class="seg"><span>Convertir</span><span>Redimensionner</span><span>Effets</span><span class="actif">Images → PDF</span><span>PDF → Word</span><span>Word → PDF</span></div>
+          <div class="col zone-on" id="ci-liste" data-on="1" style="gap:5px;padding:2px">
+            <div class="ligne"><b style="font-size:12px">3 image(s)</b><span class="esp"></span><span class="muet">Tout retirer</span></div>
+            <div class="img-c"><span class="vgi a"></span><span><span class="nom">page-1.jpg</span><br><span class="muet">3024 x 4032 · 3,1 Mo</span></span><span class="x">x</span></div>
+            <div class="img-c"><span class="vgi b"></span><span><span class="nom">page-2.jpg</span><br><span class="muet">3024 x 4032 · 2,9 Mo</span></span><span class="x">x</span></div>
+            <div class="img-c"><span class="vgi c"></span><span><span class="nom">page-3.jpg</span><br><span class="muet">3024 x 4032 · 3,3 Mo</span></span><span class="x">x</span></div>
+          </div>
+          <div class="ot-carte" style="padding:10px;display:flex;flex-direction:column;gap:9px">
+            <div class="ligne" style="gap:16px"><div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Orientation</div><div class="fmt-b"><span class="actif" id="ci-por" data-on="1">Portrait</span><span id="ci-pay">Paysage</span></div></div><div><div style="font-size:11.5px;font-weight:600;margin-bottom:5px">Ajustement</div><div class="fmt-b"><span class="actif">Ajuster (contenir)</span><span>Remplir (rogner)</span><span>Etirer</span></div></div></div>
+            <div class="qual" id="ci-marge" data-on="3"><span>Marge : <b><span data-to="2">10</span><span data-from="3">15</span> mm</b></span><div class="curseur-q"><b data-to="2" style="width:33%"></b><b data-from="3" style="width:50%"></b><i data-to="2" style="left:33%"></i><i data-from="3" style="left:50%"></i></div></div>
+          </div>
+          <span class="ot-b" id="ci-go" data-on="4" style="height:38px">Assembler en PDF (3 images)</span>
+          <div class="res glisse-haut repli" data-from="4"><span class="res__t">Conversion terminee !</span><div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">images_3p.pdf</span><br><span class="muet">3 pages · 8,7 Mo</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div></div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ PDF ↔ Word -->
+    <section class="fiche" id="conv-word">
+      <div class="fiche__texte">
+        <h2>Convertisseur : PDF vers Word, Word vers PDF</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Convertisseur de fichiers › PDF → Word · Word → PDF</span></p>
+        <p class="fiche__but">Récupérer le texte d'un PDF dans un fichier Word modifiable, ou obtenir le PDF d'une fiche Word sans avoir Word sous la main.</p>
+        <ol class="etapes">
+          <li data-cursor="#cw-m1" data-action="click">Mode <b>PDF → Word</b> : déposer un PDF (un seul à la fois), puis <span class="btn-nom">Convertir en Word (.docx)</span>.</li>
+          <li data-cursor="#cw-r1" data-duration="3200">Le fichier Word reprend le texte, page par page. <span class="btn-nom">Telecharger</span> l'enregistre.</li>
+          <li data-cursor="#cw-m2" data-action="click" data-duration="3400">Mode <b>Word → PDF</b> : déposer un fichier .docx, puis <span class="btn-nom">Convertir en PDF</span> ; le bouton suit les étapes (« Lecture du document Word… », « Capture de la page 2/3… »).</li>
+          <li data-cursor="#cw-r2"><span class="btn-nom">Telecharger</span> le PDF obtenu.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>PDF vers Word : seul le texte est repris, ligne par ligne, chaque page commençant par un titre « Page N ». Ni images, ni tableaux, ni mise en page. Un PDF scanné (une image sans texte) donne un Word presque vide.</li>
+            <li>Word vers PDF : seul le format .docx est accepté (ni .doc ni .odt) ; un autre fichier est ignoré sans message. Chaque page est reconstituée puis photographiée : le PDF ressemble au document, mais son texte n'est pas sélectionnable. Si cela échoue, l'outil refait une mise en page plus simple.</li>
+            <li>Les polices absentes de l'ordinateur sont remplacées : le rendu peut différer un peu de Word.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="classeur-virtuel-et-tp.html">Mes clouds, qui convertit aussi les documents en ligne</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/tools/fileconverter</div></div><div class="app"><aside class="app__side"><div class="app__marque"><b>GC</b>Gestion Classe</div><div class="side__it"><span class="ico"></span>Accueil</div><div class="side__it"><span class="ico"></span>Mes cours</div><div class="side__it"><span class="ico"></span>Classes</div><div class="side__it"><span class="ico"></span>Évaluations</div><div class="side__it is-actif"><span class="ico"></span>Plus</div><div class="side__it side__sous">Récompenses</div><div class="side__it side__sous">Académie</div><div class="side__it side__sous is-actif" id="cw-menu">Outils</div><div class="side__it side__sous">Pronote</div></aside><div class="app__main"><div class="app__corps"><div class="ot-tete"><span class="ot-retour" id="cw-retour">&larr;</span><span class="ot-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 11a7.5 7.5 0 0113.3-4.2L20 9"/><path d="M20 4v5h-5"/><path d="M19.5 13a7.5 7.5 0 01-13.3 4.2L4 15"/><path d="M4 20v-5h5"/></svg></span><div style="min-width:0"><div class="ot-titre">Convertisseur de fichiers</div><div class="ot-desc">Convertir images (PNG, JPG, WebP), assembler en PDF, convertir PDF en Word ou Word en PDF</div></div></div>
+        <div class="cv">
+          <div class="seg"><span>Convertir</span><span>Redimensionner</span><span>Effets</span><span>Images → PDF</span><span id="cw-m1" data-on="1-2">PDF → Word</span><span id="cw-m2" data-on="3-4">Word → PDF</span></div>
+          <div class="col repli" data-to="2" style="gap:9px">
+            <div class="fic"><span class="vg vg--pdf">PDF</span><span><span class="nom">cours-digestion.pdf</span><br><span class="muet">1,4 Mo</span></span><span class="esp"></span><span class="ot-g" style="color:var(--neg)">Retirer</span></div>
+            <span class="ot-b" style="height:38px">Convertir en Word (.docx)</span>
+            <div class="res glisse-haut repli" id="cw-r1" data-at="2"><span class="res__t">Conversion terminee !</span><div class="res__l"><span class="vg vg--doc">DOCX</span><span><span class="nom">cours-digestion.docx</span><br><span class="muet">38 Ko</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div></div>
+          </div>
+          <div class="col repli" data-from="3" style="gap:9px">
+            <div class="ot-zone" style="height:64px;padding:6px"><div>Glisser un fichier Word ici ou cliquer pour parcourir<br><span style="font-size:10.5px">.docx uniquement (conversion dans le navigateur, sans envoi)</span></div></div>
+            <div class="fic"><span class="vg vg--doc">DOCX</span><span><span class="nom">fiche-activite-3.docx</span><br><span class="muet">240 Ko</span></span><span class="esp"></span><span class="ot-g" style="color:var(--neg)">Retirer</span></div>
+            <span class="ot-b" style="height:38px"><span data-at="3" style="display:contents"><span class="chg"></span>Capture de la page 2/3…</span><span data-from="4">Convertir en PDF</span></span>
+            <div class="res glisse-haut repli" id="cw-r2" data-from="4"><span class="res__t">Conversion terminee !</span><div class="res__l"><span class="vg vg--pdf">PDF</span><span><span class="nom">fiche-activite-3.pdf</span><br><span class="muet">3 pages · 1,1 Mo</span></span><span class="esp"></span><span class="ot-b ot-b--vert ot-b--p">Telecharger</span></div></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div></div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

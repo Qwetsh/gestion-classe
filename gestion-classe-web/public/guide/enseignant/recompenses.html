@@ -1,0 +1,1469 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Récompenses — Guide Gestion Classe</title>
+<meta name="description" content="La carte à tampons des élèves sur le site : vue d'ensemble, tampon donné depuis l'ordinateur, carte détaillée et paliers, bonus de fin de carte, catégories et icônes, et ce que voient les élèves.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="80">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* Briques communes aux chapitres Récompenses, Académie et Pronote */
+.app__side { position: relative; }
+.side__compte { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); padding: 8px 6px 0; border-top: 1px solid var(--border); margin-top: 8px; }
+.side__compte .avatar { width: 24px; height: 24px; font-size: 10.5px; }
+.pn-encart { margin-top: auto; display: flex; align-items: flex-start; gap: 7px; background: var(--warn-soft); color: var(--warn); border-radius: 8px; padding: 8px 9px; font-size: 11.5px; line-height: 1.35; position: relative; transition: box-shadow .25s, opacity .35s; }
+.pn-encart u { cursor: pointer; }
+.pn-encart.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.pn-encart__i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 9px; font-weight: 700; display: grid; place-items: center; flex: none; margin-top: 1px; }
+.pn-encart__x { margin-left: auto; font-size: 14px; line-height: 1; opacity: .7; padding: 0 2px; border-radius: 4px; }
+.ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.ic--p { width: 13px; height: 13px; }
+.ic--g { width: 22px; height: 22px; }
+.modale__x { margin-left: auto; color: var(--text-dim); font-size: 18px; line-height: 1; font-weight: 400; }
+.modale__tl { display: flex; align-items: center; gap: 8px; }
+.modale__pied { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.modale__texte { font-size: 13px; color: var(--text-muted); margin: 0 0 12px; line-height: 1.45; white-space: pre-line; }
+.b--rouge { background: var(--neg); border-color: var(--neg); color: #fff; }
+.b--encre { background: #4338CA; border-color: #4338CA; }
+.toast { z-index: 760; }
+.toast--ok { background: var(--pos-soft); color: var(--pos); box-shadow: 0 6px 20px rgba(20,25,40,.12); border: 1px solid #CDE9D6; font-weight: 550; }
+.cl-ok { color: var(--pos); }
+.sel { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; white-space: nowrap; transition: all .25s; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; padding-left: 6px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.sw { display: inline-grid; }
+.sw > * { grid-area: 1 / 1; }
+.apres:not(.is-hidden) { transition-delay: 1.1s !important; }
+.avant.is-hidden { transition-delay: 1.1s !important; }
+.zone-on { border-radius: 8px; transition: box-shadow .25s, background .25s; }
+.zone-on.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.puls.is-on { animation: puls 1.1s ease-in-out infinite; }
+@keyframes puls { 50% { opacity: .55; } }
+.tourne { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--indigo-soft); border-top-color: var(--indigo); animation: tourne 0.9s linear infinite; }
+@keyframes tourne { to { transform: rotate(360deg); } }
+.natif { position: absolute; left: 50%; top: 18px; translate: -50% 0; width: 430px; background: #fff; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,.35); padding: 16px 18px 14px; z-index: 780; font-family: 'Segoe UI', system-ui, sans-serif; color: #1f1f1f; }
+.natif__o { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.natif__m { font-size: 13px; line-height: 1.45; margin-bottom: 14px; }
+.natif__b { display: flex; justify-content: flex-end; gap: 8px; }
+.natif__b span { padding: 6px 16px; border-radius: 16px; font-size: 12.5px; border: 1px solid #c7c7c7; background: #fff; }
+.natif__b span.ok { background: #0b57d0; border-color: #0b57d0; color: #fff; }
+.natif__b span.is-on { box-shadow: 0 0 0 3px rgba(11,87,208,.3); }
+
+/* Page Récompenses */
+.rw { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.rw-tete { display: flex; align-items: center; gap: 8px; padding: 14px 20px 12px; }
+.rw-tete h3 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.01em; }
+.rw-pb { display: inline-flex; align-items: center; gap: 5px; height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; color: var(--text-muted); background: #fff; transition: box-shadow .25s, background .25s; }
+.rw-pb.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.rw-pb--rouge { color: var(--neg); border-color: #F0BDBD; }
+.rw-corps { flex: 1; min-height: 0; display: flex; gap: 12px; padding: 0 20px 16px; }
+.rw-cl { width: 150px; flex: none; border: 1px solid var(--border); border-radius: 10px; padding: 8px; display: flex; flex-direction: column; gap: 2px; background: #fff; }
+.rw-cl--etroit { width: 50px; padding: 8px 5px; }
+.rw-cl__t { display: flex; align-items: center; font-size: 11px; font-weight: 700; color: var(--text-dim); padding: 2px 4px 6px 6px; }
+.rw-repl { margin-left: auto; width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-size: 12px; color: var(--text-muted); transition: all .25s; }
+.rw-repl.is-on { background: var(--indigo-soft); color: var(--indigo); }
+.rw-cl--etroit .rw-cl__t { padding: 2px 0 6px; justify-content: center; }
+.rw-cl--etroit .rw-repl { margin: 0; }
+.rw-cl__it { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 7px; font-size: 12.5px; font-weight: 500; transition: background .25s, color .25s; }
+.rw-cl__it .n { margin-left: auto; font-size: 11px; color: var(--text-dim); transition: color .25s; }
+.rw-cl__it.is-actif, .rw-cl__it.is-on { background: var(--indigo); color: #fff; }
+.rw-cl__it.is-actif .n, .rw-cl__it.is-on .n { color: rgba(255,255,255,.7); }
+.rw-cl__it.off.is-on { background: transparent; color: var(--text); }
+.rw-cl__it.off.is-on .n { color: var(--text-dim); }
+.rw-cl--etroit .rw-cl__it { justify-content: center; padding: 6px 0; font-size: 11.5px; }
+.rw-pan { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; background: #fff; position: relative; }
+.rw-pan__t { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; }
+.rw-tabw { padding: 12px; position: relative; }
+.rw-tab { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(20,25,40,.05); }
+.rw-tab th { background: var(--surface-3); text-align: left; font-weight: 500; color: var(--text-muted); padding: 8px 12px; font-size: 12px; }
+.rw-tab th.d { text-align: right; }
+.rw-tab td { padding: 6px 12px; border-top: 1px solid var(--border); height: 40px; transition: background .25s; }
+.rw-tab tr.is-on td { background: var(--surface-3); }
+.rw-nom { font-weight: 600; white-space: nowrap; transition: color .25s; }
+.rw-nom.is-on { color: #4338CA; text-decoration: underline; }
+.rw-cc { color: var(--text-muted); }
+.rw-prog { display: flex; align-items: center; gap: 8px; }
+.rw-barre { width: 110px; height: 8px; border-radius: 4px; background: var(--surface-3); position: relative; overflow: hidden; flex: none; }
+.rw-barre i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--a, 0%); background: var(--ca, #4338CA); border-radius: 4px; transition: width .8s ease, background .4s; }
+.rw-barre i.is-on { width: var(--b); background: var(--cb, #4338CA); }
+.rw-n { font-size: 11.5px; font-weight: 500; color: var(--text-muted); min-width: 30px; }
+.rw-att { font-size: 11.5px; font-weight: 500; color: var(--warn); white-space: nowrap; }
+.rw-act { display: flex; justify-content: flex-end; align-items: center; gap: 6px; }
+.rw-tb { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 9px; border-radius: 8px; font-size: 11.5px; font-weight: 500; border: 1px solid var(--border-strong); background: #fff; white-space: nowrap; transition: all .25s; }
+.rw-tb.is-on { background: var(--indigo-soft); border-color: var(--indigo); color: #4338CA; }
+.rw-tb--or { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.rw-tb--or.is-on { box-shadow: 0 0 0 2.5px var(--accent); background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.rw-dots { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); font-size: 15px; transition: background .25s; }
+.rw-dots.is-on { background: var(--surface-3); }
+.rw-menu { position: absolute; right: 14px; z-index: 30; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 4px; font-size: 12.5px; }
+.rw-menu div { padding: 6px 10px; border-radius: 5px; color: var(--neg); transition: background .25s; }
+.rw-menu div.is-on { background: var(--neg-soft); }
+.infob--haut { left: -40px; top: -30px; }
+.infob { position: absolute; z-index: 40; background: #18181B; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; box-shadow: var(--shadow); }
+.flou { filter: blur(1.5px); opacity: .6; }
+/* modale d'attribution */
+.rappel { font-size: 12.5px; color: var(--text-muted); margin-bottom: 10px; }
+.cg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cg__b { display: flex; align-items: center; gap: 9px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 10px; font-size: 12.5px; transition: all .25s; }
+.cg__b.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.cat-ic { width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 13%, #fff); color: var(--c); flex: none; }
+.cat-ic--g { width: 38px; height: 38px; border-radius: 9px; }
+.cg__pt { width: 11px; height: 11px; border-radius: 50%; background: var(--c); margin-left: auto; flex: none; }
+/* carte à tampons */
+.ct { position: relative; border-radius: 16px; padding: 14px; color: #fff; overflow: hidden; }
+.ct::before { content: ''; position: absolute; inset: 0; pointer-events: none; }
+.ct--bois { background: linear-gradient(135deg, #8B7355 0%, #6B4F36 30%, #A0826D 55%, #7C5B44 80%, #5C3D2E 100%); box-shadow: 0 4px 20px rgba(139,115,85,.35); }
+.ct--bois::before { background: repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 2px, transparent 2px 10px); }
+.ct--bronze { background: linear-gradient(135deg, #CD7F32 0%, #A0522D 30%, #DDA15E 55%, #B87333 80%, #8B4513 100%); box-shadow: 0 4px 20px rgba(205,127,50,.35); }
+.ct--bronze::before { background: radial-gradient(circle at 18% 22%, rgba(255,255,255,.2), transparent 40%), radial-gradient(circle at 82% 78%, rgba(255,220,180,.18), transparent 45%); }
+.ct--argent { background: linear-gradient(135deg, #C0C0C0 0%, #808080 30%, #E8E8E8 55%, #A9A9A9 80%, #696969 100%); box-shadow: 0 4px 20px rgba(128,128,128,.35); }
+.ct--argent::before { background: repeating-linear-gradient(45deg, rgba(255,255,255,.09) 0 6px, transparent 6px 14px); }
+.ct--or { background: linear-gradient(135deg, #FFD700 0%, #DAA520 25%, #FFF8DC 45%, #FFD700 60%, #B8860B 80%, #DAA520 100%); box-shadow: 0 4px 22px rgba(218,165,32,.45); }
+.ct--or::before { background: radial-gradient(circle at 25% 25%, rgba(255,255,255,.35), transparent 35%), radial-gradient(circle at 75% 70%, rgba(255,240,180,.3), transparent 40%); }
+.ct--or, .ct--argent { text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+.ct__h { position: relative; display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
+.ct__med { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,.22); border: 2px solid rgba(255,255,255,.6); flex: none; }
+.ct__num { font-size: 14px; font-weight: 700; }
+.ct__pal { font-size: 11.5px; color: rgba(255,255,255,.8); }
+.ct__pill { margin-left: auto; padding: 3px 11px; border-radius: 999px; background: rgba(255,255,255,.22); font-size: 12px; font-weight: 700; }
+.ct__barre { position: relative; height: 9px; border-radius: 6px; background: rgba(0,0,0,.2); overflow: hidden; margin-bottom: 12px; }
+.ct__barre i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--a, 0%); border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.55), rgba(255,255,255,.9)); transition: width 1.2s ease; }
+.ct__barre i.is-on { width: var(--b); }
+.ct__barre i.plein { background: linear-gradient(90deg, #6B8E23, #8FBC3B); }
+.ct__g { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.ct__c { aspect-ratio: 1; border-radius: 12px; border: 2px dashed rgba(255,255,255,.3); background: rgba(0,0,0,.15); position: relative; display: grid; place-items: center; }
+.ct__c::after { content: ''; width: 8px; height: 8px; transform: rotate(45deg); background: rgba(255,255,255,.3); border-radius: 1px; }
+.tp { position: absolute; inset: -2px; border-radius: 12px; border: 2px solid color-mix(in srgb, var(--c) 65%, #fff); background: color-mix(in srgb, var(--c) 55%, rgba(0,0,0,.1)); display: grid; place-items: center; z-index: 1; color: #fff; transition: opacity .35s, transform .45s cubic-bezier(.3,1.5,.5,1), box-shadow .25s; }
+.tp .ic { width: 24px; height: 24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
+.tp.is-hidden { transform: scale(.3); }
+.tp:not(.is-hidden) { transition-delay: var(--d, 0s); }
+.tp.is-on { transform: scale(1.1); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+.tp__x { position: absolute; top: -7px; right: -7px; width: 18px; height: 18px; border-radius: 50%; background: var(--neg); color: #fff; font-size: 11px; display: grid; place-items: center; box-shadow: 0 2px 4px rgba(0,0,0,.3); z-index: 3; }
+.dl__t { font-size: 11.5px; font-weight: 500; color: var(--text-muted); margin: 10px 0 3px; }
+.dl__l { display: flex; align-items: center; gap: 8px; padding: 3px 6px; border-radius: 7px; font-size: 12px; transition: background .25s; }
+.dl__l.is-on { background: var(--surface-3); }
+.dl__ic { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, #fff); color: var(--c); flex: none; }
+.dl__ic .ic { width: 13px; height: 13px; }
+.dl__d { margin-left: auto; color: var(--text-muted); font-size: 11.5px; }
+.term { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 4px; }
+.term__l { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 6px; border-radius: 7px; transition: box-shadow .25s; }
+.term__l.is-on { box-shadow: 0 0 0 2.5px var(--accent); }
+.term__m { width: 18px; height: 18px; border-radius: 50%; flex: none; }
+.term__b { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 2px 8px; border-radius: 6px; }
+.term__b--ok { background: var(--pos-soft); color: var(--pos); }
+.term__b--att { background: var(--warn-soft); color: var(--warn); }
+.b-plein { width: 100%; justify-content: center; margin-top: 10px; }
+.b--warn { background: var(--warn); border-color: var(--warn); color: #fff; }
+/* téléphones d'illustration */
+.mini-tel { position: absolute; right: 24px; bottom: 20px; width: 178px; height: 340px; border-radius: 28px; background: #0E0E12; padding: 7px; box-shadow: 0 18px 40px rgba(0,0,0,.35); z-index: 50; }
+.mini-tel__e { background: #F7F7F9; border-radius: 22px; height: 100%; padding: 14px 10px 10px; font-size: 11px; display: flex; flex-direction: column; gap: 7px; overflow: hidden; position: relative; }
+.mini-tel__t { font-size: 13px; font-weight: 700; }
+.mini-cat { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border-radius: 10px; background: #fff; border: 1px solid #EEEEF2; transition: all .25s; }
+.mini-cat .cat-ic { width: 24px; height: 24px; border-radius: 7px; }
+.mini-cat .cat-ic .ic { width: 14px; height: 14px; }
+.mini-cat.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.2); }
+.mini-ok { position: absolute; left: 10px; right: 10px; bottom: 12px; background: #18181B; color: #fff; border-radius: 10px; padding: 7px 9px; font-size: 10.5px; text-align: center; }
+.el-tel { position: absolute; right: 26px; top: 14px; width: 262px; height: 548px; border-radius: 34px; background: #0E0E12; padding: 8px; box-shadow: 0 18px 50px rgba(0,0,0,.35); z-index: 60; }
+.el-tel__e { background: #FBF8F3; border-radius: 27px; height: 100%; padding: 22px 14px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; position: relative; font-size: 11.5px; }
+.el-sur { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #8A7A66; font-weight: 600; }
+.el-titre { font-size: 18px; font-weight: 700; letter-spacing: -.01em; }
+.el-gros { display: flex; align-items: baseline; gap: 6px; }
+.el-gros b { font-size: 30px; line-height: 1; }
+.el-gros span { color: #6B6257; }
+.el-gros .r { margin-left: auto; font-size: 11px; color: #6B6257; }
+.el-g { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.el-c { aspect-ratio: 1; border-radius: 9px; border: 1.5px dashed #D9CFC2; display: grid; place-items: center; font-size: 10.5px; color: #B0A595; position: relative; }
+.el-c .tp { inset: -1.5px; border-radius: 9px; }
+.el-c .tp .ic { width: 16px; height: 16px; }
+.el-pied { font-size: 10.5px; color: #8A7A66; }
+.el-l { display: flex; align-items: center; gap: 7px; padding: 6px 8px; background: #fff; border-radius: 10px; border: 1px solid #EEE6DA; }
+.el-l .dl__ic { width: 20px; height: 20px; }
+.el-l small { margin-left: auto; color: #8A7A66; }
+.el-bonus { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: 10px; border: 1.5px solid #EEE6DA; background: #fff; transition: all .25s; }
+.el-bonus.is-on { border-color: var(--indigo); background: var(--indigo-soft); }
+.el-btn { height: 34px; border-radius: 10px; background: #4F46E5; color: #fff; display: grid; place-items: center; font-weight: 650; font-size: 12px; }
+.el-pill { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--pos-soft); color: var(--pos); font-size: 10.5px; font-weight: 650; }
+/* classes et plans (réglage par classe) */
+.cp { flex: 1; display: flex; gap: 14px; padding: 16px 18px; min-height: 0; }
+.cp-plan { flex: 1; border: 1px solid var(--border); border-radius: 8px; background-color: #fff; background-image: linear-gradient(rgba(20,25,40,.05) 1px, transparent 1px), linear-gradient(90deg, rgba(20,25,40,.05) 1px, transparent 1px); background-size: 40px 40px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 22px; align-content: start; }
+.cp-plan span { height: 40px; border-radius: 7px; background: #fff; border: 1.5px solid #D9C3A5; box-shadow: 0 1px 0 #C9A97F; display: grid; place-items: center; font-size: 11px; font-weight: 600; }
+.vis { width: 200px; flex: none; display: flex; flex-direction: column; gap: 8px; }
+.vis__bloc { border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: #fff; }
+.vis-t { display: flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-dim); padding: 4px; border-radius: 6px; transition: background .25s; }
+.vis-t.is-on { background: var(--surface-3); }
+.vis-l { display: flex; align-items: center; gap: 7px; padding: 5px; border-radius: 6px; font-size: 12px; transition: background .25s; }
+.vis-l i { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.vis-l .interrupteur { margin-left: auto; }
+.vis-l.is-on { background: var(--surface-3); }
+.int-or.is-on, .int-or.interrupteur--on { background: var(--warn); }
+.int-vert.interrupteur--on { background: var(--pos); }
+.vis-tous { font-size: 11px; color: var(--text-muted); padding: 3px 5px; border-radius: 5px; transition: background .25s; }
+.vis-tous.is-on { background: var(--indigo-soft); color: var(--indigo); }
+/* personnaliser */
+.pm { width: 650px; background: #fff; border-radius: 14px; box-shadow: var(--shadow-lg); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; position: relative; }
+.pm__t { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 650; }
+.pm__t .ic { color: var(--indigo); }
+.seg { display: flex; gap: 3px; background: var(--surface-3); padding: 3px; border-radius: 10px; }
+.seg span { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 8px; border-radius: 8px; font-size: 12.5px; color: var(--text-muted); transition: all .25s; }
+.seg span .ic { width: 14px; height: 14px; }
+.seg span.is-actif, .seg span.is-on { background: #fff; color: var(--text); box-shadow: 0 1px 2px rgba(20,25,40,.12); }
+.seg span.is-actif .ic, .seg span.is-on .ic { color: var(--indigo); }
+.seg .cpt { font-size: 10.5px; font-weight: 650; padding: 0 6px; border-radius: 999px; background: #fff; color: var(--text-dim); }
+.seg span.is-actif .cpt, .seg span.is-on .cpt { background: var(--indigo-soft); color: var(--indigo); }
+.seg span.off.is-on { background: transparent; box-shadow: none; color: var(--text-muted); }
+.pm__intro { font-size: 12px; color: var(--text-muted); line-height: 1.45; margin: 0; }
+.pm__bar { display: flex; align-items: center; gap: 8px; }
+.pm__rz { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-muted); padding: 5px 9px; border-radius: 9px; transition: background .25s; }
+.pm__rz.is-on { background: var(--surface-3); }
+.pr { display: flex; flex-direction: column; gap: 6px; position: relative; }
+.pr__l { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 12px; background: #fff; transition: transform .5s ease, background .3s, border-color .3s; height: 50px; position: relative; }
+.pr__fl { display: flex; flex-direction: column; font-size: 8.5px; color: var(--text-muted); line-height: 1.15; width: 12px; text-align: center; }
+.pr__fl .is-on { color: var(--indigo); font-weight: 700; }
+.pr__fl .gr { opacity: .25; }
+.pr__tx { min-width: 0; }
+.pr__tx b { display: block; font-size: 12.5px; font-weight: 600; transition: color .3s; }
+.pr__tx small { font-size: 11px; color: var(--text-dim); }
+.pr__l .interrupteur { margin-left: auto; }
+.pr__num { width: 24px; height: 24px; border-radius: 7px; background: var(--indigo-soft); color: var(--indigo); font-size: 11px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.ibtn { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); transition: all .25s; flex: none; }
+.ibtn .ic { width: 15px; height: 15px; }
+.ibtn.is-on { background: var(--surface-3); color: var(--text); }
+.ibtn--r.is-on { background: var(--neg-soft); color: var(--neg); }
+.pr__l.ko.is-on, .pr__l.ko-fixe { border-style: dashed; background: var(--surface-3); }
+.pr__l.ko.is-on .cat-ic, .pr__l.ko-fixe .cat-ic { filter: grayscale(1); opacity: .5; }
+.pr__l.ko.is-on .pr__tx b, .pr__l.ko-fixe .pr__tx b { color: var(--text-dim); }
+.pr__l.ko.is-on .interrupteur::after { left: 2px; }
+.pr__l.ko.is-on .interrupteur { background: var(--border-strong); }
+.pr__l.mh.is-on { transform: translateY(56px); }
+.pr__l.mb.is-on { transform: translateY(-56px); }
+.nc { width: 520px; background: #fff; border-radius: 14px; box-shadow: var(--shadow-lg); padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+.nc__et { font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 4px; }
+.nc__ch { height: 34px; border: 1px solid var(--border-strong); border-radius: 8px; padding: 0 11px; font-size: 13px; display: flex; align-items: center; transition: all .25s; }
+.nc__ch.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.nc__ch .ph { color: var(--text-dim); }
+.pal { display: flex; gap: 7px; flex-wrap: wrap; }
+.pal i { width: 26px; height: 26px; border-radius: 50%; background: var(--c); border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border); transition: box-shadow .25s; }
+.pal i.is-on, .pal i.choisi { box-shadow: 0 0 0 2px var(--text); }
+.pal i.plus { background: #fff; border: 1px dashed var(--border-strong); box-shadow: none; display: grid; place-items: center; font-style: normal; font-size: 13px; color: var(--text-muted); }
+.ip { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.ip__o { display: flex; background: var(--surface-3); }
+.ip__o span { padding: 7px 14px; font-size: 12px; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all .25s; }
+.ip__o span.is-actif, .ip__o span.is-on { color: var(--indigo); border-bottom-color: var(--indigo); background: #fff; font-weight: 550; }
+.ip__o span.off.is-on { color: var(--text-muted); border-bottom-color: transparent; background: transparent; font-weight: 400; }
+.ip__c { padding: 9px 10px; position: relative; min-height: 132px; }
+.ip__r { height: 30px; border: 1px solid var(--border-strong); border-radius: 7px; display: flex; align-items: center; gap: 6px; padding: 0 9px; font-size: 12px; margin-bottom: 8px; transition: all .25s; }
+.ip__r.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.ip__r .ph { color: var(--text-dim); }
+.ip__th { font-size: 9.5px; font-weight: 650; letter-spacing: .07em; text-transform: uppercase; color: var(--text-dim); margin: 2px 0 4px; }
+.ip__g { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.ip__g span { aspect-ratio: 1; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); transition: all .25s; }
+.ip__g span .ic { width: 17px; height: 17px; }
+.ip__g span.is-on, .ip__g span.choisi { background: color-mix(in srgb, var(--c, #00BCD4) 16%, #fff); box-shadow: inset 0 0 0 2px var(--c, #00BCD4); color: var(--c, #00BCD4); }
+.ip__em { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; }
+.ip__em i { aspect-ratio: 1; border-radius: 50%; background: var(--c); opacity: .75; transform: scale(.62); }
+.ip__dep { border: 2px dashed var(--border-strong); border-radius: 10px; padding: 14px; text-align: center; color: var(--text-muted); font-size: 12px; transition: border-color .25s; }
+.ip__dep.is-on { border-color: var(--indigo); }
+.ip__dep b { display: block; color: var(--text); font-size: 13px; margin: 4px 0; }
+.ip__pied { display: flex; align-items: center; gap: 9px; background: var(--surface-3); padding: 7px 10px; font-size: 11.5px; color: var(--text-muted); }
+.ip__pied .cat-ic { width: 30px; height: 30px; }
+.ip__img { width: 20px; height: 20px; border-radius: 5px; background: linear-gradient(135deg, #00BCD4, #4F46E5); position: relative; }
+.ip__img::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: 4px; height: 6px; background: rgba(255,255,255,.7); border-radius: 3px 3px 1px 1px; }
+.err { font-size: 11.5px; color: var(--neg); margin-top: 4px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-etoile" viewBox="0 0 24 24"><path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/></symbol>
+  <symbol id="i-coeur" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 017-2.6A4 4 0 0119 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-bulle" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+  <symbol id="i-crayon" viewBox="0 0 24 24"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></symbol>
+  <symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10.5c.8.8 1 1.5 1 2.5h6c0-1 .2-1.7 1-2.5A6 6 0 0012 3z"/></symbol>
+  <symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M7.5 15h9"/></symbol>
+  <symbol id="i-groupe" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M16 5a3 3 0 010 6M21 20c0-2.6-1.7-4.8-4-5.6"/></symbol>
+  <symbol id="i-livre" viewBox="0 0 24 24"><path d="M3 5h6a3 3 0 013 3v12a2 2 0 00-2-2H3z"/><path d="M21 5h-6a3 3 0 00-3 3v12a2 2 0 012-2h7z"/></symbol>
+  <symbol id="i-feuille" viewBox="0 0 24 24"><path d="M5 20c0-9 5-15 15-15 0 10-5 15-14 15"/><path d="M5 20l8-8"/></symbol>
+  <symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></symbol>
+  <symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M5 12v8h14v-8M12 8v12M12 8C10 4 6 4 6.5 7 7 8 12 8 12 8zM12 8c2-4 6-4 5.5-1-.5 1-5.5 1-5.5 1z"/></symbol>
+  <symbol id="i-sablier" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3v3l4 6 4-6V3M8 21v-3l4-6 4 6v3"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-reglages" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+  <symbol id="i-corbeille" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+  <symbol id="i-tampon" viewBox="0 0 24 24"><path d="M9 3h6v5l3 4H6l3-4z"/><path d="M5 15h14v3H5zM7 21h10"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+  <symbol id="i-lien" viewBox="0 0 24 24"><path d="M10 14a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1-1"/></symbol>
+  <symbol id="i-calendrier" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-copier" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/></symbol>
+  <symbol id="i-fichier" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h7"/></symbol>
+</svg>
+
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Récompenses</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#rc-ouvrir">Ouvrir les récompenses</a></li>
+      <li><a href="#rc-vue">Lire la vue d'ensemble</a></li>
+      <li><a href="#rc-attribuer">Donner un tampon</a></li>
+      <li><a href="#rc-carte">La carte d'un élève</a></li>
+      <li><a href="#rc-paliers">Une carte qui se remplit</a></li>
+      <li><a href="#rc-bonus">Choisir le bonus</a></li>
+      <li><a href="#rc-reinit">Remettre à zéro</a></li>
+      <li><a href="#rc-direct">Mise à jour en direct</a></li>
+      <li><a href="#rc-eleves">Ce que voient les élèves</a></li>
+      <li><a href="#rc-categories">Les catégories de tampons</a></li>
+      <li><a href="#rc-nouvelle">Créer une catégorie</a></li>
+      <li><a href="#rc-icones">Choisir l'icône</a></li>
+      <li><a href="#rc-depart">Liste de départ, repartir de zéro</a></li>
+      <li><a href="#rc-bonus-liste">Les bonus de fin de carte</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/activite-en-direct.html">◀ L&#x27;activité en direct</a><a href="../enseignant/academie.html">Académie ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Plus</div>
+      <h1>Récompenses</h1>
+      <p>Chaque élève a une carte à tampons. Un tampon récompense un comportement, dix tampons remplissent la carte, et une carte pleine donne droit à un bonus choisi dans la liste de l'enseignant. En classe, les tampons se donnent sur le téléphone ; le site sert à voir où en est chacun, rattraper un oubli, corriger une erreur et composer ses propres motifs et bonus.</p>
+      <div class="chap__resume"><span>Menu Plus › Récompenses</span><span>Ordinateur</span><span>Aussi sur le téléphone et dans l'espace élève</span><span>14 fiches</span></div>
+    </header>
+
+    <!-- ============================================================ 1. ouvrir -->
+    <section class="fiche" id="rc-ouvrir">
+      <div class="fiche__texte">
+        <h2>Ouvrir les récompenses</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Plus › Récompenses</span></p>
+        <p class="fiche__but">La page rassemble les cartes à tampons de tous les élèves de toutes ses classes, avec un filtre par classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#ro-menu" data-action="click">Dans le menu, ouvrir <b>Plus</b> puis <span class="btn-nom">Récompenses</span>.</li>
+          <li data-cursor="#ro-toutes" data-duration="3200">La colonne <b>Classes</b> commence sur <b>Toutes</b> : chaque ligne porte le nombre d'élèves, et le tableau montre tout le monde avec sa classe.</li>
+          <li data-cursor="#ro-4b" data-action="click" data-duration="3400">Cliquer une classe filtre le tableau. La colonne <b>Classe</b> disparaît, puisqu'elle répéterait partout la même valeur.</li>
+          <li data-cursor="#ro-replier" data-action="click" data-duration="3400">Le bouton « replie la colonne en bande étroite : il ne reste que les deux premiers caractères de chaque classe. » la rouvre.</li>
+          <li data-cursor="#ro-perso" data-duration="3200">En haut à droite : <span class="btn-nom">Personnaliser</span> (motifs et bonus) et <span class="btn-nom">Reinitialiser les cartes</span>, en rouge.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Au premier passage, si le compte n'a encore ni catégorie ni bonus, l'application crée une liste de départ (voir <a href="#rc-depart">Liste de départ</a>).</li>
+            <li>Chaque enseignant a ses propres catégories, bonus et cartes : un collègue ne voit pas les vôtres.</li>
+            <li>Les élèves apparaissent sous leur pseudonyme (prénom et deux lettres). Rien de cette page n'est projeté en classe.</li>
+            <li>Au quotidien, les tampons se donnent en séance sur le téléphone (double appui sur l'élève, puis le motif) ; la page sert surtout à suivre et à corriger.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/pendant-la-seance.html#tampons">Donner un tampon en séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous" id="ro-menu" data-on="1-5">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb" id="ro-perso" data-on="5"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge" data-on="5">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl repli" data-to="3">
+              <div class="rw-cl__t">Classes<span class="rw-repl" id="ro-replier" data-on="4">«</span></div>
+              <div class="rw-cl__it is-actif off" id="ro-toutes" data-on="3">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it" id="ro-4b" data-on="3">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-cl rw-cl--etroit repli" data-from="4">
+              <div class="rw-cl__t"><span class="rw-repl is-on">»</span></div>
+              <div class="rw-cl__it">All</div>
+              <div class="rw-cl__it">3A</div>
+              <div class="rw-cl__it">3B</div>
+              <div class="rw-cl__it is-actif">4B</div>
+            </div>
+            <div class="rw-pan">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab repli" data-to="2">
+                  <tr><th>Élève</th><th>Classe</th><th>Progression</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td class="rw-cc">4B</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Chloé VA</td><td class="rw-cc">3A</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:60%"></i></span><span class="rw-n">6/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Enzo BR</td><td class="rw-cc">3B</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:20%"></i></span><span class="rw-n">2/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Iris TA</td><td class="rw-cc">4B</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:70%"></i></span><span class="rw-n">7/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Jade LU</td><td class="rw-cc">3A</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:30%"></i></span><span class="rw-n">3/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Malo RI</td><td class="rw-cc">3B</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:0%"></i></span><span class="rw-n"></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td class="rw-cc">4B</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%"></i></span><span class="rw-n">9/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Rose VI</td><td class="rw-cc">3A</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:50%"></i></span><span class="rw-n">5/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+                <table class="rw-tab repli" data-from="3">
+                  <tr><th>Élève</th><th>Progression</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Hugo PE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:10%"></i></span><span class="rw-n">1/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Iris TA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:70%"></i></span><span class="rw-n">7/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:0%"></i></span><span class="rw-n"></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%"></i></span><span class="rw-n">9/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Tom SA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:20%"></i></span><span class="rw-n">2/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Zoé FA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:50%"></i></span><span class="rw-n">5/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 2. vue d'ensemble -->
+    <section class="fiche" id="rc-vue">
+      <div class="fiche__texte">
+        <h2>Lire la vue d'ensemble</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Récompenses › Vue d'ensemble</span></p>
+        <p class="fiche__but">Une ligne par élève, par ordre alphabétique : la carte en cours, son nombre de tampons et ce qu'il reste à faire.</p>
+        <ol class="etapes">
+          <li data-cursor="#rv-p1" data-duration="3200">La barre montre la carte en cours ; <b>n/10</b> s'affiche dès le premier tampon. Une carte vide n'affiche rien, pas de « 0/10 ».</li>
+          <li data-cursor="#rv-p2" data-duration="3400">Carte pleine : la barre passe au vert et la colonne <b>Bonus</b>, qui n'apparaît que dans ce cas, indique <b>En attente de choix</b>.</li>
+          <li data-cursor="#rv-a2" data-duration="3400">Les boutons suivent l'état : <span class="btn-nom">Tampon</span> tant que la carte n'est pas pleine, <span class="btn-nom">Choisir le bonus</span> quand elle l'est.</li>
+          <li data-cursor="#rv-dots" data-action="click">Le menu <b>⋯</b> d'une ligne ne contient qu'une action, rare et destructrice : <span class="btn-nom">Réinitialiser la carte</span>.</li>
+          <li data-cursor="#rv-iris" data-duration="3200">Survoler le pseudo affiche le numéro de la carte ; un clic ouvre la carte détaillée.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La carte montrée est d'abord une carte pleine dont le bonus n'est pas choisi (elle demande une action), sinon la carte en cours. Un élève qui n'a encore rien reçu apparaît en carte n°1, barre vide.</li>
+            <li>Les cartes terminées dont le bonus est choisi quittent ce tableau : on les retrouve dans la carte détaillée.</li>
+            <li>Le message « Sélectionnez une classe pour commencer » s'affiche quand il n'y a aucun élève à montrer, y compris si l'on n'a encore créé aucun élève.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#rc-carte">La carte d'un élève</a> · <a href="#rc-bonus">Choisir le bonus</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl">
+              <div class="rw-cl__t">Classes<span class="rw-repl">«</span></div>
+              <div class="rw-cl__it">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it is-actif">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-pan">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab">
+                  <tr><th>Élève</th><th>Progression</th><th>Bonus</th><th class="d">Actions</th></tr>
+                  <tr data-on="1"><td class="rw-nom">Adam KE</td><td><div class="rw-prog" id="rv-p1"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td></td><td><div class="rw-act"><span class="rw-tb" data-on="3"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Hugo PE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:0%"></i></span><span class="rw-n"></span></div></td><td></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="2-3"><td class="rw-nom">Inès DU</td><td><div class="rw-prog" id="rv-p2"><span class="rw-barre"><i style="--a:100%;--ca:var(--pos)"></i></span><span class="rw-n">10/10</span></div></td><td><span class="rw-att">En attente de choix</span></td><td><div class="rw-act" id="rv-a2"><span class="rw-tb rw-tb--or" data-on="3"><svg class="ic ic--p"><use href="#i-cadeau"/></svg>Choisir le bonus</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="5"><td><span class="rw-nom" id="rv-iris" data-on="5">Iris TA</span></td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:70%"></i></span><span class="rw-n">7/10</span></div></td><td></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:30%"></i></span><span class="rw-n">3/10</span></div></td><td></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%"></i></span><span class="rw-n">9/10</span></div></td><td></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="4"><td class="rw-nom">Tom SA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:20%"></i></span><span class="rw-n">2/10</span></div></td><td></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots" id="rv-dots" data-on="4">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Zoé FA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:50%"></i></span><span class="rw-n">5/10</span></div></td><td></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+                <div class="rw-menu zoom apres" data-at="4" style="top:330px"><div class="is-on">Réinitialiser la carte</div></div>
+                <div class="infob apres" data-at="5" style="left:30px;top:206px">Carte n°2 — ouvrir</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 3. attribuer -->
+    <section class="fiche" id="rc-attribuer">
+      <div class="fiche__texte">
+        <h2>Donner un tampon depuis l'ordinateur</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Récompenses › Tampon</span></p>
+        <p class="fiche__but">Pour rattraper un oubli de la séance : un clic sur le bouton de l'élève, un clic sur le motif, et le tampon est posé.</p>
+        <ol class="etapes">
+          <li data-cursor="#ra-t1" data-action="click">Sur la ligne de l'élève, cliquer <span class="btn-nom">+ Tampon</span>.</li>
+          <li data-cursor="#ra-rappel" data-duration="3200">La fenêtre <b>Attribuer un tampon — Iris TA</b> rappelle la carte en cours (« Carte n°2 — 7/10 ») et propose les catégories actives.</li>
+          <li data-cursor="#ra-cat1" data-action="click" data-duration="3400">Cliquer le motif : la fenêtre se ferme, la barre avance et un message confirme « Tampon attribué : 8/10 ».</li>
+          <li data-cursor="#ra-t2" data-action="click">Même geste pour un élève à 9 tampons…</li>
+          <li data-cursor="#ra-cat2" data-action="click" data-duration="3800">… le dixième remplit la carte : barre verte, message « Carte complète pour Noé MA ! L'élève peut choisir son bonus. », et le bouton devient <span class="btn-nom">Choisir le bonus</span>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Aucune confirmation : un clic, un tampon. Pour annuler, retirer le tampon depuis la carte détaillée.</li>
+            <li>Seules les catégories actives sont proposées, dans l'ordre choisi dans <b>Personnaliser</b>.</li>
+            <li>Le tampon prend la première case libre de la carte en cours. Deux tampons donnés au même instant pour le même élève (téléphone et ordinateur) ne se marchent pas dessus.</li>
+            <li>C'est le même geste qu'en séance sur le téléphone ; les deux arrivent sur la même carte.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#rc-carte">Retirer un tampon</a> · <a href="../telephone/pendant-la-seance.html#tampons">Tampons en séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl">
+              <div class="rw-cl__t">Classes<span class="rw-repl">«</span></div>
+              <div class="rw-cl__it">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it is-actif">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-pan">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab">
+                  <tr><th>Élève</th><th>Progression</th><th class="repli apres" data-from="5">Bonus</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td class="repli apres" data-from="5"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Hugo PE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:10%"></i></span><span class="rw-n">1/10</span></div></td><td class="repli apres" data-from="5"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="1-3"><td class="rw-nom">Iris TA</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:70%;--b:80%" data-on="3-5"></i></span><span class="rw-n sw"><span class="avant" data-to="2">7/10</span><span class="apres" data-from="3">8/10</span></span></div></td><td class="repli apres" data-from="5"></td><td><div class="rw-act"><span class="rw-tb" id="ra-t1" data-on="1"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:30%"></i></span><span class="rw-n">3/10</span></div></td><td class="repli apres" data-from="5"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="4-5"><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%;--b:100%;--cb:var(--pos)" data-on="5"></i></span><span class="rw-n sw"><span class="avant" data-to="4">9/10</span><span class="apres" data-from="5">10/10</span></span></div></td><td class="repli apres" data-from="5"><span class="rw-att">En attente de choix</span></td><td><div class="rw-act"><span class="sw" style="justify-items:end"><span class="rw-tb avant" id="ra-t2" data-on="4" data-to="4"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-tb rw-tb--or apres" data-from="5"><svg class="ic ic--p"><use href="#i-cadeau"/></svg>Choisir le bonus</span></span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Tom SA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:20%"></i></span><span class="rw-n">2/10</span></div></td><td class="repli apres" data-from="5"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Zoé FA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:50%"></i></span><span class="rw-n">5/10</span></div></td><td class="repli apres" data-from="5"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="toast toast--ok apres" data-at="3">Tampon attribué : 8/10</div>
+          <div class="toast toast--ok apres" data-at="5">Carte complète pour Noé MA ! L'élève peut choisir son bonus.</div>
+        </div>
+        <div class="modale-fond apres avant" data-from="1" data-to="2">
+          <div class="modale" style="width:540px">
+            <div class="modale__t modale__tl">Attribuer un tampon — Iris TA<span class="modale__x">×</span></div>
+            <div class="rappel" id="ra-rappel">Carte n°2 — 7/10</div>
+            <div class="cg">
+              <div class="cg__b" id="ra-cat1" data-on="3" style="--c:#FF9800"><span class="cat-ic"><svg class="ic"><use href="#i-etoile"/></svg></span>Participation remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#4CAF50"><span class="cat-ic"><svg class="ic"><use href="#i-coeur"/></svg></span>Aider/Encourager un camarade<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#F44336"><span class="cat-ic"><svg class="ic"><use href="#i-bulle"/></svg></span>Oral remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#3F51B5"><span class="cat-ic"><svg class="ic"><use href="#i-crayon"/></svg></span>Écriture remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#E91E63"><span class="cat-ic"><svg class="ic"><use href="#i-ampoule"/></svg></span>Créativité remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#2196F3"><span class="cat-ic"><svg class="ic"><use href="#i-fiole"/></svg></span>Utilisation d'outils<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#1565C0"><span class="cat-ic"><svg class="ic"><use href="#i-groupe"/></svg></span>Travail de groupe remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#FF6F00"><span class="cat-ic"><svg class="ic"><use href="#i-feuille"/></svg></span>Autonomie<span class="cg__pt"></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modale-fond apres avant" data-at="4">
+          <div class="modale" style="width:540px">
+            <div class="modale__t modale__tl">Attribuer un tampon — Noé MA<span class="modale__x">×</span></div>
+            <div class="rappel">Carte n°1 — 9/10</div>
+            <div class="cg">
+              <div class="cg__b" style="--c:#FF9800"><span class="cat-ic"><svg class="ic"><use href="#i-etoile"/></svg></span>Participation remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#4CAF50"><span class="cat-ic"><svg class="ic"><use href="#i-coeur"/></svg></span>Aider/Encourager un camarade<span class="cg__pt"></span></div>
+              <div class="cg__b" id="ra-cat2" data-on="5" style="--c:#F44336"><span class="cat-ic"><svg class="ic"><use href="#i-bulle"/></svg></span>Oral remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#3F51B5"><span class="cat-ic"><svg class="ic"><use href="#i-crayon"/></svg></span>Écriture remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#E91E63"><span class="cat-ic"><svg class="ic"><use href="#i-ampoule"/></svg></span>Créativité remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#2196F3"><span class="cat-ic"><svg class="ic"><use href="#i-fiole"/></svg></span>Utilisation d'outils<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#1565C0"><span class="cat-ic"><svg class="ic"><use href="#i-groupe"/></svg></span>Travail de groupe remarquable<span class="cg__pt"></span></div>
+              <div class="cg__b" style="--c:#FF6F00"><span class="cat-ic"><svg class="ic"><use href="#i-feuille"/></svg></span>Autonomie<span class="cg__pt"></span></div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 4. carte détaillée -->
+    <section class="fiche" id="rc-carte">
+      <div class="fiche__texte">
+        <h2>La carte d'un élève</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Récompenses › clic sur le pseudo</span></p>
+        <p class="fiche__but">La carte en cours case par case, avec la catégorie et la date de chaque tampon, de quoi retirer un tampon donné par erreur, et l'historique des cartes terminées.</p>
+        <ol class="etapes">
+          <li data-cursor="#rk-nom" data-action="click">Cliquer le pseudo de l'élève dans le tableau.</li>
+          <li data-cursor="#rk-carte" data-duration="3400">La fenêtre <b>Iris TA — Carte à tampons</b> montre la carte : palier, numéro, <b>7/10</b>, barre et dix cases. Chaque tampon porte l'icône et la couleur de sa catégorie.</li>
+          <li data-cursor="#rk-t7" data-duration="3200">Survoler une case : la catégorie et la date s'affichent, avec une petite croix rouge.</li>
+          <li data-cursor="#rk-x" data-action="click">Cliquer la croix : la fenêtre <b>Retirer le tampon</b> demande « Retirer ce tampon ? ».</li>
+          <li data-cursor="#rk-ok" data-action="click" data-duration="3400"><span class="btn-nom">Retirer</span> : la case se libère, la carte repasse à 6/10 et le message « Tampon retiré » s'affiche.</li>
+          <li data-cursor="#rk-term" data-duration="3400">Plus bas, <b>Cartes terminées</b> : chaque carte finie et son bonus, avec une coche s'il a été accordé, un sablier sinon.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Retirer un tampon le supprime définitivement ; la case libérée sera reprise par le prochain tampon.</li>
+            <li>La liste <b>Détails des tampons</b> permet aussi de retirer un tampon : le bouton <b>Retirer</b> apparaît au survol de la ligne.</li>
+            <li><span class="btn-nom">+ Attribuer un tampon</span>, en bas (si la carte n'est pas pleine), ferme la carte et ouvre l'attribution.</li>
+            <li>L'historique ne montre que les cartes terminées dont un bonus a été choisi. La même carte figure sur la fiche de l'élève.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#rc-paliers">Les paliers</a> · <a href="fiche-eleve.html">Fiche élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl">
+              <div class="rw-cl__t">Classes<span class="rw-repl">«</span></div>
+              <div class="rw-cl__it">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it is-actif">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-pan">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab">
+                  <tr><th>Élève</th><th>Progression</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Hugo PE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:10%"></i></span><span class="rw-n">1/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="1"><td><span class="rw-nom" id="rk-nom" data-on="1">Iris TA</span></td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:70%"></i></span><span class="rw-n">7/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:30%"></i></span><span class="rw-n">3/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%"></i></span><span class="rw-n">9/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="toast toast--ok apres" data-at="5" style="z-index:790">Tampon retiré</div>
+        </div>
+        <div class="modale-fond apres" data-from="1">
+          <div class="modale" style="width:450px;padding:14px 18px;position:relative">
+            <div class="modale__t modale__tl" style="margin-bottom:10px">Iris TA — Carte à tampons<span class="modale__x">×</span></div>
+            <div id="rk-carte">
+              <div class="ct ct--bronze" ><div class="ct__h"><span class="ct__med"></span><div><div class="ct__num">Carte n°2</div><div class="ct__pal">Bronze</div></div><span class="ct__pill"><span class="sw"><span class="avant" data-to="4">7/10</span><span class="apres" data-from="5">6/10</span></span></span></div><div class="ct__barre"><i class="apres" style="--a:70%;--b:60%" data-on="5-6"></i></div><div class="ct__g"><div class="ct__c"><span class="tp" style="--c:#FF9800" ><svg class="ic"><use href="#i-etoile"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#4CAF50" ><svg class="ic"><use href="#i-coeur"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#3F51B5" ><svg class="ic"><use href="#i-crayon"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#FF9800" ><svg class="ic"><use href="#i-etoile"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#2196F3" ><svg class="ic"><use href="#i-fiole"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#1565C0" ><svg class="ic"><use href="#i-groupe"/></svg></span></div><div class="ct__c"><span class="tp avant" style="--c:#F44336" id="rk-t7"  data-on="3-4" data-to="4"><svg class="ic"><use href="#i-bulle"/></svg><span class="tp__x avant" id="rk-x" data-at="3-4">x</span><span class="infob infob--haut avant" data-at="3-4">Oral remarquable — 24/11/2026</span></span></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div></div></div>
+            </div>
+            <div class="dl__t">Détails des tampons</div>
+            <div class="dl__l" style="--c:#FF9800"><span class="dl__ic"><svg class="ic"><use href="#i-etoile"/></svg></span>Participation remarquable<span class="dl__d">06/11/2026</span></div>
+            <div class="dl__l" style="--c:#4CAF50"><span class="dl__ic"><svg class="ic"><use href="#i-coeur"/></svg></span>Aider/Encourager un camarade<span class="dl__d">10/11/2026</span></div>
+            <div class="dl__l" style="--c:#3F51B5"><span class="dl__ic"><svg class="ic"><use href="#i-crayon"/></svg></span>Écriture remarquable<span class="dl__d">13/11/2026</span></div>
+            <div class="dl__l avant" data-to="4" style="--c:#F44336"><span class="dl__ic"><svg class="ic"><use href="#i-bulle"/></svg></span>Oral remarquable<span class="dl__d">24/11/2026</span></div>
+            <div class="term">
+              <div class="dl__t">Cartes terminées</div>
+              <div class="term__l" id="rk-term" data-on="6"><span class="term__m" style="background:linear-gradient(135deg,#8B7355,#5C3D2E)"></span>Carte n°1 (Bois)<span class="term__b term__b--ok"><svg class="ic ic--p"><use href="#i-cadeau"/></svg>Choisir sa place de la semaine <span class="ic ic-ok" aria-hidden="true"></span></span></div>
+            </div>
+            <span class="b b--encre b-plein">+ Attribuer un tampon</span>
+          </div>
+        </div>
+        <div class="modale-fond apres avant" data-at="4" style="z-index:770">
+          <div class="modale" style="width:360px">
+            <div class="modale__t">Retirer le tampon</div>
+            <p class="modale__texte">Retirer ce tampon ?</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--warn b--petit" id="rk-ok">Retirer</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 5. paliers -->
+    <section class="fiche" id="rc-paliers">
+      <div class="fiche__texte">
+        <h2>Une carte qui se remplit, des paliers qui montent</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Élève</span><span class="chemin">Carte détaillée · onglet Tampons de l'élève</span></p>
+        <p class="fiche__but">Chaque tampon remplit la case libre suivante. Au dixième, la carte est pleine ; la suivante change d'habillage : Bois, Bronze, Argent, puis Or.</p>
+        <ol class="etapes">
+          <li data-cursor="#rp-c1" data-duration="3000">Carte n°1, palier <b>Bois</b> : trois tampons sont déjà posés.</li>
+          <li data-cursor="#rp-c1" data-duration="3800">Les tampons suivants arrivent case après case, chacun avec l'icône de son motif ; la barre avance.</li>
+          <li data-cursor="#rp-c1" data-duration="3800">Au dixième, la carte est pleine : la barre devient verte et la pastille affiche <b>10/10</b>.</li>
+          <li data-cursor="#rp-c2" data-duration="3200">Une fois le bonus choisi, la carte n°2 s'ouvre, vide, au palier <b>Bronze</b>.</li>
+          <li data-cursor="#rp-c3" data-duration="3000">Carte n°3 : palier <b>Argent</b>.</li>
+          <li data-cursor="#rp-c4" data-duration="3200">Carte n°4 et toutes les suivantes : palier <b>Or</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le palier ne dépend que du numéro de la carte, pas du rythme des tampons. Au-delà de la quatrième carte, tout reste en Or.</li>
+            <li>Une carte pleine attend le choix du bonus ; c'est ce choix qui ouvre la carte suivante.</li>
+            <li>L'élève voit le même palier et les mêmes icônes dans l'onglet Tampons de son espace, si la classe l'a activé.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/implication-et-recompenses.html#tampons">L'onglet Tampons de l'élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw flou">
+          <div class="rw-tete"><h3>Récompenses</h3></div>
+        </div>
+        <div class="modale-fond">
+          <div class="modale" style="width:560px;padding:16px 20px;position:relative">
+            <div class="modale__t modale__tl">Iris TA — Carte à tampons<span class="modale__x">×</span></div>
+            <div style="position:relative;height:282px">
+              <div class="repli" data-to="3" id="rp-c1">
+                <div class="ct ct--bois" ><div class="ct__h"><span class="ct__med"></span><div><div class="ct__num">Carte n°1</div><div class="ct__pal">Bois</div></div><span class="ct__pill"><span class="repli" data-at="1">3/10</span><span class="repli" data-at="2">7/10</span><span class="repli" data-at="3">10/10</span></span></div><div class="ct__barre"><i style="--a:30%;--b:70%" data-on="2-3"></i><i class="plein" style="--a:0%;--b:100%" data-on="3"></i></div><div class="ct__g"><div class="ct__c"><span class="tp" style="--c:#FF9800" ><svg class="ic"><use href="#i-etoile"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#4CAF50" ><svg class="ic"><use href="#i-coeur"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#3F51B5" ><svg class="ic"><use href="#i-crayon"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#F44336;--d:.2s" data-from="2" ><svg class="ic"><use href="#i-bulle"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#E91E63;--d:.8s" data-from="2" ><svg class="ic"><use href="#i-ampoule"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#FF9800;--d:1.4s" data-from="2" ><svg class="ic"><use href="#i-etoile"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#2196F3;--d:2s" data-from="2" ><svg class="ic"><use href="#i-fiole"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#1565C0;--d:.2s" data-from="3" ><svg class="ic"><use href="#i-groupe"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#FF6F00;--d:.8s" data-from="3" ><svg class="ic"><use href="#i-feuille"/></svg></span></div><div class="ct__c"><span class="tp" style="--c:#4CAF50;--d:1.4s" data-from="3" ><svg class="ic"><use href="#i-coeur"/></svg></span></div></div></div>
+              </div>
+              <div class="repli zoom" data-at="4" id="rp-c2">
+                <div class="ct ct--bronze" ><div class="ct__h"><span class="ct__med"></span><div><div class="ct__num">Carte n°2</div><div class="ct__pal">Bronze</div></div><span class="ct__pill">0/10</span></div><div class="ct__barre"></div><div class="ct__g"><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div></div></div>
+              </div>
+              <div class="repli zoom" data-at="5" id="rp-c3">
+                <div class="ct ct--argent" ><div class="ct__h"><span class="ct__med"></span><div><div class="ct__num">Carte n°3</div><div class="ct__pal">Argent</div></div><span class="ct__pill">0/10</span></div><div class="ct__barre"></div><div class="ct__g"><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div></div></div>
+              </div>
+              <div class="repli zoom" data-at="6" id="rp-c4">
+                <div class="ct ct--or" ><div class="ct__h"><span class="ct__med"></span><div><div class="ct__num">Carte n°4</div><div class="ct__pal">Or</div></div><span class="ct__pill">0/10</span></div><div class="ct__barre"></div><div class="ct__g"><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 6. bonus -->
+    <section class="fiche" id="rc-bonus">
+      <div class="fiche__texte">
+        <h2>Choisir le bonus avec l'élève</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Récompenses › Choisir le bonus</span></p>
+        <p class="fiche__but">Quand la carte est pleine, l'élève choisit un bonus. Si sa classe n'a pas l'onglet Tampons, ou s'il le dit de vive voix, l'enseignant l'enregistre ici.</p>
+        <ol class="etapes">
+          <li data-cursor="#rb-btn" data-action="click">Sur la ligne de l'élève à 10/10, cliquer <span class="btn-nom">Choisir le bonus</span>.</li>
+          <li data-cursor="#rb-txt" data-duration="3400">La fenêtre rappelle : « Carte n°1 complète. Le bonus choisi termine la carte et en ouvre une nouvelle. » Seuls les bonus actifs sont proposés.</li>
+          <li data-cursor="#rb-b1" data-action="click" data-duration="3800">Cliquer le bonus : message « Bonus enregistré pour Inès DU — carte n°2 ouverte ». La ligne repart d'une carte vide.</li>
+          <li data-cursor="#rb-term" data-duration="3800">Le bonus choisi se retrouve dans la carte détaillée de l'élève, section <b>Cartes terminées</b>, avec un sablier tant qu'il n'est pas marqué comme accordé.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Pas de confirmation : le clic termine la carte et ouvre la suivante. C'est exactement ce qui se passe quand l'élève choisit lui-même dans son espace.</li>
+            <li><b>Limite actuelle</b> : le tableau prévoit une pastille de bonus et un bouton <b>Valider bonus</b> pour marquer un bonus comme accordé, mais ils ne s'affichent pratiquement jamais, car le choix du bonus fait aussitôt passer l'élève à la carte suivante. Sur le site, le bonus reste donc « à utiliser » (sablier) dans l'historique.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="#rc-bonus-liste">La liste des bonus</a> · <a href="../eleve/implication-et-recompenses.html#bonus">Le choix fait par l'élève</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl">
+              <div class="rw-cl__t">Classes<span class="rw-repl">«</span></div>
+              <div class="rw-cl__it">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it is-actif">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-pan">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab">
+                  <tr><th>Élève</th><th>Progression</th><th class="repli avant" data-to="2">Bonus</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td class="repli avant" data-to="2"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Hugo PE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:10%"></i></span><span class="rw-n">1/10</span></div></td><td class="repli avant" data-to="2"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="1-4"><td><span class="rw-nom" data-on="4">Inès DU</span></td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:100%;--ca:var(--pos);--b:0%" data-on="3-4"></i></span><span class="rw-n"><span class="avant" data-to="2">10/10</span></span></div></td><td class="repli avant" data-to="2"><span class="rw-att">En attente de choix</span></td><td><div class="rw-act"><span class="sw" style="justify-items:end"><span class="rw-tb rw-tb--or avant" id="rb-btn" data-on="1" data-to="2"><svg class="ic ic--p"><use href="#i-cadeau"/></svg>Choisir le bonus</span><span class="rw-tb apres" data-from="3"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span></span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Iris TA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:70%"></i></span><span class="rw-n">7/10</span></div></td><td class="repli avant" data-to="2"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:30%"></i></span><span class="rw-n">3/10</span></div></td><td class="repli avant" data-to="2"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%"></i></span><span class="rw-n">9/10</span></div></td><td class="repli avant" data-to="2"></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="toast toast--ok apres" data-at="3">Bonus enregistré pour Inès DU — carte n°2 ouverte</div>
+        </div>
+        <div class="modale-fond apres avant" data-from="1" data-to="2">
+          <div class="modale" style="width:440px">
+            <div class="modale__t modale__tl">Choisir le bonus — Inès DU<span class="modale__x">×</span></div>
+            <p class="modale__texte" id="rb-txt">Carte n°1 complète. Le bonus choisi termine la carte et en ouvre une nouvelle.</p>
+            <div class="col" style="gap:6px">
+              <div class="cg__b" id="rb-b1" data-on="3"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Choisir sa place de la semaine</div>
+              <div class="cg__b"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>+1 pt sur la note de son choix</div>
+              <div class="cg__b"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Rendre un devoir une semaine plus tard</div>
+              <div class="cg__b"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>+1 indice en évaluation</div>
+              <div class="cg__b"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Pas de cours à écrire la semaine</div>
+              <div class="cg__b"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Un article de papeterie au choix</div>
+            </div>
+          </div>
+        </div>
+        <div class="modale-fond zoom" data-at="4">
+          <div class="modale" style="width:450px;padding:14px 18px">
+            <div class="modale__t modale__tl" style="margin-bottom:10px">Inès DU — Carte à tampons<span class="modale__x">×</span></div>
+            <div class="ct ct--bronze" ><div class="ct__h"><span class="ct__med"></span><div><div class="ct__num">Carte n°2</div><div class="ct__pal">Bronze</div></div><span class="ct__pill">0/10</span></div><div class="ct__barre"></div><div class="ct__g"><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div><div class="ct__c"></div></div></div>
+            <div class="term">
+              <div class="dl__t">Cartes terminées</div>
+              <div class="term__l" id="rb-term" data-on="4"><span class="term__m" style="background:linear-gradient(135deg,#8B7355,#5C3D2E)"></span>Carte n°1 (Bois)<span class="term__b term__b--att"><svg class="ic ic--p"><use href="#i-cadeau"/></svg>Choisir sa place de la semaine <svg class="ic ic--p"><use href="#i-sablier"/></svg></span></div>
+            </div>
+            <span class="b b--encre b-plein">+ Attribuer un tampon</span>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 7. réinitialiser -->
+    <section class="fiche" id="rc-reinit">
+      <div class="fiche__texte">
+        <h2>Remettre une carte, ou toutes, à zéro</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Récompenses › ⋯ · Reinitialiser les cartes</span></p>
+        <p class="fiche__but">Repartir de la carte n°1 pour un élève (erreur en série, situation particulière) ou pour tous ses élèves, par exemple en début d'année.</p>
+        <ol class="etapes">
+          <li data-cursor="#rz-dots" data-action="click">Pour un élève : ouvrir le menu <b>⋯</b> de sa ligne…</li>
+          <li data-cursor="#rz-mi" data-action="click" data-duration="3400">… et choisir <span class="btn-nom">Réinitialiser la carte</span>. La fenêtre <b>Reinitialiser cet eleve</b> prévient que tous ses tampons, cartes et bonus seront supprimés.</li>
+          <li data-cursor="#rz-ok1" data-action="click" data-duration="3600"><span class="btn-nom">Reinitialiser</span> : message « Tom SA réinitialisé — carte n°1 », sa ligne repart d'une carte vide.</li>
+          <li data-cursor="#rz-tout" data-action="click">Pour tous : bouton rouge <span class="btn-nom">Reinitialiser les cartes</span> en haut à droite.</li>
+          <li data-cursor="#rz-ok2" data-action="click" data-duration="3600">Première confirmation, <b>Tout reinitialiser</b> : « Remettre TOUS les eleves a la carte n°1 ? … Irreversible. » Cliquer <span class="btn-nom">Tout reinitialiser</span>.</li>
+          <li data-cursor="#rz-ok3" data-action="click" data-duration="3800">Seconde confirmation, <b>Derniere chance</b>. Après <span class="btn-nom">Confirmer</span>, tous les élèves sont à la carte n°1.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Les deux actions sont définitives : tampons, cartes et bonus choisis sont supprimés, sans corbeille.</li>
+            <li>« Tout reinitialiser » vise tous les élèves de toutes ses classes, même si une seule classe est choisie à gauche. Les catégories et les bonus, eux, sont conservés.</li>
+            <li>Si le téléphone a encore des tampons non envoyés pour cet élève, ils arriveront ensuite sur sa nouvelle carte n°1.</li>
+            <li>Les textes de ces fenêtres sont écrits sans accents dans l'application ; ils sont cités tels quels.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge" id="rz-tout" data-on="4">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl">
+              <div class="rw-cl__t">Classes<span class="rw-repl">«</span></div>
+              <div class="rw-cl__it">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it is-actif">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-pan">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab">
+                  <tr><th>Élève</th><th>Progression</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:40%;--b:0%" data-on="6"></i></span><span class="rw-n"><span class="avant" data-to="5">4/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Iris TA</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:70%;--b:0%" data-on="6"></i></span><span class="rw-n"><span class="avant" data-to="5">7/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:30%;--b:0%" data-on="6"></i></span><span class="rw-n"><span class="avant" data-to="5">3/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:90%;--b:0%" data-on="6"></i></span><span class="rw-n"><span class="avant" data-to="5">9/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                  <tr data-on="1-3"><td class="rw-nom" id="rz-tom">Tom SA</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:80%;--b:0%" data-on="3-6"></i></span><span class="rw-n"><span class="avant" data-to="2">8/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots" id="rz-dots" data-on="1">⋯</span></div></td></tr>
+                  <tr><td class="rw-nom">Zoé FA</td><td><div class="rw-prog"><span class="rw-barre"><i class="apres" style="--a:50%;--b:0%" data-on="6"></i></span><span class="rw-n"><span class="avant" data-to="5">5/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span><span class="rw-dots">⋯</span></div></td></tr>
+                </table>
+                <div class="rw-menu zoom apres avant" data-at="1-2" style="top:250px"><div id="rz-mi" data-on="2">Réinitialiser la carte</div></div>
+              </div>
+            </div>
+          </div>
+          <div class="toast toast--ok apres" data-at="3">Tom SA réinitialisé — carte n°1</div>
+          <div class="toast toast--ok apres" data-at="6">Reset effectue (52 carte(s) supprimee(s)). Tous les eleves sont a la carte n°1.</div>
+        </div>
+        <div class="modale-fond apres avant zoom" data-at="2">
+          <div class="modale" style="width:400px">
+            <div class="modale__t">Reinitialiser cet eleve</div>
+            <p class="modale__texte">Reinitialiser Tom SA ?
+
+Tous ses tampons, cartes et bonus seront supprimes. Il repartira a la carte n°1.</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--rouge b--petit" id="rz-ok1">Reinitialiser</span></div>
+          </div>
+        </div>
+        <div class="modale-fond apres avant zoom" data-at="4">
+          <div class="modale" style="width:400px">
+            <div class="modale__t">Tout reinitialiser</div>
+            <p class="modale__texte">Remettre TOUS les eleves a la carte n°1 ?
+
+Cette action supprimera tous les tampons, cartes et bonus selectionnes. Irreversible.</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--rouge b--petit" id="rz-ok2">Tout reinitialiser</span></div>
+          </div>
+        </div>
+        <div class="modale-fond apres avant zoom" data-at="5">
+          <div class="modale" style="width:360px">
+            <div class="modale__t">Derniere chance</div>
+            <p class="modale__texte">Vraiment tout reinitialiser ?</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--rouge b--petit" id="rz-ok3">Confirmer</span></div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 8. direct -->
+    <section class="fiche" id="rc-direct">
+      <div class="fiche__texte">
+        <h2>Les tampons de la séance arrivent en direct</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Récompenses, sans rien faire</span></p>
+        <p class="fiche__but">La page n'a pas besoin d'être rechargée : un tampon donné sur le téléphone, ou un bonus choisi par un élève, apparaît tout seul.</p>
+        <ol class="etapes">
+          <li data-cursor="#rd-cat" data-action="tap" data-duration="3200">En séance, l'enseignant donne un tampon à Iris TA sur le téléphone : double appui sur sa case, puis le motif.</li>
+          <li data-cursor="#rd-iris" data-duration="3400">Dès que le téléphone a synchronisé, la ligne d'Iris TA avance, environ une demi-seconde plus tard, sans « Chargement… ».</li>
+          <li data-cursor="#rd-ines" data-duration="3600">Un élève choisit son bonus dans son espace : sa ligne repart aussitôt d'une carte vide.</li>
+          <li data-cursor="#rd-tbi" data-duration="3800">Au tableau blanc, le bouton <b>+1 tampon</b> du tirage au sort envoie la demande au téléphone connecté (« envoyé au téléphone ») : c'est le téléphone qui enregistre, puis la page se met à jour.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le téléphone marche sans réseau : un tampon donné hors connexion n'apparaît sur le site qu'après la synchronisation.</li>
+            <li>Plusieurs changements rapprochés ne provoquent qu'un seul rafraîchissement.</li>
+            <li>L'espace élève, lui, relit la carte toutes les 30 secondes quand l'onglet Tampons est ouvert.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../telephone/pendant-la-seance.html#tampons">Tampons en séance</a> · <a href="tableau-blanc.html">Tableau blanc</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge">Reinitialiser les cartes</span></div>
+          <div class="rw-corps">
+            <div class="rw-cl">
+              <div class="rw-cl__t">Classes<span class="rw-repl">«</span></div>
+              <div class="rw-cl__it">Toutes<span class="n">78</span></div>
+              <div class="rw-cl__it">3A<span class="n">26</span></div>
+              <div class="rw-cl__it">3B<span class="n">27</span></div>
+              <div class="rw-cl__it is-actif">4B<span class="n">25</span></div>
+            </div>
+            <div class="rw-pan" style="margin-right:200px">
+              <div class="rw-pan__t">Vue d'ensemble</div>
+              <div class="rw-tabw">
+                <table class="rw-tab">
+                  <tr><th>Élève</th><th>Progression</th><th class="d">Actions</th></tr>
+                  <tr><td class="rw-nom">Adam KE</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:40%"></i></span><span class="rw-n">4/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span></div></td></tr>
+                  <tr data-on="3"><td class="rw-nom">Inès DU</td><td><div class="rw-prog" id="rd-ines"><span class="rw-barre"><i style="--a:100%;--ca:var(--pos);--b:0%" data-on="3-4"></i></span><span class="rw-n"><span class="repli" data-to="2">10/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb rw-tb--or repli" data-to="2"><svg class="ic ic--p"><use href="#i-cadeau"/></svg>Choisir le bonus</span><span class="rw-tb repli" data-from="3"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span></div></td></tr>
+                  <tr data-on="2"><td class="rw-nom">Iris TA</td><td><div class="rw-prog" id="rd-iris"><span class="rw-barre"><i style="--a:70%;--b:80%" data-on="2-4"></i></span><span class="rw-n"><span class="repli" data-to="1">7/10</span><span class="repli" data-from="2">8/10</span></span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span></div></td></tr>
+                  <tr><td class="rw-nom">Lina BO</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:30%"></i></span><span class="rw-n">3/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span></div></td></tr>
+                  <tr><td class="rw-nom">Noé MA</td><td><div class="rw-prog"><span class="rw-barre"><i style="--a:90%"></i></span><span class="rw-n">9/10</span></div></td><td><div class="rw-act"><span class="rw-tb"><svg class="ic ic--p"><use href="#i-plus"/></svg>Tampon</span></div></td></tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="mini-tel repli glisse-gauche" data-to="2">
+          <div class="mini-tel__e">
+            <div class="mini-tel__t">Tampon · Iris TA</div>
+            <div class="muet" style="font-size:10px">Choisir le motif</div>
+            <div class="mini-cat" id="rd-cat" data-on="1" style="--c:#FF9800"><span class="cat-ic"><svg class="ic"><use href="#i-etoile"/></svg></span>Participation</div>
+            <div class="mini-cat" style="--c:#4CAF50"><span class="cat-ic"><svg class="ic"><use href="#i-coeur"/></svg></span>Entraide</div>
+            <div class="mini-cat" style="--c:#F44336"><span class="cat-ic"><svg class="ic"><use href="#i-bulle"/></svg></span>Oral</div>
+            <div class="mini-cat" style="--c:#3F51B5"><span class="cat-ic"><svg class="ic"><use href="#i-crayon"/></svg></span>Écriture</div>
+            <div class="mini-ok apres" data-at="1">Tampon attribue · 8/10</div>
+          </div>
+        </div>
+        <div class="mini-tel repli glisse-gauche" data-at="3">
+          <div class="mini-tel__e" style="background:#FBF8F3">
+            <div class="mini-tel__t">Carte à tampons</div>
+            <div class="muet" style="font-size:10px">Choisis ton bonus</div>
+            <div class="mini-cat is-on"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Choisir sa place</div>
+            <div class="mini-cat"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>+1 indice</div>
+            <div class="mini-ok" style="background:#4F46E5">Valider ce bonus</div>
+          </div>
+        </div>
+        <div class="mini-tel repli glisse-gauche" data-at="4" id="rd-tbi" style="width:190px;height:150px;border-radius:10px;padding:6px;background:#26272D">
+          <div class="mini-tel__e" style="border-radius:5px;background:#14151A;color:#F4F4F5;align-items:center;justify-content:center;text-align:center">
+            <div style="font-size:18px;font-weight:700">Iris TA</div>
+            <div style="font-size:10.5px;padding:4px 10px;border-radius:999px;background:#FF9800;color:#fff;font-weight:650">+1 tampon</div>
+            <div style="font-size:9.5px;opacity:.75">envoyé au téléphone</div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 9. élèves -->
+    <section class="fiche" id="rc-eleves">
+      <div class="fiche__texte">
+        <h2>Ce que voient les élèves</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--eleve">Élève</span><span class="chemin">Classes et plans › Visibilité élèves › Tampons</span></p>
+        <p class="fiche__but">Classe par classe, on décide si les élèves voient leur carte dans leur espace ; ils peuvent alors suivre leur progression et choisir eux-mêmes leur bonus.</p>
+        <ol class="etapes">
+          <li data-cursor="#re-vis" data-action="click">Dans <b>Classes › Classes et plans</b>, choisir la classe et déplier <b>Visibilité élèves</b>.</li>
+          <li data-cursor="#re-int" data-action="click">Basculer <b>Tampons</b> : l'interrupteur passe à l'orange.</li>
+          <li data-cursor="#re-tous" data-action="click" data-duration="3400"><span class="btn-nom">↳ Appliquer à toutes les classes</span> recopie l'état de Tampons, Annales et Notes sur toutes ses classes.</li>
+          <li data-cursor="#re-tel" data-duration="3800">Côté élève, l'onglet <b>Tampons</b> montre la carte, le palier, « 7 tampons sur 10 », les cases et les derniers tampons reçus.</li>
+          <li data-cursor="#re-val" data-duration="3800">Carte pleine : l'élève choisit son bonus puis touche <b>Valider ce bonus</b>. La carte suivante s'ouvre et la page Récompenses se met à jour.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les tampons se donnent et se comptent même quand l'onglet est masqué ; l'enseignant choisit alors le bonus pour l'élève.</li>
+            <li>« Appliquer à toutes les classes » ne recopie pas l'interrupteur <b>Maison</b>, qui reste propre à chaque classe.</li>
+            <li>Sur l'accueil de son espace, l'élève lit « Ta carte à tampons est pleine » quand il a un bonus à choisir.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../eleve/implication-et-recompenses.html#tampons">L'onglet Tampons de l'élève</a> · <a href="classes.html#visibilite">Visibilité élèves</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it is-actif"><span class="ico"></span>Classes</div>
+<div class="side__it side__sous is-actif">Classes et plans</div>
+<div class="side__it side__sous">Suivi élèves</div>
+<div class="side__it side__sous">Séances</div>
+<div class="side__it side__sous">Cahier de texte</div>
+<div class="side__it side__sous">Analyses</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it"><span class="ico"></span>Plus</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="app__entete"><span class="app__titre">Plan de salle</span><span class="esp"></span><span class="b b--fantome b--petit">Générer</span><span class="b b--petit" style="opacity:.45">Sauvegarder</span></div>
+        <div class="cp">
+          <div class="cp-plan"><span>Lina BO</span><span>Noé MA</span><span>Iris TA</span><span>Tom SA</span><span>Zoé FA</span><span>Adam KE</span><span>Inès DU</span><span>Hugo PE</span><span>Jade LU</span><span>Malo RI</span><span>Rose VI</span><span>Lou BE</span></div>
+          <div class="vis">
+            <div class="vis__bloc"><div style="font-size:13px;font-weight:600">Non placés</div><div class="muet">0 sur 25</div></div>
+            <div class="vis__bloc">
+              <div class="vis-t" id="re-vis" data-on="1"><span>▸</span>Visibilité élèves</div>
+              <div class="repli" data-from="1">
+                <div class="vis-l" data-on="2"><i style="background:var(--warn-soft);border:1.5px solid var(--warn)"></i>Tampons<span class="interrupteur int-or" id="re-int" data-on="2-5"></span></div>
+                <div class="vis-l"><i style="background:#EDE7DA;border:1.5px solid #8A7A66"></i>Maison<span class="interrupteur"></span></div>
+                <div class="vis-l"><i style="background:var(--pos-soft);border:1.5px solid var(--pos)"></i>Annales<span class="interrupteur interrupteur--on int-vert"></span></div>
+                <div class="vis-l"><i style="background:var(--indigo-soft);border:1.5px solid var(--indigo)"></i>Notes<span class="interrupteur interrupteur--on"></span></div>
+                <div class="vis-tous" id="re-tous" data-on="3">↳ Appliquer à toutes les classes</div>
+              </div>
+            </div>
+            <div class="vis__bloc col" style="gap:6px"><span class="b b--fantome b--petit">Groupes</span><span class="b b--fantome b--petit">Importer</span></div>
+          </div>
+        </div>
+        <div class="toast toast--ok apres" data-at="3">Tampons/Annales/Notes appliqués à 6 classes</div>
+        <div class="el-tel repli glisse-gauche" data-from="4" id="re-tel">
+          <div class="el-tel__e">
+            <div class="repli" data-at="4">
+              <div class="el-sur">Carte n° 2 · Bronze</div>
+              <div class="el-titre">Carte à tampons</div>
+              <div class="el-gros" style="margin:8px 0"><b>7</b><span>tampons sur 10</span><span class="r">Encore 3</span></div>
+              <div class="el-g">
+                <div class="el-c"><span class="tp" style="--c:#FF9800"><svg class="ic"><use href="#i-etoile"/></svg></span></div>
+                <div class="el-c"><span class="tp" style="--c:#4CAF50"><svg class="ic"><use href="#i-coeur"/></svg></span></div>
+                <div class="el-c"><span class="tp" style="--c:#3F51B5"><svg class="ic"><use href="#i-crayon"/></svg></span></div>
+                <div class="el-c"><span class="tp" style="--c:#FF9800"><svg class="ic"><use href="#i-etoile"/></svg></span></div>
+                <div class="el-c"><span class="tp" style="--c:#2196F3"><svg class="ic"><use href="#i-fiole"/></svg></span></div>
+                <div class="el-c"><span class="tp" style="--c:#1565C0"><svg class="ic"><use href="#i-groupe"/></svg></span></div>
+                <div class="el-c"><span class="tp" style="--c:#F44336"><svg class="ic"><use href="#i-bulle"/></svg></span></div>
+                <div class="el-c">8</div><div class="el-c">9</div><div class="el-c">10</div>
+              </div>
+              <div class="el-pied" style="margin:6px 0 10px">Quand la carte est pleine, tu choisis un bonus.</div>
+              <div class="el-sur" style="margin-bottom:5px">Derniers tampons</div>
+              <div class="col" style="gap:5px">
+                <div class="el-l" style="--c:#F44336"><span class="dl__ic"><svg class="ic"><use href="#i-bulle"/></svg></span>Oral remarquable<small>24 nov.</small></div>
+                <div class="el-l" style="--c:#1565C0"><span class="dl__ic"><svg class="ic"><use href="#i-groupe"/></svg></span>Travail de groupe<small>20 nov.</small></div>
+                <div class="el-l" style="--c:#2196F3"><span class="dl__ic"><svg class="ic"><use href="#i-fiole"/></svg></span>Utilisation d'outils<small>17 nov.</small></div>
+              </div>
+            </div>
+            <div class="repli" data-at="5">
+              <div class="el-sur">Carte n° 2 · Bronze</div>
+              <div class="el-titre">Carte à tampons</div>
+              <div class="el-gros" style="margin:8px 0"><b>10</b><span>tampons sur 10</span><span class="el-pill">Carte pleine</span></div>
+              <div class="el-titre" style="font-size:15px;margin:6px 0">Choisis ton bonus</div>
+              <div class="col" style="gap:6px">
+                <div class="el-bonus"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Choisir sa place de la semaine</div>
+                <div class="el-bonus is-on"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>+1 indice en évaluation</div>
+                <div class="el-bonus"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Un article de papeterie au choix</div>
+              </div>
+              <div class="el-btn" id="re-val" style="margin-top:12px">Valider ce bonus</div>
+              <div class="el-pied" style="margin-top:10px">Bonus enregistré. Ton professeur le prendra en compte.</div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 10. catégories -->
+    <section class="fiche" id="rc-categories">
+      <div class="fiche__texte">
+        <h2>Les catégories de tampons</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Récompenses › Personnaliser › Catégories de tampons</span></p>
+        <p class="fiche__but">Les motifs pour lesquels on donne un tampon : ceux que propose le téléphone en séance et la fenêtre d'attribution. Chacun compose sa liste.</p>
+        <ol class="etapes">
+          <li data-cursor="#rc-perso" data-action="click">Cliquer <span class="btn-nom">Personnaliser</span> : la fenêtre <b>Personnaliser les récompenses</b> s'ouvre sur l'onglet <b>Catégories de tampons</b>.</li>
+          <li data-cursor="#rc-intro" data-duration="3400">La phrase d'en-tête compte les catégories proposées en séance et rappelle que la liste appartient à chaque enseignant.</li>
+          <li data-cursor="#rc-monter" data-action="click" data-duration="3200">Les flèches à gauche (Monter, Descendre) changent l'ordre d'affichage, en séance comme ici.</li>
+          <li data-cursor="#rc-int" data-action="click" data-duration="3400">L'interrupteur désactive une catégorie : la ligne passe en pointillés, « Désactivée · les tampons déjà donnés restent sur les cartes ».</li>
+          <li data-cursor="#rc-sup" data-action="click" data-duration="3400">La corbeille demande confirmation : « Supprimer cette catégorie ? Si des tampons ont déjà été donnés avec, elle sera seulement désactivée… »</li>
+          <li data-cursor="#rc-supok" data-action="click" data-duration="3600"><span class="btn-nom">Supprimer</span> : une catégorie déjà utilisée est seulement désactivée, avec le message « Catégorie désactivée (utilisée par 12 tampons) ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Désactiver retire le motif de la séance et de la fenêtre d'attribution, mais laisse les tampons déjà donnés sur les cartes.</li>
+            <li>Une catégorie jamais utilisée est vraiment supprimée (« Catégorie supprimée »).</li>
+            <li>Deux catégories ne peuvent pas porter le même nom : c'est le nom qui relie le site et le téléphone.</li>
+            <li>Le crayon ouvre la modification (fiche suivante). Les flèches sont grisées en haut et en bas de liste.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw">
+          <div class="rw-tete"><h3>Récompenses</h3><span class="esp"></span><span class="rw-pb" id="rc-perso" data-on="1"><svg class="ic ic--p"><use href="#i-reglages"/></svg>Personnaliser</span><span class="rw-pb rw-pb--rouge">Reinitialiser les cartes</span></div>
+        </div>
+        <div class="modale-fond apres" data-from="1">
+          <div class="pm">
+            <div class="pm__t"><svg class="ic"><use href="#i-reglages"/></svg>Personnaliser les récompenses<span class="modale__x">×</span></div>
+            <div class="seg"><span class="is-actif"><svg class="ic"><use href="#i-tampon"/></svg>Catégories de tampons<b class="cpt"><span class="repli" data-to="3">19</span><span class="repli" data-from="4">18</span></b></span><span><svg class="ic"><use href="#i-cadeau"/></svg>Bonus de fin de carte<b class="cpt">8</b></span></div>
+            <p class="pm__intro" id="rc-intro">Les motifs pour lesquels tu donnes un tampon. <b><span class="repli" data-to="3">19</span><span class="repli" data-from="4">18</span></b> proposées en séance sur 19. Cette liste t'appartient : chaque enseignant a la sienne.</p>
+            <div class="pm__bar"><span class="b b--encre b--petit"><svg class="ic ic--p"><use href="#i-plus"/></svg>Nouvelle catégorie</span><span class="esp"></span><span class="pm__rz">↺ Repartir de zéro</span></div>
+            <div class="pr">
+              <div class="pr__l" style="--c:#4CAF50"><span class="pr__fl"><span class="gr">▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-coeur"/></svg></span><span class="pr__tx"><b>Aider/Encourager un camarade</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l mh" data-on="3-6" style="--c:#2196F3"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-fiole"/></svg></span><span class="pr__tx"><b>Utilisation d'outils</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l mb" data-on="3-6" style="--c:#FF9800"><span class="pr__fl"><span id="rc-monter" data-on="3">▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-etoile"/></svg></span><span class="pr__tx"><b>Participation remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko apres" data-on="4-6" style="--c:#FFC107"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-etoile"/></svg></span><span class="pr__tx"><b>Comportement remarquable</b><small><span class="repli" data-to="3">Proposée en séance</span><span class="repli" data-from="4">Désactivée · les tampons déjà donnés restent sur les cartes</span></small></span><span class="interrupteur interrupteur--on" id="rc-int"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r" id="rc-sup" data-on="5"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l" style="--c:#9C27B0"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-groupe"/></svg></span><span class="pr__tx"><b>Accepter une responsabilité</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l" style="--c:#3F51B5"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="pr__tx"><b>Écriture remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modale-fond apres avant zoom" data-at="5" style="z-index:700">
+          <div class="modale" style="width:420px">
+            <div class="modale__t">Supprimer la catégorie</div>
+            <p class="modale__texte">Supprimer cette catégorie ?
+
+Si des tampons ont déjà été donnés avec, elle sera seulement désactivée : les cartes des élèves restent intactes.</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--rouge b--petit" id="rc-supok">Supprimer</span></div>
+          </div>
+        </div>
+        <div class="toast toast--ok apres" data-at="6">Catégorie désactivée (utilisée par 12 tampons)</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 11. nouvelle catégorie -->
+    <section class="fiche" id="rc-nouvelle">
+      <div class="fiche__texte">
+        <h2>Créer ou modifier une catégorie</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Personnaliser › Nouvelle catégorie · crayon</span></p>
+        <p class="fiche__but">Une catégorie, c'est un nom, une couleur et une icône. Elle rejoint aussitôt la liste proposée en séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#rn-nouv" data-action="click">Cliquer <span class="btn-nom">+ Nouvelle catégorie</span>.</li>
+          <li data-cursor="#rn-nom" data-duration="3400">Saisir le <b>Nom</b>. Un nom déjà pris est signalé en rouge (« Cette catégorie existe déjà. ») et le bouton reste grisé.</li>
+          <li data-cursor="#rn-coul" data-action="click">Choisir la <b>Couleur</b> parmi les 12 pastilles ; la pastille <b>+</b> ouvre le sélecteur de couleur du navigateur.</li>
+          <li data-cursor="#rn-ico" data-action="click" data-duration="3200">Choisir l'<b>Icône</b> : bibliothèque, émoji ou image importée (voir la fiche suivante).</li>
+          <li data-cursor="#rn-creer" data-action="click" data-duration="3400"><span class="btn-nom">Créer la catégorie</span> : elle se place en fin de liste, active, avec le message « Catégorie créée ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>En modification (crayon), le titre devient « Modifier la catégorie » et le bouton <b>Enregistrer</b>. Le changement s'applique aussi aux tampons déjà donnés avec cette catégorie.</li>
+            <li>Si une catégorie désactivée porte déjà ce nom, le message invite à la réactiver plutôt.</li>
+            <li>Une nouvelle catégorie part de la couleur verte et d'une étoile.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw"><div class="rw-tete"><h3>Récompenses</h3></div></div>
+        <div class="modale-fond">
+          <div class="pm">
+            <div class="pm__t"><svg class="ic"><use href="#i-reglages"/></svg>Personnaliser les récompenses<span class="modale__x">×</span></div>
+            <div class="seg"><span class="is-actif"><svg class="ic"><use href="#i-tampon"/></svg>Catégories de tampons<b class="cpt"><span class="repli" data-to="4">19</span><span class="repli apres" data-from="5">20</span></b></span><span><svg class="ic"><use href="#i-cadeau"/></svg>Bonus de fin de carte<b class="cpt">8</b></span></div>
+            <div class="pm__bar"><span class="b b--encre b--petit" id="rn-nouv" data-on="1"><svg class="ic ic--p"><use href="#i-plus"/></svg>Nouvelle catégorie</span><span class="esp"></span><span class="pm__rz">↺ Repartir de zéro</span></div>
+            <div class="pr">
+              <div class="pr__l" style="--c:#FF6F00"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-feuille"/></svg></span><span class="pr__tx"><b>Autonomie</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l" style="--c:#1565C0"><span class="pr__fl"><span>▲</span><span class="gr">▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-groupe"/></svg></span><span class="pr__tx"><b>Travail de groupe remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l repli apres" data-from="5" style="--c:#00BCD4"><span class="pr__fl"><span>▲</span><span class="gr">▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-loupe"/></svg></span><span class="pr__tx"><b>Expérience réussie</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modale-fond apres avant" data-from="1" data-to="4" style="z-index:700">
+          <div class="nc">
+            <div class="pm__t"><svg class="ic"><use href="#i-tampon"/></svg>Nouvelle catégorie<span class="modale__x">×</span></div>
+            <div><div class="nc__et">Nom</div><div class="nc__ch" id="rn-nom" data-on="2"><span data-type="Expérience réussie" data-type-at="2"></span></div></div>
+            <div><div class="nc__et">Couleur</div>
+              <div class="pal"><i class="choisi repli" data-to="2" style="--c:#4CAF50"></i><i class="repli" data-from="3" style="--c:#4CAF50"></i><i style="--c:#2196F3"></i><i style="--c:#6366F1"></i><i style="--c:#9C27B0"></i><i style="--c:#E91E63"></i><i style="--c:#F44336"></i><i style="--c:#FF9800"></i><i style="--c:#FFC107"></i><i id="rn-coul" data-on="3-5" style="--c:#00BCD4"></i><i style="--c:#8BC34A"></i><i style="--c:#795548"></i><i style="--c:#607D8B"></i><i class="plus">+</i></div>
+            </div>
+            <div><div class="nc__et">Icône</div>
+              <div class="ip">
+                <div class="ip__o"><span class="is-actif">Bibliothèque</span><span>Emoji</span><span>Importer</span></div>
+                <div class="ip__c" style="min-height:0">
+                  <div class="ip__th">Sciences</div>
+                  <div class="ip__g" style="--c:#00BCD4"><span><svg class="ic"><use href="#i-fiole"/></svg></span><span id="rn-ico" data-on="4-5"><svg class="ic"><use href="#i-loupe"/></svg></span><span><svg class="ic"><use href="#i-feuille"/></svg></span><span><svg class="ic"><use href="#i-ampoule"/></svg></span><span><svg class="ic"><use href="#i-livre"/></svg></span><span><svg class="ic"><use href="#i-crayon"/></svg></span><span><svg class="ic"><use href="#i-etoile"/></svg></span><span><svg class="ic"><use href="#i-groupe"/></svg></span><span><svg class="ic"><use href="#i-bulle"/></svg></span><span><svg class="ic"><use href="#i-coeur"/></svg></span></div>
+                </div>
+                <div class="ip__pied"><span class="cat-ic" style="--c:#00BCD4"><svg class="ic"><use href="#i-loupe"/></svg></span><span><span class="repli" data-to="3">Emoji de départ.</span><span class="repli" data-from="4">Icône Loupe de la bibliothèque.</span></span></div>
+              </div>
+            </div>
+            <div class="modale__pied" style="margin-top:4px"><span class="b b--fantome b--petit">Annuler</span><span class="b b--encre b--petit" id="rn-creer" data-on="5">Créer la catégorie</span></div>
+          </div>
+        </div>
+        <div class="toast toast--ok apres" data-at="5">Catégorie créée</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 12. icônes -->
+    <section class="fiche" id="rc-icones">
+      <div class="fiche__texte">
+        <h2>Choisir l'icône : bibliothèque, émoji ou image</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Catégorie › Icône</span></p>
+        <p class="fiche__but">L'icône rend chaque motif reconnaissable d'un coup d'œil, sur la carte comme sur le téléphone.</p>
+        <ol class="etapes">
+          <li data-cursor="#ri-rech" data-duration="3400">Onglet <b>Bibliothèque</b> : taper un mot dans « Rechercher : étoile, livre, entraide… ». La recherche ignore accents et majuscules.</li>
+          <li data-cursor="#ri-pic" data-action="click" data-duration="3400">Cliquer un pictogramme : il se teinte de la couleur de la catégorie, et le pied du sélecteur l'annonce.</li>
+          <li data-cursor="#ri-emo" data-action="click" data-duration="3200">Onglet <b>Emoji</b> : une grille d'émojis, ou un émoji saisi dans « Ou saisir un emoji : ».</li>
+          <li data-cursor="#ri-imp" data-action="click" data-duration="3400">Onglet <b>Importer</b> : cliquer « Choisir une image » ou y déposer un fichier (PNG, JPEG, WebP, SVG ou GIF, 512 Ko au plus, idéalement carré).</li>
+          <li data-cursor="#ri-rempl" data-duration="3400">L'image envoyée s'affiche, avec « Remplacer l'image » et le lien « Retirer l'image et revenir à l'emoji ».</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La bibliothèque compte 135 pictogrammes en huit thèmes (Récompenses, École, Sciences, Nature, Animaux, Arts &amp; jeux, Vie de classe, Divers).</li>
+            <li class="important">Une image importée est stockée à une adresse publique : quiconque la connaît peut l'ouvrir. N'importer ni photo d'élève ni document personnel.</li>
+            <li>Un émoji de repli est toujours gardé : c'est lui qu'affichent les anciennes versions de l'application téléphone.</li>
+            <li>Le sélecteur s'ouvre sur l'onglet de l'icône actuelle. Les mêmes icônes s'affichent chez l'élève.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw flou"><div class="rw-tete"><h3>Récompenses</h3></div></div>
+        <div class="modale-fond">
+          <div class="nc" style="width:560px">
+            <div class="pm__t"><svg class="ic"><use href="#i-tampon"/></svg>Modifier la catégorie<span class="modale__x">×</span></div>
+            <div><div class="nc__et">Nom</div><div class="nc__ch">Lecture remarquable</div></div>
+            <div><div class="nc__et">Icône</div>
+              <div class="ip">
+                <div class="ip__o"><span class="is-actif off" data-on="3-5">Bibliothèque</span><span id="ri-emo" data-on="3">Emoji</span><span id="ri-imp" data-on="4-5">Importer</span></div>
+                <div class="ip__c" style="--c:#CDDC39;min-height:178px">
+                  <div class="repli" data-to="2">
+                    <div class="ip__r" id="ri-rech" data-on="1"><svg class="ic ic--p"><use href="#i-loupe"/></svg><span data-type="livre" data-type-at="1"></span></div>
+                    <div class="ip__th">École</div>
+                    <div class="ip__g" style="--c:#8E9A1E"><span id="ri-pic" data-on="2"><svg class="ic"><use href="#i-livre"/></svg></span><span><svg class="ic"><use href="#i-crayon"/></svg></span><span><svg class="ic"><use href="#i-fichier"/></svg></span></div>
+                    <div class="ip__th" style="margin-top:8px">Vie de classe</div>
+                    <div class="ip__g" style="--c:#8E9A1E"><span><svg class="ic"><use href="#i-bulle"/></svg></span><span><svg class="ic"><use href="#i-groupe"/></svg></span></div>
+                  </div>
+                  <div class="repli" data-at="3">
+                    <div class="ip__em"><i style="--c:#F59E0B"></i><i style="--c:#EF4444"></i><i style="--c:#10B981"></i><i style="--c:#3B82F6"></i><i style="--c:#8B5CF6"></i><i style="--c:#EC4899"></i><i style="--c:#F97316"></i><i style="--c:#14B8A6"></i><i style="--c:#84CC16"></i><i style="--c:#6366F1"></i><i style="--c:#F43F5E"></i><i style="--c:#0EA5E9"></i><i style="--c:#A855F7"></i><i style="--c:#22C55E"></i><i style="--c:#EAB308"></i><i style="--c:#64748B"></i><i style="--c:#D946EF"></i><i style="--c:#06B6D4"></i></div>
+                    <div class="ligne" style="margin-top:10px;font-size:12px;color:var(--text-muted)">Ou saisir un emoji :<span class="nc__ch" style="width:60px;height:28px"></span></div>
+                  </div>
+                  <div class="repli" data-at="4">
+                    <div class="ip__dep is-on"><svg class="ic ic--g"><use href="#i-image"/></svg><b>Choisir une image</b>PNG, JPEG, WebP, SVG ou GIF · 512 Ko max · idéalement carrée, fond transparent</div>
+                  </div>
+                  <div class="repli" data-at="5">
+                    <div class="ip__dep" id="ri-rempl"><div class="ip__img" style="width:46px;height:46px;margin:0 auto;border-radius:10px"></div><b>Remplacer l'image</b></div>
+                    <div style="font-size:11.5px;color:var(--indigo);margin-top:8px;text-decoration:underline">Retirer l'image et revenir à l'emoji</div>
+                  </div>
+                </div>
+                <div class="ip__pied">
+                  <span class="cat-ic" style="--c:#8E9A1E"><span class="repli" data-to="4"><svg class="ic"><use href="#i-livre"/></svg></span><span class="ip__img repli" data-from="5"></span></span>
+                  <span><span class="repli" data-to="1">Icône Livre de la bibliothèque.</span><span class="repli" data-at="2-4">Icône Livre de la bibliothèque. Sur l'ancienne version de l'app mobile, l'emoji de repli s'affiche à la place.</span><span class="repli" data-from="5">Image importée.</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 13. départ -->
+    <section class="fiche" id="rc-depart">
+      <div class="fiche__texte">
+        <h2>La liste de départ, ou repartir de zéro</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Personnaliser › Repartir de zéro</span></p>
+        <p class="fiche__but">Un compte neuf reçoit une liste toute prête. On peut la garder, la retoucher, ou tout désactiver pour composer la sienne sans rien perdre.</p>
+        <ol class="etapes">
+          <li data-cursor="#rl-liste" data-duration="3600">À la première ouverture, l'application crée 19 catégories (Participation remarquable, Oral remarquable, Autonomie…) et 8 bonus.</li>
+          <li data-cursor="#rl-rz" data-action="click"><span class="btn-nom">↺ Repartir de zéro</span>, au-dessus de la liste (visible tant qu'il reste une catégorie active).</li>
+          <li data-cursor="#rl-ok" data-action="click" data-duration="3600">Confirmer : « Désactiver toutes les catégories pour créer les vôtres ? Les tampons déjà donnés restent sur les cartes des élèves… » puis <span class="btn-nom">Tout désactiver</span>.</li>
+          <li data-cursor="#rl-liste" data-duration="3200">Toutes les lignes passent en pointillés ; message « Catégories désactivées : ajoutez les vôtres ».</li>
+          <li data-cursor="#rl-int" data-action="click">Une catégorie se réactive par son interrupteur, à tout moment.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Rien n'est supprimé : les catégories sont seulement désactivées.</li>
+            <li>Les 8 bonus de départ : « Choisir sa place de la semaine », « +1 pt sur la note de son choix », « Rendre un devoir une semaine plus tard », « −1 faute en devoir de langue », « +1 indice en évaluation », « Pas de cours à écrire la semaine », « Pas de prise de parole de la semaine », « Un article de papeterie au choix ».</li>
+            <li>Catégories et bonus sont créés séparément : le téléphone a pu créer les unes avant les autres.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw"><div class="rw-tete"><h3>Récompenses</h3></div></div>
+        <div class="modale-fond">
+          <div class="pm">
+            <div class="pm__t"><svg class="ic"><use href="#i-reglages"/></svg>Personnaliser les récompenses<span class="modale__x">×</span></div>
+            <div class="seg"><span class="is-actif"><svg class="ic"><use href="#i-tampon"/></svg>Catégories de tampons<b class="cpt"><span class="repli" data-to="3">19</span><span class="repli" data-at="3-4">0</span><span class="repli" data-at="5">1</span></b></span><span><svg class="ic"><use href="#i-cadeau"/></svg>Bonus de fin de carte<b class="cpt">8</b></span></div>
+            <p class="pm__intro">Les motifs pour lesquels tu donnes un tampon. <b><span class="repli" data-to="3">19</span><span class="repli" data-at="3-4">0</span><span class="repli" data-at="5">1</span></b> proposée(s) en séance sur 19.</p>
+            <div class="pm__bar"><span class="b b--encre b--petit"><svg class="ic ic--p"><use href="#i-plus"/></svg>Nouvelle catégorie</span><span class="esp"></span><span class="pm__rz avant" id="rl-rz" data-on="2" data-at="1-2,5">↺ Repartir de zéro</span></div>
+            <div class="pr zone-on" id="rl-liste" data-on="1">
+              <div class="pr__l ko apres" data-on="3-4" style="--c:#FF9800"><span class="pr__fl"><span class="gr">▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-etoile"/></svg></span><span class="pr__tx"><b>Participation remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on" id="rl-int"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko apres" data-on="3-5" style="--c:#F44336"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-bulle"/></svg></span><span class="pr__tx"><b>Oral remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko apres" data-on="3-5" style="--c:#009688"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="pr__tx"><b>Rédaction remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko apres" data-on="3-5" style="--c:#607D8B"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-livre"/></svg></span><span class="pr__tx"><b>Rattrapage du cours</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko apres" data-on="3-5" style="--c:#FF6F00"><span class="pr__fl"><span>▲</span><span>▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-feuille"/></svg></span><span class="pr__tx"><b>Autonomie</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko apres" data-on="3-5" style="--c:#1565C0"><span class="pr__fl"><span>▲</span><span class="gr">▼</span></span><span class="cat-ic cat-ic--g"><svg class="ic"><use href="#i-groupe"/></svg></span><span class="pr__tx"><b>Travail de groupe remarquable</b><small>Proposée en séance</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+            </div>
+            
+          </div>
+        </div>
+        <div class="modale-fond apres avant zoom" data-at="2" style="z-index:700">
+          <div class="modale" style="width:420px">
+            <div class="modale__t">Repartir de zéro</div>
+            <p class="modale__texte">Désactiver toutes les catégories pour créer les vôtres ?
+
+Les tampons déjà donnés restent sur les cartes des élèves, et chaque catégorie pourra être réactivée.</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--petit" id="rl-ok">Tout désactiver</span></div>
+          </div>
+        </div>
+        <div class="toast toast--ok apres" data-at="3-4">Catégories désactivées : ajoutez les vôtres</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+    <!-- ============================================================ 14. bonus -->
+    <section class="fiche" id="rc-bonus-liste">
+      <div class="fiche__texte">
+        <h2>Les bonus de fin de carte</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Personnaliser › Bonus de fin de carte</span></p>
+        <p class="fiche__but">La liste de ce qu'un élève peut choisir quand sa carte est pleine.</p>
+        <ol class="etapes">
+          <li data-cursor="#rx-onglet" data-action="click" data-duration="3200">Onglet <b>Bonus de fin de carte</b> : « Ce que l'élève peut choisir quand sa carte est complète. 8 proposés sur 8. »</li>
+          <li data-cursor="#rx-nouv" data-action="click"><span class="btn-nom">Nouveau bonus</span> ouvre une petite fenêtre à un seul champ, <b>Label</b>.</li>
+          <li data-cursor="#rx-label" data-duration="3200">Saisir le libellé du bonus.</li>
+          <li data-cursor="#rx-enr" data-action="click"><span class="btn-nom">Enregistrer</span> : le bonus s'ajoute en fin de liste, actif, avec le message « Bonus créé ».</li>
+          <li data-cursor="#rx-int" data-action="click" data-duration="3200">L'interrupteur retire un bonus des choix proposés (« Désactivé ») sans le supprimer.</li>
+          <li data-cursor="#rx-sup" data-action="click" data-duration="3600">La corbeille supprime un bonus jamais choisi ; s'il l'a déjà été, il est seulement désactivé (« Bonus désactivé (déjà choisi par un élève) »).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les bonus restent dans leur ordre de création : il n'y a pas de flèches pour les réordonner.</li>
+            <li>Seuls les bonus actifs sont proposés à l'élève et dans « Choisir le bonus ».</li>
+            <li>Le crayon modifie le libellé (« Modifier le bonus », message « Bonus modifié »).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/rewards</div></div><div class="app" style="position:relative;"><aside class="app__side">
+<div class="app__marque"><b>GC</b>Gestion Classe</div>
+<div class="side__it"><span class="ico"></span>Accueil</div>
+<div class="side__it"><span class="ico"></span>Mes cours</div>
+<div class="side__it"><span class="ico"></span>Classes</div>
+<div class="side__it"><span class="ico"></span>Évaluations</div>
+<div class="side__it is-actif"><span class="ico"></span>Plus</div>
+<div class="side__it side__sous is-actif">Récompenses</div>
+<div class="side__it side__sous">Académie</div>
+<div class="side__it side__sous">Outils</div>
+<div class="side__it side__sous">Pronote</div>
+</aside><div class="app__main" style="position:relative">
+        <div class="rw"><div class="rw-tete"><h3>Récompenses</h3></div></div>
+        <div class="modale-fond">
+          <div class="pm">
+            <div class="pm__t"><svg class="ic"><use href="#i-reglages"/></svg>Personnaliser les récompenses<span class="modale__x">×</span></div>
+            <div class="seg"><span><svg class="ic"><use href="#i-tampon"/></svg>Catégories de tampons<b class="cpt">19</b></span><span class="is-actif" id="rx-onglet" data-on="1"><svg class="ic"><use href="#i-cadeau"/></svg>Bonus de fin de carte<b class="cpt"><span class="repli" data-to="3">8</span><span class="repli apres" data-at="4">9</span><span class="repli" data-from="5">8</span></b></span></div>
+            <p class="pm__intro">Ce que l'élève peut choisir quand sa carte est complète. <b><span class="repli" data-to="3">8</span><span class="repli apres" data-at="4">9</span><span class="repli" data-from="5">8</span></b> proposés sur <span class="repli" data-to="3">8</span><span class="repli apres" data-from="4">9</span>.</p>
+            <div class="pm__bar"><span class="b b--encre b--petit" id="rx-nouv" data-on="2"><svg class="ic ic--p"><use href="#i-plus"/></svg>Nouveau bonus</span></div>
+            <div class="pr">
+              <div class="pr__l"><span class="pr__num">3</span><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg><span class="pr__tx"><b>Rendre un devoir une semaine plus tard</b><small>Proposé aux élèves</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l"><span class="pr__num">4</span><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg><span class="pr__tx"><b>−1 faute en devoir de langue</b><small>Proposé aux élèves</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l ko" data-on="5-6"><span class="pr__num">5</span><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg><span class="pr__tx"><b>+1 indice en évaluation</b><small><span class="repli" data-to="4">Proposé aux élèves</span><span class="repli" data-from="5">Désactivé</span></small></span><span class="interrupteur interrupteur--on" id="rx-int"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l"><span class="pr__num">6</span><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg><span class="pr__tx"><b>Pas de cours à écrire la semaine</b><small>Proposé aux élèves</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l"><span class="pr__num">8</span><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg><span class="pr__tx"><b>Un article de papeterie au choix</b><small>Proposé aux élèves</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r" id="rx-sup" data-on="6"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+              <div class="pr__l repli apres" data-from="4"><span class="pr__num">9</span><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg><span class="pr__tx"><b>Choisir le sujet de son exposé</b><small>Proposé aux élèves</small></span><span class="interrupteur interrupteur--on"></span><span class="ibtn"><svg class="ic"><use href="#i-crayon"/></svg></span><span class="ibtn ibtn--r"><svg class="ic"><use href="#i-corbeille"/></svg></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="modale-fond apres avant zoom" data-at="2-3" style="z-index:700">
+          <div class="modale" style="width:380px">
+            <div class="modale__t modale__tl"><svg class="ic" style="color:var(--indigo)"><use href="#i-cadeau"/></svg>Nouveau bonus<span class="modale__x">×</span></div>
+            <div class="nc__et">Label</div>
+            <div class="nc__ch" id="rx-label" data-on="3"><span class="ph repli" data-to="2">Ex: +1 pt sur la note de son choix</span><span data-type="Choisir le sujet de son exposé" data-type-at="3"></span></div>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--encre b--petit" id="rx-enr" data-on="4">Enregistrer</span></div>
+          </div>
+        </div>
+        <div class="modale-fond apres zoom" data-at="6" style="z-index:700">
+          <div class="modale" style="width:400px">
+            <div class="modale__t">Supprimer le bonus</div>
+            <p class="modale__texte">Supprimer ce bonus ?
+
+S'il a déjà été choisi par un élève, il sera seulement désactivé.</p>
+            <div class="modale__pied"><span class="b b--fantome b--petit">Annuler</span><span class="b b--rouge b--petit">Supprimer</span></div>
+          </div>
+        </div>
+        <div class="toast toast--ok apres" data-at="4">Bonus créé</div>
+      </div></div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

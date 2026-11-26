@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Le cours en classe — Guide Gestion Classe</title>
+<meta name="description" content="Préparer les écrans d'un cours, les essayer, projeter la feuille en classe et retrouver ce qui a été écrit pendant les séances.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="25">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/*CHROME-DEBUT*/
+/* ---- maquette de l'éditeur de cours (charte : course.css, accent #4F46E5, onglets contextuels #EA580C) ---- */
+.ce { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #F3F4F6; color: #1F2937; font-size: 12px; position: relative; }
+.ce__titre { height: 36px; flex: none; background: #fff; border-bottom: 1px solid #E2E4E9; display: flex; align-items: center; gap: 8px; padding: 0 10px; }
+.ce__gc { width: 22px; height: 22px; border-radius: 5px; background: #4F46E5; color: #fff; font-size: 9.5px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.ce__ic { width: 22px; height: 22px; border-radius: 5px; display: grid; place-items: center; color: #6B7280; font-size: 13px; flex: none; transition: background .25s; }
+.ce__ic.is-off { color: #C7CBD3; }
+.ce__ic.is-on { background: #E0E7FF; color: #3730A3; }
+.ce__nom { font-weight: 650; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; padding: 2px 6px; border-radius: 5px; border: 1.5px solid transparent; transition: all .25s; }
+.ce__nom.is-on { border-color: #4F46E5; background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.ce__past { font-size: 10.5px; padding: 2px 8px; border-radius: 999px; background: #FEF3C7; color: #92400E; white-space: nowrap; transition: all .25s; }
+.ce__past--mob { background: transparent; color: #6B7280; padding: 2px 4px; }
+.ce__past--mesure { background: #EEF0FF; color: #3730A3; }
+.ce__past.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.2); }
+.ce__etat { display: flex; align-items: center; gap: 5px; color: #6B7280; font-size: 11px; white-space: nowrap; }
+.ce__etat i { width: 7px; height: 7px; border-radius: 50%; background: #10B981; flex: none; }
+.ce__etat--mod i { background: #F59E0B; }
+.ce__etat--off i { background: #DC2626; }
+.ce__etat--off { color: #B45309; }
+.ce__fermer { height: 24px; padding: 0 11px; border-radius: 5px; background: #4F46E5; color: #fff; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; transition: transform .15s, box-shadow .2s; }
+.ce__fermer.is-on { transform: scale(.96); box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.ce__onglets { height: 28px; flex: none; background: #fff; display: flex; align-items: flex-end; gap: 2px; padding: 0 10px; }
+.ce__og { padding: 5px 11px 4px; font-size: 12.5px; color: #374151; border-bottom: 3px solid transparent; white-space: nowrap; transition: all .25s; }
+.ce__og.is-actif, .ce__og.is-on { color: #3730A3; border-bottom-color: #4F46E5; font-weight: 600; }
+.ce__og--fichier { background: #4F46E5; color: #fff !important; border-radius: 6px 6px 0 0; border-bottom-color: #4F46E5; }
+.ce__og--ctx { color: #EA580C !important; font-weight: 700; }
+.ce__og--ctx.is-actif, .ce__og--ctx.is-on { border-bottom-color: #EA580C; }
+.ce__ruban { height: 90px; flex: none; background: #fff; border-bottom: 1px solid #D1D5DB; position: relative; overflow: hidden; }
+.ce__rang { position: absolute; inset: 0; display: flex; padding: 4px 4px 0; }
+.ce__grp { display: flex; flex-direction: column; padding: 0 7px; border-right: 1px solid #E2E4E9; flex: none; }
+.ce__grp:last-child { border-right: 0; }
+.ce__grp-c { flex: 1; display: flex; gap: 2px; align-items: flex-start; }
+.ce__grp-c.col { flex-direction: column; gap: 2px; }
+.ce__grp-t { font-size: 10px; color: #6B7280; text-align: center; padding: 1px 0 3px; white-space: nowrap; }
+.ce__gb { width: 54px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 2px 3px; border-radius: 5px; font-size: 10.5px; line-height: 1.1; text-align: center; color: #1F2937; transition: background .2s, box-shadow .2s; }
+.ce__gb .pic { width: 24px; height: 24px; border-radius: 5px; border: 1.6px solid #4B5563; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #4B5563; background: #fff; }
+.ce__pb { height: 21px; min-width: 21px; padding: 0 4px; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; gap: 3px; color: #1F2937; white-space: nowrap; transition: background .2s, box-shadow .2s; }
+.ce__gb.is-on, .ce__pb.is-on, .ce__gb.is-actif, .ce__pb.is-actif { background: #E0E7FF; box-shadow: inset 0 0 0 1px #A5B4FC; }
+.ce__liste { height: 20px; border: 1px solid #D1D5DB; border-radius: 4px; padding: 0 5px; font-size: 11px; display: inline-flex; align-items: center; gap: 4px; background: #fff; white-space: nowrap; }
+.ce__liste::after { content: '▾'; font-size: 8px; color: #6B7280; margin-left: auto; padding-left: 4px; }
+.ce__coul { width: 13px; height: 13px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.1); }
+.ce__vign { width: 62px; height: 52px; border: 1px solid #E2E4E9; border-radius: 5px; padding: 4px; font-size: 10px; line-height: 1.15; background: #fff; display: flex; flex-direction: column; justify-content: center; gap: 2px; transition: all .2s; }
+.ce__vign.is-on, .ce__vign.is-actif { border-color: #4F46E5; box-shadow: 0 0 0 2px rgba(79,70,229,.2); }
+.ce__regle { height: 16px; flex: none; background: #F3F4F6; border-bottom: 1px solid #E2E4E9; position: relative; font-size: 8px; color: #9CA3AF; }
+.ce__regle b { position: absolute; top: 0; bottom: 0; left: 50%; width: 520px; translate: -50% 0; background: #fff; border-left: 38px solid #E5E7EB; border-right: 38px solid #E5E7EB; font-weight: 400; display: flex; justify-content: space-around; align-items: center; }
+.ce__milieu { flex: 1; min-height: 0; display: flex; position: relative; }
+.ce__bureau { flex: 1; min-width: 0; background: #E7E9EE; overflow: hidden; position: relative; display: flex; justify-content: center; padding-top: 14px; }
+.ce__feuille { width: 520px; height: 735px; flex: none; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 4px 14px rgba(0,0,0,.06); padding: 34px 38px; font-size: 13px; line-height: 1.5; position: relative; font-family: var(--font); }
+.ce__etatbar { height: 26px; flex: none; background: #F3F4F6; border-top: 1px solid #E2E4E9; display: flex; align-items: center; gap: 12px; padding: 0 10px; font-size: 11.5px; color: #4B5563; white-space: nowrap; }
+.ce__modes { display: flex; border: 1px solid #D1D5DB; border-radius: 5px; overflow: hidden; background: #fff; }
+.ce__modes span { padding: 1px 7px; transition: all .2s; }
+.ce__modes span + span { border-left: 1px solid #E2E4E9; }
+.ce__modes .is-actif { background: #4F46E5; color: #fff; }
+.ce__modes .is-on { background: #E0E7FF; color: #3730A3; }
+.ce__zoom { display: flex; align-items: center; gap: 5px; }
+.ce__zoom i { width: 60px; height: 3px; background: #D1D5DB; border-radius: 2px; position: relative; }
+.ce__zoom i::after { content: ''; position: absolute; left: 50%; top: -3px; width: 3px; height: 9px; background: #4B5563; border-radius: 1px; }
+.ce__volet { width: 170px; flex: none; background: #fff; border-right: 1px solid #E2E4E9; padding: 10px; font-size: 11px; }
+.ce__volet--d { border-right: 0; border-left: 1px solid #E2E4E9; width: 200px; }
+.ce__volet-t { font-weight: 650; font-size: 11.5px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+.ce__menu { position: absolute; z-index: 650; background: #fff; border: 1px solid #E2E4E9; border-radius: 8px; box-shadow: var(--shadow-lg); padding: 4px; font-size: 12px; }
+.ce__menu-it { padding: 5px 8px; border-radius: 5px; transition: background .2s; }
+.ce__menu-it b { display: block; font-size: 12px; }
+.ce__menu-it span { color: #6B7280; font-size: 11px; }
+.ce__menu-it.is-on { background: #EEF0FF; }
+/* contenu de la feuille */
+.fe-h1 { font-size: 21px; font-weight: 700; color: #1E3A8A; margin: 0 0 6px; line-height: 1.25; min-height: 21px; transition: all .35s; }
+.fe-h1.brut { font-size: 13px; font-weight: 400; color: #1F2937; }
+.fe-h2 { font-size: 15.5px; font-weight: 650; color: #3730A3; margin: 8px 0 3px; min-height: 17px; transition: all .35s; }
+.fe-h2.brut { font-size: 13px; font-weight: 400; color: #1F2937; }
+.fe-h3 { font-size: 14px; font-weight: 650; color: #4338CA; margin: 6px 0 2px; }
+.fe-p { margin: 0 0 5px; min-height: 16px; }
+.fe-gris { color: #9CA3AF; }
+.fe-cur::after { content: ''; display: inline-block; width: 1.5px; height: 15px; background: #1F2937; vertical-align: -2px; margin-left: 1px; animation: fe-cli 1s steps(1) infinite; }
+@keyframes fe-cli { 50% { opacity: 0; } }
+.fe-sel { background: #C7D2FE; }
+.fe-cal { margin: 6px 0; padding: 5px 8px; border-left: 3px solid #10B981; background: #ECFDF5; border-radius: 3px; transition: all .35s; }
+.fe-cal i { display: block; font-style: normal; font-size: 9.5px; letter-spacing: .08em; font-weight: 700; color: #047857; }
+.fe-cal--retenir { border: 1.5px solid #F59E0B; background: #FEF3C7; }
+.fe-cal--retenir i { color: #B45309; }
+.fe-cal--consigne { border-left: 0; background: #EFF6FF; font-style: italic; color: #1E3A8A; }
+.fe-cal--consigne i { color: #2563EB; font-style: normal; }
+.fe-cal--exemple { border-left-color: #8B5CF6; background: #F5F3FF; }
+.fe-cal--exemple i { color: #6D28D9; }
+.fe-cal.brut { border-color: transparent; background: transparent; padding-left: 0; }
+.fe-cal.brut i { display: none; }
+.fe-img { display: block; margin: 6px auto; border-radius: 2px; transition: all .4s; position: relative; }
+.fe-img.is-on { outline: 2px solid #4F46E5; outline-offset: 1px; }
+.fe-img .poignee { position: absolute; right: -4px; bottom: -4px; width: 8px; height: 8px; background: #fff; border: 1.5px solid #4F46E5; border-radius: 2px; }
+.fe-leg { text-align: center; font-style: italic; color: #334155; font-size: 11.5px; margin: 0 0 6px; }
+.fe-tab { width: 100%; border-collapse: collapse; font-size: 12px; margin: 6px 0; }
+.fe-tab th, .fe-tab td { border: 1px solid #94A3B8; padding: 3px 5px; text-align: left; height: 22px; }
+.fe-tab th { background: #E0E7FF; color: #1E3A8A; font-weight: 650; }
+.fe-pied { position: absolute; left: 38px; right: 38px; bottom: 12px; display: flex; justify-content: space-between; color: #6B7280; font-size: 10.5px; }
+.fe-entete { position: absolute; left: 38px; right: 38px; top: 10px; display: flex; justify-content: space-between; color: #6B7280; font-size: 10.5px; }
+.ce--sur { position: absolute; inset: 0; z-index: 20; }
+.ce__charge { position: absolute; inset: 0; z-index: 30; background: #F3F4F6; display: grid; place-items: center; color: #6B7280; font-size: 15px; }
+/* mini bibliothèque de Mes cours (styles/mes-cours.css) */
+.mc-carte { border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden; }
+.mc-niv { display: flex; align-items: center; gap: 8px; padding: 10px 12px; font-weight: 650; font-size: 14px; }
+.mc-chev { color: var(--text-dim); font-size: 11px; }
+.mc-seq { font-size: 10.5px; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; padding: 8px 12px 4px; border-top: 1px solid var(--border); }
+.mc-ligne { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; }
+.mc-ico { width: 13px; height: 16px; border: 1.5px solid #9CA3AF; border-radius: 2px; flex: none; }
+.mc-t { font-size: 13px; font-weight: 500; margin-right: 6px; white-space: nowrap; }
+.mc-doc { height: 28px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; transition: all .25s; }
+.mc-doc--gris { color: var(--text-dim); }
+.mc-doc.is-on { background: var(--indigo-soft); border-color: #A5B4FC; }
+.mc-plus { color: var(--text-dim); font-size: 16px; padding: 0 6px; }
+.ce__feuille.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.35), 0 4px 14px rgba(0,0,0,.06); }
+.ce__modes.is-on, .ce__onglets.is-on, .ce__etat.is-on { border-radius: 5px; box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.ce__modal-fond { position: absolute; inset: 0; z-index: 600; background: rgba(20,25,40,.45); display: grid; place-items: center; }
+.ce__modal { background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 16px 18px; width: 440px; font-size: 12.5px; }
+.ce__modal-t { font-size: 15px; font-weight: 650; margin-bottom: 10px; }
+.ce__choix { border: 1px solid #E2E4E9; border-radius: 7px; padding: 7px 9px; font-size: 11px; color: #6B7280; transition: all .25s; }
+.ce__choix b { display: block; color: #1F2937; font-size: 12px; }
+.ce__choix.is-on, .ce__choix.is-actif { border-color: #4F46E5; background: #EEF0FF; }
+/*CHROME-FIN*/
+/* ---- maquette du tableau blanc (charte : course.css pour le ruban, wb-theme.css pour l'habillage tactile) ---- */
+.tb { flex: 1; min-height: 0; display: flex; flex-direction: column; background: #E7E9EE; color: #1F2937; font-size: 12px; position: relative; overflow: hidden; }
+.tb .ic { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+/* barre de titre */
+.tb-titre { height: 36px; flex: none; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #fff; border-bottom: 1px solid #E2E4E9; }
+.tb-logo { width: 22px; height: 22px; border-radius: 6px; background: #4F46E5; color: #fff; font-size: 9.5px; font-weight: 700; display: grid; place-items: center; flex: none; }
+.tb-qa { display: flex; gap: 2px; color: #6B7280; }
+.tb-qa > span { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; transition: background .25s, color .25s; }
+.tb-qa > span.is-on { background: #E0E7FF; color: #3730A3; }
+.tb-nom { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 330px; }
+.tb-enr { font-size: 11.5px; color: #6B7280; display: flex; align-items: center; gap: 6px; white-space: nowrap; transition: all .25s; }
+.tb-enr::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10B981; flex: none; }
+.tb-enr--ko { color: #B45309; }
+.tb-enr--ko::before { background: #DC2626; }
+.tb-enr.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.18); border-radius: 6px; padding: 2px 6px; }
+.tb-sortie { height: 26px; padding: 0 12px; border-radius: 6px; background: #4F46E5; color: #fff; font-weight: 600; font-size: 12px; display: inline-flex; align-items: center; white-space: nowrap; flex: none; transition: box-shadow .2s, transform .15s; }
+.tb-sortie.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); transform: scale(.96); }
+/* onglets */
+.tb-onglets { flex: none; display: flex; align-items: center; gap: 2px; padding: 0 8px; background: #fff; min-height: 30px; }
+.tb-onglet { padding: 6px 11px 4px; font-size: 12px; color: #374151; border-bottom: 3px solid transparent; white-space: nowrap; transition: all .25s; }
+.tb-onglet.is-actif, .tb-onglet.is-on { color: #3730A3; border-bottom-color: #4F46E5; font-weight: 600; }
+.tb-onglet--fichier { background: #4F46E5; color: #fff !important; border-radius: 6px 6px 0 0; margin-right: 4px; }
+.tb-onglet--fichier.is-actif, .tb-onglet--fichier.is-on { border-bottom-color: #312E81; }
+.tb-onglet--ctx { color: #EA580C !important; font-weight: 600; }
+.tb-onglet--ctx.is-actif, .tb-onglet--ctx.is-on { border-bottom-color: #EA580C; }
+.tb-plier { width: 28px; height: 24px; display: grid; place-items: center; color: #4B5563; border-radius: 6px; font-size: 11px; flex: none; transition: background .25s; }
+.tb-plier.is-on { background: #EEF0FF; box-shadow: 0 0 0 2px #A5B4FC; }
+/* ruban */
+.tb-ruban { height: 88px; flex: none; display: flex; align-items: stretch; padding: 4px 6px 0; background: #fff; border-bottom: 1px solid #E2E4E9; box-shadow: 0 1px 2px rgba(0,0,0,.04); overflow: hidden; position: relative; }
+.tb-ruban > .tb-rangee { position: absolute; inset: 4px 6px 0; display: flex; align-items: stretch; }
+.tb-ruban--dessus { position: absolute; left: 0; right: 0; z-index: 40; border-bottom: 1px solid #D1D5DB; box-shadow: 0 8px 24px rgba(15,23,42,.16); }
+.tb-gr { display: flex; flex-direction: column; padding: 0 6px; border-right: 1px solid #E2E4E9; flex: none; }
+.tb-gr:last-child { border-right: 0; }
+.tb-gr__c { flex: 1; display: flex; align-items: flex-start; gap: 2px; }
+.tb-gr__l { font-size: 10px; color: #6B7280; text-align: center; padding: 1px 0 3px; white-space: nowrap; }
+.tb-gb { width: 52px; min-height: 58px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 1px 3px; border: 1px solid transparent; border-radius: 6px; font-size: 10.5px; line-height: 1.1; text-align: center; transition: all .25s; }
+.tb-gb .ic { width: 24px; height: 24px; stroke-width: 1.5; }
+.tb-gb.is-on, .tb-pb.is-on, .tb-gb.is-actif, .tb-pb.is-actif { background: #E0E7FF; border-color: #A5B4FC; }
+.tb-gb--gris, .tb-pb--gris { opacity: .4; }
+.tb-pile { display: flex; flex-direction: column; gap: 2px; }
+.tb-pb { height: 22px; display: inline-flex; align-items: center; gap: 4px; padding: 0 5px; border: 1px solid transparent; border-radius: 5px; font-size: 10.5px; white-space: nowrap; transition: all .25s; }
+.tb-pb .ic { width: 13px; height: 13px; }
+.tb-rang { display: flex; align-items: center; gap: 3px; height: 22px; }
+.tb-sw { width: 16px; height: 16px; border-radius: 4px; border: 2px solid #fff; box-shadow: 0 0 0 1px #D1D5DB; flex: none; transition: box-shadow .25s, background .3s; }
+.tb-sw.is-on, .tb-sw--on { box-shadow: 0 0 0 2px #4F46E5; }
+.tb-roue { width: 13px; height: 13px; border-radius: 50%; background: conic-gradient(#EF4444, #F59E0B, #10B981, #3B82F6, #8B5CF6, #EF4444); flex: none; }
+.tb-ep { width: 24px; height: 22px; display: grid; place-items: center; border-radius: 5px; border: 1px solid transparent; transition: all .25s; }
+.tb-ep i { display: block; border-radius: 50%; }
+.tb-ep.is-on, .tb-ep--on { background: #E0E7FF; border-color: #A5B4FC; }
+.tb-mini { font-size: 10.5px; color: #374151; padding: 0 3px; white-space: nowrap; }
+.tb-liste { height: 20px; border: 1px solid #D1D5DB; border-radius: 4px; padding: 0 5px; font-size: 10.5px; display: inline-flex; align-items: center; gap: 4px; background: #fff; white-space: nowrap; }
+.tb-liste::after { content: '▾'; font-size: 8px; color: #6B7280; margin-left: auto; padding-left: 4px; }
+/* scène, page, volet, barre d'état */
+.tb-scene { flex: 1; min-height: 0; display: flex; position: relative; }
+.tb-bureau { flex: 1; min-width: 0; display: grid; place-items: center; position: relative; overflow: hidden; }
+.tb-page { width: 640px; height: 360px; flex: none; background: #fff; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.06); overflow: hidden; transition: background .4s; }
+.tb-page--p { width: 560px; height: 315px; }
+.tb-vide { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; color: #9CA3AF; font-size: 15px; line-height: 1.6; }
+.tb-volet { width: 148px; flex: none; background: #F3F4F6; border-left: 1px solid #E2E4E9; display: flex; flex-direction: column; }
+.tb-volet__t { font-size: 10px; letter-spacing: .06em; color: #6B7280; font-weight: 600; padding: 8px 12px 6px; display: flex; justify-content: space-between; }
+.tb-vignettes { flex: 1; min-height: 0; padding: 2px 14px; display: flex; flex-direction: column; gap: 9px; overflow: hidden; position: relative; }
+.tb-vig { position: relative; height: 66px; flex: none; background: #fff; border-radius: 3px; box-shadow: 0 0 0 1px #D1D5DB; overflow: hidden; transition: box-shadow .3s, transform .4s; }
+.tb-vig.is-on, .tb-vig--cour { box-shadow: 0 0 0 2px #6366F1; }
+.tb-vig > b { position: absolute; left: 4px; bottom: 2px; font-size: 9px; color: #6B7280; font-weight: 600; }
+.tb-vig > em { position: absolute; inset: 0; display: grid; place-items: center; font-size: 9px; color: #9CA3AF; font-style: normal; }
+.tb-vig svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tb-volet__pied { display: flex; justify-content: center; gap: 6px; padding: 6px; border-top: 1px solid #E2E4E9; }
+.tb-volet__pied span { width: 26px; height: 22px; border-radius: 5px; display: grid; place-items: center; background: #fff; border: 1px solid #D1D5DB; font-size: 10px; color: #4B5563; }
+.tb-volet__pied .plus { background: #4F46E5; color: #fff; border-color: #4F46E5; font-size: 13px; }
+.tb-etat { height: 26px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 10px; background: #F3F4F6; border-top: 1px solid #E2E4E9; font-size: 11px; color: #4B5563; white-space: nowrap; }
+.tb-etat .z { display: flex; align-items: center; gap: 7px; }
+.tb-etat .bt { padding: 2px 7px; border-radius: 4px; transition: background .25s; }
+.tb-etat .bt.is-on { background: #E0E7FF; color: #3730A3; }
+/* encre : un tracé SVG se dessine à son apparition (pathLength="1" sur chaque tracé) */
+.tb-encre { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 5; }
+.tb-encre path, .tb-encre line, .tb-encre ellipse, .tb-encre circle, .tb-encre rect, .tb-encre polyline, .tb-encre polygon { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.trait { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.trait[data-from], .trait[data-at], .trait[data-to] { transition: opacity .2s, visibility .2s, stroke-dashoffset 1.3s ease-in-out; }
+.trait.is-hidden { stroke-dashoffset: 1; }
+.trait--lent[data-from], .trait--lent[data-at] { transition: opacity .2s, visibility .2s, stroke-dashoffset 2s ease-in-out; }
+.surl { stroke: #FDE047; stroke-opacity: .55; }
+.laser { stroke: #EF4444; filter: drop-shadow(0 0 4px rgba(239,68,68,.9)); }
+.laser:not(.is-hidden) { animation: laser-efface 2.2s ease-out forwards; }
+@keyframes laser-efface { 0%, 55% { opacity: 1; } 100% { opacity: 0; } }
+/* écriture manuscrite (texte qui « s'écrit » de gauche à droite) */
+.ecrit { position: absolute; font-family: "Segoe Print", "Comic Sans MS", "Chalkboard SE", cursive; color: #1D4ED8; line-height: 1.1; white-space: nowrap; clip-path: inset(-10px -10px -10px -10px); z-index: 5; }
+.ecrit[data-from], .ecrit[data-at] { transition: opacity .2s, visibility .2s, clip-path 1.2s ease; }
+.ecrit.is-hidden { clip-path: inset(-10px 100% -10px -10px); }
+/* objets posés sur la page */
+.tb-texte { position: absolute; font-size: 15px; line-height: 1.35; color: #111827; z-index: 3; }
+.tb-sel { outline: 1.5px solid #4F46E5; outline-offset: 3px; }
+.tb-sel-cadre { position: absolute; border: 1.5px solid #4F46E5; z-index: 6; pointer-events: none; }
+.tb-sel-cadre::before, .tb-sel-cadre::after { content: ''; position: absolute; width: 7px; height: 7px; background: #fff; border: 1.5px solid #4F46E5; border-radius: 2px; }
+.tb-sel-cadre::before { left: -5px; top: -5px; }
+.tb-sel-cadre::after { right: -5px; bottom: -5px; }
+.tb-sel-pointille { position: absolute; border: 1.5px dashed #4F46E5; background: rgba(99,102,241,.10); z-index: 6; }
+.tb-poignee { position: absolute; width: 8px; height: 8px; background: #fff; border: 1.5px solid #4F46E5; border-radius: 2px; z-index: 7; }
+/* barre flottante d'objet (sous le ruban : blanche, liseré indigo pâle) */
+.tb-flot { position: absolute; z-index: 30; display: flex; align-items: center; gap: 3px; padding: 4px 5px; background: #fff; border: 1px solid #C7D2FE; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.16); font-size: 11px; white-space: nowrap; }
+.tb-flot__l { font-size: 10px; color: #6B7280; padding: 0 5px 0 3px; font-weight: 600; }
+.tb-flot__b { min-width: 24px; height: 24px; padding: 0 5px; border-radius: 6px; display: grid; place-items: center; color: #374151; transition: all .25s; border: 1px solid transparent; }
+.tb-flot__b.is-on, .tb-flot__b--on { background: #E0E7FF; border-color: #A5B4FC; color: #3730A3; }
+.tb-flot__sep { width: 1px; height: 18px; background: #E2E4E9; margin: 0 2px; }
+/* panneau clair (sous le ruban) et panneau sombre (habillage tactile) */
+.tb-pop { position: absolute; z-index: 45; background: #fff; border: 1px solid #D1D5DB; border-radius: 10px; box-shadow: 0 8px 24px rgba(15,23,42,.16); padding: 10px; font-size: 11.5px; }
+.tb-pop__t { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #6B7280; font-weight: 600; margin: 2px 0 6px; }
+.tb-sombre { position: absolute; z-index: 45; background: #111827; color: #E5E7EB; border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.45); padding: 10px; font-size: 11.5px; }
+.tb-sombre__t { font-size: 10px; text-transform: uppercase; letter-spacing: .07em; color: #9CA3AF; font-weight: 600; margin: 0 0 6px; }
+.tb-sombre__sec + .tb-sombre__sec { margin-top: 8px; padding-top: 8px; border-top: 1px solid #1F2937; }
+.tb-sombre__grille { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.tb-sombre__it { display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 7px; font-size: 10.5px; line-height: 1.15; color: #E5E7EB; transition: background .25s; }
+.tb-sombre__it i { width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #6B7280; flex: none; font-style: normal; font-size: 9px; display: grid; place-items: center; color: #D1D5DB; }
+.tb-sombre__it.is-on, .tb-sombre__it--actif { background: #312E81; }
+.tb-sombre__it.is-on { box-shadow: 0 0 0 2px #6366F1; }
+/* menu contextuel (sombre, lignes hautes) */
+.tb-menu { position: absolute; z-index: 50; min-width: 200px; background: #111827; color: #E5E7EB; border-radius: 10px; box-shadow: 0 16px 40px rgba(0,0,0,.4); padding: 5px; font-size: 11.5px; }
+.tb-menu__it { display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 10px; border-radius: 6px; transition: background .2s; }
+.tb-menu__it kbd { margin-left: auto; background: none; color: #9CA3AF; font-size: 10px; padding: 0; }
+.tb-menu__it .fl { margin-left: auto; color: #9CA3AF; }
+.tb-menu__it.is-on { background: #4F46E5; color: #fff; }
+.tb-menu__it--danger { color: #FCA5A5; }
+.tb-menu__it--gris { opacity: .4; }
+.tb-menu__sep { height: 1px; background: #1F2937; margin: 4px 2px; }
+/* barre d'annulation et alertes */
+.tb-annul { position: absolute; z-index: 40; left: 50%; bottom: 14px; translate: -50% 0; display: flex; align-items: center; gap: 12px; padding: 7px 8px 7px 14px; border-radius: 10px; background: #1F2937; color: #F3F4F6; font-size: 11.5px; box-shadow: 0 8px 24px rgba(0,0,0,.25); white-space: nowrap; }
+.tb-annul b { color: #A5B4FC; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: rgba(165,180,252,.12); transition: all .2s; }
+.tb-annul b.is-on { background: #4F46E5; color: #fff; }
+/* habillage tactile (TBI) : bureau sombre, barre flottante, rail, pastille */
+.tb--sombre { background: #1F2937; }
+.tb--sombre .tb-bureau { background: #1F2937; }
+.tb-barre { position: absolute; z-index: 20; display: flex; align-items: center; gap: 3px; padding: 5px; border-radius: 16px; background: rgba(17,24,39,.88); box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: all .45s ease; }
+.tb-barre--bas { left: 50%; bottom: 10px; translate: -50% 0; }
+.tb-barre--gauche { left: 10px; top: 50%; translate: 0 -50%; flex-direction: column; }
+.tb-bf { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; color: #D1D5DB; transition: all .25s; flex: none; }
+.tb-bf .ic { width: 20px; height: 20px; }
+.tb-bf.is-on, .tb-bf--on { background: #4F46E5; color: #fff; }
+.tb-bf--sortie { color: #A5B4FC; }
+.tb-bf__pt { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff; }
+.tb-bf-sep { width: 1px; height: 24px; background: #374151; margin: 0 3px; flex: none; }
+.tb-barre--gauche .tb-bf-sep { width: 24px; height: 1px; margin: 3px 0; }
+.tb-ilot { position: absolute; z-index: 20; display: flex; gap: 3px; padding: 4px; border-radius: 12px; background: rgba(17,24,39,.88); box-shadow: 0 8px 24px rgba(0,0,0,.35); transition: all .45s ease; }
+.tb-ilot .tb-bf { width: 34px; height: 34px; }
+.tb-rail { position: absolute; z-index: 20; right: 10px; top: 50%; translate: 0 -50%; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border-radius: 12px; background: rgba(17,24,39,.88); color: #D1D5DB; box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.tb-rail__poi { width: 18px; height: 6px; background: radial-gradient(circle, #6B7280 1px, transparent 1.5px) 0 0 / 4px 3px; margin-bottom: 2px; }
+.tb-rail .tb-bf { width: 32px; height: 30px; }
+.tb-rail__n { font: 10px var(--mono); color: #E5E7EB; padding: 2px 0; }
+.tb-pastille { position: absolute; z-index: 25; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: #171C24; color: #E7ECF3; display: grid; place-items: center; box-shadow: 0 0 0 3px var(--pc, #111827), 0 0 0 5px #fff, 0 8px 18px rgba(0,0,0,.4); transition: left .6s ease, top .6s ease, box-shadow .3s; }
+.tb-pastille .ic { width: 22px; height: 22px; }
+.tb-pastille--blanche { background: #fff; color: #374151; box-shadow: 0 0 0 1px #D1D5DB, 0 6px 14px rgba(0,0,0,.18); }
+.tb-pastille--blanche::after { content: ''; position: absolute; right: 6px; bottom: 6px; width: 10px; height: 10px; border-radius: 50%; background: var(--pc, #111827); border: 1.5px solid #fff; }
+.tb-radial { position: absolute; z-index: 24; width: 0; height: 0; }
+.tb-radial svg { position: absolute; left: -110px; top: -110px; width: 220px; height: 220px; overflow: visible; filter: drop-shadow(0 10px 24px rgba(0,0,0,.4)); }
+.tb-radial .seg path { fill: #111827; stroke: #1F2937; stroke-width: 1.5; transition: fill .25s; }
+.tb-radial .seg text { font: 600 9.5px var(--font); fill: #E5E7EB; text-anchor: middle; }
+.tb-radial .seg--actif path { fill: #312E81; }
+.tb-radial .seg.is-on path { fill: #4F46E5; }
+.tb-radial .seg.is-on text { fill: #fff; }
+.tb-radial .centre { fill: #fff; }
+.tb-radial .croix { font: 700 14px var(--font); fill: #374151; text-anchor: middle; }
+.tb-radial.is-hidden svg { transform: scale(.4); }
+.tb-radial svg { transition: transform .35s cubic-bezier(.3,1.3,.5,1); transform-origin: 110px 110px; }
+/* touches de clavier affichées dans une maquette */
+.tb-touche { display: inline-grid; place-items: center; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 7px; background: #fff; border: 1px solid #D1D5DB; box-shadow: 0 2px 0 #D1D5DB; font: 600 13px var(--font); color: #1F2937; }
+/* ---- propre à cette page ---- */
+.tb.ce--sur { position: absolute; inset: 0; z-index: 20; }
+.gl { width: 24px; height: 24px; display: grid; place-items: center; font-size: 15px; color: #4B5563; }
+.tb-pastille .gl { color: #374151; }
+.es-rideau { position: absolute; left: 400px; top: 228px; width: 220px; height: 70px; background: repeating-linear-gradient(135deg, #C7D2FE 0 10px, #E0E7FF 10px 20px); border-radius: 6px; display: grid; place-items: center; font-size: 12px; color: #3730A3; font-weight: 600; z-index: 4; transition: transform .6s ease, opacity .6s; transform-origin: top; }
+.es-rideau.is-on, .es-rideau.is-on ~ * { }
+.es-rideau.is-on { transform: scaleY(0.04); opacity: .2; }
+.ce:has(.es-rideau.is-hidden) .es-rideau { }
+.es-cache { position: absolute; font-size: 22px; color: #059669; font-weight: 700; z-index: 3; }
+.es-nav { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; display: flex; gap: 6px; align-items: center; background: rgba(17,24,39,.88); color: #fff; border-radius: 14px; padding: 4px; font-size: 12px; }
+.es-nav span { min-width: 34px; height: 30px; display: grid; place-items: center; border-radius: 9px; }
+/* présentation en bande (CoursePresenter) */
+.pr { background: #fff; overflow: hidden; z-index: 20; }
+.pr-vue { position: absolute; inset: 0; overflow: hidden; transition: background .4s; }
+.pr-vue.is-on { background: #E5E7EB; }
+.pr-defile { position: absolute; left: 0; right: 0; top: 0; transition: transform .7s ease; transform-origin: 50% 0; }
+.pr-defile.is-on { transform: translateY(-150px); }
+.pr-vue.is-on .pr-defile { transform: scale(.42) translateY(40px); }
+.pr-col { width: 900px; margin: 0 auto; padding: 34px 0; font-size: 25px; line-height: 1.5; color: #1F2937; background: #fff; }
+.pr-vue.is-on .pr-col { box-shadow: 0 4px 30px rgba(0,0,0,.15); padding: 34px 40px; }
+.pr-col p { margin: 0 0 14px; }
+.pr-h1 { font-size: 40px; font-weight: 700; color: #1E3A8A; margin-bottom: 14px; }
+.pr-h2 { font-size: 30px; font-weight: 650; color: #3730A3; margin: 18px 0 8px; }
+.pr-cons { background: #EFF6FF; color: #1E3A8A; font-style: italic; padding: 10px 16px; border-radius: 6px; }
+.pr-cons i { display: block; font-style: normal; font-size: 13px; letter-spacing: .08em; font-weight: 700; color: #2563EB; }
+.pr-encart { height: 300px; border: 2px solid #CBD5E1; border-radius: 6px; margin: 12px 0; background: repeating-linear-gradient(135deg, #F8FAFC 0 12px, #F1F5F9 12px 24px); position: relative; }
+.pr-encart span { position: absolute; top: -26px; left: 0; font-size: 14px; color: #64748B; }
+.pr-bande { position: absolute; left: 50%; top: 18px; width: 400px; height: 236px; translate: -50% 0; border: 3px solid #4F46E5; border-radius: 4px; pointer-events: none; }
+.pr-encre { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+.pr-encre path { stroke-linecap: round; }
+.pr-barre { position: absolute; left: 50%; bottom: 14px; translate: -50% 0; z-index: 10; display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-radius: 12px; background: rgba(17,24,39,.86); color: #fff; font-size: 13px; white-space: nowrap; }
+.pr-b { min-width: 30px; height: 30px; padding: 0 6px; border-radius: 8px; display: grid; place-items: center; color: #E5E7EB; font-size: 14px; transition: background .25s; }
+.pr-b.is-on { background: #4F46E5; color: #fff; }
+.pr-b--txt { font-size: 12px; }
+.pr-n { padding: 0 6px; font-variant-numeric: tabular-nums; min-width: 96px; text-align: center; }
+.pr-sep { width: 1px; height: 20px; background: #374151; margin: 0 3px; }
+.pr-pt { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.6); transition: box-shadow .25s; }
+.pr-pt.is-on { box-shadow: 0 0 0 3px #fff; }
+.pr-test { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; background: #F59E0B; color: #111827; margin-left: 4px; }
+.pr-test--live { background: #10B981; }
+.pr-quit { background: #fff; color: #111827; font-weight: 600; font-size: 12.5px; padding: 6px 12px; border-radius: 8px; margin-left: 4px; transition: box-shadow .25s; }
+.pr-quit.is-on { box-shadow: 0 0 0 3px #A5B4FC; }
+/* bandeau de séance (ActiveSessionNotice) */
+.sa-bandeau { position: absolute; left: 50%; top: 18px; translate: -50% 0; z-index: 30; width: 860px; display: flex; align-items: center; gap: 12px; padding: 10px 12px 10px 16px; border: 1px solid #F59E0B; border-radius: 12px; background: #FFFBEB; color: #78350F; font-size: 13.5px; line-height: 1.35; box-shadow: 0 10px 30px rgba(15,23,42,.22); }
+.sa-pt { width: 10px; height: 10px; border-radius: 50%; background: #DC2626; box-shadow: 0 0 0 4px rgba(220,38,38,.2); flex: none; }
+.sa-go { background: #4F46E5; color: #fff; font-weight: 600; font-size: 12.5px; padding: 7px 12px; border-radius: 8px; white-space: nowrap; flex: none; transition: box-shadow .25s; }
+.sa-go.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.sa-x { width: 26px; height: 26px; display: grid; place-items: center; border-radius: 6px; flex: none; }
+/* écran de classe */
+.cs-attente { position: absolute; inset: 0; display: grid; place-items: center; font-size: 22px; color: #6B7280; }
+.tbi .pr-col { width: 860px; }
+/* écrit en classe */
+.ec-btn { background: #EEF2FF; color: #3730A3; padding: 1px 8px; border-radius: 5px; transition: box-shadow .25s; }
+.ec-btn.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.ec-sess { font-size: 12.5px; font-weight: 650; margin: 6px 0 6px; }
+.ec-paire { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 5px; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 10px; transition: box-shadow .25s; }
+.ec-paire.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.ec-img { aspect-ratio: 16 / 9; border-radius: 5px; overflow: hidden; border: 1px solid #E2E8F0; background: #fff; }
+.ec-ajout { display: grid; place-items: center; font-size: 10px; color: #64748B; background: #F1F5F9; }
+.ec-grand { margin: 0; }
+.ec-grand svg { width: 100%; height: auto; border: 1px solid #E2E8F0; border-radius: 6px; }
+.ec-grand figcaption { font-size: 11.5px; color: #6B7280; text-align: center; margin-top: 3px; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › <a href="editeur-de-cours.html">Éditeur de cours</a> › Le cours en classe</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#tableau-du-cours">Le tableau du cours</a></li>
+      <li><a href="#essai-ecrans">Essayer les écrans</a></li>
+      <li><a href="#en-classe-bande">En classe : la feuille projetée</a></li>
+      <li><a href="#seance-active">Bandeau « Séance en cours »</a></li>
+      <li><a href="#cours-en-seance">Le cours en séance</a></li>
+      <li><a href="#ecrit-en-classe">Écrit en classe</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/editeur-de-cours-avance.html">◀ Éditeur de cours : fonctions avancées</a><a href="../enseignant/tableau-blanc.html">Tableau blanc ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Mes cours</div>
+      <h1>Le cours en classe</h1>
+      <p>Un cours rédigé a trois temps : la feuille qu'on imprime, le tableau qu'on prépare, la classe où on le présente. Ce chapitre suit le cours de l'éditeur jusqu'à l'écran projeté.</p>
+      <div class="chap__resume"><span>Éditeur › barre d'état › Tableau · En classe</span><span>Ordinateur</span><span>Écran de classe</span></div>
+    </header>
+
+    <section class="fiche fiche--large" id="tableau-du-cours">
+      <div class="fiche__texte">
+        <h2>Le tableau du cours : ses écrans</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Éditeur › barre d'état › Tableau</span></p>
+        <p class="fiche__but">Chaque cours rédigé a une seconde face : une suite d'écrans 16:9 projetés en classe à la place de la feuille. On les prépare dans le tableau blanc, sans quitter le cours.</p>
+        <ol class="etapes">
+          <li data-cursor="#tc-tab" data-action="click">Dans la barre d'état, cliquer <span class="btn-nom">▣ Tableau (4)</span> (ou Affichage › Mode › <b>Tableau</b>). Le nombre est celui des écrans.</li>
+          <li data-cursor="#tc-page" data-duration="3200">Le tableau blanc s'ouvre en plein écran, au nom du cours suivi de « tableau ».</li>
+          <li data-cursor="#tc-vig5" data-duration="3600">Créer et remplir les pages : textes, schémas, rideaux, textes à trous, boutons d'action, animations.</li>
+          <li data-cursor="#tc-fermer" data-action="click"><span class="btn-nom">Fermer</span> : les pages sont rangées dans le cours, le compteur passe à <b>Tableau (5)</b>.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Une page compte comme écran dès qu'elle porte un trait, un objet ou une image de fond ; les pages vides sont écartées.</li>
+            <li>Les écrans font partie du cours : ils suivent une copie, un modèle, une copie posée sur l'emploi du temps.</li>
+            <li>Ils ne sortent jamais vers le téléphone des élèves (QR code) ni par le lien lecture seule.</li>
+            <li>Un cours qui a des écrans est montré par ses écrans en classe ; sans écran, c'est la feuille qui est projetée en bande (voir <a href="#en-classe-bande">En classe</a>).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tableau-blanc.html">Le tableau blanc</a> · <a href="mini-sites-et-animations.html">Animations et mini-sites</a> · <a href="tableaux-de-seance.html">Tableaux de séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div><div class="app" style="position:relative"><div class="ce"><div class="ce__titre"><span class="ce__gc">GC</span><span class="ce__ic">↶</span><span class="ce__ic is-off">↷</span><span class="ce__nom">Cours — La respiration</span><span class="esp"></span><span class="ce__past ce__past--mob">Version mobile : automatique</span><span class="ce__etat"><i></i>Enregistré</span><span class="ce__fermer">Fermer</span></div><div class="ce__onglets" id="tc-onglets"><span class="ce__og ce__og--fichier">Fichier</span><span class="ce__og is-actif">Accueil</span><span class="ce__og">Insertion</span><span class="ce__og">Mise en page</span><span class="ce__og">Révision</span><span class="ce__og">Affichage</span></div><div class="ce__ruban"><div class="ce__rang"><div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb" id="tc-coller"><span class="pic">▤</span>Coller<span class="ce__fl" id="tc-coller-opt">▾</span></div><div class="ce__grp-c col"><span class="ce__pb" id="tc-couper">Couper</span><span class="ce__pb" id="tc-copier">Copier</span><span class="ce__pb" id="tc-repro">Reproduire</span></div></div><div class="ce__grp-t">Presse-papiers</div></div><div class="ce__grp"><div class="ce__grp-c col"><div class="ligne" style="gap:3px"><span class="ce__liste" style="width:122px">Atkinson (du cours)</span><span class="ce__liste" style="width:40px">12</span><span class="ce__pb" id="tc-aplus">A+</span><span class="ce__pb" id="tc-amoins">A−</span><span class="ce__pb" id="tc-casse">Aa</span></div><div class="ligne" style="gap:1px"><span class="ce__pb" id="tc-gras"><b>G</b></span><span class="ce__pb" id="tc-ital"><i>I</i></span><span class="ce__pb" id="tc-soul"><u>S</u></span><span class="ce__pb" id="tc-barre"><s>ab</s></span><span class="ce__pb" id="tc-ind">x₂</span><span class="ce__pb" id="tc-exp">x²</span><span class="ce__coul" id="tc-c-noir" style="background:#111827"></span><span class="ce__coul" id="tc-c-rouge" style="background:#DC2626"></span><span class="ce__coul" id="tc-c-bleu" style="background:#2563EB"></span><span class="ce__coul" id="tc-c-vert" style="background:#16A34A"></span><span class="ce__coul" id="tc-c-violet" style="background:#9333EA"></span><span class="ce__coul" id="tc-c-orange" style="background:#EA580C"></span></div><div class="ligne" style="gap:3px"><span class="ce__pb" id="tc-surl">Surligner</span><span class="ce__coul" id="tc-h-jaune" style="background:#FEF08A"></span><span class="ce__coul" id="tc-h-vert" style="background:#BBF7D0"></span><span class="ce__coul" id="tc-h-bleu" style="background:#BFDBFE"></span><span class="ce__coul" id="tc-h-rose" style="background:#FBCFE8"></span><span class="ce__pb" id="tc-aucun">Aucun</span></div></div><div class="ce__grp-t">Police</div></div><div class="ce__grp"><div class="ce__grp-c col"><div class="ligne" style="gap:1px"><span class="ce__pb" id="tc-puces">•&thinsp;≡</span><span class="ce__pb" id="tc-num">1.&thinsp;≡</span><span class="ce__pb" id="tc-cases">☐&thinsp;≡</span><span class="ce__pb" id="tc-ret-">⇤</span><span class="ce__pb" id="tc-ret+">⇥</span></div><div class="ligne" style="gap:1px"><span class="ce__pb" id="tc-gauche"><span class="al al--g"></span></span><span class="ce__pb" id="tc-centrer"><span class="al al--c"></span></span><span class="ce__pb" id="tc-droite"><span class="al al--d"></span></span><span class="ce__pb" id="tc-just"><span class="al"></span></span><span class="ce__liste">↕ 1,15</span></div><div class="ligne" style="gap:3px"><span class="ce__liste">Espace avant</span><span class="ce__liste">après</span></div></div><div class="ce__grp-t">Paragraphe</div></div><div class="ce__grp"><div class="ce__grp-c"><div class="ce__vign" id="tc-st-texte"><span>Texte du cours</span></div><div class="ce__vign" id="tc-st-chap"><b style="color:#1E3A8A;font-size:12px">Chapitre</b></div><div class="ce__vign" id="tc-st-partie"><b style="color:#3730A3">1. Partie</b></div><div class="ce__vign" id="tc-st-sous"><b style="color:#4338CA">a. Sous-partie</b></div><div class="ce__vign" id="tc-st-def"><span class="vg vg--def">Définition</span></div><div class="ce__vign" id="tc-st-ret"><span class="vg vg--ret">À retenir</span></div><div class="ce__vign" id="tc-st-cons"><span class="vg vg--cons">Consigne</span></div><div class="ce__vign" id="tc-st-ex"><span class="vg vg--ex">Exemple</span></div></div><div class="ce__grp-t">Styles</div></div></div></div><div class="ce__regle"><b><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span><span>14</span><span>16</span><span>18</span></b></div><div class="ce__milieu"><div class="ce__bureau"><div class="ce__feuille"><div class="fe-h1">La respiration</div><div class="fe-cal fe-cal--consigne"><i>CONSIGNE</i>Observer le schéma, puis décrire le trajet de l'air.</div><div class="fe-h2">I. Les organes de la respiration</div><p class="fe-p">L'air entre par le nez et la bouche, passe dans la trachée, puis dans les bronches.</p></div></div></div><div class="ce__etatbar"><span>Page 1 sur 2</span><span>184 mots</span><span class="esp"></span><span><span class="ic ic-crayon" aria-hidden="true"></span> Stylet</span><span class="ce__modes"><span class="is-actif">¶ Texte</span><span id="tc-tab" data-on="1"><span class="repli" data-to="3">▣ Tableau (4)</span><span class="repli" data-from="4">▣ Tableau (5)</span></span><span>▶ En classe</span></span><span class="ce__zoom">− <i></i> + 100 %</span></div><div class="tb ce--sur zoom" data-from="2" data-to="3"><div class="tb-titre"><span class="tb-logo">GC</span><span class="tb-qa"><span>↶</span><span>↷</span></span><span class="tb-nom">Cours — La respiration — tableau</span><span class="tb-enr">Enregistré automatiquement</span><span class="esp"></span><span class="tb-sortie" id="tc-fermer" data-on="4">Fermer</span></div><div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet is-actif">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-plier">▴</span></div><div class="tb-ruban"><div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><span class="gl">↗</span>Sélection</span><span class="tb-gb is-actif"><span class="gl"><span class="ic ic-crayon" aria-hidden="true"></span></span>Stylo</span><span class="tb-gb"><span class="gl">▬</span>Surligneur</span><span class="tb-gb"><span class="gl">◌</span>Gomme</span><span class="tb-gb"><span class="gl">T</span>Texte</span><span class="tb-gb"><span class="gl">▢</span>Formes</span></div><div class="tb-gr__l">Outils</div></div><div class="tb-gr"><div class="tb-gr__c"><span class="tb-rang"><span class="tb-sw" style="background:#111827"></span><span class="tb-sw" style="background:#DC2626"></span><span class="tb-sw" style="background:#2563EB"></span><span class="tb-sw" style="background:#059669"></span></span></div><div class="tb-gr__l">Couleur</div></div><div class="tb-gr"><div class="tb-gr__c"><span class="tb-gb"><span class="gl">▦</span>Rideau</span><span class="tb-gb"><span class="gl">▭</span>Texte à trous</span><span class="tb-gb"><span class="gl">◉</span>Bouton d'action</span></div><div class="tb-gr__l">Préparer</div></div></div><div class="tb-scene"><div class="tb-bureau"><div class="tb-page" id="tc-page"><svg viewBox="0 0 640 360" width="100%" height="100%" aria-hidden="true"><rect width="640" height="360" fill="#fff"/><text x="32" y="46" font-size="26" font-weight="700" fill="#1E3A8A" font-family="Inter, sans-serif">Le trajet de l'air</text><path d="M320 70 V150" stroke="#94A3B8" stroke-width="14" stroke-linecap="round"/><path d="M320 150 Q280 170 262 200 M320 150 Q360 170 378 200" stroke="#94A3B8" stroke-width="10" fill="none" stroke-linecap="round"/><path d="M262 170 Q200 180 196 260 Q200 320 262 312 Q296 300 300 240 Q300 190 262 170Z" fill="#FECACA" stroke="#F87171" stroke-width="2"/><path d="M378 170 Q440 180 444 260 Q440 320 378 312 Q344 300 340 240 Q340 190 378 170Z" fill="#FECACA" stroke="#F87171" stroke-width="2"/></svg><svg class="tb-encre" viewBox="0 0 640 360"><path class="trait" data-from="3" pathLength="1" d="M330 100 Q420 90 470 120" stroke="#DC2626" stroke-width="4"/></svg><div class="ecrit" data-from="3" style="left:478px;top:108px;font-size:20px;color:#DC2626">trachée</div></div></div><div class="tb-volet"><div class="tb-volet__t"><span>PAGES</span><span>5</span></div><div class="tb-vignettes"><div class="tb-vig tb-vig--cour"><svg viewBox="0 0 64 36"><rect x="5" y="5" width="30" height="4" fill="#1E3A8A"/><rect x="5" y="14" width="34" height="3" fill="#CBD5E1"/><rect x="5" y="21" width="40" height="3" fill="#CBD5E1"/></svg><b>1</b></div><div class="tb-vig"><svg viewBox="0 0 64 36"><rect x="5" y="5" width="30" height="4" fill="#1E3A8A"/><rect x="5" y="14" width="38" height="3" fill="#CBD5E1"/><rect x="5" y="21" width="40" height="3" fill="#CBD5E1"/></svg><b>2</b></div><div class="tb-vig"><svg viewBox="0 0 64 36"><rect x="5" y="5" width="30" height="4" fill="#1E3A8A"/><rect x="5" y="14" width="42" height="3" fill="#CBD5E1"/><rect x="5" y="21" width="40" height="3" fill="#CBD5E1"/></svg><b>3</b></div><div class="tb-vig"><svg viewBox="0 0 64 36"><rect x="5" y="5" width="30" height="4" fill="#1E3A8A"/><rect x="5" y="14" width="46" height="3" fill="#CBD5E1"/><rect x="5" y="21" width="40" height="3" fill="#CBD5E1"/></svg><b>4</b></div><div class="tb-vig repli zoom" id="tc-vig5" data-from="3"><em>nouvelle page</em><b>5</b></div></div><div class="tb-volet__pied"><span>▲</span><span>▼</span><span class="plus" id="tc-plus">+</span></div></div></div><div class="tb-etat"><span class="z"><span>‹</span><span>Page 1 sur 5</span><span>›</span></span><span class="esp"></span><span class="z"><span>−</span><span>100 %</span><span>+</span></span></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="essai-ecrans">
+      <div class="fiche__texte">
+        <h2>Essayer les écrans avant la classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Éditeur › barre d'état › En classe</span></p>
+        <p class="fiche__but">Jouer les écrans du cours exactement comme en classe, pour vérifier un rideau, un texte à trous ou un bouton : rien de ce qui est fait pendant l'essai n'est gardé.</p>
+        <ol class="etapes">
+          <li data-cursor="#es-btn" data-action="click">Le cours a des écrans : cliquer <span class="btn-nom">▶ En classe</span>.</li>
+          <li data-cursor="#es-page" data-duration="3200">Les écrans s'ouvrent dans le tableau blanc en mode classe, au nom du cours suivi de « essai ». Tout ce qui est préparé est verrouillé.</li>
+          <li data-cursor="#es-rideau" data-action="click" data-duration="3200">Révéler, écrire, jouer les actions comme devant les élèves.</li>
+          <li data-cursor="#es-quitter" data-action="click"><span class="btn-nom">Quitter l'essai</span> : rien n'est gardé. Le prochain essai repart de zéro.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'essai travaille sur une copie des pages : le cours préparé n'est jamais touché.</li>
+            <li>Il n'est relié à rien : ni téléphone, ni plan de classe. Seul l'écran de classe ouvert par <b>Lancer la séance</b> écoute le téléphone.</li>
+            <li>Le même essai s'ouvre depuis Mes cours (bouton lecture d'un document) et depuis le calendrier de l'accueil (<b>Essayer</b>).</li>
+            <li>Si les écrans n'ont pas encore été enregistrés : « Le tableau de ce cours n'est pas encore enregistré. »</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="tableaux-de-seance.html#essai">Essayer les écrans depuis Mes cours</a> · <a href="#seance-active">Bandeau « Séance en cours »</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div><div class="app" style="position:relative"><div class="ce"><div class="ce__titre"><span class="ce__gc">GC</span><span class="ce__ic">↶</span><span class="ce__ic is-off">↷</span><span class="ce__nom">Cours — La respiration</span><span class="esp"></span><span class="ce__past ce__past--mob">Version mobile : automatique</span><span class="ce__etat"><i></i>Enregistré</span><span class="ce__fermer">Fermer</span></div><div class="ce__onglets" id="es-onglets"><span class="ce__og ce__og--fichier">Fichier</span><span class="ce__og is-actif">Accueil</span><span class="ce__og">Insertion</span><span class="ce__og">Mise en page</span><span class="ce__og">Révision</span><span class="ce__og">Affichage</span></div><div class="ce__ruban"><div class="ce__rang"><div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb" id="es-coller"><span class="pic">▤</span>Coller<span class="ce__fl" id="es-coller-opt">▾</span></div><div class="ce__grp-c col"><span class="ce__pb" id="es-couper">Couper</span><span class="ce__pb" id="es-copier">Copier</span><span class="ce__pb" id="es-repro">Reproduire</span></div></div><div class="ce__grp-t">Presse-papiers</div></div><div class="ce__grp"><div class="ce__grp-c col"><div class="ligne" style="gap:3px"><span class="ce__liste" style="width:122px">Atkinson (du cours)</span><span class="ce__liste" style="width:40px">12</span><span class="ce__pb" id="es-aplus">A+</span><span class="ce__pb" id="es-amoins">A−</span><span class="ce__pb" id="es-casse">Aa</span></div><div class="ligne" style="gap:1px"><span class="ce__pb" id="es-gras"><b>G</b></span><span class="ce__pb" id="es-ital"><i>I</i></span><span class="ce__pb" id="es-soul"><u>S</u></span><span class="ce__pb" id="es-barre"><s>ab</s></span><span class="ce__pb" id="es-ind">x₂</span><span class="ce__pb" id="es-exp">x²</span><span class="ce__coul" id="es-c-noir" style="background:#111827"></span><span class="ce__coul" id="es-c-rouge" style="background:#DC2626"></span><span class="ce__coul" id="es-c-bleu" style="background:#2563EB"></span><span class="ce__coul" id="es-c-vert" style="background:#16A34A"></span><span class="ce__coul" id="es-c-violet" style="background:#9333EA"></span><span class="ce__coul" id="es-c-orange" style="background:#EA580C"></span></div><div class="ligne" style="gap:3px"><span class="ce__pb" id="es-surl">Surligner</span><span class="ce__coul" id="es-h-jaune" style="background:#FEF08A"></span><span class="ce__coul" id="es-h-vert" style="background:#BBF7D0"></span><span class="ce__coul" id="es-h-bleu" style="background:#BFDBFE"></span><span class="ce__coul" id="es-h-rose" style="background:#FBCFE8"></span><span class="ce__pb" id="es-aucun">Aucun</span></div></div><div class="ce__grp-t">Police</div></div><div class="ce__grp"><div class="ce__grp-c col"><div class="ligne" style="gap:1px"><span class="ce__pb" id="es-puces">•&thinsp;≡</span><span class="ce__pb" id="es-num">1.&thinsp;≡</span><span class="ce__pb" id="es-cases">☐&thinsp;≡</span><span class="ce__pb" id="es-ret-">⇤</span><span class="ce__pb" id="es-ret+">⇥</span></div><div class="ligne" style="gap:1px"><span class="ce__pb" id="es-gauche"><span class="al al--g"></span></span><span class="ce__pb" id="es-centrer"><span class="al al--c"></span></span><span class="ce__pb" id="es-droite"><span class="al al--d"></span></span><span class="ce__pb" id="es-just"><span class="al"></span></span><span class="ce__liste">↕ 1,15</span></div><div class="ligne" style="gap:3px"><span class="ce__liste">Espace avant</span><span class="ce__liste">après</span></div></div><div class="ce__grp-t">Paragraphe</div></div><div class="ce__grp"><div class="ce__grp-c"><div class="ce__vign" id="es-st-texte"><span>Texte du cours</span></div><div class="ce__vign" id="es-st-chap"><b style="color:#1E3A8A;font-size:12px">Chapitre</b></div><div class="ce__vign" id="es-st-partie"><b style="color:#3730A3">1. Partie</b></div><div class="ce__vign" id="es-st-sous"><b style="color:#4338CA">a. Sous-partie</b></div><div class="ce__vign" id="es-st-def"><span class="vg vg--def">Définition</span></div><div class="ce__vign" id="es-st-ret"><span class="vg vg--ret">À retenir</span></div><div class="ce__vign" id="es-st-cons"><span class="vg vg--cons">Consigne</span></div><div class="ce__vign" id="es-st-ex"><span class="vg vg--ex">Exemple</span></div></div><div class="ce__grp-t">Styles</div></div></div></div><div class="ce__regle"><b><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span><span>14</span><span>16</span><span>18</span></b></div><div class="ce__milieu"><div class="ce__bureau"><div class="ce__feuille"><div class="fe-h1">La respiration</div><div class="fe-cal fe-cal--consigne"><i>CONSIGNE</i>Observer le schéma, puis décrire le trajet de l'air.</div><div class="fe-h2">I. Les organes de la respiration</div><p class="fe-p">L'air entre par le nez et la bouche, passe dans la trachée, puis dans les bronches.</p></div></div></div><div class="ce__etatbar"><span>Page 1 sur 2</span><span>184 mots</span><span class="esp"></span><span><span class="ic ic-crayon" aria-hidden="true"></span> Stylet</span><span class="ce__modes"><span class="is-actif">¶ Texte</span><span>▣ Tableau (5)</span><span id="es-btn" data-on="1">▶ En classe</span></span><span class="ce__zoom">− <i></i> + 100 %</span></div><div class="tb ce--sur zoom" data-from="2" data-to="4"><div class="tb-onglets"><span class="tb-onglet tb-onglet--fichier">Fichier</span><span class="tb-onglet">Accueil</span><span class="tb-onglet">Insertion</span><span class="tb-onglet">Page</span><span class="tb-onglet">Outils</span><span class="tb-onglet">Affichage</span><span class="esp"></span><span class="tb-nom" style="font-size:11.5px;color:#6B7280;margin-right:8px">Cours — La respiration — essai</span><span class="tb-sortie" id="es-quitter" data-on="4">Quitter l'essai</span></div><div class="tb-scene"><div class="tb-bureau"><div class="tb-page" id="es-page" style="width:720px;height:405px"><svg viewBox="0 0 640 360" width="100%" height="100%" aria-hidden="true"><rect width="640" height="360" fill="#fff"/><text x="32" y="46" font-size="26" font-weight="700" fill="#1E3A8A" font-family="Inter, sans-serif">Le trajet de l'air</text><path d="M320 70 V150" stroke="#94A3B8" stroke-width="14" stroke-linecap="round"/><path d="M320 150 Q280 170 262 200 M320 150 Q360 170 378 200" stroke="#94A3B8" stroke-width="10" fill="none" stroke-linecap="round"/><path d="M262 170 Q200 180 196 260 Q200 320 262 312 Q296 300 300 240 Q300 190 262 170Z" fill="#FECACA" stroke="#F87171" stroke-width="2"/><path d="M378 170 Q440 180 444 260 Q440 320 378 312 Q344 300 340 240 Q340 190 378 170Z" fill="#FECACA" stroke="#F87171" stroke-width="2"/></svg><div class="es-rideau" id="es-rideau" data-on="3-4"><span>Rideau : toucher pour révéler</span></div><div class="es-cache" style="left:430px;top:250px">les poumons</div><svg class="tb-encre" viewBox="0 0 640 360"><path class="trait" data-from="4" pathLength="1" d="M200 250 Q250 330 300 250" stroke="#059669" stroke-width="4"/></svg></div><div class="es-nav"><span>‹</span><span>1 / 5</span><span>›</span></div><div class="tb-pastille tb-pastille--blanche" style="left:915px;top:300px;--pc:#059669"><span class="gl"><span class="ic ic-crayon" aria-hidden="true"></span></span></div></div></div></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="en-classe-bande">
+      <div class="fiche__texte">
+        <h2>En classe : la feuille projetée en bande</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Éditeur › barre d'état › En classe (cours sans écran)</span></p>
+        <p class="fiche__but">Un cours sans écran se projette tel quel : la colonne de texte occupe toute la largeur, lisible du fond de la classe, et descend écran par écran.</p>
+        <ol class="etapes">
+          <li data-cursor="#eb-barre" data-duration="3200">Cliquer <span class="btn-nom">▶ En classe</span> : le cours s'affiche en plein écran sur fond blanc, avec une barre d'outils sombre en bas.</li>
+          <li data-cursor="#eb-suiv" data-action="click">Avancer : ▶, flèche bas, Espace, Entrée ou Page suivante ; reculer : ◀, flèche haut, Retour arrière. La dernière ligne lue reste visible.</li>
+          <li data-cursor="#eb-vue" data-action="click" data-duration="3200"><b>Vue d'ensemble</b> (touche O ou Z) : tout le cours en petit, la bande actuelle encadrée ; un clic y ramène.</li>
+          <li data-cursor="#eb-mot" data-duration="3200">Choisir le stylo et une couleur (rouge, bleu, vert, noir) pour écrire par-dessus ; le surligneur et la gomme aussi.</li>
+          <li data-cursor="#eb-encart-btn" data-action="click" data-duration="3200">Un encart entièrement à l'écran : <span class="btn-nom"><span class="ic ic-crayon" aria-hidden="true"></span> Encart</span> (ou double-clic) l'ouvre dans le tableau blanc pour y dessiner.</li>
+          <li data-cursor="#eb-quit" data-action="click"><span class="btn-nom">Quitter</span> (Échap). En essai, la pastille <b>Test</b> le rappelle : l'encre disparaît en quittant.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les sauts de page deviennent un trait discret ; une image « page entière » est réduite à la largeur.</li>
+            <li>Un encart atteint en descendant est calé en haut et remplit exactement l'écran.</li>
+            <li>Les annotations préparées au stylet s'affichent, en lecture seule ; l'encre de la séance se pose au-dessus. F met en plein écran.</li>
+            <li>Dans l'écran de classe d'une vraie séance, la même présentation porte la pastille <b>Séance</b> : l'encre est gardée avec la séance (voir <a href="#cours-en-seance">Le cours en séance</a>).</li>
+            <li>Aménagements (PAP, PPRE, PAI) : jamais affichés ici, comme sur tout écran projeté.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="editeur-de-cours-avance.html#encart-tableau">Encart tableau</a> · <a href="editeur-de-cours-avance.html#stylet">Stylet</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div><div class="app" style="position:relative"><div class="pr ce--sur zoom" data-from="1"><div class="pr-vue" data-on="3"><div class="pr-defile" data-on="2-9"><div class="pr-col"><div class="pr-h1">La respiration</div><div class="pr-cons"><i>CONSIGNE</i>Observer le schéma, puis décrire le trajet de l'air.</div><div class="pr-h2">I. Les organes de la respiration</div><p>L'air entre par le nez et la bouche, passe dans la <span id="eb-mot">trachée</span>, puis dans les bronches.</p><div class="pr-h2">II. Les échanges de gaz</div><p>Dans les alvéoles, le dioxygène passe dans le sang ; le dioxyde de carbone en sort.</p><div class="pr-encart" id="eb-encart"><span>Encart tableau = un écran en classe</span></div><p>Le sang transporte le dioxygène jusqu'aux organes.</p></div></div><div class="pr-bande" data-at="3"></div></div><svg class="pr-encre" viewBox="0 0 1000 586"><path class="trait" data-from="4" pathLength="1" d="M566 126 Q610 100 656 120 Q666 150 610 150 Q562 150 566 126Z" stroke="#DC2626" stroke-width="4" fill="none"/></svg><div class="pr-barre" id="eb-barre"><span class="pr-b">◀</span><span class="pr-n"><span class="repli" data-to="1">Écran 1 / 6</span><span class="repli" data-at="2">Écran 2 / 6</span><span class="repli" data-at="3">Vue d'ensemble</span><span class="repli" data-from="4">Écran 2 / 6</span></span><span class="pr-b" id="eb-suiv" data-on="2">▶</span><span class="pr-sep"></span><span class="pr-b">←</span><span class="pr-b" id="eb-stylo" data-on="4-6"><span class="ic ic-crayon" aria-hidden="true"></span></span><span class="pr-b">▬</span><span class="pr-b">◌</span><span class="pr-pt" style="background:#DC2626" data-on="4-6"></span><span class="pr-pt" style="background:#2563EB"></span><span class="pr-pt" style="background:#16A34A"></span><span class="pr-pt" style="background:#111827"></span><span class="pr-b">⌫</span><span class="pr-sep"></span><span class="pr-b pr-b--txt" id="eb-encart-btn" data-on="5"><span class="ic ic-crayon" aria-hidden="true"></span> Encart</span><span class="pr-b" id="eb-vue" data-on="3">⊡</span><span class="pr-b">▣</span><span class="pr-test">Test</span><span class="pr-quit" id="eb-quit" data-on="6">Quitter</span></div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="seance-active">
+      <div class="fiche__texte">
+        <h2>Le bandeau « Séance en cours sur le téléphone »</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Essai ouvert depuis l'éditeur, le calendrier ou Mes cours</span></p>
+        <p class="fiche__but">Si une séance tourne sur le téléphone pendant un essai, un bandeau prévient que l'essai n'y est pas relié : c'est le cas typique d'une télécommande qui ne répond pas en classe.</p>
+        <ol class="etapes">
+          <li data-cursor="#sa-bandeau" data-duration="2400">Un essai est ouvert (feuille en bande ou écrans).</li>
+          <li data-cursor="#sa-bandeau" data-duration="3800">Une séance est active sur le téléphone : le bandeau jaune apparaît en haut, avec le nom de la classe.</li>
+          <li data-cursor="#sa-go" data-action="click"><span class="btn-nom">Ouvrir l'écran de classe</span> mène à l'écran projeté de la séance, relié au téléphone.</li>
+          <li data-cursor="#sa-x" data-action="click">Ou <b>×</b> (« Continuer l'essai ») : le bandeau ne revient plus pour cette séance.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La vérification se fait toutes les 15 secondes. Sans réseau, pas de bandeau : l'essai continue.</li>
+            <li>L'essai reste un essai : ni télécommande, ni plan de classe, et rien n'est gardé.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="seances.html">Séances</a> · <a href="../classe/cours-et-tableau-blanc.html">L'écran de classe</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div><div class="app" style="position:relative"><div class="pr" style="position:absolute;inset:0"><div class="pr-vue"><div class="pr-defile"><div class="pr-col"><div class="pr-h1">La respiration</div><div class="pr-cons"><i>CONSIGNE</i>Observer le schéma, puis décrire le trajet de l'air.</div><div class="pr-h2">I. Les organes de la respiration</div><p>L'air entre par le nez et la bouche, passe dans la <span >trachée</span>, puis dans les bronches.</p><div class="pr-h2">II. Les échanges de gaz</div><p>Dans les alvéoles, le dioxygène passe dans le sang ; le dioxyde de carbone en sort.</p><div class="pr-encart" ><span>Encart tableau = un écran en classe</span></div><p>Le sang transporte le dioxygène jusqu'aux organes.</p></div></div></div><div class="pr-barre"><span class="pr-b">◀</span><span class="pr-n">Écran 1 / 6</span><span class="pr-b">▶</span><span class="pr-sep"></span><span class="pr-b">←</span><span class="pr-b"><span class="ic ic-crayon" aria-hidden="true"></span></span><span class="pr-pt" style="background:#DC2626"></span><span class="pr-pt" style="background:#2563EB"></span><span class="pr-sep"></span><span class="pr-test">Test</span><span class="pr-quit">Quitter</span></div><div class="sa-bandeau glisse-bas" id="sa-bandeau" data-from="2" data-to="3"><span class="sa-pt"></span><span><b>Séance en cours sur le téléphone (5B).</b> Cet essai n'y est pas relié : ni télécommande, ni plan de classe, et rien n'est gardé.</span><span class="sa-go" id="sa-go" data-on="3">Ouvrir l'écran de classe</span><span class="sa-x" id="sa-x">×</span></div><div class="toast" data-at="4">Le bandeau est fermé pour cette séance : l'essai continue</div></div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="cours-en-seance">
+      <div class="fiche__texte">
+        <h2>Le cours dans l'écran de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--classe">Écran de classe</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Téléphone › lancer la séance · écran de classe</span></p>
+        <p class="fiche__but">Pendant une vraie séance, l'écran projeté montre le cours, piloté depuis le téléphone, et garde ce qui a été écrit au tableau.</p>
+        <ol class="etapes">
+          <li data-duration="3000">Lancer la séance sur le téléphone avec ce cours : l'écran de classe affiche « Ouverture du cours… ».</li>
+          <li data-cursor="#cs-seance" data-duration="3200">La présentation apparaît avec la pastille verte <b>Séance</b>.</li>
+          <li data-cursor="#cs-suiv" data-duration="3400">Le téléphone fait avancer, reculer ou ouvre la vue d'ensemble ; les touches du clavier marchent aussi.</li>
+          <li data-cursor="#cs-mot" data-duration="3400">Ce qui est écrit à l'écran est enregistré avec la séance, une seconde après le dernier trait et en quittant.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un cours qui a des écrans est montré par ses écrans, pas par sa feuille.</li>
+            <li>Un encart dessiné pendant la séance l'est sur une copie rangée dans la séance : le cours préparé ne change pas.</li>
+            <li>Dans l'écran de classe, F (plein écran) et B (plan de classe) appartiennent à l'écran de classe.</li>
+            <li>Aménagements (PAP, PPRE, PAI) : jamais affichés sur l'écran projeté. La séance se mène depuis le téléphone, qui marche aussi sans réseau.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="../classe/cours-et-tableau-blanc.html">Cours et tableau blanc à l'écran de classe</a> · <a href="../telephone/pendant-la-seance.html">Pendant la séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="580"><div class="tbi" style="background:#fff"><div class="cs-attente repli" data-at="1">Ouverture du cours…</div><div class="pr repli" data-from="2" style="position:absolute;inset:0"><div class="pr-vue"><div class="pr-defile" data-on="3-9"><div class="pr-col"><div class="pr-h1">La respiration</div><div class="pr-cons"><i>CONSIGNE</i>Observer le schéma, puis décrire le trajet de l'air.</div><div class="pr-h2">I. Les organes de la respiration</div><p>L'air entre par le nez et la bouche, passe dans la <span id="cs-mot">trachée</span>, puis dans les bronches.</p><div class="pr-h2">II. Les échanges de gaz</div><p>Dans les alvéoles, le dioxygène passe dans le sang ; le dioxyde de carbone en sort.</p><div class="pr-encart" ><span>Encart tableau = un écran en classe</span></div><p>Le sang transporte le dioxygène jusqu'aux organes.</p></div></div></div><svg class="pr-encre" viewBox="0 0 980 560"><path class="trait" data-from="4" pathLength="1" d="M580 124 Q627 98 682 118 Q692 148 630 148 Q574 148 580 124Z" stroke="#2563EB" stroke-width="4" fill="none"/></svg><div class="pr-barre" id="cs-barre"><span class="pr-b">◀</span><span class="pr-n"><span class="repli" data-to="2">Écran 1 / 6</span><span class="repli" data-from="3">Écran 2 / 6</span></span><span class="pr-b" id="cs-suiv" data-on="3">▶</span><span class="pr-sep"></span><span class="pr-b">←</span><span class="pr-b" data-on="4"><span class="ic ic-crayon" aria-hidden="true"></span></span><span class="pr-pt" style="background:#DC2626"></span><span class="pr-pt" style="background:#2563EB" data-on="4"></span><span class="pr-pt" style="background:#16A34A"></span><span class="pr-pt" style="background:#111827"></span><span class="pr-sep"></span><span class="pr-b">⊡</span><span class="pr-test pr-test--live" id="cs-seance">Séance</span><span class="pr-quit">Quitter</span></div><div class="bulle bulle--bas" data-at="3" style="left:600px;top:400px">Suivant, Précédent et Vue d'ensemble arrivent du téléphone</div><div class="bulle bulle--bas" data-at="4" style="left:560px;top:150px">L'encre est gardée avec la séance, jamais dans le cours préparé</div></div></div></div></div></div></div>
+    </section>
+
+    <section class="fiche fiche--large" id="ecrit-en-classe">
+      <div class="fiche__texte">
+        <h2>Retrouver ce qui a été écrit en classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Éditeur › barre d'état › Écrit en classe</span></p>
+        <p class="fiche__but">Les tableaux blancs écrits pendant les séances parties de ce cours (ou de ses copies posées sur l'emploi du temps) se retrouvent depuis le cours, séance par séance.</p>
+        <ol class="etapes">
+          <li data-cursor="#ec-btn" data-action="click"><span class="btn-nom"><span class="ic ic-crayon" aria-hidden="true"></span> Écrit en classe (2)</span> : le nombre est celui des séances. Le bouton n'apparaît que s'il y a des écrits.</li>
+          <li data-cursor="#ec-paire" data-duration="3200">La fenêtre liste les séances (« 5B — jeu. 27 nov. ») : pour chaque page jouée, la page à gauche et son tableau blanc à droite.</li>
+          <li data-cursor="#ec-paire" data-action="click">Cliquer une paire pour l'agrandir.</li>
+          <li data-duration="2800">« La page » et « Le tableau blanc » s'affichent en grand.</li>
+          <li data-cursor="#ec-retour" data-action="click"><span class="btn-nom">Retour à la liste</span>, puis <b>Fermer</b> (ou Échap).</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Lecture seule : rien ne se modifie ici.</li>
+            <li>« Page ajoutée en classe » : une page créée pendant la séance, qui n'existait pas dans le cours.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="mini-sites-et-animations.html">Le tableau blanc de chaque page</a> · <a href="seances.html">Détail d'une séance</a></p>
+      </div>
+      <div class="scene"><div class="scene__cadre"><div class="scene__fond"><div class="ecran" data-w="1000" data-h="620"><div class="fenetre"><div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div><div class="app" style="position:relative"><div class="ce"><div class="ce__titre"><span class="ce__gc">GC</span><span class="ce__ic">↶</span><span class="ce__ic is-off">↷</span><span class="ce__nom">Cours — La respiration</span><span class="esp"></span><span class="ce__past ce__past--mob">Version mobile : automatique</span><span class="ce__etat"><i></i>Enregistré</span><span class="ce__fermer">Fermer</span></div><div class="ce__onglets" id="ec-onglets"><span class="ce__og ce__og--fichier">Fichier</span><span class="ce__og is-actif">Accueil</span><span class="ce__og">Insertion</span><span class="ce__og">Mise en page</span><span class="ce__og">Révision</span><span class="ce__og">Affichage</span></div><div class="ce__ruban"><div class="ce__rang"><div class="ce__grp"><div class="ce__grp-c"><div class="ce__gb" id="ec-coller"><span class="pic">▤</span>Coller<span class="ce__fl" id="ec-coller-opt">▾</span></div><div class="ce__grp-c col"><span class="ce__pb" id="ec-couper">Couper</span><span class="ce__pb" id="ec-copier">Copier</span><span class="ce__pb" id="ec-repro">Reproduire</span></div></div><div class="ce__grp-t">Presse-papiers</div></div><div class="ce__grp"><div class="ce__grp-c col"><div class="ligne" style="gap:3px"><span class="ce__liste" style="width:122px">Atkinson (du cours)</span><span class="ce__liste" style="width:40px">12</span><span class="ce__pb" id="ec-aplus">A+</span><span class="ce__pb" id="ec-amoins">A−</span><span class="ce__pb" id="ec-casse">Aa</span></div><div class="ligne" style="gap:1px"><span class="ce__pb" id="ec-gras"><b>G</b></span><span class="ce__pb" id="ec-ital"><i>I</i></span><span class="ce__pb" id="ec-soul"><u>S</u></span><span class="ce__pb" id="ec-barre"><s>ab</s></span><span class="ce__pb" id="ec-ind">x₂</span><span class="ce__pb" id="ec-exp">x²</span><span class="ce__coul" id="ec-c-noir" style="background:#111827"></span><span class="ce__coul" id="ec-c-rouge" style="background:#DC2626"></span><span class="ce__coul" id="ec-c-bleu" style="background:#2563EB"></span><span class="ce__coul" id="ec-c-vert" style="background:#16A34A"></span><span class="ce__coul" id="ec-c-violet" style="background:#9333EA"></span><span class="ce__coul" id="ec-c-orange" style="background:#EA580C"></span></div><div class="ligne" style="gap:3px"><span class="ce__pb" id="ec-surl">Surligner</span><span class="ce__coul" id="ec-h-jaune" style="background:#FEF08A"></span><span class="ce__coul" id="ec-h-vert" style="background:#BBF7D0"></span><span class="ce__coul" id="ec-h-bleu" style="background:#BFDBFE"></span><span class="ce__coul" id="ec-h-rose" style="background:#FBCFE8"></span><span class="ce__pb" id="ec-aucun">Aucun</span></div></div><div class="ce__grp-t">Police</div></div><div class="ce__grp"><div class="ce__grp-c col"><div class="ligne" style="gap:1px"><span class="ce__pb" id="ec-puces">•&thinsp;≡</span><span class="ce__pb" id="ec-num">1.&thinsp;≡</span><span class="ce__pb" id="ec-cases">☐&thinsp;≡</span><span class="ce__pb" id="ec-ret-">⇤</span><span class="ce__pb" id="ec-ret+">⇥</span></div><div class="ligne" style="gap:1px"><span class="ce__pb" id="ec-gauche"><span class="al al--g"></span></span><span class="ce__pb" id="ec-centrer"><span class="al al--c"></span></span><span class="ce__pb" id="ec-droite"><span class="al al--d"></span></span><span class="ce__pb" id="ec-just"><span class="al"></span></span><span class="ce__liste">↕ 1,15</span></div><div class="ligne" style="gap:3px"><span class="ce__liste">Espace avant</span><span class="ce__liste">après</span></div></div><div class="ce__grp-t">Paragraphe</div></div><div class="ce__grp"><div class="ce__grp-c"><div class="ce__vign" id="ec-st-texte"><span>Texte du cours</span></div><div class="ce__vign" id="ec-st-chap"><b style="color:#1E3A8A;font-size:12px">Chapitre</b></div><div class="ce__vign" id="ec-st-partie"><b style="color:#3730A3">1. Partie</b></div><div class="ce__vign" id="ec-st-sous"><b style="color:#4338CA">a. Sous-partie</b></div><div class="ce__vign" id="ec-st-def"><span class="vg vg--def">Définition</span></div><div class="ce__vign" id="ec-st-ret"><span class="vg vg--ret">À retenir</span></div><div class="ce__vign" id="ec-st-cons"><span class="vg vg--cons">Consigne</span></div><div class="ce__vign" id="ec-st-ex"><span class="vg vg--ex">Exemple</span></div></div><div class="ce__grp-t">Styles</div></div></div></div><div class="ce__regle"><b><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span><span>12</span><span>14</span><span>16</span><span>18</span></b></div><div class="ce__milieu"><div class="ce__bureau"><div class="ce__feuille"><div class="fe-h1">La respiration</div><div class="fe-cal fe-cal--consigne"><i>CONSIGNE</i>Observer le schéma, puis décrire le trajet de l'air.</div><div class="fe-h2">I. Les organes de la respiration</div><p class="fe-p">L'air entre par le nez et la bouche, passe dans la trachée, puis dans les bronches.</p></div></div></div><div class="ce__etatbar"><span>Page 1 sur 2</span><span>184 mots</span><span class="esp"></span><span class="ec-btn" id="ec-btn" data-on="1"><span class="ic ic-crayon" aria-hidden="true"></span> Écrit en classe (2)</span><span><span class="ic ic-crayon" aria-hidden="true"></span> Stylet</span><span class="ce__modes"><span class="is-actif">¶ Texte</span><span>▣ Tableau (5)</span><span>▶ En classe</span></span><span class="ce__zoom">− <i></i> + 100 %</span></div><div class="ce__modal-fond repli" data-from="2"><div class="ce__modal" style="width:600px"><div class="ce__modal-t">Écrit en classe</div><div class="repli" data-to="3"><div class="ec-sess">5B — jeu. 27 nov.</div><div class="grille2"><div class="ec-paire" id="ec-paire" data-on="3"><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><rect x="10" y="10" width="70" height="8" fill="#1E3A8A"/><path d="M80 24 V44 M80 44 Q68 50 64 58 M80 44 Q92 50 96 58" stroke="#94A3B8" stroke-width="4" fill="none"/><ellipse cx="62" cy="66" rx="12" ry="16" fill="#FECACA"/><ellipse cx="98" cy="66" rx="12" ry="16" fill="#FECACA"/></svg></div><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><path d="M20 30 Q50 18 80 30 T140 28" stroke="#2563EB" stroke-width="2.5" fill="none"/><path d="M24 58 H120" stroke="#DC2626" stroke-width="2.5"/><circle cx="130" cy="58" r="6" stroke="#DC2626" stroke-width="2" fill="none"/></svg></div></div><div class="ec-paire"><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><rect x="10" y="10" width="70" height="8" fill="#1E3A8A"/><path d="M80 24 V44 M80 44 Q68 50 64 58 M80 44 Q92 50 96 58" stroke="#94A3B8" stroke-width="4" fill="none"/><ellipse cx="62" cy="66" rx="12" ry="16" fill="#FECACA"/><ellipse cx="98" cy="66" rx="12" ry="16" fill="#FECACA"/></svg></div><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><path d="M20 30 Q50 18 80 30 T140 28" stroke="#2563EB" stroke-width="2.5" fill="none"/><path d="M24 58 H120" stroke="#DC2626" stroke-width="2.5"/><circle cx="130" cy="58" r="6" stroke="#DC2626" stroke-width="2" fill="none"/></svg></div></div></div><div class="ec-sess">5D — ven. 28 nov.</div><div class="grille2"><div class="ec-paire"><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><rect x="10" y="10" width="70" height="8" fill="#1E3A8A"/><path d="M80 24 V44 M80 44 Q68 50 64 58 M80 44 Q92 50 96 58" stroke="#94A3B8" stroke-width="4" fill="none"/><ellipse cx="62" cy="66" rx="12" ry="16" fill="#FECACA"/><ellipse cx="98" cy="66" rx="12" ry="16" fill="#FECACA"/></svg></div><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><path d="M20 30 Q50 18 80 30 T140 28" stroke="#2563EB" stroke-width="2.5" fill="none"/><path d="M24 58 H120" stroke="#DC2626" stroke-width="2.5"/><circle cx="130" cy="58" r="6" stroke="#DC2626" stroke-width="2" fill="none"/></svg></div></div><div class="ec-paire"><div class="ec-img ec-ajout">Page ajoutée en classe</div><div class="ec-img"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><path d="M20 30 Q50 18 80 30 T140 28" stroke="#2563EB" stroke-width="2.5" fill="none"/><path d="M24 58 H120" stroke="#DC2626" stroke-width="2.5"/><circle cx="130" cy="58" r="6" stroke="#DC2626" stroke-width="2" fill="none"/></svg></div></div></div></div><div class="repli" data-from="4"><div class="ligne" style="margin-bottom:8px"><span class="b b--fantome b--petit" id="ec-retour" data-on="5">Retour à la liste</span></div><div class="grille2"><figure class="ec-grand"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><rect x="10" y="10" width="70" height="8" fill="#1E3A8A"/><path d="M80 24 V44 M80 44 Q68 50 64 58 M80 44 Q92 50 96 58" stroke="#94A3B8" stroke-width="4" fill="none"/><ellipse cx="62" cy="66" rx="12" ry="16" fill="#FECACA"/><ellipse cx="98" cy="66" rx="12" ry="16" fill="#FECACA"/></svg><figcaption>La page</figcaption></figure><figure class="ec-grand"><svg viewBox="0 0 160 90" width="100%" height="100%"><rect width="160" height="90" fill="#fff"/><path d="M20 30 Q50 18 80 30 T140 28" stroke="#2563EB" stroke-width="2.5" fill="none"/><path d="M24 58 H120" stroke="#DC2626" stroke-width="2.5"/><circle cx="130" cy="58" r="6" stroke="#DC2626" stroke-width="2" fill="none"/></svg><figcaption>Le tableau blanc</figcaption></figure></div></div><div class="ligne" style="margin-top:10px"><span class="muet">À gauche la page, à droite son tableau blanc.</span><span class="esp"></span><span class="b b--petit">Fermer</span></div></div></div></div></div></div></div></div></div></div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="editeur-de-cours.html">Éditeur de cours</a> · <a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

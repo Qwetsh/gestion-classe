@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maison — Guide Gestion Classe</title>
+<meta name="description" content="L'onglet Maison de l'espace élève : le questionnaire de répartition dans les quatre Maisons, l'attente de la cérémonie, puis les points de sa Maison en direct.">
+<meta name="guide-partie" content="eleve">
+<meta name="guide-ordre" content="60">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* commun-eleve:debut */
+/* Maquettes de l'espace élève : reprise de src/styles/eleve.css (direction A « Carnet ») et de ses thèmes. */
+.tel__ecran.el {
+  --el-bg: #F6F6F7; --el-surface: #FFFFFF; --el-line: #E6E6E9; --el-line-soft: #F0F0F2; --el-line-strong: #D4D4D8;
+  --el-text: #18181B; --el-muted: #52525B; --el-dim: #6B6B74;
+  --el-indigo: #4F46E5; --el-indigo-ink: #4338CA; --el-indigo-soft: #EEF0FF;
+  --el-pos: #15803D; --el-pos-ink: #166534; --el-pos-soft: #EAF6EE;
+  --el-warn: #B45309; --el-warn-ink: #9A4A07; --el-warn-soft: #FDF1E3;
+  --el-neg: #B91C1C; --el-neg-soft: #FBEAEA;
+  --el-track: #E9E9EC; --el-on-accent: #FFFFFF; --el-radio: #A1A1AA;
+  --el-radius: 8px; --el-radius-sm: 6px; --el-font-display: inherit; --el-card-shadow: none;
+  background-color: var(--el-bg); color: var(--el-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; font-size: 14px; line-height: 1.4;
+}
+.tel__ecran.el .tel__statut { color: var(--el-text); position: relative; z-index: 3; }
+.el-ic, .el .ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+.el .ic--p { width: 18px; height: 18px; }
+.el .ic--pp { width: 15px; height: 15px; }
+.el .ic--g { width: 26px; height: 26px; }
+
+.el-corps { position: relative; flex: 1; min-height: 0; }
+.el-main { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 10px 14px 12px; overflow: hidden; }
+.el-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.el-head__titles { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.el-kicker { font-size: 12.5px; font-weight: 500; color: var(--el-dim); }
+.el-h1 { font-family: var(--el-font-display); margin: 0; font-size: 24px; line-height: 30px; font-weight: 700; letter-spacing: -0.01em; }
+.el-h2 { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--el-dim); }
+.el-section { display: flex; flex-direction: column; gap: 7px; }
+.el-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.el-note { margin: 0; font-size: 12.5px; line-height: 18px; color: var(--el-muted); }
+.el-error { margin: 0; font-size: 13px; line-height: 18px; color: var(--el-neg); }
+
+.el-card { background: var(--el-surface); border: 1px solid var(--el-line); border-radius: var(--el-radius); box-shadow: var(--el-card-shadow); transition: box-shadow .25s, border-color .25s; }
+.el-card--pad { padding: 14px; }
+.el-card--stack { display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.el-row { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 14px; border-bottom: 1px solid var(--el-line-soft); transition: background .25s; }
+.el-row:last-child { border-bottom: 0; }
+.el-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.el-row__title { font-size: 14px; line-height: 19px; font-weight: 600; }
+.el-row__title--plain { font-weight: 500; }
+.el-row__meta { font-size: 12px; line-height: 16px; color: var(--el-dim); }
+.el-row__end { flex-shrink: 0; display: flex; align-items: center; gap: 5px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.el-row__chev { color: var(--el-dim); transition: transform .25s; }
+.el-tile { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 9px 14px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-icon-box { flex-shrink: 0; display: grid; place-items: center; width: 38px; height: 38px; border-radius: var(--el-radius); background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-icon-box--round { width: 30px; height: 30px; border-radius: 15px; }
+
+.el-big { font-family: var(--el-font-display); font-size: 32px; line-height: 36px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.el-mid { font-family: var(--el-font-display); font-size: 22px; line-height: 28px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.el-grade { flex-shrink: 0; font-size: 19px; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; text-align: right; }
+.el-unit { font-size: 12px; font-weight: 500; color: var(--el-dim); letter-spacing: 0; }
+.el-label { font-size: 12.5px; color: var(--el-muted); }
+.el-stat { display: flex; flex-direction: column; gap: 1px; padding: 11px 13px; }
+.el-bar { height: 8px; border-radius: 4px; background: var(--el-track); overflow: hidden; }
+.el-bar > span { display: block; height: 100%; border-radius: 4px; background: var(--el-indigo); transition: width 1s ease; }
+
+.el-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 4px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); font-size: 11.5px; line-height: 17px; font-weight: 600; white-space: nowrap; }
+.el-chip--pos { background: var(--el-pos-soft); color: var(--el-pos-ink); }
+.el-chip--warn { background: var(--el-warn-soft); color: var(--el-warn-ink); }
+.el-chip--plain { background: var(--el-line-soft); color: var(--el-muted); }
+
+.el-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 14px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); color: var(--el-text); font-size: 14px; font-weight: 600; white-space: nowrap; transition: transform .15s, box-shadow .25s; }
+.el-btn--primary { border-color: var(--el-indigo); background: var(--el-indigo); color: var(--el-on-accent); }
+.el-btn--soft { border-color: transparent; background: var(--el-indigo-soft); color: var(--el-indigo-ink); }
+.el-btn--block { width: 100%; }
+.el-btn--tall { min-height: 46px; font-size: 15px; }
+.el-btn--off { border-color: var(--el-line); background: var(--el-track); color: var(--el-dim); }
+.el-back { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; min-height: 34px; color: var(--el-indigo); font-size: 14px; font-weight: 600; }
+
+.el-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; background: var(--el-track); border-radius: var(--el-radius); }
+.el-seg span { min-height: 34px; display: grid; place-items: center; border-radius: var(--el-radius-sm); color: var(--el-muted); font-size: 13.5px; font-weight: 500; transition: background .25s, color .25s; }
+.el-seg span.is-on, .el-seg span.choisi { background: var(--el-surface); color: var(--el-text); font-weight: 600; }
+
+.el-rank { display: flex; flex-direction: column; padding: 0 14px 10px; }
+.el-rank__line { display: flex; justify-content: space-between; gap: 10px; padding: 3px 8px; border-radius: 4px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.el-rank__line span:first-child { color: var(--el-muted); }
+.el-rank__line--me { background: var(--el-indigo-soft); font-weight: 600; }
+.el-rank__line--me span:first-child { color: var(--el-indigo-ink); }
+.el-rank__gap { padding: 0 8px; color: var(--el-dim); font-size: 12px; }
+
+.el-stamps { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 6px; justify-items: center; }
+.el-stamp { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 25px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); transition: transform .35s cubic-bezier(.3,1.5,.5,1), opacity .3s; }
+.el-stamp--empty { border: 1.5px dashed var(--el-line-strong); background: none; color: var(--el-dim); font-size: 14px; font-weight: 600; }
+.el-choice { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 46px; padding: 7px 13px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); font-size: 14px; font-weight: 500; transition: all .2s; }
+.el-choice::before { content: ''; flex-shrink: 0; width: 20px; height: 20px; border-radius: 10px; border: 2px solid var(--el-radio); background: var(--el-surface); box-sizing: border-box; transition: border .2s; }
+.el-choice.is-on { border: 2px solid var(--el-indigo); background: var(--el-indigo-soft); padding: 6px 12px; }
+.el-choice.is-on::before { border: 6px solid var(--el-indigo); }
+.el-banner { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 12px; border-radius: var(--el-radius); background: var(--el-pos-soft); color: var(--el-pos-ink); font-size: 13px; line-height: 18px; font-weight: 600; }
+.el-cats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; padding: 0 14px 12px; }
+.el-cats > div { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: var(--el-radius-sm); background: var(--el-bg); font-size: 12.5px; }
+
+.el-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.el-tilebox { display: flex; flex-direction: column; gap: 7px; min-height: 80px; padding: 11px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-indigo); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-tilebox__title { font-size: 14px; font-weight: 600; color: var(--el-text); display: block; }
+.el-tilebox__note { font-size: 12px; color: var(--el-dim); display: block; }
+.el-tilebox__note--on { font-weight: 600; color: var(--el-indigo-ink); }
+.el-subhead { padding: 10px 14px 7px; border-bottom: 1px solid var(--el-line-soft); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--el-dim); }
+.el-rowhead { padding: 10px 14px 2px; font-size: 12px; line-height: 17px; font-weight: 600; color: var(--el-muted); }
+
+.el-veil { position: absolute; inset: 0; z-index: 90; display: grid; place-items: center; padding: 16px; background: rgba(24, 24, 27, 0.5); }
+.el-dialog { width: 100%; max-width: 260px; padding: 20px; text-align: center; }
+.el-search { display: flex; align-items: center; gap: 9px; height: 42px; padding: 0 12px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-dim); font-size: 13.5px; }
+.el-select { display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 0 10px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius-sm); background: var(--el-surface); font-size: 13px; font-weight: 500; }
+
+/* barre du bas */
+.el-nav { flex: none; position: relative; z-index: 40; display: flex; padding: 4px 4px 12px; background: var(--el-surface); border-top: 1px solid var(--el-line); }
+.el-nav > span { flex: 1; min-width: 0; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border-radius: var(--el-radius); color: var(--el-muted); font-size: 11px; font-weight: 500; transition: color .25s, background .25s; }
+.el-nav > span.actif, .el-nav > span.is-on { color: var(--el-indigo); font-weight: 600; }
+.el-nav--academy { background: oklch(0.08 0.01 50 / 0.92); border-top-color: transparent; }
+.el-nav--academy > span { color: oklch(0.72 0.03 60); }
+.el-nav--academy > span.actif, .el-nav--academy > span.is-on { background: oklch(0.25 0.03 50 / 0.9); color: oklch(0.90 0.06 60); }
+
+/* état « touché » */
+.el .el-tile.is-on, .el .el-card.is-on, .el .el-tilebox.is-on, .el .el-theme.is-on { box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-btn.is-on { transform: scale(0.97); box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-indigo) 30%, transparent); }
+.el .el-row.is-on { background: color-mix(in srgb, var(--el-indigo) 9%, transparent); }
+
+/* écran plein qui glisse par-dessus l'espace (classeur, TP, copie) */
+.el-plein { position: absolute; left: 0; right: 0; bottom: 0; top: 0; z-index: 60; background-color: var(--el-bg); display: flex; flex-direction: column; padding-top: 30px; }
+.is-hidden.el-plein { transform: translateY(26px); }
+
+/* choix du thème */
+.el-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.el-theme { display: flex; flex-direction: column; gap: 6px; padding: 7px 7px 9px; border: 1px solid var(--el-line); border-radius: var(--el-radius); background: var(--el-surface); box-shadow: var(--el-card-shadow); transition: box-shadow .25s; }
+.el-theme.choisi { border: 2px solid var(--el-indigo); padding: 6px 6px 8px; }
+.el-theme__view { display: flex; flex-direction: column; gap: 5px; height: 54px; padding: 7px; border-radius: 6px; overflow: hidden; }
+.el-theme__line { display: block; height: 6px; border-radius: 3px; }
+.el-theme__card { display: flex; align-items: center; gap: 6px; flex: 1; padding: 0 7px; border-radius: 4px; }
+.el-theme__dot { display: block; width: 12px; height: 12px; border-radius: 6px; flex: none; }
+.el-theme__name { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 3px; font-size: 14px; font-weight: 600; }
+.el-theme__name .ic { color: var(--el-indigo); }
+.el-theme__note { padding: 0 3px; font-size: 12px; line-height: 15px; color: var(--el-dim); }
+
+/* ---- Cosmos ---- */
+.tel__ecran.el[data-theme='cosmos'] {
+  --el-bg: #0B1026; --el-surface: #151B3B; --el-line: #2A3160; --el-line-soft: #212854; --el-line-strong: #3A4380;
+  --el-text: #EEF1FF; --el-muted: #B9C0E6; --el-dim: #9AA3D4;
+  --el-indigo: #8EA2FF; --el-indigo-ink: #C9D2FF; --el-indigo-soft: #232B66;
+  --el-pos: #5EE0A0; --el-pos-ink: #8BF0BE; --el-pos-soft: #123B2E;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8A8A; --el-neg-soft: #45191E;
+  --el-track: #262E5C; --el-on-accent: #0B1026; --el-radio: #6E79B8;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  background-image:
+    radial-gradient(2px 2px at 150px 30px, rgba(255, 255, 255, 0.9) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 60px 150px, rgba(255, 255, 255, 0.7) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 190px 110px, rgba(190, 205, 255, 0.85) 50%, transparent 51%),
+    radial-gradient(2px 2px at 20px 84px, rgba(255, 236, 200, 0.8) 50%, transparent 51%),
+    radial-gradient(1px 1px at 110px 178px, rgba(255, 255, 255, 0.6) 50%, transparent 51%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='170' viewBox='0 0 240 170'%3E%3Cdefs%3E%3CradialGradient id='p' cx='0.35' cy='0.3' r='0.8'%3E%3Cstop offset='0' stop-color='%23A99BFF'/%3E%3Cstop offset='1' stop-color='%233A2EA6'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cellipse cx='172' cy='58' rx='108' ry='20' fill='none' stroke='%23C9C0FF' stroke-opacity='.5' stroke-width='5' transform='rotate(-16 172 58)'/%3E%3Ccircle cx='172' cy='58' r='56' fill='url(%23p)'/%3E%3Cpath d='M120 50c34 10 72 6 104-16' fill='none' stroke='%23C9C0FF' stroke-opacity='.3' stroke-width='7' stroke-linecap='round'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse 110% 420px at 85% -60px, rgba(124, 92, 255, 0.38), transparent 70%),
+    radial-gradient(ellipse 90% 360px at 0% 0, rgba(56, 189, 248, 0.16), transparent 70%);
+  background-size: 210px 190px, 210px 190px, 210px 190px, 210px 190px, 210px 190px, 200px 142px, 100% 520px, 100% 420px;
+  background-position: 0 0, 0 0, 0 0, 0 0, 0 0, right -50px top -10px, 0 0, 0 0;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat, no-repeat;
+}
+.el[data-theme='cosmos'] .el-card, .el[data-theme='cosmos'] .el-tile, .el[data-theme='cosmos'] .el-tilebox { background: rgba(21, 27, 59, 0.92); }
+/* ---- Arcade ---- */
+.tel__ecran.el[data-theme='arcade'] {
+  --el-bg: #170F2E; --el-surface: #241846; --el-line: #4A3486; --el-line-soft: #30205A; --el-line-strong: #6A4FB8;
+  --el-text: #F6F0FF; --el-muted: #C9BCE8; --el-dim: #A99AD0;
+  --el-indigo: #FFD23F; --el-indigo-ink: #FFE27A; --el-indigo-soft: #3B3010;
+  --el-pos: #5CF2B0; --el-pos-ink: #8FF7C9; --el-pos-soft: #0F3B2C;
+  --el-warn: #FFB454; --el-warn-ink: #FFCF8F; --el-warn-soft: #43290B;
+  --el-neg: #FF7A9C; --el-neg-soft: #4A1528;
+  --el-track: #35245F; --el-on-accent: #1A1033; --el-radio: #8A72C8;
+  --el-radius: 2px; --el-radius-sm: 2px;
+  --el-font-display: 'Pixelify Sans', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  --el-card-shadow: 4px 4px 0 #0B0618;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.el[data-theme='arcade'] .el-card, .el[data-theme='arcade'] .el-tile, .el[data-theme='arcade'] .el-tilebox, .el[data-theme='arcade'] .el-theme { border-width: 2px; }
+.el[data-theme='arcade'] .el-h2 { color: #FF8AE0; }
+.el[data-theme='arcade'] .el-btn--primary { box-shadow: 0 4px 0 #A8830A; }
+.el[data-theme='arcade'] .el-stamp, .el[data-theme='arcade'] .el-icon-box, .el[data-theme='arcade'] .el-chip { border-radius: 2px; }
+.el[data-theme='arcade'] .el-nav { border-top-width: 2px; }
+.el[data-theme='arcade'] .el-mid, .el[data-theme='arcade'] .el-big { font-family: inherit; }
+/* ---- Jungle ---- */
+.tel__ecran.el[data-theme='jungle'] {
+  --el-bg: #EEF5E8; --el-surface: #FFFFFF; --el-line: #D6E3CC; --el-line-soft: #E6EFE0; --el-line-strong: #B9CDAE;
+  --el-text: #16291B; --el-muted: #3F5545; --el-dim: #55695A;
+  --el-indigo: #1F7A3A; --el-indigo-ink: #17602D; --el-indigo-soft: #DDF0DF;
+  --el-pos-soft: #E3F4E6; --el-track: #DCE8D3; --el-radio: #8FA596;
+  --el-radius: 18px; --el-radius-sm: 22px;
+  --el-font-display: 'Fredoka', 'Inter', system-ui, sans-serif;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='240' viewBox='0 0 300 240'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M300 0C250 6 196 36 176 96c44 6 100-22 124-60z' fill='%23BFDDB3'/%3E%3Cpath d='M300 24c-40 14-84 44-108 64' stroke='%23A3CB95' stroke-width='3'/%3E%3Cpath d='M300 60c-34 20-54 62-48 116 30-14 48-50 48-84z' fill='%23A6CF98'/%3E%3Cpath d='M298 78c-16 26-28 56-40 88' stroke='%238FBF80' stroke-width='3'/%3E%3Cpath d='M232 0c-30 8-62 6-92-14 20 44 62 52 92 34z' fill='%23CFE6C5'/%3E%3C/g%3E%3C/svg%3E");
+  background-position: top right; background-repeat: no-repeat; background-size: 240px 192px;
+}
+.el[data-theme='jungle'] .el-h1 { font-weight: 600; }
+.el[data-theme='jungle'] .el-seg { border-radius: 24px; }
+.el[data-theme='jungle'] .el-seg span { border-radius: 20px; }
+/* connexion */
+.el-login__text { margin: 4px 0 0; font-size: 14.5px; line-height: 21px; color: var(--el-muted); }
+.el-field-label { font-size: 13.5px; font-weight: 600; }
+.el-code { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 7px; }
+.el-code > span { height: 50px; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); display: grid; place-items: center; font-size: 22px; font-weight: 600; transition: border-color .2s; }
+.el-code > span.is-on, .el-code > span.actif { border: 2px solid var(--el-indigo); }
+.el-code i { font-style: normal; }
+.el-url { flex: none; position: relative; z-index: 3; margin: 0 12px 4px; height: 26px; border-radius: 13px; background: var(--el-track); color: var(--el-muted); font-size: 11px; display: flex; align-items: center; gap: 6px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
+.el-url b { font-weight: 600; color: var(--el-text); }
+/* contenu qui défile vers le haut */
+.el-defile { display: flex; flex-direction: column; gap: 12px; transition: transform .8s cubic-bezier(.45,.05,.25,1); }
+/* une maquette de téléphone posée dans une scène large */
+.tel-pose { position: relative; flex: none; }
+/* deux états empilés au même endroit */
+.pile { display: inline-grid; }
+.pile > * { grid-area: 1 / 1; }
+/* commun-eleve:fin */
+.acad { position: absolute; inset: 0; z-index: 1; background: radial-gradient(ellipse at 50% 0%, oklch(0.15 0.02 55) 0%, oklch(0.06 0.01 50) 80%); color: oklch(0.88 0.03 85); font-family: Georgia, 'Times New Roman', serif; overflow: hidden; }
+.acad::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(1.5px 1.5px at 30px 60px, rgba(255,240,200,.7) 50%, transparent 51%), radial-gradient(1px 1px at 120px 20px, rgba(255,240,200,.6) 50%, transparent 51%), radial-gradient(1.5px 1.5px at 220px 110px, rgba(255,240,200,.5) 50%, transparent 51%), radial-gradient(1px 1px at 300px 50px, rgba(255,240,200,.6) 50%, transparent 51%); background-size: 340px 160px; opacity: .8; }
+.acad__tete { position: absolute; left: 0; right: 0; top: 30px; z-index: 5; display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: oklch(0.08 0.01 50 / 0.7); }
+.acad__nom { font-style: italic; font-size: 19px; color: oklch(0.85 0.04 60); }
+.acad__b { padding: 6px 10px; border: 1px solid oklch(0.35 0.04 60 / .6); border-radius: 8px; color: oklch(0.6 0.03 60); font-size: 12px; font-family: var(--font); display: inline-grid; place-items: center; transition: background .2s; }
+.acad__b.is-on { background: oklch(0.25 0.03 50 / .9); }
+.acad__corps { position: absolute; left: 0; right: 0; top: 76px; bottom: 66px; padding: 14px 20px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.or { color: oklch(0.78 0.12 85); }
+.petit-cap { font-family: var(--mono); font-size: 9.5px; letter-spacing: .28em; text-transform: uppercase; color: oklch(0.62 0.11 78); }
+.parchemin { background: linear-gradient(oklch(0.88 0.03 85), oklch(0.82 0.04 80)); color: #3A2A1A; border-radius: 4px; padding: 18px 16px; box-shadow: 0 10px 30px rgba(0,0,0,.6); transform-origin: top center; transition: transform .8s ease, opacity .5s; }
+.parchemin.is-hidden { transform: scaleY(0.2); }
+.chandelle { position: absolute; width: 6px; height: 26px; background: linear-gradient(#F3E9D2, #CDBF9F); border-radius: 2px; }
+.chandelle::before { content: ''; position: absolute; left: -2px; top: -12px; width: 10px; height: 13px; border-radius: 50% 50% 40% 40%; background: radial-gradient(circle at 50% 70%, #FFF3C4, #F59E0B 60%, transparent 70%); }
+.rep { width: 100%; padding: 11px 12px; border: 1px solid oklch(0.45 0.06 70 / .7); border-radius: 6px; font-style: italic; font-size: 14px; text-align: left; color: oklch(0.88 0.03 85); background: oklch(0.12 0.02 55 / .7); transition: all .25s; }
+.rep.is-on { border-color: oklch(0.78 0.12 85); background: oklch(0.30 0.06 75 / .6); }
+.prog { width: 100%; height: 3px; background: oklch(0.25 0.03 60); border-radius: 2px; overflow: hidden; }
+.prog span { display: block; height: 100%; background: oklch(0.78 0.12 85); transition: width .6s; }
+.ecu { width: 34px; height: 40px; flex: none; display: grid; place-items: center; font-family: var(--font); font-weight: 800; font-size: 15px; color: #fff; clip-path: path('M0 0 H34 V22 C34 32 17 40 17 40 C17 40 0 32 0 22 Z'); }
+.ecu--g { width: 120px; height: 142px; font-size: 54px; clip-path: path('M0 0 H120 V78 C120 114 60 142 60 142 C60 142 0 114 0 78 Z'); box-shadow: 0 0 40px rgba(255,220,140,.4); }
+.ecu-a { background: linear-gradient(#2F7F86, #1D5257); } .ecu-b { background: linear-gradient(#7A4B8C, #4E2D5D); } .ecu-c { background: linear-gradient(#B98A2E, #7D5A16); } .ecu-d { background: linear-gradient(#56657A, #343F4E); }
+.cls { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid oklch(0.35 0.04 60 / .6); border-radius: 6px; background: oklch(0.12 0.02 55 / .7); font-style: italic; font-size: 14px; transition: transform .4s ease; }
+.cls .fl { margin-left: auto; display: flex; gap: 4px; font-family: var(--font); font-style: normal; font-size: 11px; color: oklch(0.7 0.06 70); }
+.cls .fl span { width: 26px; height: 26px; border: 1px solid oklch(0.35 0.04 60 / .6); border-radius: 5px; display: grid; place-items: center; }
+.cls .fl span.is-on { background: oklch(0.30 0.06 75 / .7); color: oklch(0.9 0.08 85); }
+.cls.monte.is-on { order: -1; }
+.anneau { width: 120px; height: 120px; border-radius: 50%; border: 2px solid oklch(0.78 0.12 85 / .8); position: relative; animation: tourne 6s linear infinite; }
+.anneau::before { content: ''; position: absolute; inset: 14px; border-radius: 50%; border: 1.5px dashed oklch(0.78 0.12 85 / .7); }
+.anneau::after { content: ''; position: absolute; left: 50%; top: -6px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: oklch(0.86 0.14 88); box-shadow: 0 0 10px oklch(0.86 0.14 88); }
+@keyframes tourne { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .cls.monte.is-on { order: -1; }
+.anneau { animation: none; } }
+.sceau { width: 110px; height: 110px; border-radius: 50%; display: grid; place-items: center; font-size: 44px; background: radial-gradient(circle, oklch(0.35 0.12 25) 0%, oklch(0.25 0.08 20) 70%); box-shadow: 0 0 30px oklch(0.35 0.12 25 / 0.4); color: oklch(0.88 0.03 85); }
+.carte-or { width: 100%; border: 1px solid oklch(0.40 0.06 70 / .7); border-radius: 8px; padding: 12px; background: oklch(0.10 0.02 55 / .75); }
+.autres { display: flex; justify-content: space-around; gap: 6px; margin-top: 6px; }
+.autres > div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-style: italic; font-size: 12px; }
+.autres b { font-size: 17px; font-weight: 400; color: oklch(0.78 0.12 85); }
+.autres small { font-family: var(--font); font-style: normal; font-size: 10px; color: oklch(0.70 0.10 140); }
+.camarades { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-top: 6px; }
+.camarades span { font-size: 12px; font-style: italic; padding: 2px 8px; border: 1px solid oklch(0.35 0.04 60 / .6); border-radius: 999px; }
+.direct { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font); font-size: 10.5px; color: oklch(0.65 0.05 70); }
+.direct::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #10B981; }
+#mm-defile { transition: transform .8s cubic-bezier(.45,.05,.25,1); width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+#mm-defile.is-on { transform: translateY(-180px); }
+</style>
+</head>
+<body>
+<!-- icones:debut -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-maison" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+<symbol id="i-notes" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M8 17v-5M13 17V8M18 17v-3"/></symbol>
+<symbol id="i-livre" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/></symbol>
+<symbol id="i-tampon" viewBox="0 0 24 24"><path d="M5 22h14"/><path d="M19.3 13.7a2.5 2.5 0 0 0-1.8-.7h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.7-.3-1.3-.7-1.8z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-6 0c0 2 1 2 1 3.5V13"/></symbol>
+<symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+<symbol id="i-fiole" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6L4.5 19a1.5 1.5 0 0 0 1.3 2h12.4a1.5 1.5 0 0 0 1.3-2L14 9V3"/><path d="M7 15h10"/></symbol>
+<symbol id="i-archive" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/></symbol>
+<symbol id="i-cube" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+<symbol id="i-cadeau" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5"/></symbol>
+<symbol id="i-sortie" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+<symbol id="i-chev-d" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-chev-g" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+<symbol id="i-chev-b" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-chev-h" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-coche" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-photo" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-galerie" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></symbol>
+<symbol id="i-doc-coche" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></symbol>
+<symbol id="i-loupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-lien" viewBox="0 0 24 24"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-croix" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-recentrer" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+<symbol id="i-etoile" viewBox="0 0 24 24"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1z"/></symbol>
+<symbol id="i-main" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5M14 10V4a2 2 0 0 0-4 0v6M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.4l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/></symbol>
+<symbol id="i-ampoule" viewBox="0 0 24 24"><path d="M15 14c.2-1 .7-1.7 1.5-2.5A4.6 4.6 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5M9 18h6M10 22h4"/></symbol>
+<symbol id="i-entraide" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></symbol>
+<symbol id="i-imprimer" viewBox="0 0 24 24"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></symbol>
+<symbol id="i-qr" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 19v2M19 14h2"/></symbol>
+<symbol id="i-oeil" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-hautparleur" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+<symbol id="i-plein" viewBox="0 0 24 24"><path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6"/></symbol>
+<symbol id="i-pages" viewBox="0 0 24 24"><path d="M2 5h8a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H2zM22 5h-8a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h8z"/></symbol>
+<symbol id="i-stylo" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></symbol>
+<symbol id="i-cercle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></symbol>
+<symbol id="i-liste" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+</defs></svg>
+<!-- icones:fin -->
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Espace élève</a> › Maison</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#maison">L'onglet Maison</a></li>
+      <li><a href="#questionnaire">Le questionnaire de répartition</a></li>
+      <li><a href="#attente">En attente de la cérémonie</a></li>
+      <li><a href="#ma-maison">Ma Maison</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../eleve/tp.html">◀ TP en groupe</a><a href="../public/documents-par-qr-code.html">Documents par QR code ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Espace élève</div>
+      <h1>Maison</h1>
+      <p>Un jeu de classe à l'ambiance d'école de sorciers : chaque élève répond à un questionnaire, est réparti dans l'une des quatre Maisons lors d'une cérémonie projetée en classe, puis suit les points de sa Maison face aux trois autres.</p>
+      <div class="chap__resume"><span>Barre du bas › Maison</span><span>Téléphone de l'élève</span><span>Seulement si la classe a l'Académie</span></div>
+    </header>
+
+    <!-- ============================================================ maison -->
+    <section class="fiche fiche--etroite" id="maison">
+      <div class="fiche__texte">
+        <h2>L'onglet Maison</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Barre du bas › Maison</span></p>
+        <p class="fiche__but">L'entrée du jeu des quatre Maisons. Tout l'écran bascule dans un décor sombre de parchemin et de chandelles.</p>
+        <ol class="etapes">
+          <li data-cursor="#ma-nav" data-action="tap">Toucher <span class="btn-nom">Maison</span> (l'icône bouclier) dans la barre du bas : le décor et la barre passent en teintes sombres et dorées.</li>
+          <li data-cursor="#ma-nom" data-duration="3000">En haut : le pseudonyme de l'élève, en italique doré.</li>
+          <li data-cursor="#ma-son" data-action="tap" data-duration="3200">Une musique de générique joue en boucle tant que l'onglet est affiché ; le bouton haut-parleur la coupe ou la remet.</li>
+          <li data-cursor="#ma-centre" data-duration="3600">Selon l'avancement, l'écran montre le questionnaire de répartition, l'attente de la cérémonie, ou la Maison de l'élève.</li>
+          <li data-cursor="#ma-quitter" data-action="tap"><span class="btn-nom">Quitter</span>, en haut à droite, referme l'espace comme sur l'accueil.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'onglet n'existe que si l'enseignant a activé <b>Maison</b> pour la classe (Visibilité élèves, réglage propre à chaque classe). La répartition et la cérémonie se pilotent depuis la page Académie de son site.</li>
+            <li>La musique est jouée à faible volume et s'arrête si l'on change d'onglet ou si le classeur s'ouvre par-dessus.</li>
+            <li>Le thème choisi par l'élève ne s'applique pas ici : la Maison garde toujours son décor.</li>
+            <li>L'application reprend, par clin d'œil, des noms et des blasons tirés d'une œuvre connue. Ce guide public les remplace par des écussons neutres marqués A, B, C, D.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="z-index:6"><span>12:40</span><span>4G</span></div>
+                            <div class="acad glisse-haut" data-from="1">
+                <div class="acad__tete"><span class="acad__nom" id="ma-nom">Lina BO</span><span style="display:flex;gap:8px"><span class="acad__b" id="ma-son" data-on="3"><svg class="ic ic--p"><use href="#i-hautparleur"/></svg></span><span class="acad__b" id="ma-quitter" data-on="5">Quitter</span></span></div>
+                <span class="chandelle" style="left:40px;top:120px"></span><span class="chandelle" style="right:50px;top:150px"></span><span class="chandelle" style="left:70px;top:430px"></span>
+                <div class="acad__corps" id="ma-centre" style="justify-content:center;gap:12px">
+                  <div class="petit-cap">Ta Maison</div>
+                  <span class="ecu ecu--g ecu-b">B</span>
+                  <div style="font-style:italic;font-size:26px">Maison B</div>
+                  <div class="direct">Mise à jour en direct</div>
+                </div>
+              </div>
+              <nav class="el-nav el-nav--academy" style="position:absolute;left:0;right:0;bottom:0" data-from="1"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span><svg class="ic"><use href="#i-tampon"/></svg>Tampons</span><span id="ma-nav" class="actif"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ questionnaire -->
+    <section class="fiche fiche--etroite" id="questionnaire">
+      <div class="fiche__texte">
+        <h2>Le questionnaire de répartition</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Maison › avant la répartition</span></p>
+        <p class="fiche__but">Tant que l'élève n'a pas répondu, la Maison lui propose le questionnaire qui servira à le répartir : ses réponses et son ordre de préférence des quatre Maisons.</p>
+        <ol class="etapes">
+          <li data-cursor="#qu-depart" data-action="tap" data-duration="3800">Un parchemin d'accueil se déroule : quelques phrases solennelles, « Ni bonnes ni mauvaises réponses — seulement les tiennes. », la durée annoncée (nombre de questions, 1 classement, environ 5 minutes). Toucher le bouton de départ (son libellé reprend le nom du questionnaire).</li>
+          <li data-cursor="#qu-rep2" data-action="tap" data-duration="3600">Les questions défilent une à une : barre dorée en haut, « Question 1 sur … », la question en grand italique, les réponses en cartes. Toucher une réponse passe à la suivante après un court instant, avec un bruit de page ; « ← Retour » revient en arrière.</li>
+          <li data-cursor="#qu-monter" data-action="tap" data-duration="3800">« Question finale » : « Classe les quatre Maisons selon ton inclination. », de la plus désirée (en haut) à la moins désirée, avec les flèches ▲ ▼.</li>
+          <li data-cursor="#qu-envoyer" data-action="tap" data-duration="3200">Toucher le bouton d'envoi en bas.</li>
+          <li data-cursor="#qu-anneau" data-duration="3400">Un cercle doré tourne pendant l'envoi : « Tes réponses traversent le cuivre, l'argent et l'or. »</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'application donne à ce questionnaire le nom d'un chapeau célèbre, par clin d'œil.</li>
+            <li>Les questions viennent de la base ; leur nombre peut changer. L'ordre de préférence est pris en compte, sans être une garantie : le texte de l'écran le dit.</li>
+            <li>On ne répond qu'une fois : « Tu as déjà passé le test. » si l'élève l'a déjà fait.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="z-index:6"><span>12:41</span><span>4G</span></div>
+              <div class="acad">
+                <div class="acad__tete"><span class="acad__nom">Lina BO</span><span style="display:flex;gap:8px"><span class="acad__b"><svg class="ic ic--p"><use href="#i-hautparleur"/></svg></span><span class="acad__b">Quitter</span></span></div>
+                <span class="chandelle" style="left:28px;top:110px"></span><span class="chandelle" style="right:30px;top:130px"></span>
+                <div class="acad__corps repli" data-at="1" style="justify-content:center;gap:14px">
+                  <div class="parchemin" style="width:100%">
+                                        <div style="font-style:italic;font-size:22px;margin:8px 0 6px">Approche, jeune apprenti·e…</div>
+                    <div style="display:flex;flex-direction:column;gap:6px;margin:4px 0 10px"><i style="display:block;height:6px;border-radius:3px;background:#B9A27E"></i><i style="display:block;height:6px;border-radius:3px;background:#B9A27E;width:80%"></i></div>
+                    <p style="font-style:italic;font-size:13px;line-height:1.5;margin:0">Ni bonnes ni mauvaises réponses — seulement les tiennes.</p>
+                  </div>
+                  <span class="acad__b" id="qu-depart" data-on="1" style="font-family:Georgia,serif;font-style:italic;font-size:15px;padding:10px 22px;color:oklch(0.88 0.06 85);border-color:oklch(0.62 0.11 78)">▶</span>
+                  <div class="petit-cap">12 questions · 1 classement · ~5 min</div>
+                </div>
+                <div class="acad__corps repli" data-at="2" style="gap:12px;align-items:stretch">
+                  <div class="prog"><span style="width:25%"></span></div>
+                  <div style="display:flex;justify-content:space-between;font-family:var(--font);font-size:11px;color:oklch(0.65 0.05 70)"><span>← Retour</span><span>Question 3 sur 12</span></div>
+                  <div style="font-style:italic;font-size:21px;line-height:1.3;margin:10px 0">Devant une porte fermée, que fais-tu ?</div>
+                  <span class="rep">Je cherche une autre entrée.</span>
+                  <span class="rep" id="qu-rep2" data-on="2">Je frappe et j'attends qu'on m'ouvre.</span>
+                  <span class="rep">Je demande à un ami de m'aider.</span>
+                  <span class="rep">Je lis ce qui est écrit dessus.</span>
+                </div>
+                <div class="acad__corps repli" data-at="3-4" style="gap:9px;align-items:stretch">
+                  <div class="petit-cap" style="text-align:center">Question finale</div>
+                  <div style="font-style:italic;font-size:17px;line-height:1.3">Classe les quatre Maisons selon ton inclination.</div>
+                  <div style="font-style:italic;font-size:12px;color:oklch(0.65 0.03 60)">De la plus désirée (en haut) à la moins désirée.</div>
+                  <div style="display:flex;flex-direction:column;gap:7px">
+                    <div class="cls"><span class="ecu ecu-c">C</span>Maison C<span class="fl"><span>▲</span><span>▼</span></span></div>
+                    <div class="cls monte" data-on="3-4"><span class="ecu ecu-a">A</span>Maison A<span class="fl"><span id="qu-monter" data-on="3">▲</span><span>▼</span></span></div>
+                    <div class="cls"><span class="ecu ecu-b">B</span>Maison B<span class="fl"><span>▲</span><span>▼</span></span></div>
+                    <div class="cls"><span class="ecu ecu-d">D</span>Maison D<span class="fl"><span>▲</span><span>▼</span></span></div>
+                  </div>
+                  <span class="acad__b" id="qu-envoyer" data-on="4" style="font-family:Georgia,serif;font-style:italic;font-size:14.5px;padding:10px 14px;margin-top:6px;color:oklch(0.88 0.06 85);border-color:oklch(0.62 0.11 78)">▶</span>
+                </div>
+                <div class="acad__corps repli" data-at="5" style="justify-content:center;gap:16px">
+                  <div class="anneau" id="qu-anneau"></div>
+                  <div style="font-style:italic;font-size:24px">…</div>
+                  <p style="font-style:italic;font-size:14px;line-height:1.5;color:oklch(0.75 0.03 70);margin:0">Tes réponses traversent le cuivre, l'argent et l'or.<br>Patience.</p>
+                </div>
+              </div>
+              <nav class="el-nav el-nav--academy" style="position:absolute;left:0;right:0;bottom:0"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span class="actif"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ attente -->
+    <section class="fiche fiche--etroite" id="attente">
+      <div class="fiche__texte">
+        <h2>En attente de la cérémonie</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Maison › après le questionnaire</span></p>
+        <p class="fiche__but">Les réponses sont arrivées ; la Maison de l'élève sera annoncée en classe, lors de la cérémonie projetée.</p>
+        <ol class="etapes">
+          <li data-cursor="#at-sceau" data-duration="3200">Un grand médaillon rouge sombre, et le titre <b>Sceau apposé</b>.</li>
+          <li data-cursor="#at-texte" data-duration="3600">Le texte dit que les réponses sont parvenues et que la Maison sera révélée lors de la prochaine cérémonie, par la voix du professeur.</li>
+          <li data-cursor="#at-cartouche" data-duration="3200">Le cartouche <b>En attente de la cérémonie</b> reste affiché jusqu'à la répartition : il n'y a rien d'autre à faire.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La répartition est lancée par l'enseignant ; la cérémonie se joue sur l'écran projeté de la classe.</li>
+            <li>Après la cérémonie, l'élève découvre sa Maison à sa prochaine connexion.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="z-index:6"><span>19:02</span><span>Wi-Fi</span></div>
+              <div class="acad">
+                <div class="acad__tete"><span class="acad__nom">Lina BO</span><span style="display:flex;gap:8px"><span class="acad__b"><svg class="ic ic--p"><use href="#i-hautparleur"/></svg></span><span class="acad__b">Quitter</span></span></div>
+                <div class="acad__corps" style="justify-content:center;gap:6px">
+                  <div class="sceau zoom" id="at-sceau">Q</div>
+                  <div style="font-style:italic;font-size:26px;margin-top:14px">Sceau apposé</div>
+                  <p id="at-texte" style="font-style:italic;font-size:14px;line-height:1.55;color:oklch(0.65 0.03 60);max-width:280px;margin:4px 0 0">Tes réponses sont parvenues.<br>Ta Maison te sera révélée lors de la prochaine cérémonie, par la voix de ta professeur·e.</p>
+                  <div id="at-cartouche" style="margin-top:16px;padding:8px 14px;border:1px solid oklch(0.30 0.05 60);font-family:var(--mono);font-size:9.5px;letter-spacing:.25em;color:oklch(0.50 0.06 60);text-transform:uppercase">En attente de la cérémonie</div>
+                </div>
+              </div>
+              <nav class="el-nav el-nav--academy" style="position:absolute;left:0;right:0;bottom:0"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span class="actif"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ ma maison -->
+    <section class="fiche fiche--etroite" id="ma-maison">
+      <div class="fiche__texte">
+        <h2>Ma Maison</h2>
+        <p class="fiche__ou"><span class="qui qui--eleve">Élève</span><span class="chemin">Maison › après la répartition</span></p>
+        <p class="fiche__but">L'élève découvre sa Maison, puis suit ses points face aux trois autres, en direct.</p>
+        <ol class="etapes">
+          <li data-cursor="#mm-ecu" data-duration="3600">La révélation : « Ta Maison est la », le nom et l'écusson de la Maison, sa devise et sa vertu, dans une pluie de particules dorées.</li>
+          <li data-cursor="#mm-points" data-duration="3400"><b>Points de ta Maison</b> : le compteur défile jusqu'au total.</li>
+          <li data-cursor="#mm-autres" data-duration="3800"><b>Les trois autres Maisons</b> : leurs points, l'écart avec la Maison de l'élève (« +12 ») et leur rang (« IIe »).</li>
+          <li data-cursor="#mm-cam" data-duration="3400"><b>Tes camarades de Maison</b>, avec leur nombre : la liste des pseudonymes.</li>
+          <li data-cursor="#mm-direct" data-duration="3200">« Mise à jour en direct » : les points changent seuls quand l'enseignant révèle des bonus.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Les points arrivent en direct ; à défaut, l'écran les relit toutes les 15 secondes.</li>
+            <li>Chaque Maison a ses couleurs propres dans l'application ; ici, les noms, devises et écussons sont remplacés par des formes neutres.</li>
+            <li>Les camarades n'apparaissent que sous leur pseudonyme (prénom et deux lettres).</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene scene--eleve">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="360" data-h="740">
+            <div class="tel"><div class="tel__ecran el">
+              <div class="tel__statut" style="z-index:6"><span>19:30</span><span>Wi-Fi</span></div>
+              <div class="acad">
+                <div class="acad__tete"><span class="acad__nom">Lina BO</span><span style="display:flex;gap:8px"><span class="acad__b"><svg class="ic ic--p"><use href="#i-hautparleur"/></svg></span><span class="acad__b">Quitter</span></span></div>
+                <div class="acad__corps" style="overflow:hidden">
+                  <div id="mm-defile" data-on="3-5">
+                                        <div style="font-style:italic;font-size:15px;color:oklch(0.75 0.03 70)">Ta Maison est la</div>
+                    <span class="ecu ecu--g ecu-b zoom" id="mm-ecu">B</span>
+                    <div style="font-style:italic;font-size:28px">Maison B</div>
+                    <div style="font-style:italic;font-size:12.5px;color:oklch(0.70 0.04 70)">« devise de la Maison » · sa vertu</div>
+                    <div class="carte-or" id="mm-points" style="text-align:center">
+                      <div class="petit-cap">Points de ta Maison</div>
+                      <div class="or" style="font-size:40px;font-style:italic;line-height:1.1"><span class="pile"><span data-to="1">0</span><span data-from="2">148</span></span></div>
+                    </div>
+                    <div class="carte-or" id="mm-autres">
+                      <div class="petit-cap" style="text-align:center">Les trois autres Maisons</div>
+                      <div class="autres">
+                        <div><span class="ecu ecu-a">A</span>Maison A<b>136</b><small>+12 · IIe</small></div>
+                        <div><span class="ecu ecu-c">C</span>Maison C<b>121</b><small>+27 · IIIe</small></div>
+                        <div><span class="ecu ecu-d">D</span>Maison D<b>97</b><small>+51 · IVe</small></div>
+                      </div>
+                    </div>
+                    <div class="carte-or" id="mm-cam" style="text-align:center">
+                      <div class="petit-cap">Tes camarades de Maison (6)</div>
+                      <div class="camarades"><span>Noé MA</span><span>Iris TA</span><span>Adam KE</span><span>Rose VI</span><span>Malo RI</span><span>Jade LU</span></div>
+                    </div>
+                    <div class="direct" id="mm-direct">Mise à jour en direct</div>
+                  </div>
+                </div>
+              </div>
+              <nav class="el-nav el-nav--academy" style="position:absolute;left:0;right:0;bottom:0"><span><svg class="ic"><use href="#i-maison"/></svg>Accueil</span><span><svg class="ic"><use href="#i-notes"/></svg>Notes</span><span><svg class="ic"><use href="#i-livre"/></svg>Cours</span><span class="actif"><svg class="ic"><use href="#i-bouclier"/></svg>Maison</span></nav>
+            </div></div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>

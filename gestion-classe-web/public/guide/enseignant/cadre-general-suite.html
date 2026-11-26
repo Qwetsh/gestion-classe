@@ -1,0 +1,1008 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Réglages et éléments communs — Guide Gestion Classe</title>
+<meta name="description" content="Les Réglages du site enseignant, section par section, et les éléments que l'on retrouve sur toutes les pages : messages, confirmations, fenêtres, menus, écran d'erreur, repères visuels.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="14">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+<style>
+/* ---- barre latérale du site (fond gris clair, menu regroupé) */
+.gcs { width: 190px; flex: none; background: #F6F6F7; border-right: 1px solid var(--border); padding: 12px 10px 10px; display: flex; flex-direction: column; gap: 2px; transition: width .4s ease, padding .4s ease; overflow: hidden; }
+.gcs__marque { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13.5px; padding: 2px 4px 10px; white-space: nowrap; }
+.gcs__marque b { width: 24px; height: 24px; border-radius: 7px; background: var(--indigo); color: #fff; font-size: 10.5px; display: grid; place-items: center; flex: none; }
+.gcs__cherche { display: flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text-dim); font-size: 12px; margin-bottom: 8px; white-space: nowrap; transition: all .25s; }
+.gcs__cherche svg { flex: none; }
+.gcs__cherche kbd { margin-left: auto; font-family: var(--font); font-size: 9.5px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); color: var(--text-dim); }
+.gcs__cherche.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+.gcs__it { display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 8px; border-radius: 6px; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; transition: background .25s, color .25s; }
+.gcs__it svg { flex: none; }
+.gcs__chev { margin-left: auto; font-style: normal; font-size: 10px; opacity: .6; }
+.gcs__sub { margin: 1px 0 3px 15px; padding-left: 9px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 1px; }
+.gcs__sub .gcs__it { height: 25px; font-size: 12px; }
+.gcs__it.is-actif, .gcs__it.is-on { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+.gcs__pied { margin-top: auto; border-top: 1px solid var(--border); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.gcs__pronote { display: flex; align-items: center; gap: 4px; background: #FDF1E3; color: #9A3412; font-size: 10.5px; border-radius: 6px; padding: 6px 6px; margin-bottom: 4px; white-space: nowrap; transition: box-shadow .25s; }
+.gcs__pronote svg { flex: none; }
+.gcs__pronote u { font-weight: 600; }
+.gcs__pronote .x { margin-left: auto; opacity: .7; font-size: 13px; }
+.gcs__pronote.is-on { box-shadow: 0 0 0 3px rgba(180,83,9,.2); }
+.gcs__petit { display: flex; align-items: center; gap: 7px; height: 26px; padding: 0 8px; font-size: 11.5px; color: var(--text-dim); border-radius: 6px; white-space: nowrap; transition: background .25s; }
+.gcs__petit svg { flex: none; }
+.gcs__petit.is-on { background: var(--surface-3); color: var(--text); }
+.gcs__compte { display: flex; align-items: center; gap: 3px; padding: 4px 2px 0; }
+.gcs__ic { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; color: var(--text-muted); position: relative; transition: background .25s; flex: none; }
+.gcs__ic.is-on { background: var(--surface-3); color: var(--text); }
+.gcs__badge { position: absolute; top: 0; right: -2px; min-width: 15px; height: 15px; border-radius: 8px; background: var(--neg); color: #fff; font-size: 9px; font-weight: 700; display: grid; place-items: center; padding: 0 3px; }
+.gcs__av { width: 26px; height: 26px; border-radius: 50%; background: var(--indigo); color: #fff; font-size: 11px; font-weight: 650; display: grid; place-items: center; margin-left: auto; flex: none; transition: box-shadow .25s; }
+.gcs__av.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.28); }
+/* mode rail : icônes seules */
+.gcs--rail, .gcs--bascule.is-on { width: 64px; padding: 12px 8px 10px; }
+.gcs--rail .gcs__marque span, .gcs--bascule.is-on .gcs__marque span,
+.gcs--rail .gcs__it span, .gcs--bascule.is-on .gcs__it span,
+.gcs--rail .gcs__chev, .gcs--bascule.is-on .gcs__chev,
+.gcs--rail .gcs__cherche span, .gcs--bascule.is-on .gcs__cherche span,
+.gcs--rail .gcs__cherche kbd, .gcs--bascule.is-on .gcs__cherche kbd,
+.gcs--rail .gcs__petit span, .gcs--bascule.is-on .gcs__petit span,
+.gcs--rail .gcs__pronote .txt, .gcs--bascule.is-on .gcs__pronote .txt { display: none; }
+.gcs--rail .gcs__marque, .gcs--bascule.is-on .gcs__marque { justify-content: center; padding: 2px 0 10px; }
+.gcs--rail .gcs__it, .gcs--bascule.is-on .gcs__it,
+.gcs--rail .gcs__petit, .gcs--bascule.is-on .gcs__petit,
+.gcs--rail .gcs__cherche, .gcs--bascule.is-on .gcs__cherche,
+.gcs--rail .gcs__pronote, .gcs--bascule.is-on .gcs__pronote { justify-content: center; padding: 0; }
+.gcs--rail .gcs__pronote, .gcs--bascule.is-on .gcs__pronote { height: 28px; }
+.gcs--rail .gcs__sub, .gcs--bascule.is-on .gcs__sub { margin: 2px 0; padding: 4px 0; border-left: 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.gcs--rail .gcs__sub .gcs__it::before, .gcs--bascule.is-on .gcs__sub .gcs__it::before { content: ''; width: 12px; height: 12px; border-radius: 3px; border: 1.6px solid currentColor; opacity: .7; }
+.gcs--rail .gcs__compte, .gcs--bascule.is-on .gcs__compte { flex-direction: column; gap: 4px; align-items: center; }
+.gcs--rail .gcs__av, .gcs--bascule.is-on .gcs__av { margin-left: 0; }
+
+/* ---- divers maquettes du site */
+.app__corps--blanc { background: #fff; }
+.gc-voile { position: absolute; inset: 0; background: rgba(20,25,40,.45); z-index: 600; }
+.gc-modale { position: absolute; z-index: 610; background: #fff; border-radius: 8px; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column; }
+.gc-modale__tete { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 16px; font-weight: 650; }
+.gc-modale__tete .x { margin-left: auto; color: var(--text-dim); font-size: 18px; font-weight: 400; }
+.gc-modale__corps { padding: 14px 16px; font-size: 12.5px; flex: 1; min-height: 0; overflow: hidden; }
+.gc-modale__pied { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 16px; border-top: 1px solid var(--border); }
+.infob { position: absolute; z-index: 820; background: #18181B; color: #fff; font-size: 11px; padding: 4px 8px; border-radius: 5px; white-space: nowrap; box-shadow: var(--shadow); }
+.gtoast { position: absolute; z-index: 880; right: 14px; top: 14px; min-width: 250px; max-width: 380px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border-left: 4px solid var(--pos); background: rgba(234,246,238,.97); color: var(--pos); font-size: 12.5px; font-weight: 550; box-shadow: var(--shadow-lg); }
+.gtoast b { font-size: 14px; }
+.gtoast .x { margin-left: auto; opacity: .6; font-weight: 400; }
+.gtoast--err { border-left-color: var(--neg); background: rgba(251,234,234,.97); color: var(--neg); }
+.gtoast--info { border-left-color: var(--indigo); background: rgba(238,240,255,.97); color: var(--indigo); }
+.gtoast--warn { border-left-color: var(--warn); background: rgba(253,241,227,.97); color: var(--warn); }
+.pill { display: inline-flex; align-items: center; gap: 3px; height: 18px; padding: 0 7px; border-radius: 999px; font-size: 10.5px; font-weight: 650; white-space: nowrap; transition: all .25s; }
+.pill--pos { background: var(--pos-soft); color: var(--pos); }
+.pill--neg { background: var(--neg-soft); color: var(--neg); }
+.pill--neu { background: var(--surface-3); color: var(--text-muted); }
+.pill--ind { background: var(--indigo-soft); color: var(--indigo); }
+.pill--amb { background: var(--warn-soft); color: var(--warn); }
+.pill.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.2); }
+.lien { color: var(--indigo); font-size: 12px; font-weight: 550; }
+.sel { white-space: nowrap; overflow: hidden; height: 28px; border: 1px solid var(--border-strong); border-radius: 6px; padding: 0 8px; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; background: #fff; }
+.sel::after { content: '▾'; margin-left: auto; color: var(--text-dim); font-size: 10px; }
+.sel.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
+
+.ac-corps { padding: 14px 20px; }
+.ac-tete { display: flex; align-items: baseline; gap: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.ac-tete h1 { font-size: 21px; font-weight: 600; letter-spacing: -.01em; margin: 0; line-height: 26px; }
+.ac-tete p { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+.pile { display: inline-grid; }
+.pile > * { grid-area: 1 / 1; }
+.pile--bloc { display: grid; }
+.pg-lignes { display: grid; gap: 8px; margin-top: 12px; }
+.pg-lignes span { height: 34px; border: 1px solid var(--border); border-radius: 6px; background: #fff; }
+/* fenêtre Réglages */
+.par { position: absolute; z-index: 610; left: 236px; top: 34px; width: 672px; height: 510px; background: #fff; border-radius: 16px; box-shadow: var(--shadow-lg); display: flex; flex-direction: column; overflow: hidden; }
+.par__t { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--border); font-size: 16px; font-weight: 650; }
+.par__t .x { margin-left: auto; color: var(--text-dim); font-weight: 400; font-size: 18px; width: 26px; text-align: center; border-radius: 6px; transition: background .2s; }
+.par__t .x.is-on { background: var(--surface-3); }
+.par__c { display: flex; flex: 1; min-height: 0; }
+.par__nav { width: 192px; flex: none; border-right: 1px solid var(--border); padding: 10px 8px; display: flex; flex-direction: column; gap: 2px; }
+.par__it { display: flex; align-items: center; gap: 9px; height: 32px; padding: 0 10px; border-radius: 7px; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.par__it.is-actif, .par__it.is-on { background: var(--indigo-soft); color: var(--indigo); font-weight: 600; }
+.par__s { flex: 1; min-width: 0; padding: 16px 18px; font-size: 12.5px; position: relative; overflow: hidden; }
+.par__s h4 { margin: 0 0 8px; color: var(--indigo); font-size: 14px; font-weight: 650; }
+.par__s p { margin: 0 0 10px; color: var(--text-muted); }
+.prow { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; margin-bottom: 6px; transition: all .25s; }
+.prow > div { flex: 1; min-width: 0; }
+.prow b { font-weight: 550; }
+.prow .muet { display: block; }
+.prow.is-on { border-color: var(--indigo); }
+.inter-a.is-on { background: var(--border-strong); }
+.inter-a.is-on::after { left: 2px; }
+.pchamp { height: 34px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 0 10px; display: flex; align-items: center; font-size: 13px; margin-bottom: 10px; transition: all .25s; }
+.pchamp.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.18); }
+.plab { font-size: 12px; font-weight: 550; color: var(--text-muted); margin-bottom: 4px; }
+.seg3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.seg3 span { height: 38px; border: 1px solid var(--border); border-radius: 8px; display: grid; place-items: center; font-weight: 600; transition: all .25s; }
+.seg3 span.on, .seg3 span.is-on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.theme3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.theme3 span { height: 96px; border: 1.5px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-weight: 600; transition: all .25s; }
+.theme3 span.on, .theme3 span.is-on { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); }
+.pbtn { height: 40px; border: 1px solid var(--border-strong); border-radius: 8px; display: flex; align-items: center; gap: 10px; padding: 0 14px; font-weight: 550; margin-bottom: 8px; transition: all .25s; }
+.pbtn--rouge { border-color: var(--neg); color: var(--neg); background: var(--neg-soft); }
+.jeton { background: var(--indigo-soft); border: 1px solid #C7D2FE; border-radius: 8px; padding: 10px 12px; margin: 10px 0; }
+.jeton code { display: block; background: #fff; border: 1px solid #C7D2FE; border-radius: 6px; padding: 7px 9px; margin: 6px 0; font-size: 11.5px; }
+/* messages et confirmations */
+.cf-carte { position: absolute; z-index: 610; left: 280px; top: 120px; width: 440px; background: #fff; border-radius: 12px; box-shadow: var(--shadow-lg); padding: 22px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.cf-rond { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; }
+.cf-bts { display: flex; gap: 8px; width: 100%; margin-top: 6px; }
+.cf-bts span { flex: 1; height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 600; font-size: 13px; transition: box-shadow .25s; }
+.cf-bts span.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.3); }
+.gtoast.pos2 { top: 66px; }
+/* menus */
+.mm { position: absolute; z-index: 650; background: #fff; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow-lg); padding: 4px; min-width: 230px; font-size: 13px; }
+.mm__sec { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); font-weight: 600; padding: 7px 10px 3px; border-top: 1px solid var(--border); margin-top: 3px; }
+.mm__sec:first-child { border-top: 0; margin-top: 0; }
+.mm__it { padding: 7px 10px; border-radius: 6px; transition: background .2s; }
+.mm__it.is-on { background: var(--surface-3); }
+.mm__it--danger { color: var(--neg); }
+.mm__it--off { opacity: .45; }
+.mm__tete { font-size: 12px; color: var(--text-dim); font-weight: 600; padding: 7px 10px 5px; border-bottom: 1px solid var(--border); margin-bottom: 3px; }
+.mm__sep { border-top: 1px solid var(--border); margin: 3px 0; }
+.trois { width: 30px; height: 28px; border: 1px solid var(--border-strong); border-radius: 6px; display: grid; place-items: center; font-weight: 700; color: var(--text-muted); background: #fff; transition: box-shadow .25s; }
+.trois.is-on { box-shadow: 0 0 0 3px rgba(79,70,229,.25); }
+.lst { display: flex; align-items: center; gap: 10px; height: 40px; border-bottom: 1px solid var(--border); font-size: 13px; padding: 0 8px; transition: background .2s; }
+.lst.is-on { background: var(--indigo-soft); }
+/* erreur et chargement */
+.plein { position: absolute; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; z-index: 5; }
+.tourne { width: 32px; height: 32px; border: 3px solid var(--indigo); border-top-color: transparent; border-radius: 50%; }
+/* repères visuels */
+.planche { width: 100%; height: 100%; background: #fff; border-radius: 10px; box-shadow: var(--shadow-lg); padding: 22px 26px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px 28px; align-content: start; }
+.rep { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; transition: all .25s; }
+.rep.is-on { border-color: var(--indigo); box-shadow: 0 0 0 4px rgba(79,70,229,.14); }
+.rep h5 { margin: 0 0 8px; font-size: 13px; }
+.puce-c { display: inline-grid; place-items: center; min-width: 34px; height: 22px; padding: 0 6px; border-radius: 5px; font-size: 11.5px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.puce-c--0 { background: #F0F0F2; color: #3F3F46; }
+.puce-c--contour { background: #fff; border: 1.5px solid var(--n3); color: var(--n3-ink); }
+.anneau { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 650; }
+.dist { display: flex; align-items: flex-end; gap: 3px; height: 70px; border-bottom: 1px solid var(--border); }
+.dist i { flex: 1; border-radius: 2px 2px 0 0; }
+.qa { display: inline-flex; padding: 5px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border); margin: 0 4px 4px 0; }
+</style>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › <a href="cadre-general.html">Cadre général</a> › Réglages et éléments communs</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#reglages">La fenêtre Réglages</a></li>
+      <li><a href="#onglets">Onglets visibles</a></li>
+      <li><a href="#accueil-edt">Page d'accueil et emploi du temps</a></li>
+      <li><a href="#etablissement">Établissement et profil enseignant</a></li>
+      <li><a href="#annee-theme">Année scolaire et thème</a></li>
+      <li><a href="#jeton">Jeton d'import</a></li>
+      <li><a href="#donnees">Données du navigateur</a></li>
+      <li><a href="#messages">Messages, confirmations et fenêtres</a></li>
+      <li><a href="#menus">Menus « ⋯ » et clic droit</a></li>
+      <li><a href="#erreur">Chargement, adresses inconnues, erreur</a></li>
+      <li><a href="#reperes">Repères visuels communs</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../enseignant/cadre-general.html">◀ Cadre général</a><a href="../enseignant/mes-cours.html">Mes cours ▶</a><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Cadre général</div>
+      <h1>Réglages et éléments communs</h1>
+      <p>Les Réglages, section par section, puis ce que l'on retrouve sur toutes les pages : messages, confirmations, fenêtres, menus, écran d'erreur et repères visuels.</p>
+      <div class="chap__resume"><span>Roue dentée en bas du menu</span><span>Ordinateur</span><span>Toutes les pages</span></div>
+    </header>
+
+    <!-- ============================================================ fenêtre Réglages -->
+    <section class="fiche" id="reglages">
+      <div class="fiche__texte">
+        <h2>La fenêtre Réglages</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Roue dentée › Réglages</span></p>
+        <p class="fiche__but">Régler le menu, l'accueil, l'emploi du temps, l'établissement et le professeur, l'année scolaire, le thème, les jetons d'import et les données du navigateur.</p>
+        <ol class="etapes">
+          <li data-cursor="#rg-reglages" data-action="click">Cliquer la roue dentée <b>Réglages</b>, en bas du menu (sur téléphone : feuille <b>Plus</b> › Réglages).</li>
+          <li data-cursor="#rg-s0" data-duration="3400">La fenêtre s'ouvre sur <b>Onglets visibles</b>. À gauche, les neuf sections.</li>
+          <li data-cursor="#rg-s3" data-action="click">Cliquer une section : son contenu s'affiche à droite.</li>
+          <li data-cursor="#rg-nom" data-duration="3400">Chaque changement s'enregistre au fil de la saisie : il n'y a pas de bouton Enregistrer.</li>
+          <li data-cursor="#rg-x" data-action="click">Fermer par la croix, la touche Échap ou un clic sur le fond.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Onglets visibles, disposition de l'accueil et emploi du temps importé sont rangés dans le compte : ils suivent l'enseignant sur tous ses appareils.</li>
+            <li>Établissement, profil enseignant, année scolaire et thème sont gardés dans ce navigateur : sur un autre ordinateur, ils sont à refaire.</li>
+            <li>Un résultat « Réglages » de la recherche ouvre directement la bonne section.</li>
+            <li>L'en-tête s'écrit « Parametres », et plusieurs titres et étiquettes de section s'affichent sans accents.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="cadre-general.html#recherche">La recherche</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="rg-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="rg-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="rg-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="rg-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rg-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rg-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="rg-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="rg-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="rg-pronote-x">×</span></div>
+<div class="gcs__petit" id="rg-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="rg-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="rg-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="rg-reglages" data-on="1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="rg-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps"><div class="ac-tete"><h1 id="rg-titre">Jeudi 26 novembre</h1><p id="rg-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile" data-from="2"></div>
+                <div class="par zoom" data-from="2">
+                  <div class="par__t">Parametres<span class="x" id="rg-x" data-on="5">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it" id="rg-s0" data-on="2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="rg-s1"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="rg-s2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="rg-s3" data-on="3-5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="rg-s4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="rg-s5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="rg-s6"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it" id="rg-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it" id="rg-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s pile pile--bloc">
+                      <div data-at="2">
+                        <h4>Onglets visibles</h4>
+                        <p>Masquez les onglets que vous n'utilisez pas : ils disparaissent du menu. Ce choix est gardé dans votre compte et vous suit sur tous vos appareils.</p>
+                        <div class="prow"><div>Mes cours › Mes TP</div><span class="interrupteur interrupteur--on"></span></div>
+                        <div class="prow"><div>Mes cours › Annales</div><span class="interrupteur interrupteur--on"></span></div>
+                        <div class="prow"><div>Mes cours › Mes clouds</div><span class="interrupteur interrupteur--on"></span></div>
+                        <div class="prow"><div>Évaluations › Carnet et fiches</div><span class="interrupteur interrupteur--on"></span></div>
+                      </div>
+                      <div data-from="3">
+                        <h4>Etablissement</h4>
+                        <div class="plab">Nom</div><div class="pchamp" id="rg-nom" data-on="4"><span data-type="Collège de démonstration" data-type-at="4"></span></div>
+                        <div class="plab">Telephone</div><div class="pchamp"></div>
+                        <div class="plab">Adresse</div><div class="pchamp"></div>
+                        <div class="plab">Code postal / Commune</div><div class="pchamp"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ onglets visibles -->
+    <section class="fiche" id="onglets">
+      <div class="fiche__texte">
+        <h2>Onglets visibles</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Réglages › Onglets visibles</span></p>
+        <p class="fiche__but">Retirer du menu les pages qu'on n'utilise pas, pour un menu plus court.</p>
+        <ol class="etapes">
+          <li data-cursor="#og-txt" data-duration="3200">Chaque ligne est une page du menu ; interrupteur indigo = page visible.</li>
+          <li data-cursor="#og-sw" data-action="click">Éteindre l'interrupteur de <b>Mes cours › Annales</b>.</li>
+          <li data-cursor="#og-x" data-action="click">Fermer les Réglages.</li>
+          <li data-cursor="#og-cours" data-duration="3400">Dans le menu, <b>Mes cours</b> n'affiche plus Annales. Le choix vaut sur tous les appareils du compte.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Neuf pages se masquent : Mes TP, Annales, Mes clouds, Carnet et fiches, Activité en direct, Récompenses, Académie, Outils, Pronote. L'accueil, la bibliothèque de Mes cours et les pages de Classes restent toujours visibles.</li>
+            <li>Une page masquée quitte aussi la barre du téléphone et la recherche ; son adresse s'ouvre encore si on la tape.</li>
+            <li>Masquer Carnet et fiches et Activité en direct fait disparaître l'entrée Évaluations.</li>
+            <li>À la connexion, le choix rangé dans le compte fait foi.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="cadre-general.html#menu">Le menu latéral</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="og-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="og-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it" id="og-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="og-cours" data-on="4"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">▾</i></div>
+<div class="gcs__sub">
+<div class="gcs__it is-actif" id="og-cours0"><span>Bibliothèque et classes</span></div>
+<div class="gcs__it" id="og-cours1"><span>Mes TP</span></div>
+<div class="gcs__it repli" id="og-cours2" data-to="3"><span>Annales</span></div>
+<div class="gcs__it" id="og-cours3"><span>Mes clouds</span></div>
+</div>
+<div class="gcs__it" id="og-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="og-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="og-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="og-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="og-pronote-x">×</span></div>
+<div class="gcs__petit" id="og-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="og-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="og-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="og-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="og-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__entete"><span class="app__titre">Mes cours</span></div><div class="app__corps"><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile" data-to="3"></div>
+                <div class="par" data-to="3">
+                  <div class="par__t">Parametres<span class="x" id="og-x" data-on="3">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it is-actif" id="og-s0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="og-s1"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="og-s2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="og-s3"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="og-s4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="og-s5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="og-s6"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it" id="og-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it" id="og-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s">
+                      <h4>Onglets visibles</h4>
+                      <p id="og-txt">Masquez les onglets que vous n'utilisez pas : ils disparaissent du menu. Ce choix est gardé dans votre compte et vous suit sur tous vos appareils.</p>
+                      <div class="prow"><div>Mes cours › Mes TP</div><span class="interrupteur interrupteur--on"></span></div>
+                      <div class="prow" data-on="2"><div>Mes cours › Annales</div><span class="interrupteur interrupteur--on inter-a" id="og-sw" data-on="2-4"></span></div>
+                      <div class="prow"><div>Mes cours › Mes clouds</div><span class="interrupteur interrupteur--on"></span></div>
+                      <div class="prow"><div>Évaluations › Carnet et fiches</div><span class="interrupteur interrupteur--on"></span></div>
+                      <div class="prow"><div>Évaluations › Activité en direct</div><span class="interrupteur interrupteur--on"></span></div>
+                      <div class="prow"><div>Plus › Récompenses</div><span class="interrupteur interrupteur--on"></span></div>
+                      <div class="prow"><div>Plus › Académie</div><span class="interrupteur interrupteur--on"></span></div>
+                      <div class="prow"><div>Plus › Outils</div><span class="interrupteur interrupteur--on"></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ page d'accueil + emploi du temps -->
+    <section class="fiche" id="accueil-edt">
+      <div class="fiche__texte">
+        <h2>Page d'accueil et emploi du temps</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Réglages › Page d'accueil · Emploi du temps</span></p>
+        <p class="fiche__but">Choisir les modules de l'accueil et entrer dans le mode édition ; importer, corriger ou retirer l'emploi du temps .ics.</p>
+        <ol class="etapes">
+          <li data-cursor="#ae-perso" data-duration="3600"><b>Page d'accueil</b> : <span class="btn-nom">Personnaliser la disposition</span> ferme les Réglages et passe l'accueil en mode édition ; <span class="btn-nom">Reinitialiser</span> (deux clics) remet la disposition livrée.</li>
+          <li data-cursor="#ae-sw" data-action="click" data-duration="3200">Un interrupteur par module : l'éteindre retire le module de l'accueil, l'allumer le repose en bas de la page.</li>
+          <li data-cursor="#ae-s2" data-action="click" data-duration="3200"><b>Emploi du temps</b> : le même panneau que la roue dentée de l'accueil.</li>
+          <li data-cursor="#ae-reimp" data-duration="3400"><span class="btn-nom">Réimporter un fichier .ics</span>, <span class="btn-nom">Correspondance des classes</span> pour relier les cours aux classes.</li>
+          <li data-cursor="#ae-ret" data-action="click" data-duration="3400"><span class="btn-nom">Retirer</span> devient « Confirmer la suppression » : un second clic efface les cours importés.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un module allumé peut ne pas apparaître s'il n'a rien à montrer (pas d'élève en alerte, pas de Pronote…).</li>
+            <li>Retirer l'emploi du temps garde la correspondance des classes pour un prochain import.</li>
+            <li>Un import fait ici ne recharge pas l'accueil déjà ouvert : il se met à jour à sa prochaine ouverture.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="accueil.html#personnaliser">Personnaliser l'accueil</a> · <a href="accueil.html#importer">Importer l'emploi du temps</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="ae-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="ae-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="ae-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="ae-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ae-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ae-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ae-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="ae-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="ae-pronote-x">×</span></div>
+<div class="gcs__petit" id="ae-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="ae-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="ae-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="ae-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="ae-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps"><div class="ac-tete"><h1 id="ae-titre">Jeudi 26 novembre</h1><p id="ae-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile"></div>
+                <div class="par">
+                  <div class="par__t">Parametres<span class="x">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it" id="ae-s0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="ae-s1" data-on="1-2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="ae-s2" data-on="3-5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="ae-s3"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="ae-s4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="ae-s5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="ae-s6"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it" id="ae-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it" id="ae-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s pile pile--bloc">
+                      <div data-to="2">
+                        <h4>Page d'accueil</h4>
+                        <p>Choisissez les modules affiches sur l'accueil, puis passez en mode edition pour les deplacer et les redimensionner comme vous voulez.</p>
+                        <div class="ligne" style="margin-bottom:10px"><span class="b" id="ae-perso" data-on="1">Personnaliser la disposition</span><span class="b b--fantome">Reinitialiser</span></div>
+                        <div class="prow"><div><b>Emploi du temps</b><span class="muet">La semaine en grand : Pronote en direct, ou l'emploi du temps importé (.ics).</span></div><span class="interrupteur interrupteur--on"></span></div>
+                        <div class="prow"><div><b>Raccourcis</b><span class="muet">Accès direct aux groupes, au tableau blanc, aux outils, au suivi et aux plans de classe.</span></div><span class="interrupteur interrupteur--on"></span></div>
+                        <div class="prow"><div><b>Moyenne d'implication</b><span class="muet">Moyenne générale d'implication sur le trimestre en cours.</span></div><span class="interrupteur interrupteur--on"></span></div>
+                        <div class="prow" data-on="2"><div><b>Séances de la semaine</b><span class="muet">Séances faites et à venir sur la semaine en cours.</span></div><span class="interrupteur interrupteur--on inter-a" id="ae-sw" data-on="2"></span></div>
+                        <div class="prow"><div><b>À regarder avant demain</b><span class="muet">Les cinq élèves qui décrochent ou multiplient les absences.</span></div><span class="interrupteur interrupteur--on"></span></div>
+                      </div>
+                      <div data-from="3">
+                        <h4>Emploi du temps</h4>
+                        <b style="font-size:14px">711 cours · 8 congés</b>
+                        <p style="margin-top:2px">Du 31 août 2026 au 2 juillet 2027 · importé le 26 nov. (edt-annee.ics)</p>
+                        <div class="ligne" style="flex-wrap:wrap"><span class="b b--fantome b--petit" id="ae-reimp" data-on="4">Réimporter un fichier .ics</span><span class="b b--fantome b--petit">Correspondance des classes</span><span class="b b--danger b--petit" id="ae-ret"><span class="pile"><span data-to="4">Retirer</span><span data-at="5" style="font-weight:650">Confirmer la suppression</span></span></span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ établissement / profil -->
+    <section class="fiche" id="etablissement">
+      <div class="fiche__texte">
+        <h2>Établissement et profil enseignant</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Réglages › Établissement · Profil enseignant</span></p>
+        <p class="fiche__but">Renseigner l'établissement et son nom de professeur, repris par les documents que génère la boîte à outils.</p>
+        <ol class="etapes">
+          <li data-cursor="#et-s3" data-action="click"><b>Établissement</b> : quatre champs, Nom, Telephone, Adresse, Code postal / Commune.</li>
+          <li data-cursor="#et-nom" data-duration="3400">Remplacer le nom par celui de son établissement : l'enregistrement se fait pendant la frappe.</li>
+          <li data-cursor="#et-s4" data-action="click"><b>Profil enseignant</b> : Nom Prenom, Matiere, Fonction.</li>
+          <li data-cursor="#et-fn" data-duration="3400">Les remplir une fois : le générateur de documents s'en sert, par exemple pour l'organisateur d'une sortie.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Ces informations sont gardées dans ce navigateur seulement : sur un autre ordinateur, elles sont à ressaisir.</li>
+            <li>Limite actuelle : la section Établissement arrive pré-remplie avec l'établissement du développeur de l'application ; la vérifier et la remplacer par le sien.</li>
+            <li>Le générateur de documents reprend le nom, le téléphone et le code postal de l'établissement, et le nom et la fonction du professeur.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="outils.html">Outils</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="et-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="et-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="et-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="et-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="et-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="et-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="et-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="et-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="et-pronote-x">×</span></div>
+<div class="gcs__petit" id="et-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="et-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="et-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="et-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="et-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps"><div class="ac-tete"><h1 id="et-titre">Jeudi 26 novembre</h1><p id="et-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile"></div>
+                <div class="par">
+                  <div class="par__t">Parametres<span class="x">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it" id="et-s0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="et-s1"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="et-s2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="et-s3" data-on="1-2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="et-s4" data-on="3-4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="et-s5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="et-s6"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it" id="et-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it" id="et-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s pile pile--bloc">
+                      <div data-to="2">
+                        <h4>Etablissement</h4>
+                        <div class="plab">Nom</div><div class="pchamp" id="et-nom" data-on="2"><span class="pile"><span class="muet" style="font-size:13px" data-at="1">(établissement par défaut)</span><span data-type="Collège de démonstration" data-type-at="2"></span></span></div>
+                        <div class="plab">Telephone</div><div class="pchamp"><span data-at="2" class="muet" style="font-size:13px"></span></div>
+                        <div class="plab">Adresse</div><div class="pchamp"></div>
+                        <div class="plab">Code postal / Commune</div><div class="pchamp"></div>
+                      </div>
+                      <div data-from="3">
+                        <h4>Profil enseignant</h4>
+                        <div class="plab">Nom Prenom</div><div class="pchamp">Martin Alex</div>
+                        <div class="plab">Matiere</div><div class="pchamp">SVT</div>
+                        <div class="plab">Fonction</div><div class="pchamp" id="et-fn" data-on="4"><span data-type="Professeur" data-type-at="4"></span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ année / thème -->
+    <section class="fiche" id="annee-theme">
+      <div class="fiche__texte">
+        <h2>Année scolaire et thème</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Réglages › Année scolaire · Thème</span></p>
+        <p class="fiche__but">Indiquer l'année et le trimestre en cours ; choisir l'apparence claire, sombre ou celle de l'ordinateur.</p>
+        <ol class="etapes">
+          <li data-cursor="#at-s5" data-action="click"><b>Année scolaire</b> : le champ <b>Annee</b> et trois boutons T1, T2, T3.</li>
+          <li data-cursor="#at-t2" data-action="click" data-duration="3400">Choisir le trimestre : <b>T2</b>. Il s'affiche dans les modules de l'accueil (« T2 en cours ») et au survol du logo.</li>
+          <li data-cursor="#at-s6" data-action="click"><b>Thème</b> : trois cartes, Clair, Sombre, Systeme.</li>
+          <li data-cursor="#at-sombre" data-action="click" data-duration="3800">Cliquer <b>Sombre</b> : le choix est enregistré.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Par défaut, l'année et le trimestre se déduisent de la date : l'année change au 1er août ; T1 de septembre à novembre, T2 de décembre à mars, T3 d'avril à août. Une année enregistrée déjà passée est remplacée toute seule.</li>
+            <li>Le trimestre choisi ici est une étiquette d'affichage : il ne change pas le calcul de la moyenne d'implication de l'accueil.</li>
+            <li class="important">Limite actuelle : le thème choisi n'est pas appliqué ; le site reste clair, même sur Sombre.</li>
+            <li>Ces réglages sont gardés dans ce navigateur.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="at-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="at-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="at-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="at-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="at-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="at-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="at-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="at-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="at-pronote-x">×</span></div>
+<div class="gcs__petit" id="at-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="at-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="at-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="at-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="at-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps"><div class="ac-tete"><h1 id="at-titre">Jeudi 26 novembre</h1><p id="at-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile"></div>
+                <div class="par">
+                  <div class="par__t">Parametres<span class="x">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it" id="at-s0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="at-s1"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="at-s2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="at-s3"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="at-s4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="at-s5" data-on="1-2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="at-s6" data-on="3-4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it" id="at-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it" id="at-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s pile pile--bloc">
+                      <div data-to="2">
+                        <h4>Annee scolaire</h4>
+                        <div class="plab">Annee</div><div class="pchamp">2026-2027</div>
+                        <div class="plab">Trimestre</div>
+                        <div class="seg3"><span data-on="1">T1</span><span id="at-t2" data-on="2">T2</span><span>T3</span></div>
+                      </div>
+                      <div data-from="3">
+                        <h4>Theme</h4>
+                        <div class="theme3"><span data-on="3"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Clair</span><span id="at-sombre" data-on="4"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Sombre</span><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>Systeme</span></div>
+                        <div class="bulle bulle--haut" data-at="4" style="left:60px;top:160px;max-width:330px">Limite actuelle : le choix est gardé, mais le site reste en apparence claire.</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="infob" data-at="2" style="left:14px;top:46px">T2 · 2026-2027</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ jeton d'import -->
+    <section class="fiche" id="jeton">
+      <div class="fiche__texte">
+        <h2>Jeton d'import</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Réglages › Jeton d'import</span></p>
+        <p class="fiche__but">Autoriser Claude, depuis l'ordinateur de l'enseignant, à déposer dans l'application les cours, les écrans, les images et les entrées de cahier de texte qu'il prépare.</p>
+        <ol class="etapes">
+          <li data-cursor="#je-txt" data-duration="3600">Lire l'explication : le jeton ne donne aucun accès en lecture, n'écrit que dans votre espace, et se révoque à tout moment.</li>
+          <li data-cursor="#je-cree" data-action="click" data-duration="3200">Saisir un <b>Nom du jeton</b> (« PC de la maison ») et cliquer <span class="btn-nom">Créer un jeton</span>.</li>
+          <li data-cursor="#je-copier" data-action="click" data-duration="3800">Le jeton s'affiche une seule fois : <span class="btn-nom">Copier le jeton</span>, puis le coller, seul, dans le fichier <code>jeton-import.txt</code> du dossier <code>.gestion-classe</code> de son profil Windows.</li>
+          <li data-cursor="#je-masq" data-action="click" data-duration="3000"><span class="btn-nom">C'est fait, masquer</span> referme l'encadré.</li>
+          <li data-cursor="#je-rev" data-action="click" data-duration="3600">Dans la liste des jetons actifs, <span class="btn-nom">Révoquer</span> devient « Confirmer » : un second clic coupe l'accès.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li class="important">Ne jamais coller le jeton dans une conversation ni dans un document.</li>
+            <li>Un jeton expire à la date indiquée (« Valable jusqu'au… ») ; la liste dit quand il a servi pour la dernière fois.</li>
+            <li>Si la copie échoue : « Copie impossible : sélectionnez le jeton à la main. »</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="accueil.html#preparer-semaine">Préparer la semaine avec Claude</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="je-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="je-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="je-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="je-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="je-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="je-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="je-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="je-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="je-pronote-x">×</span></div>
+<div class="gcs__petit" id="je-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="je-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="je-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="je-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="je-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps"><div class="ac-tete"><h1 id="je-titre">Jeudi 26 novembre</h1><p id="je-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile"></div>
+                <div class="par">
+                  <div class="par__t">Parametres<span class="x">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it" id="je-s0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="je-s1"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="je-s2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="je-s3"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="je-s4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="je-s5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="je-s6"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it is-actif" id="je-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it" id="je-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s">
+                      <h4>Jeton d'import</h4>
+                      <p id="je-txt">Un jeton permet à Claude, depuis cet ordinateur, de déposer dans l'application les images, les cours et les écrans qu'il prépare. Il ne donne aucun accès en lecture et n'écrit que dans votre espace. Vous pouvez le révoquer à tout moment.</p>
+                      <div class="plab">Nom du jeton (pour le reconnaître)</div>
+                      <div class="ligne" style="margin-bottom:6px"><div class="pchamp" style="flex:1;margin:0"><span data-type="PC de la maison" data-type-at="2"></span></div><span class="b" id="je-cree" data-on="2">Créer un jeton</span></div>
+                      <div class="jeton glisse-haut repli" data-at="3-4">
+                        <b>Voici votre jeton. Il ne sera plus jamais affiché : copiez-le maintenant.</b>
+                        <code>exemple-0000-0000-0000-0000</code>
+                        <div class="ligne"><span class="b b--petit" id="je-copier" data-on="3"><span class="pile"><span data-at="3">Copier le jeton</span><span data-at="4">Copié</span></span></span><span class="b b--fantome b--petit" id="je-masq">C'est fait, masquer</span></div>
+                        <div class="muet" style="margin-top:6px">Collez-le, seul, dans le fichier %USERPROFILE%\.gestion-classe\jeton-import.txt (à créer). Ne le collez jamais dans une conversation. Valable jusqu'au 26 févr. 2027.</div>
+                      </div>
+                      <div class="plab" style="margin-top:8px">Jetons actifs</div>
+                      <div class="prow repli" data-from="3"><div><b>PC de la maison</b><span class="muet">Créé le 26 nov. · jamais utilisé · expire le 26 févr.</span></div></div>
+                      <div class="prow"><div><b>Portable</b><span class="muet">Créé le 2 oct. · utilisé le 25 nov. · expire le 2 janv.</span></div><span class="b b--danger b--petit" id="je-rev" data-on="5"><span class="pile"><span data-to="4">Révoquer</span><span data-at="5">Confirmer</span></span></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ données -->
+    <section class="fiche" id="donnees">
+      <div class="fiche__texte">
+        <h2>Données du navigateur</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Réglages › Données</span></p>
+        <p class="fiche__but">Télécharger ce que le site garde dans ce navigateur, ou le vider. Les classes, élèves et notes, rangés dans la base, ne sont pas concernés.</p>
+        <ol class="etapes">
+          <li data-cursor="#do-exp" data-action="click" data-duration="3400"><span class="btn-nom">Exporter mes donnees</span> télécharge un fichier <code>gestion-classe-export-2026-11-26.json</code>.</li>
+          <li data-cursor="#do-vid" data-action="click" data-duration="3800"><span class="btn-nom">Vider le cache local</span> devient rouge, « Confirmer la suppression », avec un avertissement.</li>
+          <li data-cursor="#do-vid" data-action="click" data-duration="3400">Un second clic vide le navigateur, sauf les réglages de l'appareil.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'export ne contient que le contenu du navigateur (réglages, brouillons, préférences gardées), pas les données de la base.</li>
+            <li class="important">Il contient aussi les connexions gardées par le navigateur (site, Pronote) : ce fichier ne se partage pas.</li>
+            <li>Vider efface la connexion Pronote, le brouillon d'ardoise et les préférences gardées, et sans doute la connexion au site : prévoir de se reconnecter. Rien n'est effacé dans la base.</li>
+            <li>Changer de section annule la demande de confirmation.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="do-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="do-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="do-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="do-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="do-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="do-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="do-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="do-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="do-pronote-x">×</span></div>
+<div class="gcs__petit" id="do-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="do-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="do-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="do-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="do-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__corps ac-corps"><div class="ac-tete"><h1 id="do-titre">Jeudi 26 novembre</h1><p id="do-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gc-voile"></div>
+                <div class="par">
+                  <div class="par__t">Parametres<span class="x">×</span></div>
+                  <div class="par__c">
+                    <div class="par__nav"><div class="par__it" id="do-s0"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Onglets visibles</span></div><div class="par__it" id="do-s1"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Page d'accueil</span></div><div class="par__it" id="do-s2"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Emploi du temps</span></div><div class="par__it" id="do-s3"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg><span>Établissement</span></div><div class="par__it" id="do-s4"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>Profil enseignant</span></div><div class="par__it" id="do-s5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Année scolaire</span></div><div class="par__it" id="do-s6"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Thème</span></div><div class="par__it" id="do-s7"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3"/></svg><span>Jeton d’import</span></div><div class="par__it is-actif" id="do-s8"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg><span>Données</span></div></div>
+                    <div class="par__s">
+                      <h4>Donnees</h4>
+                      <p>Exportez vos donnees locales ou videz le cache du navigateur.</p>
+                      <div class="pbtn" id="do-exp" data-on="1"><span style="color:var(--indigo)"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"/></svg></span>Exporter mes donnees</div>
+                      <div class="pile pile--bloc">
+                        <div class="pbtn" data-at="1,3" id="do-vid"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Vider le cache local</div>
+                        <div class="pbtn pbtn--rouge" data-at="2"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Confirmer la suppression</div>
+                      </div>
+                      <p data-at="2" style="color:var(--neg);margin-top:4px">Attention : cette action supprimera toutes les donnees locales (sauf les parametres). Cliquez a nouveau pour confirmer.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bulle bulle--haut" data-at="1" style="left:470px;top:250px">Le navigateur télécharge gestion-classe-export-2026-11-26.json</div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ messages -->
+    <section class="fiche" id="messages">
+      <div class="fiche__texte">
+        <h2>Messages, confirmations et fenêtres</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Partout dans le site</span></p>
+        <p class="fiche__but">Les mêmes présentations reviennent d'une page à l'autre : le petit message qui confirme, la fenêtre qui demande d'être sûr, la fenêtre de travail.</p>
+        <ol class="etapes">
+          <li data-cursor="#ms-t1" data-duration="3400">Un message éphémère glisse en haut à droite : vert pour une réussite (<span class="ic ic-ok" aria-hidden="true"></span>), rouge pour une erreur (×), orangé pour une alerte, indigo pour une information.</li>
+          <li data-cursor="#ms-t2x" data-action="click" data-duration="3200">Il disparaît seul au bout de 4 secondes ; sa croix le ferme plus tôt.</li>
+          <li data-cursor="#ms-ok" data-duration="3800">Avant une action qui ne se rattrape pas, une fenêtre de confirmation : corbeille sur fond rose et bouton rouge pour une suppression.</li>
+          <li data-cursor="#ms-ok2" data-duration="3600">Variante avertissement : signe orange et bouton orange. Le bouton de confirmation est déjà sélectionné : Entrée confirme, <b>Annuler</b> ou un clic sur le fond renonce.</li>
+          <li data-cursor="#ms-mx" data-action="click" data-duration="3600">Les autres fenêtres ont un titre, une croix, un contenu qui défile et parfois un pied à boutons. Elles se ferment par la croix, Échap ou un clic sur le fond.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La fenêtre de confirmation passe au-dessus de toutes les autres.</li>
+            <li>Tant qu'une fenêtre est ouverte, la page derrière ne défile plus. Une fenêtre ouverte depuis une autre passe devant.</li>
+            <li>Sur téléphone, les fenêtres occupent tout l'écran.</li>
+          </ul>
+        </aside>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/cours</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="ms-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="ms-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it" id="ms-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="ms-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">▾</i></div>
+<div class="gcs__sub">
+<div class="gcs__it is-actif" id="ms-cours0"><span>Bibliothèque et classes</span></div>
+<div class="gcs__it" id="ms-cours1"><span>Mes TP</span></div>
+<div class="gcs__it" id="ms-cours2"><span>Annales</span></div>
+<div class="gcs__it" id="ms-cours3"><span>Mes clouds</span></div>
+</div>
+<div class="gcs__it" id="ms-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ms-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="ms-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="ms-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="ms-pronote-x">×</span></div>
+<div class="gcs__petit" id="ms-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="ms-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="ms-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="ms-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="ms-avatar">M</span></div>
+</div></aside>
+                <div class="app__main"><div class="app__entete"><span class="app__titre">Mes cours</span></div><div class="app__corps"><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div></div>
+                <div class="gtoast glisse-bas" id="ms-t1" data-at="1-2"><b><span class="ic ic-ok" aria-hidden="true"></span></b>Cours dupliqué.<span class="x">×</span></div>
+                <div class="gtoast gtoast--err pos2 glisse-bas" data-at="1"><b>×</b>Impossible de supprimer le tableau.<span class="x" id="ms-t2x">×</span></div>
+                <div class="gc-voile" data-at="3-4" style="background:rgba(0,0,0,.5)"></div>
+                <div class="cf-carte zoom" data-at="3">
+                  <span class="cf-rond" style="background:var(--neg-soft);color:var(--neg)"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span>
+                  <b style="font-size:17px">Supprimer cette entrée ?</b>
+                  <span class="muet" style="font-size:12.5px">Le texte de cahier de texte de ce cours sera supprimé de l'application (pas de Pronote).</span>
+                  <div class="cf-bts"><span style="border:1px solid var(--border-strong)">Annuler</span><span id="ms-ok" data-on="3" style="background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff">Supprimer</span></div>
+                </div>
+                <div class="cf-carte zoom" data-at="4">
+                  <span class="cf-rond" style="background:#FFF3E0;color:#F57C00"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg></span>
+                  <b style="font-size:17px">Abandonner les modifications ?</b>
+                  <span class="muet" style="font-size:12.5px">Le texte modifié n'est pas enregistré.</span>
+                  <div class="cf-bts"><span style="border:1px solid var(--border-strong)">Annuler</span><span id="ms-ok2" data-on="4" style="background:linear-gradient(135deg,#FF9800,#F57C00);color:#fff">Abandonner</span></div>
+                </div>
+                <div class="gc-voile" data-at="5"></div>
+                <div class="gc-modale zoom" data-at="5" style="left:212px;top:70px;width:576px;height:420px">
+                  <div class="gc-modale__tete">Emploi du temps<span class="x" id="ms-mx">×</span></div>
+                  <div class="gc-modale__corps"><div class="pg-lignes" style="margin:0"><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                  <div class="gc-modale__pied"><span class="b b--fantome">Annuler</span><span class="b">Enregistrer</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ menus -->
+    <section class="fiche" id="menus">
+      <div class="fiche__texte">
+        <h2>Menus « ⋯ » et clic droit</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">En-têtes, lignes de tableau, Mes cours</span></p>
+        <p class="fiche__but">Les actions rares sont rangées hors de la vue : derrière un bouton « ⋯ », ou sous le clic droit là où on a cliqué.</p>
+        <ol class="etapes">
+          <li data-cursor="#me-3p" data-action="click" data-duration="3400">Le bouton <b>⋯</b> d'une ligne (ici une évaluation) ouvre la liste de ses autres actions. Son infobulle les résume.</li>
+          <li data-cursor="#me-dang" data-duration="3400">Une action dangereuse est écrite en rouge.</li>
+          <li data-cursor="#me-ligne" data-action="click" data-duration="3600">Dans Mes cours, un clic droit sur un cours (ou un appui long au doigt) ouvre le menu de ce cours, son titre en tête.</li>
+          <li data-cursor="#me-off" data-duration="3400">Les actions sont groupées par des traits : ouvrir, partager, ranger, supprimer.</li>
+          <li data-cursor="#me-fond" data-action="click">Un clic ailleurs, Échap ou le défilement de la page referme le menu.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Le menu du clic droit reste toujours entier dans la fenêtre : près d'un bord, il se décale.</li>
+            <li>La première action a le focus : les flèches et Entrée suffisent.</li>
+            <li>Une action indisponible est à demi effacée. Un bouton « ⋯ » sans action n'est pas affiché.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="mes-cours.html">Mes cours</a> · <a href="carnet-et-evaluations.html">Carnet et évaluations</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/evaluations</div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="me-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="me-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it" id="me-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="me-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="me-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="me-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">▾</i></div>
+<div class="gcs__sub">
+<div class="gcs__it is-actif" id="me-evals0"><span>Carnet et fiches</span></div>
+<div class="gcs__it" id="me-evals1"><span>Activité en direct</span></div>
+</div>
+<div class="gcs__it" id="me-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="me-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="me-pronote-x">×</span></div>
+<div class="gcs__petit" id="me-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="me-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="me-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="me-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="me-avatar">M</span></div>
+</div></aside>
+                <div class="app__main" style="position:relative" id="me-fond">
+                  <div data-to="2">
+                    <div class="app__entete"><span class="app__titre">Carnet et fiches</span></div>
+                    <div class="app__corps">
+                      <div class="lst" style="font-weight:600;color:var(--text-muted);font-size:12px"><span style="flex:1">Évaluation</span><span style="width:70px">Classe</span><span style="width:80px">Date</span><span style="width:30px"></span></div>
+                      <div class="lst" data-on="1-2"><span style="flex:1">Évaluation 1 — Le corps se défend</span><span style="width:70px"><span class="puce puce--3">3A</span></span><span style="width:80px">12 nov.</span><span class="trois" id="me-3p" data-on="1-2">⋯</span></div>
+                      <div class="lst"><span style="flex:1">Évaluation 1 — Météo et climat</span><span style="width:70px"><span class="puce puce--5">5E</span></span><span style="width:80px">5 nov.</span><span class="trois">⋯</span></div>
+                      <div class="lst"><span style="flex:1">Évaluation 1 — La Terre bouge</span><span style="width:70px"><span class="puce puce--4">4B</span></span><span style="width:80px">3 nov.</span><span class="trois">⋯</span></div>
+                    </div>
+                  </div>
+                  <div data-from="3" style="position:absolute;inset:0;background:#fff">
+                    <div class="app__entete"><span class="app__titre">Mes cours</span></div>
+                    <div class="app__corps">
+                      <div class="muet" style="margin-bottom:4px">3e › Séquence 2 — Le corps se défend</div>
+                      <div class="lst"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4"/></svg>Activité 3 — Les anticorps</div>
+                      <div class="lst" id="me-ligne" data-on="3-4"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4"/></svg>Activité 4 — La vaccination</div>
+                      <div class="lst"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M8 20h8M12 16v4"/></svg>Correction — Activité 3 — Les anticorps</div>
+                      <div class="lst"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v14H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4"/></svg>Évaluation 1 — Le corps se défend</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="infob" data-at="1" style="left:560px;top:104px">Plus d'actions : export, Pronote, scans, dépublier</div>
+                <div class="mm glisse-bas" data-at="2" style="left:720px;top:132px">
+                  <div class="mm__it">Publier…</div>
+                  <div class="mm__it">Exporter…</div>
+                  <div class="mm__it">Copier pour Pronote</div>
+                  <div class="mm__it">Garder les scans 30 j de plus</div>
+                  <div class="mm__it mm__it--danger" id="me-dang">Supprimer les scans maintenant</div>
+                  <div class="mm__it">Dépublier</div>
+                </div>
+                <div class="mm zoom" data-at="3-4" style="left:420px;top:150px;width:290px">
+                  <div class="mm__tete">Activité 4 — La vaccination</div>
+                  <div class="mm__it is-on">Ouvrir</div>
+                  <div class="mm__it">Essayer en classe</div>
+                  <div class="mm__sep"></div>
+                  <div class="mm__it">Copier le lien lecture seule</div>
+                  <div class="mm__it">Gérer le lien lecture seule…</div>
+                  <div class="mm__sep"></div>
+                  <div class="mm__it" id="me-off">Placer sur un cours…</div>
+                  <div class="mm__it">Dupliquer</div>
+                  <div class="mm__it">Enregistrer comme modèle</div>
+                  <div class="mm__it">Renommer, ranger</div>
+                  <div class="mm__sep"></div>
+                  <div class="mm__it mm__it--danger">Supprimer</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ chargement / erreur -->
+    <section class="fiche" id="erreur">
+      <div class="fiche__texte">
+        <h2>Chargement, adresses inconnues, erreur</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Toutes les pages</span></p>
+        <p class="fiche__but">Ce que montre le site pendant qu'il vérifie la connexion ou charge une page, quand une adresse n'existe pas, et quand un problème imprévu survient.</p>
+        <ol class="etapes">
+          <li data-cursor="#er-l1" data-duration="3000">À l'ouverture, le temps de vérifier la connexion : « Chargement... » sous une icône de livres.</li>
+          <li data-cursor="#er-l2" data-duration="3000">À la première ouverture d'une page : « Chargement… » au centre, le temps qu'elle arrive.</li>
+          <li data-cursor="#er-url" data-duration="3400">Une adresse qui n'existe pas renvoie à l'accueil, sans message.</li>
+          <li data-cursor="#er-re" data-action="click" data-duration="3800">Problème imprévu : « Oups, une erreur s'est produite » remplace la page. <span class="btn-nom">Reessayer</span> rend la main au site ; <span class="btn-nom">Recharger la page</span> le relance.</li>
+          <li data-cursor="#er-cache" data-duration="3400">Si le problème revient, vider le cache du navigateur, puis envoyer un retour.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>L'erreur est enregistrée pour le développeur (message, page, compte) : il la voit sans qu'on ait à la décrire, mais un retour aide à la reproduire.</li>
+            <li>Une session expirée ramène à la page de connexion.</li>
+            <li>Les textes de l'écran d'erreur s'affichent sans accents (« Reessayer »).</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="cadre-general.html#retour">Envoyer un retour</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url" id="er-url"><span class="pile"><span data-to="2">qwetsh.github.io/gestion-classe/</span><span data-at="3">qwetsh.github.io/gestion-classe/page-inconnue</span><span data-from="4">qwetsh.github.io/gestion-classe/students</span></span></div></div>
+              <div class="app" style="position:relative">
+                <aside class="gcs">
+<div class="gcs__marque" id="er-marque"><b>GC</b><span>Gestion Classe</span></div>
+<div class="gcs__cherche" id="er-search"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg><span>Rechercher</span><kbd>Ctrl K</kbd></div>
+<div class="gcs__it is-actif" id="er-accueil"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H10v6H4a1 1 0 0 1-1-1z"/></svg><span>Accueil</span></div>
+<div class="gcs__it" id="er-cours"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h8l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M15 3v4h4M9 12h6M9 16h4"/></svg><span>Mes cours</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="er-classes"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 10v10M15 10v10"/></svg><span>Classes</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="er-evals"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg><span>Évaluations</span><i class="gcs__chev">›</i></div>
+<div class="gcs__it" id="er-plus"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg><span>Plus</span><i class="gcs__chev">›</i></div>
+<div class="gcs__pied">
+<div class="gcs__pronote" id="er-pronote"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span class="txt">Pronote non connecté</span><u class="txt">Connecter</u><span class="x txt" id="er-pronote-x">×</span></div>
+<div class="gcs__petit" id="er-guide"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></svg><span>Guide</span></div>
+<div class="gcs__petit" id="er-reduire"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 17l-5-5 5-5M18 17l-5-5 5-5"/></svg><span>Réduire le menu</span></div>
+<div class="gcs__compte"><span class="gcs__ic" id="er-cloche"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg></span><span class="gcs__ic" id="er-reglages"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></span><span class="gcs__av" id="er-avatar">M</span></div>
+</div></aside>
+                <div class="app__main" style="position:relative">
+                  <div class="app__corps ac-corps"><div class="ac-tete"><h1 id="er-titre">Jeudi 26 novembre</h1><p id="er-phrase">Demain, 4 séances. Commence par <b>3A</b>, 08:00.</p></div><div class="pg-lignes"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div></div>
+                  <div class="plein" data-at="2"><div class="tourne"></div><span class="muet" id="er-l2" style="font-size:13px">Chargement…</span></div>
+                </div>
+                <div class="plein" data-at="1"><span style="color:var(--indigo)"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h4v16H4zM10 4h4v16h-4zM16 5l3.5-1 3 15.5-3.5 1z"/></svg></span><span id="er-l1" style="color:var(--text-muted)">Chargement...</span></div>
+                <div class="bulle bulle--haut" data-at="3" style="left:30px;top:6px">Adresse inconnue : retour à l'accueil</div>
+                <div class="plein" data-from="4" style="background:var(--bg-alt)">
+                  <span style="color:var(--warn)"><svg viewBox="0 0 24 24" width="56" height="56" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg></span>
+                  <b style="font-size:20px">Oups, une erreur s'est produite</b>
+                  <span style="color:var(--text-muted)">L'application a rencontre un probleme inattendu.</span>
+                  <div class="ligne" style="margin-top:6px"><span class="b" id="er-re" data-on="4">Reessayer</span><span class="b b--fantome">Recharger la page</span></div>
+                  <span class="muet" id="er-cache" style="margin-top:10px">Si le probleme persiste, essayez de vider le cache de votre navigateur.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ repères visuels -->
+    <section class="fiche" id="reperes">
+      <div class="fiche__texte">
+        <h2>Repères visuels communs</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Accueil, Suivi élèves, Analyses…</span></p>
+        <p class="fiche__but">Quelques petites pièces reviennent sur plusieurs pages, toujours avec le même sens : savoir les lire fait gagner du temps partout.</p>
+        <ol class="etapes">
+          <li data-cursor="#rp-1" data-duration="3600">La <b>puce de classe</b> prend la teinte du niveau : 6e rose, 5e ambre, 4e vert, 3e indigo, gris sans niveau. Le niveau se lit dans le nom de la classe.</li>
+          <li data-cursor="#rp-2" data-duration="3400">La <b>courbe miniature</b> montre les dernières séances autour d'une ligne médiane : points verts au-dessus, rouges en dessous.</li>
+          <li data-cursor="#rp-3" data-duration="3200">La <b>tendance</b> : flèche ↗, → ou ↘ et l'écart, en vert, gris ou rouge.</li>
+          <li data-cursor="#rp-4" data-duration="3200">L'<b>anneau de moyenne</b> : un arc proportionnel à la note sur 20, la note au centre.</li>
+          <li data-cursor="#rp-5" data-duration="3600">La <b>distribution des notes</b> : une barre par note de 0 à 20 ; rouge pâle sous 8, gris de 8 à 12, en couleur au-delà.</li>
+          <li data-cursor="#rp-6" data-duration="3400">Le <b>menu rapide d'action</b> sur un élève, là où il est proposé : participation, bonne réponse, malus, gros malus, absent, oral noté.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>La couleur suit toujours le niveau, jamais la classe : 3A et 3B ont la même teinte.</li>
+            <li>Les élèves y apparaissent sous pseudonyme (prénom et deux lettres) : les vrais noms restent sur le téléphone de l'enseignant.</li>
+            <li>Sur l'écran projeté en classe, les aménagements (PAP, PPRE, PAI) ne s'affichent jamais.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="suivi-des-eleves.html">Suivi des élèves</a> · <a href="analyses.html">Analyses</a></p>
+      </div>
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="planche">
+              <div class="rep" id="rp-1" data-on="1"><h5>Puce de classe</h5>
+                <div class="ligne" style="flex-wrap:wrap"><span class="puce-c puce--6">6A</span><span class="puce-c puce--5">5E</span><span class="puce-c puce--4">4B</span><span class="puce-c puce--3">3A</span><span class="puce-c puce--3">3B</span><span class="puce-c puce-c--0">ULIS</span><span class="puce-c puce-c--contour">3A</span></div>
+                <div class="muet" style="margin-top:6px">La dernière : variante contour seul.</div></div>
+              <div class="rep" id="rp-2" data-on="2"><h5>Courbe miniature</h5>
+                <svg viewBox="0 0 144 48" width="216" height="72" aria-hidden="true"><line x1="0" y1="24" x2="144" y2="24" stroke="#D4D4D8" stroke-dasharray="3 3"/><polyline points="6,30 22,26 38,20 54,28 70,16 86,18 102,12 118,22 134,10" fill="none" stroke="#A1A1AA" stroke-width="1.5"/><g><circle cx="6" cy="30" r="3" fill="#B91C1C"/><circle cx="22" cy="26" r="3" fill="#B91C1C"/><circle cx="38" cy="20" r="3" fill="#15803D"/><circle cx="54" cy="28" r="3" fill="#B91C1C"/><circle cx="70" cy="16" r="3" fill="#15803D"/><circle cx="86" cy="18" r="3" fill="#15803D"/><circle cx="102" cy="12" r="3" fill="#15803D"/><circle cx="118" cy="24" r="3" fill="#A1A1AA"/><circle cx="134" cy="10" r="3" fill="#15803D"/></g></svg></div>
+              <div class="rep" id="rp-3" data-on="3"><h5>Tendance</h5>
+                <div class="ligne" style="gap:18px;font-weight:650;font-size:15px"><span style="color:var(--pos)">↗ +0.4</span><span style="color:var(--text-dim)">→ 0.0</span><span style="color:var(--neg)">↘ −1.2</span></div></div>
+              <div class="rep" id="rp-4" data-on="4"><h5>Anneau de moyenne</h5>
+                <div class="ligne" style="gap:16px"><span class="anneau" style="background:radial-gradient(closest-side,#fff 74%,transparent 76% 100%),conic-gradient(var(--indigo) 0 74%,var(--surface-3) 0)">14,8</span><span class="anneau" style="background:radial-gradient(closest-side,#fff 74%,transparent 76% 100%),conic-gradient(var(--indigo) 0 38%,var(--surface-3) 0)">7,6</span></div></div>
+              <div class="rep" id="rp-5" data-on="5" style="grid-column:1 / -1"><h5>Distribution des notes</h5>
+                <div class="dist"><i style="height:4%;background:#F5C2C2"></i><i style="height:0"></i><i style="height:6%;background:#F5C2C2"></i><i style="height:8%;background:#F5C2C2"></i><i style="height:10%;background:#F5C2C2"></i><i style="height:12%;background:#F5C2C2"></i><i style="height:20%;background:#F5C2C2"></i><i style="height:28%;background:#F5C2C2"></i><i style="height:40%;background:#D4D4D8"></i><i style="height:52%;background:#D4D4D8"></i><i style="height:70%;background:#D4D4D8"></i><i style="height:64%;background:#D4D4D8"></i><i style="height:80%;background:#D4D4D8"></i><i style="height:92%;background:var(--indigo)"></i><i style="height:100%;background:var(--indigo)"></i><i style="height:84%;background:var(--indigo)"></i><i style="height:66%;background:var(--indigo)"></i><i style="height:48%;background:var(--indigo)"></i><i style="height:30%;background:var(--indigo)"></i><i style="height:14%;background:var(--indigo)"></i><i style="height:6%;background:var(--indigo)"></i></div>
+                <div class="ligne muet" style="justify-content:space-between;margin-top:3px"><span>0</span><span>5</span><span>10</span><span>15</span><span>20</span></div></div>
+              <div class="rep" id="rp-6" data-on="6" style="grid-column:1 / -1"><h5>Menu rapide d'action sur un élève</h5>
+                <span class="qa" style="color:var(--pos)">Participation +</span><span class="qa" style="color:var(--pos)">Bonne réponse +2</span><span class="qa" style="color:var(--neg)">Malus −1</span><span class="qa" style="color:var(--neg)">Gros malus −2</span><span class="qa" style="color:var(--text-muted)">Absent</span><span class="qa" style="color:var(--indigo)">Oral noté</span></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="cadre-general.html">← Cadre général</a> · <a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
