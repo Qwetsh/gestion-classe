@@ -242,10 +242,12 @@ export function StudentDashboard() {
     try {
       const { data: rawResult, error: rpcError } = await supabase.rpc('get_student_dashboard', { p_code: fullCode });
       if (rpcError) throw rpcError;
-      const result = fromJson<(DashboardData & { error?: string; bavardages?: number }) | null>(rawResult);
+      // Les deux refus de get_student_dashboard : code inconnu ou bloqué, et élève présent chez plusieurs
+      // enseignants (espaces partagés, pas encore proposés ici).
+      const result = fromJson<(DashboardData & { error?: 'invalid_code' | 'choose_space'; bavardages?: number }) | null>(rawResult);
       if (!result) throw new Error('réponse vide');
       if (result?.error) {
-        setError(result.error === 'not_found' ? 'Code incorrect. Vérifie et réessaie.' : 'Erreur inconnue');
+        setError(result.error === 'invalid_code' ? 'Code incorrect. Vérifie et réessaie.' : 'Erreur inconnue');
         setIsLoading(false);
         return;
       }
