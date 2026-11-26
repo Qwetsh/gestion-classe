@@ -1,10 +1,14 @@
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { MoreMenuItem } from './MoreMenu';
 
 /**
  * Menu du clic droit (ou de l'appui long au doigt) : les mêmes actions que le menu « ⋯ », posées là
  * où l'on a cliqué. Fermé au clic ailleurs, sur Échap, au défilement ou au redimensionnement.
  * Il reste entièrement dans la fenêtre (décalé vers la gauche ou le haut près d'un bord).
+ * Posé directement dans <body> (portail) : un parent transformé ou filtré (animation d'entrée
+ * de page) ferait de `position: fixed` une position relative à ce parent, et le menu se
+ * retrouvait décalé de la largeur de la barre latérale.
  */
 export function ContextMenu({ x, y, title, items, onClose }: {
   x: number;
@@ -53,7 +57,7 @@ export function ContextMenu({ x, y, title, items, onClose }: {
 
   useEffect(() => { ref.current?.querySelector<HTMLElement>('[role="menuitem"]:not(:disabled)')?.focus(); }, []);
 
-  return (
+  return createPortal(
     <div
       ref={ref}
       role="menu"
@@ -95,6 +99,7 @@ export function ContextMenu({ x, y, title, items, onClose }: {
           </button>
         </Fragment>
       ))}
-    </div>
+    </div>,
+    document.body,
   );
 }
