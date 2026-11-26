@@ -1,7 +1,9 @@
 import { ChevronRight, FlaskConical, Gift, LogOut } from 'lucide-react';
 import { formatGrade } from '../../lib/gradeStats';
 import type { StudentAssessment } from '../../lib/studentGrades';
+import type { StudentThemeId } from '../../lib/studentThemes';
 import type { StudentTpItem } from '../../lib/studentTp';
+import { StudentThemePicker } from './StudentThemePicker';
 import { ordinal, type DashboardData } from '../../lib/studentDashboard';
 
 interface Props {
@@ -19,6 +21,9 @@ interface Props {
   onOpenImplication: () => void;
   onOpenStamps: () => void;
   onLogout: () => void;
+  /** Thème de l'espace et son changement. */
+  theme: StudentThemeId;
+  onTheme: (id: StudentThemeId) => void;
 }
 
 const hourOf = (iso: string): string => {
@@ -33,7 +38,7 @@ const listOf = (names: string[]): string => (names.length <= 1 ? names.join('') 
  * dernière note, puis le trimestre en trois chiffres. Une section sans contenu ne s'affiche pas.
  */
 export function StudentHome({
-  data, activeTp, onOpenTp, lastGrade, stampCount, bonusToPick, onOpenMarks, onOpenImplication, onOpenStamps, onLogout,
+  data, activeTp, onOpenTp, lastGrade, stampCount, bonusToPick, onOpenMarks, onOpenImplication, onOpenStamps, onLogout, theme, onTheme,
 }: Props) {
   const firstName = data.pseudo.split(' ')[0] || data.pseudo;
   const tpLine = activeTp
@@ -122,6 +127,8 @@ export function StudentHome({
           <ChevronRight size={18} className="el-row__chev" aria-hidden />
         </button>
       </section>
+
+      <StudentThemePicker value={theme} onChange={onTheme} />
     </>
   );
 }
