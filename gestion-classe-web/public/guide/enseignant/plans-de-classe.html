@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Plans de classe — Guide Gestion Classe</title>
+<meta name="description" content="Ouvrir, construire, générer et lire le plan de classe d'une salle, et faire un plan par groupe de classe.">
+<meta name="guide-partie" content="enseignant">
+<meta name="guide-ordre" content="30">
+<link rel="stylesheet" href="../assets/guide.css">
+<script src="../assets/guide.js" defer></script>
+</head>
+<body>
+<header class="g-top">
+  <a class="g-top__logo" href="../index.html"><b>GC</b>Guide Gestion Classe</a>
+  <span class="g-top__fil"><a href="../index.html">Site enseignant</a> › Plans de classe</span>
+  <span class="g-top__esp"></span>
+  <a class="g-top__lien" href="https://qwetsh.github.io/gestion-classe/" target="_blank" rel="noopener">Ouvrir l'application</a>
+</header>
+
+<div class="chap">
+  <nav class="toc" aria-label="Dans ce chapitre">
+    <p class="toc__titre">Dans ce chapitre</p>
+    <ol>
+      <li><a href="#ouvrir-plan">Ouvrir le plan d'une salle</a></li>
+      <li><a href="#plan-groupe">Un plan par groupe de classe</a></li>
+    </ol>
+  <div class="toc__nav"><a href="../index.html">Sommaire</a></div>
+  </nav>
+
+  <main>
+    <header class="chap__tete">
+      <div class="chap__partie">Site enseignant · Classes</div>
+      <h1>Plans de classe</h1>
+      <p>Chaque classe a un plan par salle. On y place les élèves, on lit d'un coup d'œil leur note d'implication, et une classe en demi-groupes peut avoir un plan par groupe.</p>
+      <div class="chap__resume"><span>Menu Classes › Classes et plans</span><span>Ordinateur</span><span>Aussi sur le téléphone</span></div>
+    </header>
+
+    <!-- ============================================================ fiche : ouvrir le plan -->
+    <section class="fiche" id="ouvrir-plan">
+      <div class="fiche__texte">
+        <h2>Ouvrir le plan d'une salle</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Classes › Classes et plans</span></p>
+        <p class="fiche__but">Le plan montre où s'assoit chaque élève dans une salle donnée. C'est la même grille que celle de la séance sur le téléphone et de l'écran projeté.</p>
+        <ol class="etapes">
+          <li data-cursor="#op-menu" data-action="click">Dans le menu, ouvrir <b>Classes</b> puis <span class="btn-nom">Classes et plans</span>.</li>
+          <li data-cursor="#op-3a" data-action="click">Choisir la classe dans la colonne <b>Classes</b>. La pastille porte la couleur du niveau (6e rose, 5e ambre, 4e vert, 3e indigo) et l'effectif.</li>
+          <li data-cursor="#op-salle" data-action="click">Choisir la salle dans les onglets au-dessus du plan. <span class="btn-nom">+ Salle</span> ajoute une salle et sa disposition de tables.</li>
+          <li data-cursor="#op-p-1-1" data-duration="3600">Chaque place montre l'élève, sa note d'implication sur 20 et une petite courbe des dernières séances : on repère tout de suite qui décroche.</li>
+          <li data-cursor="#op-np" data-duration="3200">À droite, <b>Non placés</b> liste les élèves sans place. En dessous : groupes de classe, import d'une liste, ajout d'un élève.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un élève s'affiche sous son pseudonyme (prénom et deux lettres). Les vrais noms restent sur le téléphone de l'enseignant.</li>
+            <li>La note et la courbe se calculent sur les séances du trimestre ; les flèches ↗ ↘ disent si l'élève progresse ou baisse.</li>
+            <li>Le dernier rang de la grille est le devant de la salle : le tableau et le bureau sont dessinés en bas, comme sur l'écran projeté.</li>
+          </ul>
+        </aside>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Classes</div>
+                  <div class="side__it side__sous" id="op-menu" data-on="1-5">Classes et plans</div>
+                  <div class="side__it side__sous">Suivi élèves</div>
+                  <div class="side__it side__sous">Séances</div>
+                  <div class="side__it side__sous">Cahier de texte</div>
+                  <div class="side__it side__sous">Analyses</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete">
+                    <span class="app__titre">Plan de salle</span><span class="esp"></span>
+                    <span class="b b--fantome b--petit">Vue tableau</span>
+                    <span class="b b--fantome b--petit">Générer</span>
+                    <span class="b b--petit" style="opacity:.5">Sauvegarder</span>
+                  </div>
+                  <div class="app__corps" style="display:flex;gap:14px">
+                    <div class="liste-classes">
+                      <div class="liste-classes__t">Classes</div>
+                      <div class="liste-classes__it" id="op-3a" data-on="2-5"><span class="puce puce--3">3A</span>3A<span class="n">18</span></div>
+                      <div class="liste-classes__it"><span class="puce puce--3">3B</span>3B<span class="n">27</span></div>
+                      <div class="liste-classes__it"><span class="puce puce--4">4A</span>4A<span class="n">25</span></div>
+                      <div class="liste-classes__it"><span class="puce puce--4">4B</span>4B<span class="n">26</span></div>
+                      <div class="liste-classes__it"><span class="puce puce--5">5A</span>5A<span class="n">28</span></div>
+                      <div class="liste-classes__it"><span class="puce puce--5">5B</span>5B<span class="n">27</span></div>
+                      <div class="liste-classes__it"><span class="puce puce--6">6A</span>6A<span class="n">24</span></div>
+                    </div>
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+                      <div class="ligne" data-from="2">
+                        <span class="chip">Salle 210</span>
+                        <span class="chip" id="op-salle" data-on="3-5">Salle 310</span>
+                        <span class="chip" style="border-style:dashed">+ Salle</span>
+                        <span class="esp"></span>
+                        <span class="muet" data-from="3">3A · <b>17/18</b> placés · Salle 310</span>
+                      </div>
+                      <div data-from="3" class="zoom" style="position:relative">
+                        <div class="salle salle--plan salle--compact">
+<div class="place" id="op-p-0-0"><span class="occupant">Lina BO.<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="place" id="op-p-0-1"><span class="occupant">Tom SA.<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-0-2"><span class="occupant">Noé MA.<i class="tend">↗</i><i class="mini note--bien">17</i></span></div>
+<div class="place" id="op-p-0-3"><span class="occupant">Zoé FA.<i class="tend">↘</i><i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-0-4"><span class="occupant">Iris TA.<i class="mini note--bien">14</i></span></div>
+<div class="place" id="op-p-0-5"></div>
+<div class="place" id="op-p-1-0"><span class="occupant">Naël CH.<i class="tend">↘</i><i class="mini note--moy">11</i></span></div>
+<div class="place" id="op-p-1-1" data-on="4"><span class="occupant">Adam KE.<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-1-2"></div>
+<div class="place" id="op-p-1-3"><span class="occupant">Rose VI.<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-1-4"><span class="occupant">Jade LU.<i class="tend">↗</i><i class="mini note--bien">18</i></span></div>
+<div class="place" id="op-p-1-5"><span class="occupant">Sacha MO.<i class="tend">↘</i><i class="mini note--moy">10</i></span></div>
+<div class="place" id="op-p-2-0"><span class="occupant">Malo RI.<i class="mini note--bien">14</i></span></div>
+<div class="place" id="op-p-2-1"><span class="occupant">Lou BE.<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-2-2"></div>
+<div class="place" id="op-p-2-3"><span class="occupant">Inès DU.<i class="tend">↗</i><i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-2-4"><span class="occupant">Ilyes HA.<i class="tend">↘</i><i class="mini note--mal">8</i></span></div>
+<div class="place" id="op-p-2-5"></div>
+<div class="place" id="op-p-3-0"></div>
+<div class="place" id="op-p-3-1"><span class="occupant">Hugo PE.<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-3-2"><span class="occupant">Mia CO.<i class="tend">↗</i><i class="mini note--bien">16</i></span></div>
+<div class="place" id="op-p-3-3"><span class="occupant">Léa GA.<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="op-p-3-4"></div>
+<div class="place" id="op-p-3-5"></div>
+                        </div>
+                        <div class="bureau-prof">PROF</div>
+                        <div class="tableau-classe">Tableau</div>
+                        <div class="bulle bulle--haut" data-at="4" style="left:20px;top:244px">Note d'implication sur 20, flèche de tendance et courbe des dix dernières séances</div>
+                      </div>
+                    </div>
+                    <div class="panneau" data-from="3">
+                      <div class="panneau__bloc" id="op-np" data-on="5"><div class="panneau__t">Non placés</div><div class="panneau__s">1 sur 18</div><div class="pastilles"><span class="pastille-eleve">Éva RO.</span></div></div>
+                      <div class="panneau__bloc"><div class="panneau__s" style="text-transform:uppercase;letter-spacing:.05em;font-weight:600">Visibilité élèves</div><div class="col"><span class="b b--fantome b--petit">Groupes</span><span class="b b--fantome b--petit">Importer</span><span class="b b--doux b--petit">+ Ajouter un élève</span></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ fiche : plan par groupe -->
+    <section class="fiche" id="plan-groupe">
+      <div class="fiche__texte">
+        <h2>Un plan par groupe de classe</h2>
+        <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="qui qui--tel">Téléphone</span><span class="chemin">Classes › Classes et plans › salle</span></p>
+        <p class="fiche__but">Quand une classe est coupée en demi-groupes, chaque groupe peut avoir son propre plan dans la même salle : en séance avec le groupe 1, la grille montre le plan du groupe 1.</p>
+        <ol class="etapes">
+          <li data-cursor="#pg-g1" data-action="click">Sous les onglets de salle, la ligne <b>Plan de</b> n'apparaît que si la classe a des groupes. Choisir <span class="btn-nom">Groupe 1</span>.</li>
+          <li data-cursor="#pg-copier" data-action="click" data-duration="3400">Le plan du groupe est vide : en séance, c'est celui de la classe entière qui s'affiche. <span class="btn-nom">Partir du plan de la classe entière</span> reprend les places des membres du groupe.</li>
+          <li data-cursor="#p-0-0" data-duration="3000">Seuls les élèves du groupe sont à placer. Les places de l'autre groupe restent libres.</li>
+          <li data-cursor="#p-0-0" data-action="drag" data-drag-to="#p-1-2" data-duration="3200">Glisser un élève pour l'avancer ou l'éloigner : le plan de la classe entière ne bouge pas.</li>
+          <li data-cursor="#pg-save" data-action="click">Cliquer <span class="btn-nom">Sauvegarder</span>. Le téléphone reçoit ce plan à la prochaine synchronisation.</li>
+        </ol>
+        <aside class="regles">
+          <h3>À savoir</h3>
+          <ul>
+            <li>Un groupe sans plan utilise celui de la classe entière, où les places de l'autre groupe sont vides : rien n'est obligatoire.</li>
+            <li>Changer de groupe avec des modifications non enregistrées demande confirmation.</li>
+            <li>Un élève qui change de groupe arrive dans <b>Non placés</b> du plan de son nouveau groupe ; un élève transféré dans une autre classe quitte les groupes de l'ancienne.</li>
+            <li>Sur le téléphone, mêmes pastilles en haut de l'éditeur de plan ; chaque placement s'enregistre tout de suite.</li>
+          </ul>
+        </aside>
+        <p class="liens">Voir aussi : <a href="groupes-de-classe.html">Groupes de classe</a> · <a href="../telephone/seance.html">Séance en demi-groupe</a></p>
+      </div>
+
+      <div class="scene">
+        <div class="scene__cadre"><div class="scene__fond">
+          <div class="ecran" data-w="1000" data-h="620">
+            <div class="fenetre">
+              <div class="fenetre__barre"><i></i><i></i><i></i><div class="fenetre__url">qwetsh.github.io/gestion-classe/classes</div></div>
+              <div class="app">
+                <aside class="app__side">
+                  <div class="app__marque"><b>GC</b>Gestion Classe</div>
+                  <div class="side__it"><span class="ico"></span>Accueil</div>
+                  <div class="side__it"><span class="ico"></span>Mes cours</div>
+                  <div class="side__it is-actif"><span class="ico"></span>Classes</div>
+                  <div class="side__it side__sous is-actif">Classes et plans</div>
+                  <div class="side__it side__sous">Suivi élèves</div>
+                  <div class="side__it side__sous">Séances</div>
+                  <div class="side__it side__sous">Cahier de texte</div>
+                  <div class="side__it side__sous">Analyses</div>
+                  <div class="side__it"><span class="ico"></span>Évaluations</div>
+                  <div class="side__it"><span class="ico"></span>Plus</div>
+                </aside>
+                <div class="app__main">
+                  <div class="app__entete">
+                    <span class="app__titre">Plan de salle</span><span class="esp"></span>
+                    <span class="b b--fantome b--petit">Vue tableau</span>
+                    <span class="b b--fantome b--petit">Générer</span>
+                    <span class="b b--petit" id="pg-save" data-on="5" style="opacity:.5" data-at="1-2">Sauvegarder</span>
+                    <span class="b b--petit" data-from="3" data-on="5">Sauvegarder</span>
+                  </div>
+                  <div class="app__corps" style="display:flex;gap:14px">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:10px">
+                      <div class="ligne">
+                        <span class="chip">Salle 210</span>
+                        <span class="chip chip--plein">Salle 310</span>
+                        <span class="chip" style="border-style:dashed">+ Salle</span>
+                        <span class="esp"></span>
+                        <span class="muet" data-at="1"><span class="puce puce--3">3A</span> 3A · <b>17/18</b> placés · Salle 310</span>
+                        <span class="muet" data-at="2"><span class="puce puce--3">3A</span> 3A · <b>0/9</b> placés · Salle 310</span>
+                        <span class="muet" data-from="3"><span class="puce puce--3">3A</span> 3A · <b>9/9</b> placés · Salle 310</span>
+                      </div>
+                      <div class="ligne" style="flex-wrap:wrap">
+                        <span class="muet">Plan de</span>
+                        <span class="chip" data-on="1">Classe entière <span style="opacity:.7">18</span></span>
+                        <span class="chip" id="pg-g1" data-on="2-5"><span class="pt" style="color:#6366F1"></span>Groupe 1 <span style="opacity:.7">9</span></span>
+                        <span class="chip"><span class="pt" style="color:#10B981"></span>Groupe 2 <span style="opacity:.7">9</span></span>
+                        <span class="muet" data-at="2">Pas encore de plan pour ce groupe : en séance, celui de la classe entière s’affiche.</span>
+                        <span class="b b--fantome b--petit" id="pg-copier" data-at="2">Partir du plan de la classe entière</span>
+                      </div>
+                      <div style="position:relative">
+                        <div class="salle salle--plan">
+<div class="place" id="p-0-0"><span class="occupant occupant--g1" data-at="1,3">Lina BO.<i class="mini note--bien">15</i></span></div>
+<div class="place" id="p-0-1"><span class="occupant" data-at="1">Tom SA.<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-0-2"><span class="occupant occupant--g1" data-at="1,3-5">Noé MA.<i class="mini note--bien">17</i></span></div>
+<div class="place" id="p-0-3"><span class="occupant" data-at="1">Zoé FA.<i class="mini note--mal">9</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-0-4"><span class="occupant occupant--g1" data-at="1,3-5">Iris TA.<i class="mini note--bien">14</i></span></div>
+<div class="place" id="p-0-5"></div>
+<div class="place" id="p-1-0"><span class="occupant" data-at="1">Naël CH.<i class="mini note--moy">11</i></span></div>
+<div class="place" id="p-1-1"><span class="occupant occupant--g1" data-at="1,3-5">Adam KE.<i class="mini note--bien">16</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-1-2"><span class="occupant occupant--g1" data-at="4-5">Lina BO.<i class="mini note--bien">15</i></span></div>
+<div class="place" id="p-1-3"><span class="occupant" data-at="1">Rose VI.<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-1-4"><span class="occupant occupant--g1" data-at="1,3-5">Jade LU.<i class="mini note--bien">18</i></span></div>
+<div class="place" id="p-1-5"><span class="occupant" data-at="1">Sacha MO.<i class="mini note--moy">10</i></span></div>
+<div class="place" id="p-2-0"><span class="occupant occupant--g1" data-at="1,3-5">Malo RI.<i class="mini note--bien">14</i></span></div>
+<div class="place" id="p-2-1"><span class="occupant" data-at="1">Lou BE.<i class="mini note--moy">12</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-2-2"></div>
+<div class="place" id="p-2-3"><span class="occupant occupant--g1" data-at="1,3-5">Inès DU.<i class="mini note--bien">15</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-2-4"><span class="occupant" data-at="1">Ilyes HA.<i class="mini note--mal">8</i></span></div>
+<div class="place" id="p-2-5"></div>
+<div class="place" id="p-3-0"></div>
+<div class="place" id="p-3-1"><span class="occupant occupant--g1" data-at="1,3-5">Hugo PE.<i class="mini note--moy">13</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-3-2"><span class="occupant" data-at="1">Mia CO.<i class="mini note--bien">16</i></span></div>
+<div class="place" id="p-3-3"><span class="occupant occupant--g1" data-at="1,3-5">Léa GA.<i class="mini note--moy">11</i></span></div>
+<div class="allee"></div>
+<div class="place" id="p-3-4"></div>
+<div class="place" id="p-3-5"></div>
+                        </div>
+                        <div class="bureau-prof">PROF</div>
+                        <div class="tableau-classe">Tableau</div>
+                        <div class="bulle bulle--gauche" data-at="3" style="left:420px;top:150px">Places du groupe 2 libres : elles ne comptent pas dans ce plan</div>
+                      </div>
+                    </div>
+                    <div class="panneau">
+                      <div class="panneau__bloc">
+                        <div class="panneau__t">Non placés</div>
+                        <div class="panneau__s" data-at="1">1 sur 18</div>
+                        <div class="panneau__s" data-at="2">9 sur 9</div>
+                        <div class="panneau__s" data-from="3">0 sur 9</div>
+                        <div class="pastilles" data-at="1"><span class="pastille-eleve">Éva RO.</span></div>
+                        <div class="pastilles" data-at="2"><span class="pastille-eleve">Lina BO.</span><span class="pastille-eleve">Noé MA.</span><span class="pastille-eleve">Iris TA.</span><span class="pastille-eleve">Adam KE.</span><span class="pastille-eleve">Jade LU.</span><span class="pastille-eleve">Malo RI.</span><span class="pastille-eleve">Inès DU.</span><span class="pastille-eleve">Hugo PE.</span><span class="pastille-eleve">Léa GA.</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer class="pied">
+  <span>Guide de Gestion Classe. Toutes les données montrées sont inventées.</span>
+  <span><a href="../index.html">Retour au sommaire</a></span>
+</footer>
+</body>
+</html>
