@@ -1,17 +1,15 @@
 import { Link } from 'react-router-dom';
-import { useSettings } from '../../../contexts/SettingsContext';
 import { useHomeData } from '../HomeDataContext';
 
 export function KpiImplicationModule() {
-  const { avgImplication } = useHomeData();
-  const { settings } = useSettings();
+  const { avgImplication, currentTrimester } = useHomeData();
   return (
     <div className="dash__kpi">
       <div className="dash__kpi-label">Moyenne d'implication</div>
       <div className="dash__kpi-value">
         {avgImplication.toFixed(1).replace('.', ',')}<span className="dash__kpi-unit">/20</span>
       </div>
-      <div className="dash__kpi-hint">T{settings.schoolYear.trimestre} en cours</div>
+      {currentTrimester !== null && <div className="dash__kpi-hint">T{currentTrimester} en cours</div>}
     </div>
   );
 }

@@ -399,7 +399,7 @@ export function Students() {
             filles: { participations: 0, malus: 0, absences: 0, count: 0 },
           };
           studentGrades.forEach(sg => {
-            const target = sg.student.gender === 'F' ? genderStats.filles : genderStats.garcons;
+            const target = sg.student.gender === 'F' ? genderStats.filles : sg.student.gender === 'M' ? genderStats.garcons : null; if (!target) return;
             target.count++;
             target.participations += sg.totalParticipations;
             target.absences += sg.absences;
@@ -530,7 +530,7 @@ export function Students() {
             filles: { participations: 0, malus: 0, absences: 0, count: 0 },
           };
           studentGrades.forEach(sg => {
-            const target = sg.student.gender === 'F' ? genderStats.filles : genderStats.garcons;
+            const target = sg.student.gender === 'F' ? genderStats.filles : sg.student.gender === 'M' ? genderStats.garcons : null; if (!target) return;
             target.count++;
             target.participations += sg.totalParticipations;
             target.absences += sg.absences;
