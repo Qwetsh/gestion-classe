@@ -5,27 +5,26 @@
 /* Pas de `overflow: hidden` : le menu « ⋯ » d'une ligne doit pouvoir dépasser de la carte */
 .mc-level { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 
-.mc-level__head {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 12px 16px; border: 0; background: none; cursor: pointer;
-  font: inherit; color: var(--text); text-align: left;
-}
-.mc-level__chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 0.12s; }
-.mc-level__head[aria-expanded='false'] .mc-level__chevron { transform: rotate(-90deg); }
-.mc-level__head--static { cursor: default; }
+/* Titre d'une carte sans onglets : un seul niveau, ou les résultats d'une recherche */
+.mc-level__head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; color: var(--text); }
 .mc-level__name { font-weight: 700; font-size: 15px; }
 .mc-level__count { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-/* Onglets de niveau, sur le dessus de la carte : un seul niveau à l'écran. L'onglet choisi est
-   souligné de la teinte de son niveau (la même que les pastilles de classe). */
-.mc-level-tabs { display: flex; gap: 2px; padding: 0 6px; overflow-x: auto; scrollbar-width: none; }
+/* Onglets sur le dessus de la carte (composant LevelTabs) : un seul niveau à l'écran. L'onglet choisi
+   est souligné de la teinte de son niveau (la même que les pastilles de classe), à défaut d'indigo. */
+.mc-level-tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 0 6px; }
 .mc-level-tab {
-  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 8px; flex: 0 1 auto; min-width: 0; max-width: 100%;
   min-height: 46px; padding: 3px 14px 0; border: 0; border-bottom: 3px solid transparent;
   background: none; cursor: pointer; font: inherit; color: var(--text-muted); white-space: nowrap;
 }
+/* Un nom trop long pour l'écran (thème des annales sur téléphone) est coupé, pas la rangée */
+.mc-level-tab .mc-level__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.mc-level-tab .mc-level__count { flex-shrink: 0; }
 .mc-level-tab:hover { color: var(--text); }
 .mc-level-tab[aria-selected='true'] { color: var(--text); border-bottom-color: var(--mc-tab-tone, var(--indigo)); }
+/* Sans séquence sous les onglets (annales) : le trait qui porte les onglets */
+.mc-level-tabs + .mc-rows { border-top: 1px solid var(--border); padding-top: 4px; }
 
 .mc-seq { border-top: 1px solid var(--border); padding: 6px 0 8px; }
 .mc-seq__head {

@@ -3,23 +3,25 @@
  * Une ligne montre ce qui sert à choisir (titre, durée, points, séances déjà faites) ; le reste
  * est dans la fiche du TP ou son menu « ⋯ ».
  */
-import { useState } from 'react';
-import { ChevronDown, FlaskConical } from 'lucide-react';
+import { FlaskConical } from 'lucide-react';
+import { classTone } from '../../lib/classColors';
+import { levelOnTab } from '../../lib/courseLibrary';
 import type { TpLevel } from '../../lib/tpLibrary';
 import { activityLabel, formatPoints, totalPoints } from '../../lib/tpLibrary';
 import type { Tp } from '../../lib/tpQueries';
+import { LevelTabs } from '../LevelTabs';
 import { MoreMenu } from '../MoreMenu';
+import { useTabChoice } from '../useTabChoice';
 
-const COLLAPSED_KEY = 'mes-tp-collapsed';
+/** Onglet de niveau choisi la dernière fois. */
+const LEVEL_TAB_KEY = 'mes-tp-niveau';
 const NO_LEVEL = 'Sans niveau';
-
-function readCollapsed(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '{}') as Record<string, boolean>; } catch { return {}; }
-}
+const levelName = (level: string | null) => level ?? NO_LEVEL;
+const countLabel = (count: number) => `${count} TP`;
 
 interface Props {
   levels: TpLevel<Tp>[];
-  /** Recherche ou filtre en cours : tout est déplié, sans toucher au choix mémorisé. */
+  /** Recherche en cours : tous les niveaux sont montrés l'un sous l'autre, sans onglets ni toucher au choix mémorisé. */
   expandAll?: boolean;
   onOpen: (tp: Tp) => void;
   onEdit: (tp: Tp) => void;
@@ -29,30 +31,33 @@ interface Props {
 }
 
 export function TpLibrary({ levels, expandAll, onOpen, onEdit, onDuplicate, onPrint, onDelete }: Props) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
-
-  const toggle = (key: string) => {
-    setCollapsed((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* stockage indisponible */ }
-      return next;
-    });
-  };
+  // Onglets de niveau : un seul niveau à l'écran, le dernier choisi étant mémorisé
+  const [pickedLevel, pickLevel] = useTabChoice(LEVEL_TAB_KEY, 'tp');
+  const tabbed = !expandAll && levels.length > 1;
+  const current = levelOnTab(levels, pickedLevel, levelName);
+  const shownLevels = expandAll ? levels : current ? [current] : [];
 
   return (
     <div className="mc-levels">
-      {levels.map(({ level, count, sequences }) => {
-        const key = level ?? NO_LEVEL;
-        const open = expandAll || !collapsed[key];
+      {shownLevels.map(({ level, count, sequences }) => {
+        const key = levelName(level);
         const named = sequences.some((s) => s.chapter !== '');
         return (
-          <section key={key} className="mc-level">
-            <button type="button" className="mc-level__head" onClick={() => toggle(key)} aria-expanded={open}>
-              <ChevronDown size={16} className="mc-level__chevron" aria-hidden />
-              <span className="mc-level__name">{key}</span>
-              <span className="mc-level__count">{count} TP</span>
-            </button>
-            {open && sequences.map(({ chapter, items }) => (
+          <section key={key} className="mc-level" aria-label={key}>
+            {tabbed ? (
+              <LevelTabs
+                label="Niveau"
+                tabs={levels.map((l) => { const name = levelName(l.level); return { key: name, label: name, count: l.count, countTitle: countLabel(l.count), tone: classTone(name).solid }; })}
+                selected={key}
+                onSelect={pickLevel}
+              />
+            ) : (
+              <div className="mc-level__head">
+                <span className="mc-level__name">{key}</span>
+                <span className="mc-level__count">{countLabel(count)}</span>
+              </div>
+            )}
+            {sequences.map(({ chapter, items }) => (
               <div key={chapter || '—'} className="mc-seq">
                 {(chapter || named) && (
                   <div className="mc-seq__head">

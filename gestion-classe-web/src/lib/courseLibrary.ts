@@ -3,6 +3,7 @@
  * Fonctions pures, sans accès à la base (voir PLAN_mes_cours.md, lot C1).
  */
 import type { Board } from './boardsQueries';
+import { pickedOrFirst } from './tabChoice';
 
 /** Niveaux du collège dans l'ordre d'affichage (même liste que BOARD_LEVELS, sans dépendre de la base). */
 const LEVEL_ORDER = ['6e', '5e', '4e', '3e', 'Autre'];
@@ -68,7 +69,7 @@ export function groupLibrary(boards: Board[], extraSequences: { level: string | 
  * encore, ou le niveau choisi n'a plus de cours). `nameOf` : nom affiché d'un niveau, « sans niveau » compris.
  */
 export function levelOnTab<T extends { level: string | null }>(levels: T[], picked: string | undefined, nameOf: (level: string | null) => string): T | null {
-  return levels.find((l) => nameOf(l.level) === picked) ?? levels[0] ?? null;
+  return pickedOrFirst(levels, picked, (l) => nameOf(l.level));
 }
 
 // ---------------------------------------------------------------------------------------------
