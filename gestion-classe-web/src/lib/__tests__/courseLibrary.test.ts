@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import {
-  chaptersOfLevel, courseHref, groupActivities, groupLibrary, isEvaluationTitle, isMethodSheet, naturalCompare, parseOpenTarget,
+  chaptersOfLevel, courseHref, groupActivities, groupLibrary, isEvaluationTitle, isMethodSheet, levelOnTab, naturalCompare, parseOpenTarget,
   recentBoards, splitShelves, splitVariant, variantLabel, withoutEvaluationPrefix,
 } from '../courseLibrary';
 
@@ -57,6 +57,25 @@ describe('groupLibrary', () => {
     expect(fourth.sequences[1].boards).toEqual([]);
     expect(fourth.count).toBe(4);
     expect(withFiles.map((g) => g.level)).toEqual(['6e', '5e', '4e', 'Autre', null]);
+  });
+});
+
+describe('levelOnTab', () => {
+  const levels = [{ level: '5e' }, { level: '4e' }, { level: null }];
+  const nameOf = (level: string | null) => level ?? 'Sans niveau';
+
+  it('montre le niveau de l’onglet choisi, « sans niveau » compris', () => {
+    expect(levelOnTab(levels, '4e', nameOf)).toBe(levels[1]);
+    expect(levelOnTab(levels, 'Sans niveau', nameOf)).toBe(levels[2]);
+  });
+
+  it('revient au premier niveau sans choix, ou quand le niveau choisi n’a plus de cours', () => {
+    expect(levelOnTab(levels, undefined, nameOf)).toBe(levels[0]);
+    expect(levelOnTab(levels, '3e', nameOf)).toBe(levels[0]);
+  });
+
+  it('ne montre rien quand la bibliothèque est vide', () => {
+    expect(levelOnTab([], '5e', nameOf)).toBeNull();
   });
 });
 
