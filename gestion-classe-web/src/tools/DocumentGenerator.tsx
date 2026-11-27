@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { establishmentFullAddress, establishmentPlace } from '../lib/establishment';
 import {
   loadLogoPNG, formatDate,
   buildCaptationPDF, buildSortiePDF, buildDemandePDF, buildRapportPDF, buildDeplacementPDF,
@@ -85,25 +86,26 @@ const INITIAL_SUPPORTS: FormSupport[] = [
 
 const DOMAINES = ['Arts / Culture', 'Orientation', 'Scientifique', 'Linguistique', 'Technique / Technologique', 'Sportif', 'Appariement', 'Autre'];
 
+// L'établissement vient des réglages (Réglages › Établissement) : aucun n'est écrit ici.
 const INITIAL_CAPT = {
-  etablissement: 'College Pierre Mendes France', tel: '03 87 54 36 40',
-  codepostal: '57140 WOIPPY', annee: '2026', classe: '',
+  etablissement: '', tel: '',
+  codepostal: '', annee: '2026', classe: '',
   finalites: '', projet: '', titreOeuvre: '', dateDebut: '', dateFin: '', lieu: '',
 };
 
 const INITIAL_SORTIE = {
   organisateur: '', fonction: '', date: '', classe: '', lieu: '',
   heureDepart: '', heureRetour: '', matiere: '', objectifs: '',
-  transport: 'Bus', dateRetourCoupon: '', lieuDepart: 'Clg P. Mendes France WOIPPY', lieuArrivee: 'Clg P. Mendes France WOIPPY',
+  transport: 'Bus', dateRetourCoupon: '', lieuDepart: '', lieuArrivee: '',
 };
 
 const INITIAL_DEM = {
   pays: 'france', departement: '', adresse: '',
   nature: 'obligatoire', type: 'sortie', reciprocite: 'sans', hebergement: '',
   transport: 'Bus', transportPrecision: '',
-  responsable: '', qualite: '', telUrgence: '', telChef: '03 87 54 36 40',
+  responsable: '', qualite: '', telUrgence: '', telChef: '',
   dateDepart: '', heureDepart: '', dateRetour: '', heureRetour: '',
-  lieuDepart: 'Clg P. Mendes France WOIPPY', lieuRetour: 'Clg P. Mendes France WOIPPY',
+  lieuDepart: '', lieuRetour: '',
   nbJournees: '1', disciplines: '', objectifs: '', liens: '', activites: '',
   travauxPrepa: '', restitution: '', nonParticipants: '', datePrepa: '', dateBilan: '',
   elevesClasse: '', incidences: '',
@@ -131,11 +133,11 @@ const RAPPORT_SANCTIONS = [
 ];
 
 const INITIAL_RAPPORT = {
-  academie: 'Nancy-Metz', region: 'GRAND EST',
-  etablissement: 'College Pierre Mendes France',
-  adresse: '1 rue Jean Laurain 57140 WOIPPY',
-  tel: '03.87.54.36.40', email: 'ce.0572582@ac-nancy-metz.fr',
-  siteWeb: 'http://www4.ac-nancy-metz.fr/clg-mendes-france-woippy',
+  academie: '', region: '',
+  etablissement: '',
+  adresse: '',
+  tel: '', email: '',
+  siteWeb: '',
   date: new Date().toISOString().slice(0, 10), redacteur: '', lieuDateHeure: '', elevesConcernes: '', faits: '',
 };
 
@@ -178,6 +180,8 @@ export default function DocumentGenerator() {
     ...INITIAL_SORTIE,
     organisateur: settings.teacher.nom || INITIAL_SORTIE.organisateur,
     fonction: settings.teacher.fonction || INITIAL_SORTIE.fonction,
+    lieuDepart: establishmentPlace(settings.establishment),
+    lieuArrivee: establishmentPlace(settings.establishment),
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initialDem = useMemo(() => ({
@@ -185,12 +189,20 @@ export default function DocumentGenerator() {
     responsable: settings.teacher.nom || INITIAL_DEM.responsable,
     qualite: settings.teacher.fonction || INITIAL_DEM.qualite,
     telChef: settings.establishment.tel || INITIAL_DEM.telChef,
+    lieuDepart: establishmentPlace(settings.establishment),
+    lieuRetour: establishmentPlace(settings.establishment),
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const initialRapport = useMemo(() => ({
     ...INITIAL_RAPPORT,
     redacteur: settings.teacher.nom ? `${settings.teacher.nom}, ${settings.teacher.fonction || ''}` : '',
-    tel: settings.establishment.tel || INITIAL_RAPPORT.tel,
+    academie: settings.establishment.academie,
+    region: settings.establishment.region,
+    etablissement: settings.establishment.name,
+    adresse: establishmentFullAddress(settings.establishment),
+    tel: settings.establishment.tel,
+    email: settings.establishment.email,
+    siteWeb: settings.establishment.siteWeb,
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Captation state ──
@@ -335,6 +347,11 @@ export default function DocumentGenerator() {
   const generatePDF = useCallback((download: boolean) => {
     let doc;
     let filename = 'document.pdf';
+    const entete = {
+      nom: settings.establishment.name,
+      ville: settings.establishment.codePostal,
+      tel: settings.establishment.tel,
+    };
 
     if (tab === 'captation') {
       const data: CaptationData = {
@@ -354,7 +371,7 @@ export default function DocumentGenerator() {
         date: formatDate(sortie.date),
         dateRetourCoupon: formatDate(sortie.dateRetourCoupon),
       };
-      doc = buildSortiePDF(data, logoPNG);
+      doc = buildSortiePDF(data, logoPNG, entete);
       filename = `Sortie_scolaire_${sortie.classe || 'classe'}_${sortie.date || 'date'}.pdf`;
     } else if (tab === 'demande') {
       const data: DemandeData = {
@@ -369,7 +386,7 @@ export default function DocumentGenerator() {
         eleves: eleves.filter(e => e.nom),
         budget,
       };
-      doc = buildDemandePDF(data, logoPNG);
+      doc = buildDemandePDF(data, logoPNG, entete);
       filename = `Demande_sortie_${classes.map(c => c.nom).filter(Boolean).join('-') || 'classes'}.pdf`;
     } else if (tab === 'rapport') {
       const data: RapportData = {
@@ -385,7 +402,7 @@ export default function DocumentGenerator() {
     } else {
       const data: DeplacementData = {
         anneeScolaire: settings.schoolYear.label || '2026/2027',
-        etablissement: settings.establishment.name || 'College Pierre Mendes France',
+        etablissement: settings.establishment.name,
       };
       doc = buildDeplacementPDF(data, logoPNG);
       filename = 'Autorisation_deplacement.pdf';
@@ -399,7 +416,7 @@ export default function DocumentGenerator() {
       const url = URL.createObjectURL(blob);
       setPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return url; });
     }
-  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, rapport, rapportPunitions, rapportSanctions, rapportExclClasse, rapportExclCollege, logoPNG, saveToHistory]);
+  }, [tab, capt, supports, sortie, dem, demDomaines, classes, accomps, eleves, budget, rapport, rapportPunitions, rapportSanctions, rapportExclClasse, rapportExclCollege, logoPNG, saveToHistory, settings.establishment, settings.schoolYear.label]);
 
   // ── Auto-preview with debounce ──
   useEffect(() => {
@@ -814,7 +831,7 @@ export default function DocumentGenerator() {
           <div className={cardCls}>
             <h3 className={cardTitle}>En-tete academique</h3>
             <div className="flex gap-3">
-              <Field label="Academie" value={rapport.academie} onChange={v => updateRapport('academie', v)} placeholder="Nancy-Metz" />
+              <Field label="Academie" value={rapport.academie} onChange={v => updateRapport('academie', v)} placeholder="Votre académie" />
               <Field label="Region academique" value={rapport.region} onChange={v => updateRapport('region', v)} placeholder="GRAND EST" />
             </div>
           </div>

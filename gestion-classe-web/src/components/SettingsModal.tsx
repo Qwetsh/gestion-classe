@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSettings, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
+import { useSettings, type EstablishmentInfo, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
 import { MASKABLE_TABS } from '../lib/appTabs';
 import { settingsLabel } from '../lib/appNav';
 import { settingsSectionLabel, type SettingsSectionKey } from '../lib/settingsSections';
@@ -25,6 +25,17 @@ interface SidebarItem {
   label: string;
   icon: string;
 }
+
+const ESTABLISHMENT_FIELDS: { key: keyof EstablishmentInfo; label: string }[] = [
+  { key: 'name', label: 'Nom' },
+  { key: 'tel', label: 'Téléphone' },
+  { key: 'address', label: 'Adresse' },
+  { key: 'codePostal', label: 'Code postal / Commune' },
+  { key: 'academie', label: 'Académie' },
+  { key: 'region', label: 'Région académique' },
+  { key: 'email', label: 'Courriel' },
+  { key: 'siteWeb', label: 'Site web' },
+];
 
 // ── Configuration sidebar ──
 
@@ -196,43 +207,21 @@ export default function SettingsModal({ open, initialSection, onClose }: Setting
       case 'establishment':
         return (
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Etablissement</h3>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Nom</label>
-              <input
-                type="text"
-                value={settings.establishment.name}
-                onChange={(e) => handleEstablishment('name', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Telephone</label>
-              <input
-                type="text"
-                value={settings.establishment.tel}
-                onChange={(e) => handleEstablishment('tel', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Adresse</label>
-              <input
-                type="text"
-                value={settings.establishment.address}
-                onChange={(e) => handleEstablishment('address', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Code postal / Commune</label>
-              <input
-                type="text"
-                value={settings.establishment.codePostal}
-                onChange={(e) => handleEstablishment('codePostal', e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
-              />
-            </div>
+            <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Établissement</h3>
+            <p className="text-xs text-[var(--text-muted)] mb-4">
+              Repris par les documents de la boîte à outils. Gardé dans votre compte : il vous suit sur tous vos appareils.
+            </p>
+            {ESTABLISHMENT_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">{label}</label>
+                <input
+                  type="text"
+                  value={settings.establishment[key]}
+                  onChange={(e) => handleEstablishment(key, e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] text-[var(--text)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] focus:border-transparent"
+                />
+              </div>
+            ))}
           </div>
         );
 

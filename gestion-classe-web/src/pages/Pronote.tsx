@@ -506,7 +506,7 @@ export function Pronote() {
                   <textarea
                     value={qrData}
                     onChange={e => setQrData(e.target.value)}
-                    placeholder='{"url":"https://0572582x.index-education.net/pronote","jeton":"...","login":"..."}'
+                    placeholder='{"url":"https://0000000x.index-education.net/pronote","jeton":"...","login":"..."}'
                     rows={3}
                     className="w-full px-4 py-3 bg-[var(--surface-3)] border border-[var(--border)] text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-[var(--indigo)] font-mono text-xs"
                     style={{ borderRadius: 'var(--radius)' }}
