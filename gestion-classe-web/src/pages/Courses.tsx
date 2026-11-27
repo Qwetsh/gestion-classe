@@ -89,7 +89,7 @@ export function Courses() {
   const copyShareLink = async (b: Board) => {
     try {
       const target = await resolveLinkTarget('share', b.id, b.title);
-      if (!target) { toast('Une évaluation, une copie modèle ou un devoir noté ne se partage pas par un lien.'); return; }
+      if (!target) { toast('Une copie modèle ne se partage pas par un lien.'); return; }
       const url = mobileUrl(await ensureShareToken(userId, target));
       try {
         await navigator.clipboard.writeText(url);

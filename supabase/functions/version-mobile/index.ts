@@ -17,8 +17,8 @@ import { servedVersion } from "./custom.ts";
  * un jeton existe pour elle.
  *
  * Lien de partage (table `board_share_links`, migration 092) : le lien que le professeur colle
- * dans le cahier de texte. Même page, même lecture ; il peut aussi ouvrir une correction
- * d'activité (jamais une évaluation : rules.ts, shareEligible), et garde les zones d'écriture
+ * dans le cahier de texte. Même page, même lecture ; il peut aussi ouvrir une correction ou une
+ * évaluation (jamais une copie modèle : rules.ts, shareEligible), et garde les zones d'écriture
  * pour que la fiche s'imprime telle qu'elle est distribuée.
  *
  * Version mobile sur mesure (table `board_mobile_custom`, migration 093) : une page HTML autonome

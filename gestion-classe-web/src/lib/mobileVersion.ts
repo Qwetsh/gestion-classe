@@ -7,8 +7,9 @@
  * montre le même document, en couleur, sur une colonne de téléphone. Le QR code n'est jamais écrit
  * dans le document : il est posé par-dessus la feuille, seulement à l'impression.
  *
- * Les règles de ce qui peut sortir (jamais une correction ni une évaluation) sont partagées avec le
- * serveur : supabase/functions/version-mobile/rules.ts.
+ * Les règles de ce qui peut sortir (QR code : jamais une correction ni une évaluation ; lien de
+ * partage : tout sauf une copie modèle) sont partagées avec le serveur :
+ * supabase/functions/version-mobile/rules.ts.
  */
 import QRCode from 'qrcode';
 import type { JSONContent } from '@tiptap/core';

@@ -32,18 +32,20 @@ export function mobileEligible(rawTitle: string): boolean {
   return !ANSWERS.test(title) && !GRADED.test(title);
 }
 
-/** Évaluation (sujet, documents ou corrigé) ou copie modèle, où que ce soit dans le titre. */
-const NEVER_SHARED = /copie\s+mod[èe]le|[ée]valuation/iu;
+/** Copie modèle (les réponses d'un élève), où que ce soit dans le titre. */
+const NEVER_SHARED = /copie\s+mod[èe]le/iu;
 
 /**
  * Le document de ce titre peut-il sortir par un lien de partage (table `board_share_links`,
- * migration 092 : le lien que le professeur colle dans le cahier de texte) ? Comme pour le QR code,
- * plus les CORRECTIONS d'activité (Thomas, 26/11/2026 : « Oui, par lien seulement »). Jamais une
- * évaluation, même sa correction, ni une copie modèle, ni un devoir noté.
+ * migration 092 : le lien que le professeur colle dans le cahier de texte) ? Oui pour tout ce que
+ * le professeur choisit de donner : fiche, documents, correction d'activité (Thomas, 26/11/2026),
+ * et aussi évaluation, entraînement noté ou devoir, sujet comme corrigé (Thomas, 27/11/2026 :
+ * donner la correction de l'entraînement noté des 3e par Pronote). Le lien n'existe que si le
+ * professeur le crée, document par document. Jamais une copie modèle : ce sont les réponses d'un
+ * élève. Le QR code imprimé, lui, reste fermé aux corrections et aux évaluations (mobileEligible).
  */
 export function shareEligible(rawTitle: string): boolean {
-  const title = rawTitle.normalize('NFC');
-  return !NEVER_SHARED.test(title) && !GRADED.test(title);
+  return !NEVER_SHARED.test(rawTitle.normalize('NFC'));
 }
 
 /** Les deux sortes de liens : le QR code imprimé (090) et le lien de partage (092). */
@@ -59,7 +61,8 @@ export interface CourseRef { id: string; title: string }
 
 /**
  * Le document vers lequel pointe un lien de cette sorte : QR code imprimé (`qr`) ou lien de
- * partage collé dans le cahier de texte (`share`, qui peut aussi ouvrir une correction d'activité).
+ * partage collé dans le cahier de texte (`share`, qui peut aussi ouvrir une correction ou une
+ * évaluation).
  * Toujours l'original de la bibliothèque : une copie posée pour une classe
  * (`lesson_boards.source_board_id`) renvoie à son original ; un original introuvable (supprimé
  * depuis) laisse la copie servir elle-même. Null si le cours ou son original ne peut pas sortir

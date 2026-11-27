@@ -4,8 +4,8 @@
  * peut l'imprimer ou l'enregistrer en PDF (page publique `/d/<jeton>`, pages/MobileDocument.tsx).
  *
  * Un lien par original de la bibliothèque (table `board_share_links`, migration 092), créé au
- * premier partage, coupable à tout moment. Une correction d'activité peut être partagée ; une
- * évaluation ou une copie modèle, jamais (règles : supabase/functions/version-mobile/rules.ts).
+ * premier partage, coupable à tout moment. Une correction ou une évaluation peut être partagée ;
+ * une copie modèle, jamais (règles : supabase/functions/version-mobile/rules.ts).
  * Le lien suit le document : une modification se voit à la prochaine ouverture du lien.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -28,6 +28,7 @@ type State =
   | { step: 'ready'; target: string; token: string | null };
 
 const isCorrection = (title: string) => /corr(?:ection|ig[ée])/iu.test(title.normalize('NFC'));
+const isAssessment = (title: string) => /[ée]valuation|entra[îi]nements?\s+not[ée]s?|contr[ôo]les?|interro(?:gation)?s?|devoirs?|^\s*ds(?![\p{L}])/iu.test(title.normalize('NFC'));
 
 /** Copie dans le presse-papiers ; repli sur la sélection du champ (navigateur sans accès au presse-papiers). */
 async function copyText(text: string, field: HTMLInputElement | null): Promise<boolean> {
@@ -114,7 +115,7 @@ export function CourseShareDialog({ boardId, userId, title, onClose }: Props) {
 
         {state.step === 'refused' && (
           <p className="ce-shared__warn">
-            Une évaluation (sujet, documents ou corrigé), une copie modèle ou un devoir noté ne se partage pas par un lien.
+            Une copie modèle ne se partage pas par un lien : ce sont les réponses d’un élève.
           </p>
         )}
 
@@ -132,8 +133,10 @@ export function CourseShareDialog({ boardId, userId, title, onClose }: Props) {
             {state.target !== boardId && (
               <p className="ce-dialog__hint">Ce cours est une copie posée sur l’emploi du temps : le lien ouvre son original de la bibliothèque.</p>
             )}
-            {isCorrection(title) && (
+            {isCorrection(title) ? (
               <p className="ce-shared__warn">C’est une correction : ne collez le lien que lorsque vous voulez la donner aux élèves.</p>
+            ) : isAssessment(title) && (
+              <p className="ce-shared__warn">C’est une évaluation : ne collez le lien qu’après l’avoir faite en classe.</p>
             )}
 
             {state.token ? (

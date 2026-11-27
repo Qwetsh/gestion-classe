@@ -243,7 +243,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
         group: 'share',
       }] : []),
       ...(shareable && onManageShareLink ? [{ label: 'Gérer le lien lecture seule…', onClick: () => onManageShareLink(b), title: 'Voir l’adresse, l’ouvrir ou couper le lien', group: 'share' }] : []),
-      ...(b.is_course && !shareable && onCopyShareLink ? [{ label: 'Lien lecture seule (pas pour une évaluation)', onClick: () => undefined, disabled: true, group: 'share' }] : []),
+      ...(b.is_course && !shareable && onCopyShareLink ? [{ label: 'Lien lecture seule (pas pour une copie modèle)', onClick: () => undefined, disabled: true, group: 'share' }] : []),
       ...menuItems(b, 'actions'),
     ];
   };
