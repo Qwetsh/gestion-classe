@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useAssessmentCopies } from '../hooks/useAssessmentCopies';
+import { useAiCorrectionAllowed } from '../hooks/useAiCorrectionAllowed';
 import { AiRunPanel, Badge } from './AiRunPanel';
 import { AddCopyDialog } from './AddCopyDialog';
 import { CopyTranscriptView } from './CopyTranscriptView';
@@ -54,6 +55,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
   onError: (message: string) => void;
 }) {
   const { user } = useAuth();
+  const aiAllowed = useAiCorrectionAllowed();
   const changedRef = useRef(false);
   const markChanged = useCallback(() => { changedRef.current = true; }, []);
   const close = useCallback(() => onClose(changedRef.current), [onClose]);
@@ -265,7 +267,7 @@ export function StudentGradeModal({ assessment, studentId, onClose, onError }: {
               {isDraft && (
                 <button onClick={() => { void validate(grade!); }} style={btnPrimary}>Valider la correction</button>
               )}
-              {withCopies && mode && (
+              {withCopies && mode && aiAllowed && (
                 <button
                   onClick={() => { void correct(row); }}
                   disabled={!hasKit || busy}

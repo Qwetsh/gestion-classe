@@ -2617,7 +2617,7 @@ export function Whiteboard({ sessionId, userId, ticker, remote = true, boardId, 
       { label: many ? 'Exporter la sélection en image' : 'Exporter en image (PNG)', onSelect: () => void exportSelectionImage() },
       { separator: true, label: '' },
       ...(many ? [{ label: `Grouper (${count})`, shortcut: 'Ctrl+G', onSelect: groupSelected }] : []),
-      ...(target.groupId ? [{ label: 'Dégrouper', shortcut: 'Ctrl+Maj+G', onSelect: ungroupSelected }] : []),
+      ...(target.groupId ? [{ label: 'Dissocier', shortcut: 'Ctrl+Maj+G', onSelect: ungroupSelected }] : []),
       { label: locked ? 'Déverrouiller' : 'Verrouiller', shortcut: 'Ctrl+Maj+K', onSelect: toggleLockSelected },
       { label: many ? `Supprimer (${count})` : 'Supprimer', shortcut: 'Suppr', danger: true, disabled: locked, onSelect: deleteSelected },
     ];

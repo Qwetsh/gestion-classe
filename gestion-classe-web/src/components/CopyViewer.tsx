@@ -12,6 +12,7 @@ import { AiRunPanel, Badge } from './AiRunPanel';
 import { AiBatchPanel } from './AiBatchPanel';
 import { LibraryKitPanel } from './LibraryKitPanel';
 import { isSelectable, useAssessmentCopies, type CopyRow, type CopyRowState } from '../hooks/useAssessmentCopies';
+import { useAiCorrectionAllowed } from '../hooks/useAiCorrectionAllowed';
 import { COST_HINT, NO_KIT_HELP, NO_KIT_MESSAGE, correctionMode, isApiGrade, isRunActive } from '../lib/aiCorrection';
 
 type Filter = 'all' | CopyRowState;
@@ -45,6 +46,7 @@ interface CopyViewerProps {
  * avec la modale élève × éval du carnet).
  */
 export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddClosed, initialStudentId = null }: CopyViewerProps) {
+  const aiAllowed = useAiCorrectionAllowed();
   const [filter, setFilter] = useState<Filter>('all');
   // L'élève affiché, pour une éval donnée : changer d'éval repart du premier élève sans effet à part.
   const [sel, setSel] = useState<{ assessmentId: string; studentId: string } | null>(null);
@@ -263,7 +265,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
         {!paperless && (
           <LibraryKitPanel assessment={assessment} kits={kits} onChanged={() => { void load(); }} onError={onError} />
         )}
-        {!paperless && (
+        {!paperless && aiAllowed && (
           <AiBatchPanel assessmentId={assessment.id} rows={rows} aiRuns={aiRuns} hasKit={hasKit} trackRun={trackRun} />
         )}
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
@@ -415,7 +417,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
               )}
               {(() => {
                 const mode = correctionMode({ pages: selected.pages.length, grade: selected.grade });
-                if (!mode) return null;
+                if (!mode || !aiAllowed) return null;
                 const busy = startingId === selected.student.id || isRunActive(aiRuns[selected.student.id]);
                 return (
                   <button

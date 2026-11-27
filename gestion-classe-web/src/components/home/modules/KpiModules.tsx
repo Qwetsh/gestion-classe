@@ -41,7 +41,7 @@ export function KpiSessionsModule() {
     <div className="dash__kpi">
       <div className="dash__kpi-label">Séances de la semaine</div>
       <div className="dash__kpi-value">
-        {weekSessionsCount}<span className="dash__kpi-unit">stable</span>
+        {weekSessionsCount}
       </div>
       <div className="dash__kpi-progress">
         <div className="dash__kpi-bar">

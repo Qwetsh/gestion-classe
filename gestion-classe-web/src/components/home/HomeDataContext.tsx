@@ -757,7 +757,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
             .map(sg => {
               let reason = '';
               if (sg.grade < 5) reason = `${sg.malus} malus sur ${sg.sessionsCount} séances`;
-              else if (sg.absences >= 2) reason = `${sg.absences} absences consécutives`;
+              else if (sg.absences >= 2) reason = `${sg.absences} absences`;
               else if (sg.malus >= 4) reason = `${sg.malus} malus, ${sg.participations === 0 ? '0 participation' : sg.participations + ' participations'}`;
               else reason = `En recul depuis ${sg.sessionsCount} séances`;
 

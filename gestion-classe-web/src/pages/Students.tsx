@@ -704,13 +704,13 @@ export function Students() {
       setShowEndYearModal(false);
       setEndYearConfirmText('');
       toast(
-        `Annee cloturee. ${leavingStudentIds.length} eleve(s) sortant(s) supprime(s), ${keptStudentIds.length} conserve(s) pour l'an prochain.`,
+        `Année clôturée. ${leavingStudentIds.length} élève(s) sortant(s) supprimé(s), ${keptStudentIds.length} conservé(s) pour l'an prochain.`,
         'success',
       );
       loadData();
     } catch (error) {
       console.error('Error ending year:', error);
-      toast('Erreur lors de la cloture de l\'annee. Verifiez la console pour plus de details.');
+      toast('Erreur lors de la clôture de l\'année. Réessayez ; si le problème revient, signalez-le.');
     } finally {
       setIsEndingYear(false);
     }
@@ -1166,7 +1166,7 @@ export function Students() {
 
     const classStudents = studentGrades.filter(sg => sg.student.class_id === selectedClassId);
     if (classStudents.length === 0) {
-      toast('Aucun eleve dans cette classe', 'error');
+      toast('Aucun élève dans cette classe', 'error');
       return;
     }
 
@@ -1486,7 +1486,7 @@ export function Students() {
                 <div className="segbtn">
                   <button className={`segbtn__b ${sortField === 'pseudo' ? 'is-on' : ''}`} onClick={() => handleSort('pseudo')}>A‑Z</button>
                   <button className={`segbtn__b ${sortField === 'grade' ? 'is-on' : ''}`} onClick={() => handleSort('grade')}>Note</button>
-                  <button className={`segbtn__b ${sortField === 'participations' ? 'is-on' : ''}`} onClick={() => handleSort('participations')}>Tendance</button>
+                  <button className={`segbtn__b ${sortField === 'participations' ? 'is-on' : ''}`} onClick={() => handleSort('participations')}>Implication</button>
                   <button className={`segbtn__b ${sortField === 'abs' ? 'is-on' : ''}`} onClick={() => handleSort('abs')}>Absences</button>
                 </div>
                 <div className="segbtn">
@@ -1567,11 +1567,11 @@ export function Students() {
                 </div>
               ) : (
                 <div className="slist">
-                  {/* Tableau façon maquette : Élève · Note · Bonus · Malus · Abs · Tendance · Oral */}
+                  {/* Élève · Note · Implications · Malus · Abs · Tendance · Oral */}
                   <div className="slist__head">
                     <span>Élève</span>
                     <span>Note</span>
-                    <span>Bonus</span>
+                    <span title="Implications">Implic.</span>
                     <span>Malus</span>
                     <span>Abs.</span>
                     <span>Tendance</span>
@@ -1588,7 +1588,7 @@ export function Students() {
                           <div className="srow__name">
                             <span className="srow__dot" style={{ background: eng.color }} title={`Connexion espace élève : ${eng.label}`} />
                             <span className="srow__pseudo">{sg.student.pseudo}</span>
-                            {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ fontSize: 11 }}>👁️</span>}
+                            {sg.student.is_witness && <span title="Élève témoin (hors classements/métriques)" style={{ fontSize: 11, color: 'var(--text-muted)' }}>témoin</span>}
                             <AccommodationBadges student={sg.student} bg="var(--indigo-soft)" fg="var(--indigo-ink)" />
                           </div>
                         </div>
@@ -1620,7 +1620,6 @@ export function Students() {
           ) : (
             <section className="class-detail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
               <div style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
-                <div style={{ fontSize: 48, marginBottom: 16 }}>📚</div>
                 <h3 style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)' }}>Sélectionnez une classe</h3>
                 <p style={{ marginTop: 8 }}>Choisissez une classe dans la liste à gauche</p>
               </div>
@@ -1672,7 +1671,7 @@ export function Students() {
               <div className="flex items-center justify-between p-3 bg-[var(--bg)] rounded-lg">
                 <div>
                   <label className="block text-sm font-medium text-[var(--text)]">
-                    Penalite malus
+                    Pénalité malus
                   </label>
                   <p className="text-xs text-[var(--text-dim)]">
                     1 malus = -1 implication
@@ -1701,7 +1700,7 @@ export function Students() {
                       Mode "Note de base"
                     </label>
                     <p className="text-xs text-[var(--indigo-ink)]">
-                      Chaque eleve commence avec cette note
+                      Chaque élève commence avec cette note
                     </p>
                   </div>
                   <button
@@ -1721,7 +1720,7 @@ export function Students() {
                 {configBaseGrade !== null && (
                   <div className="mt-3">
                     <label className="block text-xs font-medium text-[var(--indigo-ink)] mb-1">
-                      Note de depart (/20)
+                      Note de départ (/20)
                     </label>
                     <input
                       type="number"
@@ -1729,7 +1728,7 @@ export function Students() {
                       max="20"
                       step="0.5"
                       value={configBaseGrade}
-                      onChange={(e) => setConfigBaseGrade(parseFloat(e.target.value) || 10)}
+                      onChange={(e) => { const v = parseFloat(e.target.value); setConfigBaseGrade(Number.isFinite(v) ? v : 10); }}
                       className="w-full px-3 py-2 border border-[var(--indigo)] rounded-lg bg-white text-[var(--text)] text-sm"
                     />
                     <p className="text-xs text-[var(--indigo-ink)] mt-2">
@@ -1782,7 +1781,7 @@ export function Students() {
               </strong>
               {trimesterSettings.current_trimester === 3 && (
                 <span className="text-[var(--text-dim)]">
-                  {' '}(nouvelle annee scolaire)
+                  {' '}(nouvelle année scolaire)
                 </span>
               )}
             </p>
@@ -1835,7 +1834,7 @@ export function Students() {
         <div className="gc-overlay gc-modal fixed inset-0 flex items-center justify-center z-50 p-4">
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-[var(--text)] mb-4">
-              Finir l'annee scolaire
+              Finir l'année scolaire
             </h3>
 
             <div className="bg-[var(--neg-soft)] border border-[var(--neg)] rounded-lg p-4 mb-4">
@@ -1898,7 +1897,7 @@ export function Students() {
                 />
                 <div>
                   <span className="text-sm font-medium text-[var(--indigo-ink)]">
-                    Generer un rapport PDF de fin d'annee
+                    Générer un rapport PDF de fin d'année
                   </span>
                   <p className="text-xs text-[var(--indigo-ink)] mt-1">
                     Rapport complet du T3 avec analyse par classe et par niveau.
@@ -1936,7 +1935,7 @@ export function Students() {
                 disabled={endYearConfirmText !== 'VACANCES' || isEndingYear || isGeneratingReport}
                 className="px-4 py-2 bg-[var(--neg)] text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isGeneratingReport ? 'Generation rapport...' : isEndingYear ? 'Cloture en cours...' : 'Terminer l\'annee'}
+                {isGeneratingReport ? 'Génération du rapport…' : isEndingYear ? 'Clôture en cours…' : 'Terminer l\'année'}
               </button>
             </div>
           </div>
@@ -2067,7 +2066,7 @@ export function Students() {
           <div className="bg-[var(--surface)] rounded-xl p-6 w-full max-w-md max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-[var(--text)]">
-                Codes d'acces eleves
+                Codes d'accès élèves
               </h3>
               <button
                 onClick={() => setShowCodesModal(false)}
