@@ -455,7 +455,7 @@ export function GroupSplitter({ userId, classId, className, students, rooms, onC
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>
             Les élèves placés dans le plan de cette classe pour la salle choisie rejoignent
-            {panel.groupId ? ` « ${groupName(panel.groupId)} »` : ' un nouveau groupe au nom de la salle'}.
+            {panel.groupId ? ` « ${groupName(panel.groupId)} »` : ' un nouveau groupe au nom de la salle'} et quittent leurs autres groupes.
           </p>
           <div style={{ maxHeight: 260, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {rooms.map(r => (

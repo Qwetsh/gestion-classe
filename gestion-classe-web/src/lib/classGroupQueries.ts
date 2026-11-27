@@ -229,7 +229,8 @@ export async function fetchRoomPlanStudentIds(classId: string, roomId: string): 
 
 /**
  * Crée un groupe à partir des élèves placés dans un plan de salle existant
- * (migration du bricolage « une salle par groupe »).
+ * (migration du bricolage « une salle par groupe »). Exclusif, comme le reste de l'écran :
+ * ces élèves quittent les autres groupes de la classe.
  */
 export async function createGroupFromRoomPlan(
   userId: string,
@@ -238,7 +239,16 @@ export async function createGroupFromRoomPlan(
   name: string
 ): Promise<ClassGroupInfo> {
   const studentIds = await fetchRoomPlanStudentIds(classId, roomId);
+  const otherGroupIds = (await fetchClassGroups(classId)).map(g => g.id);
   const group = await createClassGroup(userId, classId, name);
+  if (studentIds.length > 0 && otherGroupIds.length > 0) {
+    const { error } = await supabase
+      .from('class_group_members')
+      .delete()
+      .in('student_id', studentIds)
+      .in('group_id', otherGroupIds);
+    if (error) throw error;
+  }
   if (studentIds.length > 0) await replaceMembers(group.id, studentIds);
   return group;
 }
