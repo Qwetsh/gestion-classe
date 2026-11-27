@@ -79,10 +79,12 @@ export interface Bandeau<E extends EleveLike> {
   sortis: { eleve: E; motif: string; depuis: number }[];
 }
 
+/** Les quatre motifs de sortie du téléphone (contrainte de la table events). */
 const MOTIFS_SORTIE: Record<string, string> = {
   infirmerie: 'infirmerie',
   toilettes: 'toilettes',
-  vie_scolaire: 'vie scolaire',
+  convocation: 'convocation',
+  exclusion: 'exclusion',
 };
 
 /**
