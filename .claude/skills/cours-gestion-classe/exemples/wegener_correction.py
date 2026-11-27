@@ -186,7 +186,7 @@ def construire(affiches=None):
                   ])
 
     # 16 — Esprit critique : le journal
-    jr = question('Esprit critique — Le journal s’est trompé', 'Trois erreurs dans le Woippy News « Spécial Wegener ».', [
+    jr = question('Esprit critique — Le journal s’est trompé', 'Trois erreurs dans le Journal du collège « Spécial Wegener ».', [
         ('Article 4', 'Pas « il y a 200 millions d’années » : ces glaciers datent d’environ <b>300 millions d’années</b>.'),
         ('Article 2', '« qu’il a nommé ls. » : il fallait lire « la <b>Pangée</b> ».'),
         ('Encadré', '« Wegenera » : il s’agit de <b>Wegener</b>.'),

@@ -30,7 +30,7 @@ p.texte(60, 475, 880, 30, "<b>Quels étaient ses indices ? Pourquoi ne l'a-t-on 
 
 # 3 — Matériel
 p = e.ecran("Ce qu'il te faut")
-p.texte(60, 125, 880, 30, '<div>• le <b>Woippy News « Spécial Wegener »</b> : articles 1 à 4</div>'
+p.texte(60, 125, 880, 30, '<div>• le <b>Journal du collège « Spécial Wegener »</b> : articles 1 à 4</div>'
         '<div>• le <b>gabarit du puzzle</b>, des ciseaux, de la colle</div><div>• une calculatrice</div>'
         '<div>• ta fiche : le <b>document 5</b> est dessus</div>')
 p.texte(60, 385, 880, 24, 'Fiche ramassée, notée sur 10.', GRIS)

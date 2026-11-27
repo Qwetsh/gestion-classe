@@ -2,17 +2,14 @@ import { createContext, useContext, useEffect, useRef, useState, useCallback, ty
 import { useAuth } from './AuthContext';
 import { HIDDEN_TABS_PREFERENCE, NO_HIDDEN_TABS, hasHiddenTab, sameHiddenTabs, sanitizeHiddenTabs, type HiddenTabs } from '../lib/appTabs';
 import { fetchPreference, savePreference } from '../lib/userPreferences';
+import {
+  EMPTY_ESTABLISHMENT, ESTABLISHMENT_PREFERENCE, establishmentFromLegacy, isEstablishmentEmpty,
+  sameEstablishment, sanitizeEstablishment, type EstablishmentInfo,
+} from '../lib/establishment';
 
-export type { HiddenTabs };
+export type { HiddenTabs, EstablishmentInfo };
 
 // ── Types ──
-
-export interface EstablishmentInfo {
-  name: string;
-  tel: string;
-  address: string;
-  codePostal: string;
-}
 
 export interface TeacherProfile {
   nom: string;
@@ -47,12 +44,7 @@ export function currentSchoolYear(now: Date = new Date()): SchoolYear {
 
 const DEFAULT_SETTINGS: AppSettings = {
   hiddenTabs: NO_HIDDEN_TABS,
-  establishment: {
-    name: 'College Pierre Mendes France',
-    tel: '03 87 54 36 40',
-    address: '57140 WOIPPY',
-    codePostal: '57140 WOIPPY',
-  },
+  establishment: EMPTY_ESTABLISHMENT,
   teacher: { nom: '', matiere: '', fonction: '' },
   schoolYear: currentSchoolYear(),
   theme: 'light',
@@ -67,6 +59,8 @@ function loadSettings(): AppSettings {
     const merged: AppSettings = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
     // Onglets d'aujourd'hui seulement (un réglage ancien peut citer des onglets retirés du menu)
     merged.hiddenTabs = sanitizeHiddenTabs(merged.hiddenTabs);
+    // L'ancien pré-remplissage commun à tous les comptes n'est pas repris.
+    merged.establishment = establishmentFromLegacy(merged.establishment);
     // Une annee scolaire perimee (reglage d'une annee precedente) est reinitialisee.
     const current = currentSchoolYear();
     if (!merged.schoolYear?.label || merged.schoolYear.label < current.label) {
@@ -105,12 +99,19 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => { hiddenTabsRef.current = settings.hiddenTabs; }, [settings.hiddenTabs]);
   /** Le professeur a touché aux onglets avant la réponse du compte : son geste l'emporte. */
   const tabsTouched = useRef(false);
+  const establishmentRef = useRef(settings.establishment);
+  useEffect(() => { establishmentRef.current = settings.establishment; }, [settings.establishment]);
+  const establishmentTouched = useRef(false);
 
   const updateSettings = useCallback((patch: Partial<AppSettings>) => {
     if (patch.hiddenTabs) {
       tabsTouched.current = true;
       // Onglets visibles : rangés dans le compte, pour suivre le professeur d'un appareil à l'autre
       if (userIdRef.current) void savePreference(userIdRef.current, HIDDEN_TABS_PREFERENCE, patch.hiddenTabs);
+    }
+    if (patch.establishment) {
+      establishmentTouched.current = true;
+      if (userIdRef.current) void savePreference(userIdRef.current, ESTABLISHMENT_PREFERENCE, patch.establishment);
     }
     setSettings(prev => {
       const next = { ...prev, ...patch };
@@ -136,6 +137,30 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setSettings(prev => {
         if (sameHiddenTabs(prev.hiddenTabs, hiddenTabs)) return prev;
         const next = { ...prev, hiddenTabs };
+        persistSettings(next);
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  // Même règle pour l'établissement : le compte fait foi ; à défaut, celui de cet appareil y est
+  // envoyé s'il a été saisi (l'ancien pré-remplissage, lui, est déjà écarté au chargement).
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    establishmentTouched.current = false;
+    void fetchPreference<unknown>(userId, ESTABLISHMENT_PREFERENCE).then((remote) => {
+      if (cancelled || establishmentTouched.current) return;
+      if (remote === null) {
+        const local = establishmentRef.current;
+        if (!isEstablishmentEmpty(local)) void savePreference(userId, ESTABLISHMENT_PREFERENCE, local);
+        return;
+      }
+      const establishment = sanitizeEstablishment(remote);
+      setSettings(prev => {
+        if (sameEstablishment(prev.establishment, establishment)) return prev;
+        const next = { ...prev, establishment };
         persistSettings(next);
         return next;
       });

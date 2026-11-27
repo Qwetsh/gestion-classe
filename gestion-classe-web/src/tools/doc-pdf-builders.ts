@@ -5,6 +5,20 @@ import logoAcademieUrl from './logo-academie.svg?url';
 
 // ── Types ──
 
+/** En-tête et pied de page : l'établissement saisi dans les réglages (rien d'imprimé s'il est vide). */
+export interface EtablissementEntete {
+  nom: string;
+  ville: string;
+  tel: string;
+}
+
+const SANS_ENTETE: EtablissementEntete = { nom: '', ville: '', tel: '' };
+
+/** Morceaux non vides, séparés par un tiret. */
+function joindre(...parts: string[]): string {
+  return parts.map(s => s.trim()).filter(Boolean).join(' - ');
+}
+
 export interface DeplacementData {
   anneeScolaire: string;
   etablissement: string;
@@ -488,7 +502,7 @@ export function buildCaptationPDF(data: CaptationData, logoPNG: string | null): 
 // SORTIE SCOLAIRE PDF
 // ══════════════════════════════════════════
 
-export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF {
+export function buildSortiePDF(data: SortieData, logoPNG: string | null, etab: EtablissementEntete = SANS_ENTETE): jsPDF {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const ML = 20, MR = 20, CW = W - ML - MR;
   let y = 10;
@@ -500,9 +514,10 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
 
   y = 16;
   setFont(doc, 'bold', 10, BLUE);
-  doc.text('College Pierre Mendes France', W - MR, y, { align: 'right' });
+  if (etab.nom.trim()) doc.text(etab.nom.trim(), W - MR, y, { align: 'right' });
   setFont(doc, 'normal', 8, GRAY);
-  doc.text('57140 WOIPPY - Tel. 03 87 54 36 40', W - MR, y + 5, { align: 'right' });
+  const coordonnees = joindre(etab.ville, etab.tel.trim() ? `Tel. ${etab.tel.trim()}` : '');
+  if (coordonnees) doc.text(coordonnees, W - MR, y + 5, { align: 'right' });
 
   y = 42;
   setFont(doc, 'bold', 14, BLUE);
@@ -664,7 +679,8 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
   doc.text('Signature du representant legal :', W / 2 + 10, y);
 
   setFont(doc, 'normal', 8, GRAY);
-  doc.text('College Pierre Mendes France - Woippy', ML, H - 10);
+  const pied = joindre(etab.nom, etab.ville);
+  if (pied) doc.text(pied, ML, H - 10);
 
   return doc;
 }
@@ -673,7 +689,8 @@ export function buildSortiePDF(data: SortieData, logoPNG: string | null): jsPDF 
 // DEMANDE SORTIE/SEJOUR PDF
 // ══════════════════════════════════════════
 
-export function buildDemandePDF(data: DemandeData, logoPNG: string | null): jsPDF {
+export function buildDemandePDF(data: DemandeData, logoPNG: string | null, etab: EtablissementEntete = SANS_ENTETE): jsPDF {
+  const ligneEtab = joindre(etab.nom, etab.ville);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const ML = 15, MR = 15, CW = W - ML - MR;
   let y = 10;
@@ -703,7 +720,7 @@ export function buildDemandePDF(data: DemandeData, logoPNG: string | null): jsPD
   setFont(doc, 'bold', 11, BLUE);
   doc.text("D'ELEVES DU SECOND DEGRE", W / 2, 22, { align: 'center' });
   setFont(doc, 'normal', 7, GRAY);
-  doc.text('College Pierre Mendes France - 57140 WOIPPY', W / 2, 28, { align: 'center' });
+  if (ligneEtab) doc.text(ligneEtab, W / 2, 28, { align: 'center' });
   y = 34;
 
   // Destination
@@ -947,7 +964,7 @@ export function buildDemandePDF(data: DemandeData, logoPNG: string | null): jsPD
     doc.setPage(p);
     setFont(doc, 'normal', 7, GRAY);
     doc.text(`${p}/${totalPages}`, W - MR, H - 8, { align: 'right' });
-    doc.text('College Pierre Mendes France - Woippy', ML, H - 8);
+    if (ligneEtab) doc.text(ligneEtab, ML, H - 8);
   }
 
   return doc;

@@ -6,10 +6,10 @@ const ok = (url: string, suffixes = PRONOTE) => allowedTarget(url, suffixes) !==
 
 describe('relais Pronote : cible admise', () => {
   it('laisse passer un serveur Pronote en https', () => {
-    expect(ok('https://0572582x.index-education.net/pronote/professeur.html')).toBe(true);
+    expect(ok('https://0000000x.index-education.net/pronote/professeur.html')).toBe(true);
     expect(ok('https://www.index-education.com/swie/geoloc.php')).toBe(true);
     expect(ok('https://index-education.net/')).toBe(true);
-    expect(ok('https://0572582X.INDEX-EDUCATION.NET/pronote/')).toBe(true);
+    expect(ok('https://0000000X.INDEX-EDUCATION.NET/pronote/')).toBe(true);
   });
 
   it("refuse tout ce qui n'est pas un serveur Pronote", () => {
@@ -25,20 +25,20 @@ describe('relais Pronote : cible admise', () => {
     expect(ok('https://example.com/?x=.index-education.net')).toBe(false);
     expect(ok('https://example.com/#index-education.net')).toBe(false);
     expect(ok('https://index-education.net@example.com/')).toBe(false);
-    expect(ok('https://moi:secret@0572582x.index-education.net/')).toBe(false);
+    expect(ok('https://moi:secret@0000000x.index-education.net/')).toBe(false);
   });
 
   it('refuse un autre protocole ou un autre port', () => {
-    expect(ok('http://0572582x.index-education.net/pronote/')).toBe(false);
-    expect(ok('ftp://0572582x.index-education.net/')).toBe(false);
-    expect(ok('https://0572582x.index-education.net:8443/')).toBe(false);
-    expect(ok('https://0572582x.index-education.net:443/pronote/')).toBe(true);
+    expect(ok('http://0000000x.index-education.net/pronote/')).toBe(false);
+    expect(ok('ftp://0000000x.index-education.net/')).toBe(false);
+    expect(ok('https://0000000x.index-education.net:8443/')).toBe(false);
+    expect(ok('https://0000000x.index-education.net:443/pronote/')).toBe(true);
   });
 
   it('refuse une adresse illisible ou vide', () => {
     expect(ok('')).toBe(false);
     expect(ok('pronote')).toBe(false);
-    expect(ok('//0572582x.index-education.net/')).toBe(false);
+    expect(ok('//0000000x.index-education.net/')).toBe(false);
   });
 
   it('admet un Pronote hébergé ailleurs quand son suffixe est ajouté', () => {
