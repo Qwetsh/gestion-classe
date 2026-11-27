@@ -312,7 +312,7 @@ export function Clouds() {
                 </div>
                 <div className="clouds__tools">
                   {view.path.length > 0 && (
-                    <button type="button" className={pinned ? 'is-pinned' : ''} onClick={togglePin} title={pinned ? 'Ne plus ouvrir ce dossier au départ' : 'Ouvrir ce dossier au départ, sur tous mes appareils'}>{pinned ? '📌 Dossier de départ' : '📌 Épingler'}</button>
+                    <button type="button" className={pinned ? 'is-pinned' : ''} onClick={togglePin} title={pinned ? 'Ne plus ouvrir ce dossier au départ' : 'Ouvrir ce dossier au départ, sur tous mes appareils'}>{pinned ? 'Dossier de départ' : 'Épingler'}</button>
                   )}
                   {view.session.account && <small>{view.session.account}</small>}
                   <button type="button" onClick={() => void disconnect()} title="Oublier ce compte sur cet appareil">Déconnecter</button>
@@ -341,7 +341,7 @@ export function Clouds() {
                       {!item.isFolder && (
                         <span className="clouds__side">
                           {(item.kind === 'pdf' || item.kind === 'image' || (item.kind === 'office' && (item.serverPdf || /\.docx$/i.test(item.name)))) && (
-                            <button type="button" disabled={!!opening} onClick={() => void openItemInBoard(item)} title="Ouvrir dans un nouveau tableau">🖍</button>
+                            <button type="button" disabled={!!opening} onClick={() => void openItemInBoard(item)} title="Ouvrir dans un nouveau tableau">Tableau</button>
                           )}
                           <button type="button" disabled={!!opening} onClick={() => void download(item)} title="Télécharger">⬇</button>
                           {item.webUrl && <a href={item.webUrl} target="_blank" rel="noreferrer" title={`Ouvrir dans ${provider.label}`}>↗</a>}

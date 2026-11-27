@@ -3963,6 +3963,7 @@ export type Database = {
         Args: { p_category_id: string; p_student_id: string }
         Returns: Json
       }
+      can_use_ai_correction: { Args: never; Returns: boolean }
       get_connection_stats: {
         Args: { p_class_id: string }
         Returns: {

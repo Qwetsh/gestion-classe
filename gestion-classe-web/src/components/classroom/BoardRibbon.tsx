@@ -77,8 +77,8 @@ const INSERT_META: Record<string, { icon: IconName; short: string }> = {
   window: { icon: 'windowObj', short: 'Fenêtre' },
   timer: { icon: 'timer', short: 'Minuteur' },
   clock: { icon: 'clock', short: 'Horloge' },
-  meter: { icon: 'meter', short: 'Jauge' },
-  noise: { icon: 'bell', short: 'Sonomètre' },
+  meter: { icon: 'meter', short: 'Sonomètre' },
+  noise: { icon: 'bell', short: 'Consigne sonore' },
   traffic: { icon: 'traffic', short: 'Feu tricolore' },
   dice: { icon: 'dice', short: 'Dé' },
   wheel: { icon: 'wheel', short: 'Roue' },
@@ -312,7 +312,7 @@ export function BoardRibbon({ title, saveFailed, act, tool, colors, color, onCol
                 <div className="ce-stack">
                   {sm("order-front", "bringFront", "Premier plan")}
                   {sm("order-back", "sendBack", "Arrière-plan")}
-                  {sm("lock", "lock", "Verrouiller", "Verrouiller / déverrouiller (Ctrl+L)")}
+                  {sm("lock", "lock", "Verrouiller", "Verrouiller / déverrouiller (Ctrl+Maj+K)")}
                 </div>
                 <div className="ce-stack">
                   {sm("group", "group", "Grouper", "Grouper (Ctrl+G)")}
