@@ -1,7 +1,7 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { FREE_THEME_RIGHTS, canEarnTheme, isThemeUnlocked, parseThemeRights, themeRightsError, themeToApply } from '../studentThemeUnlocks';
+import { FREE_THEME_RIGHTS, STAMPS_PER_THEME, canEarnTheme, goalFor, goalRatio, isThemeUnlocked, parseThemeRights, themeGoal, themeRightsError, themeToApply } from '../studentThemeUnlocks';
 import { DEFAULT_STUDENT_THEME, STUDENT_THEMES, STUDENT_THEME_GROUPS, isStudentTheme, readStudentTheme, saveStudentTheme, studentTheme, studentThemeFontUrl } from '../studentThemes';
 
 /** Stockage de navigateur en mémoire. */
@@ -107,6 +107,43 @@ describe('thèmes de l’espace élève', () => {
     expect(themeToApply({ ...rights, chosen: 'volcan' }, 'jungle', 'carnet')).toBe('volcan'); // le serveur d'abord
     expect(themeToApply(rights, 'jungle', 'carnet')).toBe('jungle'); // sinon l'appareil, s'il y a droit
     expect(themeToApply(rights, 'savane', 'carnet')).toBe('carnet'); // un thème fermé ne s'affiche pas
+  });
+
+  it('a une vignette de son décor pour chaque thème', () => {
+    const dir = join(__dirname, '..', '..', 'themes-eleve');
+    const missing = STUDENT_THEMES.filter((t) => !existsSync(join(dir, t.id, 'vignette.webp'))).map((t) => t.id);
+    expect(missing).toEqual([]);
+  });
+
+  it('annonce le défi d’un thème fermé d’après sa famille', () => {
+    expect(themeGoal({ unlock: 'free' }, 4)).toBeNull();
+    expect(themeGoal({ unlock: 'class' }, 4)).toMatchObject({ kind: 'class', label: 'Avec le cours' });
+    const stamps = themeGoal({ unlock: 'card' }, 7);
+    expect(stamps).toMatchObject({ kind: 'stamps', progress: { value: 7, target: STAMPS_PER_THEME } });
+    expect(stamps && goalRatio(stamps)).toBeCloseTo(0.7);
+    // Une classe sans tampons : le défi reste dit, sans progression
+    expect(themeGoal({ unlock: 'card' }, null)?.progress).toBeUndefined();
+    // Une carte pleine ne dépasse pas la barre
+    expect(themeGoal({ unlock: 'card' }, 14)?.progress?.value).toBe(STAMPS_PER_THEME);
+  });
+
+  it('prend le défi décrit par le serveur quand il y en a un, et écarte ce qu’il ne comprend pas', () => {
+    const rights = parseThemeRights({
+      free: ['carnet'], opened: [], earned: [], credits: 0, chosen: null,
+      goals: {
+        savane: { kind: 'grade', label: 'Un 15 ou plus', detail: 'Obtiens 15 sur 20.', progress: { value: 13.5, target: 15, unit: '' } },
+        ruche: { kind: 'licorne', label: 'x', detail: 'y' },
+        licorne: { kind: 'grade', label: 'x', detail: 'y' },
+        abysses: { kind: 'grade', label: 'Un 20', detail: 'Obtiens 20 sur 20.', progress: { value: 12, target: 0 } },
+      },
+    });
+    expect(Object.keys(rights?.goals ?? {}).sort()).toEqual(['abysses', 'savane']);
+    expect(rights?.goals?.abysses?.progress).toBeUndefined();
+    const savane = rights && goalFor(rights, studentTheme('savane'), 3);
+    expect(savane).toMatchObject({ kind: 'grade', label: 'Un 15 ou plus' });
+    expect(savane && goalRatio(savane)).toBeCloseTo(0.9);
+    // Sans défi du serveur : celui de la famille
+    expect(rights && goalFor(rights, studentTheme('ruche'), 3)).toMatchObject({ kind: 'stamps', progress: { value: 3 } });
   });
 
   it('ne charge une police que pour les thèmes qui en ont une', () => {
