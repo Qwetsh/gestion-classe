@@ -491,3 +491,16 @@ code, kbd { font-family: var(--mono); font-size: 0.88em; background: rgba(127,12
 .ic-menu { background: linear-gradient(currentColor 0 0) 0 0.12em / 100% 0.11em no-repeat, linear-gradient(currentColor 0 0) 0 0.4em / 100% 0.11em no-repeat, linear-gradient(currentColor 0 0) 0 0.68em / 100% 0.11em no-repeat; }
 .ic-fiole::before { content: ''; position: absolute; left: 0.3em; top: 0; width: 0.3em; height: 0.35em; border: 0.09em solid currentColor; border-bottom: 0; }
 .ic-fiole::after { content: ''; position: absolute; left: 0.08em; top: 0.33em; width: 0.74em; height: 0.52em; border: 0.09em solid currentColor; border-radius: 0.1em 0.1em 0.3em 0.3em; box-sizing: border-box; }
+
+/* Onglets de niveau sur le dessus d'une carte de liste (Mes cours, Mes TP, Annales) : un seul
+   niveau à l'écran, l'onglet choisi souligné de la teinte de son niveau. */
+.mc-ongs { display: flex; gap: 2px; padding: 0 5px; }
+.mc-ong { box-sizing: border-box; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 3px 11px 0; border-bottom: 3px solid transparent; font-weight: 650; font-size: 14px; color: var(--text-muted); white-space: nowrap; transition: all .25s; }
+.mc-ong .muet { font-weight: 400; }
+.mc-ong.is-actif, .mc-ong.is-on { color: var(--text); border-bottom-color: var(--indigo); }
+.mc-ong--6.is-actif, .mc-ong--6.is-on { border-bottom-color: #DB2777; }
+.mc-ong--5.is-actif, .mc-ong--5.is-on { border-bottom-color: #D97706; }
+.mc-ong--4.is-actif, .mc-ong--4.is-on { border-bottom-color: #059669; }
+.mc-ong--3.is-actif, .mc-ong--3.is-on { border-bottom-color: #4F46E5; }
+.mc-ongs--long .mc-ong { font-size: 13px; padding-left: 9px; padding-right: 9px; }
+.mc-ongs + .lib-ligne, .mc-ongs + .mc-ligne { border-top: 1px solid var(--border); }

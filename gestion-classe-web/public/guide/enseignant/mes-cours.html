@@ -332,10 +332,10 @@
       <div class="fiche__texte">
         <h2>La bibliothèque</h2>
         <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Bibliothèque et classes</span></p>
-        <p class="fiche__but">Tous ses cours, rangés par niveau puis par séquence. Une activité et tous ses compagnons (fiche, documents, correction…) tiennent sur une seule ligne.</p>
+        <p class="fiche__but">Tous ses cours, un onglet par niveau, rangés par séquence. Une activité et tous ses compagnons (fiche, documents, correction…) tiennent sur une seule ligne.</p>
         <ol class="etapes">
           <li data-cursor="#bi-v-bib">Ouvrir <b>Mes cours</b> : la page s'ouvre sur l'onglet <span class="btn-nom">Bibliothèque</span>.</li>
-          <li data-cursor="#bi-niv5" data-action="click">Cliquer l'en-tête d'un niveau pour le replier ou le déplier. Le choix est gardé sur l'ordinateur.</li>
+          <li data-cursor="#bi-niv4" data-action="click">Cliquer l'onglet d'un niveau (<b>5e</b>, <b>4e</b>…) pour afficher ses cours : un seul niveau est à l'écran. Le choix est gardé sur l'ordinateur.</li>
           <li data-cursor="#bi-titre" data-duration="3800">Une ligne par activité : son titre, puis un bouton par document. Cliquer le titre ouvre la fiche, cliquer un bouton ouvre ce document précis dans l'<a href="editeur-de-cours.html">éditeur</a>.</li>
           <li data-cursor="#bi-pc" data-action="click" data-duration="3400">Une pastille de classe (<b>4A</b>) dit que ce document est posé sur une heure de cette classe ; un clic ouvre la copie de cette classe.</li>
           <li data-cursor="#bi-play" data-action="click">Le petit triangle à côté d'un cours rédigé : <b>Essayer en classe</b>. Rien n'est gardé en quittant.</li>
@@ -378,14 +378,12 @@
 <div class="vues"><span class="vue is-actif" id="bi-v-bib">Bibliothèque</span><span class="vue" id="bi-v-meth">Fiches méthode</span><span class="vue" id="bi-v-cls">Par classe</span><span class="vue" id="bi-v-clr">Classeur des classes</span></div>
                     <div class="rech"><span class="ph">Chercher un cours, une séquence, un mot du texte</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv" id="bi-niv5"><span class="mc-chev" data-on="2-6">▾</span>5e<span class="muet">7</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5" data-on="1">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4" id="bi-niv4" data-on="2-6">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="repli" data-at="1">
                         <div class="mc-seq">SÉQUENCE 1 — MÉTÉO ET CLIMAT</div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Le temps qu'il fait</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       </div>
-                    </div>
-                    <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                      <div class="repli" data-from="2">
                       <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                       <div class="mc-ligne" data-on="3"><span class="mc-ico"></span><span class="mc-t" id="bi-titre">Activité 1 — Les séismes</span>
                         <span class="mc-doc">Fiche<span class="puce puce--4" id="bi-pc" data-on="4">4A</span><span class="puce puce--4">4B</span><span class="lect-b" id="bi-play" data-on="5"><i></i></span></span>
@@ -396,9 +394,10 @@
                       <div class="mc-ligne"><span class="mc-ico mc-ico--tab"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche<span class="lect-b"><i></i></span></span><span class="mc-lien">Carte des séismes</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       <div class="mc-sep"></div>
                       <div class="mc-ligne" id="bi-eval" data-on="6"><span class="mc-ico mc-ico--eval"></span><span class="mc-eval">Évaluation</span><span class="mc-t">Séismes et volcans</span><span class="mc-doc">Sujet</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      </div>
                     </div>
-                    <div class="bulle bulle--bas" data-at="4" style="left:228px;top:172px;max-width:320px;white-space:nowrap">Ouvrir la copie de 4A · mer. 18 nov. à 08:15</div>
-                    <div class="bulle bulle--bas" data-at="5" style="left:272px;top:172px;max-width:340px;white-space:nowrap">Essayer en classe : rien n'est gardé en quittant</div>
+                    <div class="bulle bulle--bas" data-at="4" style="left:228px;top:120px;max-width:320px;white-space:nowrap">Ouvrir la copie de 4A · mer. 18 nov. à 08:15</div>
+                    <div class="bulle bulle--bas" data-at="5" style="left:272px;top:120px;max-width:340px;white-space:nowrap">Essayer en classe : rien n'est gardé en quittant</div>
                   </div>
                 </div>
               </div>
@@ -416,7 +415,7 @@
         <p class="fiche__but">Retrouver un cours par son titre, sa séquence, son niveau, ou par un mot écrit dans son texte.</p>
         <ol class="etapes">
           <li data-cursor="#re-champ" data-action="click" data-duration="3000">Taper un ou plusieurs mots dans <b>Chercher un cours, une séquence, un mot du texte</b>.</li>
-          <li data-cursor="#re-res" data-duration="3400">La liste se resserre aussitôt aux cours dont le titre, la séquence ou le niveau contiennent tous les mots. Tous les niveaux se déplient.</li>
+          <li data-cursor="#re-res" data-duration="3400">La liste se resserre aussitôt aux cours dont le titre, la séquence ou le niveau contiennent tous les mots. Les onglets s'effacent : tous les niveaux qui ont un résultat s'affichent l'un sous l'autre.</li>
           <li data-cursor="#re-texte" data-duration="3800">Après une courte pause, la section <b>Dans le texte</b> s'ajoute en bas : les cours rédigés qui contiennent ces mots, avec un extrait où ils sont surlignés.</li>
           <li data-cursor="#re-champ">La touche Échap vide le champ : toute la bibliothèque revient.</li>
         </ol>
@@ -454,10 +453,8 @@
 <div class="vues"><span class="vue is-actif" id="re-v-bib">Bibliothèque</span><span class="vue" id="re-v-meth">Fiches méthode</span><span class="vue" id="re-v-cls">Par classe</span><span class="vue" id="re-v-clr">Classeur des classes</span></div>
                     <div class="rech" id="re-champ" data-on="1-3"><span class="repli" data-at="1-3" data-type="volcan" data-type-at="1"></span><span class="ph repli" data-at="4">Chercher un cours, une séquence, un mot du texte</span></div>
                     <div class="repli" data-at="1,4">
-                      <div class="mc-carte"><div class="mc-niv"><span class="mc-chev is-on">▾</span>6e<span class="muet">5</span></div></div>
-                      <div class="mc-carte"><div class="mc-niv"><span class="mc-chev is-on">▾</span>5e<span class="muet">7</span></div></div>
                       <div class="mc-carte">
-                        <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                        <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                         <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Documents</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -466,12 +463,12 @@
                     </div>
                     <div class="repli" data-at="2-3" id="re-res">
                       <div class="mc-carte">
-                        <div class="mc-niv"><span class="mc-chev">▾</span>6e<span class="muet">1</span></div>
+                        <div class="mc-niv">6e<span class="muet">1</span></div>
                         <div class="mc-seq">SÉQUENCE 1 — VOLCANS ET PAYSAGES</div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Le relief autour de nous</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       </div>
                       <div class="mc-carte">
-                        <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">2</span></div>
+                        <div class="mc-niv">4e<span class="muet">2</span></div>
                         <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                         <div class="mc-ligne"><span class="mc-ico mc-ico--eval"></span><span class="mc-eval">Évaluation</span><span class="mc-t">Séismes et volcans</span><span class="mc-doc">Sujet</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -534,7 +531,7 @@
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="ap-v-bib">Bibliothèque</span><span class="vue" id="ap-v-meth">Fiches méthode</span><span class="vue" id="ap-v-cls">Par classe</span><span class="vue" id="ap-v-clr">Classeur des classes</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                       <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t" id="ap-titre">Activité 1 — Les séismes</span><span class="mc-doc" id="ap-fiche" data-on="1">Fiche</span><span class="mc-doc mc-doc--gris" id="ap-docs" data-on="2">Documents</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       <div class="mc-ligne"><span class="mc-ico mc-ico--tab"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc" id="ap-tab" data-on="3">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -599,7 +596,7 @@
 <div class="app__entete"><span class="app__titre">Mes cours</span><span class="esp"></span><span class="b b--fantome b--petit"><i class="livre"></i>Classeur</span><span class="b b--fantome b--petit">Brouillon</span><span class="b b--petit" id="nc-nouveau">+ Nouveau</span></div>
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="nc-v-bib">Bibliothèque</span><span class="vue" id="nc-v-meth">Fiches méthode</span><span class="vue" id="nc-v-cls">Par classe</span><span class="vue" id="nc-v-clr">Classeur des classes</span></div>
-                    <div class="mc-carte"><div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div><div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div><div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span></div></div>
+                    <div class="mc-carte"><div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div><div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div><div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span></div></div>
                   </div>
                 </div>
                 <div class="modale-fond" data-from="2">
@@ -685,7 +682,7 @@
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="ma-v-bib">Bibliothèque</span><span class="vue" id="ma-v-meth">Fiches méthode</span><span class="vue" id="ma-v-cls">Par classe</span><span class="vue" id="ma-v-clr">Classeur des classes</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                       <div class="mc-ligne" data-on="1-3,5"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus" id="ma-plus">⋯</span></div>
                       <div class="mc-ligne repli glisse-haut" data-from="4" id="ma-copie" data-on="4"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes (copie)</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -738,13 +735,13 @@
           <li data-cursor="#fm-fiche" data-duration="3400">Même présentation que la bibliothèque. Les fiches sans niveau sont réunies sous <b>Tous niveaux</b> ; chacune a son bouton <b>Fiche</b>.</li>
           <li data-cursor="#fm-nouveau" data-action="click"><span class="btn-nom">+ Nouveau</span> depuis cet onglet crée une fiche méthode, rangée d'office ici.</li>
           <li data-cursor="#fm-remettre" data-action="click" data-duration="3400">Pour en sortir une : <b>⋯</b> › <span class="btn-nom">Remettre dans la bibliothèque</span>.</li>
-          <li data-cursor="#fm-retour" data-duration="3800">La fiche revient dans la bibliothèque, sous son niveau. Dans l'autre sens, depuis la bibliothèque : <b>⋯</b> d'un cours › <b>Ranger dans les fiches méthode</b>.</li>
+          <li data-cursor="#fm-retour" data-duration="3800">La fiche revient dans la bibliothèque, dans l'onglet de son niveau (ici <b>Sans niveau</b>). Dans l'autre sens, depuis la bibliothèque : <b>⋯</b> d'un cours › <b>Ranger dans les fiches méthode</b>.</li>
         </ol>
         <aside class="regles">
           <h3>À savoir</h3>
           <ul>
             <li>Une fiche méthode s'intitule « FM1 — … » à « FM9 — … ».</li>
-            <li>Le pliage des niveaux est gardé à part pour cet onglet. Ni fichiers joints ni jauge de stockage ici.</li>
+            <li>Le niveau choisi est gardé à part pour les fiches méthode. Ni fichiers joints ni jauge de stockage ici.</li>
             <li>Recherche : « Chercher une fiche méthode, un mot du texte ».</li>
           </ul>
         </aside>
@@ -774,17 +771,16 @@
 <div class="vues"><span class="vue" id="fm-v-bib" data-on="1,5">Bibliothèque</span><span class="vue" id="fm-v-meth" data-on="2-4">Fiches méthode</span><span class="vue" id="fm-v-cls">Par classe</span><span class="vue" id="fm-v-clr">Classeur des classes</span></div>
                     <div class="repli" data-at="1,5">
                       <div class="rech"><span class="ph">Chercher un cours, une séquence, un mot du texte</span></div>
-                      <div class="mc-carte"><div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">4</span></div><div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
-                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
-                      </div>
-                      <div class="mc-carte repli glisse-haut" data-at="5"><div class="mc-niv"><span class="mc-chev">▾</span>Sans niveau<span class="muet">1</span></div>
-                        <div class="mc-ligne" id="fm-retour" data-on="5"><span class="mc-ico"></span><span class="mc-t">FM4 — Lire une carte</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
+                      <div class="mc-carte"><div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4" data-on="1">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span><span class="mc-ong repli" data-at="5" data-on="5">Sans niveau<span class="muet">1</span></span></div>
+                        <div class="repli" data-at="1"><div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
+                        <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div></div>
+                        <div class="mc-ligne repli" id="fm-retour" data-at="5" data-on="5"><span class="mc-ico"></span><span class="mc-t">FM4 — Lire une carte</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       </div>
                     </div>
                     <div class="repli" data-at="2-4">
                       <div class="rech"><span class="ph">Chercher une fiche méthode, un mot du texte</span></div>
                       <div class="mc-carte">
-                        <div class="mc-niv"><span class="mc-chev">▾</span>Tous niveaux<span class="muet">4</span></div>
+                        <div class="mc-niv">Tous niveaux<span class="muet">4</span></div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">FM1 — Réaliser un dessin d'observation</span><span class="mc-doc" id="fm-fiche" data-on="2">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">FM2 — Construire un graphique</span><span class="mc-doc">Fiche<span class="puce puce--4">4A</span></span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                         <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">FM3 — Utiliser le microscope</span><span class="mc-doc">Fiche</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -859,7 +855,7 @@
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="sf-v-bib">Bibliothèque</span><span class="vue" id="sf-v-meth">Fiches méthode</span><span class="vue" id="sf-v-cls">Par classe</span><span class="vue" id="sf-v-clr">Classeur des classes</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">3</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="mc-seq" id="sf-seq" data-on="4">
                         <span class="repli" data-at="1-2">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</span>
                         <span class="renomme repli" id="sf-champ" data-at="3"><span data-type="SÉQUENCE 2 — SÉISMES ET VOLCANS" data-type-at="3"></span></span>
@@ -871,7 +867,6 @@
                       <div class="mc-fichier"><span style="font-size:12px;color:var(--text-dim)"><span class="ic ic-note" aria-hidden="true"></span></span>Bruit d'un séisme.mp3<span class="taille">320 Ko</span><span class="mc-plus">⋯</span></div>
                       <div class="mc-fichier repli glisse-haut" data-from="5" id="sf-fic"><span class="clip"></span>Carte des plaques.pdf<span class="taille">1,4 Mo</span><span class="mc-plus" id="sf-plusf">⋯</span></div>
                     </div>
-                    <div class="mc-carte"><div class="mc-niv"><span class="mc-chev is-on">▾</span>3e<span class="muet">6</span></div></div>
                     <div class="jauge" id="sf-jauge" data-on="7">Stockage : 312 Mo sur 1,00 Go<i></i></div>
                     <div class="menu zoom" data-at="2" style="left:300px;top:140px;width:200px">
                       <div class="menu__it">Ajouter un fichier…</div>
@@ -937,7 +932,7 @@
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="ls-v-bib">Bibliothèque</span><span class="vue" id="ls-v-meth">Fiches méthode</span><span class="vue" id="ls-v-cls">Par classe</span><span class="vue" id="ls-v-clr">Classeur des classes</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">3</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                       <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       <div class="mc-ligne" data-on="1"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche</span><span class="mc-lien repli zoom" id="ls-bouton" data-at="5">Carte des séismes</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -1025,7 +1020,7 @@
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="pl-v-bib">Bibliothèque</span><span class="vue" id="pl-v-meth">Fiches méthode</span><span class="vue" id="pl-v-cls">Par classe</span><span class="vue" id="pl-v-clr">Classeur des classes</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">3</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                       <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche<span class="puce puce--4">4A</span></span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       <div class="mc-ligne" data-on="1"><span class="mc-ico"></span><span class="mc-t">Activité 3 — Les risques</span><span class="mc-doc">Fiche<span class="puce puce--4 repli zoom" id="pl-pc" data-from="6">4A</span><span class="puce puce--4 repli zoom" data-from="6">4B</span></span><span class="esp"></span><span class="mc-plus">⋯</span></div>
@@ -1381,7 +1376,7 @@
                   <div class="app__corps">
 <div class="vues"><span class="vue is-actif" id="ll-v-bib">Bibliothèque</span><span class="vue" id="ll-v-meth">Fiches méthode</span><span class="vue" id="ll-v-cls">Par classe</span><span class="vue" id="ll-v-clr">Classeur des classes</span></div>
                     <div class="mc-carte">
-                      <div class="mc-niv"><span class="mc-chev">▾</span>4e<span class="muet">3</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">3</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="mc-seq">SÉQUENCE 2 — LA TERRE EN MOUVEMENT</div>
                       <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 1 — Les séismes</span><span class="mc-doc" id="ll-fiche" data-on="1-2">Fiche</span><span class="mc-doc mc-doc--gris">Documents</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>
                       <div class="mc-ligne"><span class="mc-ico"></span><span class="mc-t">Activité 2 — Les volcans</span><span class="mc-doc">Fiche</span><span class="mc-doc mc-doc--gris">Correction</span><span class="esp"></span><span class="mc-plus">⋯</span></div>

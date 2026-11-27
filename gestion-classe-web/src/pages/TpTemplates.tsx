@@ -175,7 +175,7 @@ export function TpTemplates() {
         {levels.length > 0 && (
           <TpLibrary
             levels={levels}
-            expandAll={filtering}
+            expandAll={words.length > 0}
             onOpen={open}
             onEdit={setEditing}
             onDuplicate={(tp) => void duplicate(tp)}

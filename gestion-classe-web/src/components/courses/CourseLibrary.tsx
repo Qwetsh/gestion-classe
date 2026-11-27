@@ -8,7 +8,7 @@
  * Le même composant montre l'onglet « Fiches méthode » (`shelf="methodes"`) : chaque fiche y a son
  * bouton « Fiche », pour l'aperçu au survol, et les fiches sans niveau sont « Tous niveaux ».
  */
-import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ClipboardCheck, ExternalLink, FileText, FlaskConical, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
@@ -20,16 +20,14 @@ import {
 import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu, type MoreMenuItem } from '../MoreMenu';
 import { ContextMenu } from '../ContextMenu';
+import { LevelTabs } from '../LevelTabs';
+import { useTabChoice } from '../useTabChoice';
 import { shareEligible } from '../../lib/mobileVersion';
 import { SequenceFiles } from './SequenceFiles';
 import { CoursePeek, prefetchPreview, type PeekTarget } from './CoursePeek';
 
+/** Onglet de niveau choisi la dernière fois, gardé à part pour chaque rayon. */
 const LEVEL_TAB_KEY = 'mes-cours-niveau';
-
-/** Onglet de niveau choisi la dernière fois, pour chaque rayon. */
-function readLevelTabs(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(LEVEL_TAB_KEY) || '{}') as Record<string, string>; } catch { return {}; }
-}
 
 interface Props {
   levels: LibraryLevel[];
@@ -90,11 +88,7 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
   };
   // ---- Onglets de niveau : un seul niveau à l'écran, le dernier choisi étant mémorisé à part pour chaque rayon ----
   const levelName = (level: string | null) => level ?? (methods ? 'Tous niveaux' : NO_LEVEL);
-  const [pickedLevel, setPickedLevel] = useState<string | undefined>(() => readLevelTabs()[shelf]);
-  const pickLevel = (name: string) => {
-    setPickedLevel(name);
-    try { localStorage.setItem(LEVEL_TAB_KEY, JSON.stringify({ ...readLevelTabs(), [shelf]: name })); } catch { /* stockage indisponible */ }
-  };
+  const [pickedLevel, pickLevel] = useTabChoice(LEVEL_TAB_KEY, shelf);
   const tabbed = !expandAll && levels.length > 1;
   const current = levelOnTab(levels, pickedLevel, levelName);
   const shownLevels = expandAll ? levels : current ? [current] : [];
@@ -288,27 +282,14 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
           <section key={name} className="mc-level" aria-label={name}>
             {tabbed ? (
               // Les onglets coiffent la carte du niveau montré ; chacun porte la teinte de son niveau
-              <div className="mc-level-tabs" role="tablist" aria-label="Niveau">
-                {levels.map((l) => {
-                  const tabName = levelName(l.level);
-                  return (
-                    <button
-                      key={tabName}
-                      type="button"
-                      role="tab"
-                      aria-selected={tabName === name}
-                      className="mc-level-tab"
-                      style={{ '--mc-tab-tone': classTone(tabName).solid } as CSSProperties}
-                      onClick={() => pickLevel(tabName)}
-                    >
-                      <span className="mc-level__name">{tabName}</span>
-                      <span className="mc-level__count">{l.count}</span>
-                    </button>
-                  );
-                })}
-              </div>
+              <LevelTabs
+                label="Niveau"
+                tabs={levels.map((l) => { const tabName = levelName(l.level); return { key: tabName, label: tabName, count: l.count, tone: classTone(tabName).solid }; })}
+                selected={name}
+                onSelect={pickLevel}
+              />
             ) : (
-              <div className="mc-level__head mc-level__head--static">
+              <div className="mc-level__head">
                 <span className="mc-level__name">{name}</span>
                 <span className="mc-level__count">{count}</span>
               </div>

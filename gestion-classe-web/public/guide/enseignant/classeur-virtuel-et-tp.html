@@ -308,7 +308,7 @@
                   <div class="app__corps">
                     <div class="segs" style="margin-bottom:12px"><span class="seg is-actif">Bibliothèque</span><span class="seg">Fiches méthode</span><span class="seg">Par classe</span><span class="seg">Classeur des classes</span></div>
                     <div class="lib-carte">
-                      <div class="lib-niv"><span class="lib-chev">▾</span>4e<span class="muet">9</span></div>
+                      <div class="mc-ongs"><span class="mc-ong mc-ong--6">6e<span class="muet">5</span></span><span class="mc-ong mc-ong--5">5e<span class="muet">7</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">9</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">6</span></span></div>
                       <div class="lib-seq">Séquence 2 — La Terre en mouvement</div>
                       <div class="lib-ligne"><span class="lib-ico"></span>Page de garde — Séquence 2</div>
                       <div class="lib-ligne"><span class="lib-ico"></span>Activité 1 — Les séismes</div>
@@ -721,8 +721,8 @@
         <p class="fiche__ou"><span class="qui qui--ordi">Ordinateur</span><span class="chemin">Mes cours › Mes TP</span></p>
         <p class="fiche__but">La bibliothèque des modèles de TP (matériel, protocole, sécurité, barème, photos), rangée niveau › séquence comme Mes cours. Ils sont repris tels quels au lancement d'une séance de TP en groupes.</p>
         <ol class="etapes">
-          <li data-cursor="#tp-menu" data-action="click">Ouvrir <b>Mes cours</b> › <span class="btn-nom">Mes TP</span>. Chaque ligne : nom, séances déjà faites, activité reliée, durée, points.</li>
-          <li data-cursor="#tp-cherche" data-action="click">Chercher dans « Chercher un TP, une séquence, du matériel », ou filtrer par thème avec les onglets.</li>
+          <li data-cursor="#tp-menu" data-action="click">Ouvrir <b>Mes cours</b> › <span class="btn-nom">Mes TP</span>. Un onglet par niveau, comme dans Mes cours. Chaque ligne : nom, séances déjà faites, activité reliée, durée, points.</li>
+          <li data-cursor="#tp-cherche" data-action="click">Chercher dans « Chercher un TP, une séquence, du matériel », ou filtrer par thème avec les boutons <b>Tous</b>, <b>Planète Terre</b>… Pendant une recherche, tous les niveaux s'affichent l'un sous l'autre.</li>
           <li data-cursor="#tp-ligne" data-action="click">Cliquer un TP ouvre sa fiche.</li>
           <li data-cursor="#tp-plus" data-action="click">Le menu <b>⋯</b> d'un TP : <b>Modifier</b>, <b>Imprimer la fiche</b>, <b>Dupliquer</b>, <b>Supprimer</b>.</li>
           <li data-cursor="#tp-nouveau" data-action="click"><span class="btn-nom">+ Nouveau TP</span> ouvre le formulaire.</li>
@@ -764,7 +764,7 @@
                       <span class="segs"><span class="seg is-actif">Tous</span><span class="seg">Planète Terre</span><span class="seg">Le vivant</span><span class="seg">Corps humain et santé</span></span>
                     </div>
                     <div class="lib-carte">
-                      <div class="lib-niv"><span class="lib-chev">▾</span>4e<span class="muet">4 TP</span></div>
+                      <div class="mc-ongs repli" data-at="1,3-5"><span class="mc-ong mc-ong--5">5e<span class="muet">3</span></span><span class="mc-ong mc-ong--4 is-actif">4e<span class="muet">4</span></span><span class="mc-ong mc-ong--3">3e<span class="muet">5</span></span></div><div class="lib-niv repli" data-at="2">4e<span class="muet">1 TP</span></div>
                       <div class="lib-seq">Séquence 2 — La Terre en mouvement</div>
                       <div class="lib-ligne" id="tp-ligne" data-on="3"><span class="lib-fiole"></span>Observer des roches volcaniques<span class="esp"></span><span class="lib-chiffres"><span>3 séances</span><span>Activité 3</span><span>55 min</span><b>20 pts</b></span><span class="lib-plus">⋯</span></div>
                       <div class="lib-ligne repli" data-at="1,3-5"><span class="lib-fiole"></span>Modéliser une éruption<span class="esp"></span><span class="lib-chiffres"><span>Activité 4</span><span>50 min</span><b>15 pts</b></span><span class="lib-plus" id="tp-plus" data-on="4">⋯</span></div>
@@ -940,7 +940,7 @@
         <p class="fiche__but">Retrouver un sujet de brevet par thème du programme ou par session, le lire en grand et copier son lien pour l'ENT.</p>
         <ol class="etapes">
           <li data-cursor="#an-svt" data-action="click">Choisir la matière dans les onglets : SVT, Physique-Chimie, Maths, Français, Histoire-Géo-EMC.</li>
-          <li data-cursor="#an-session" data-action="click">En SVT, ranger <span class="btn-nom">Par thème</span> ou <span class="btn-nom">Par session</span> ; chercher avec « Chercher un sujet : séisme, génétique, 2024… ».</li>
+          <li data-cursor="#an-session" data-action="click">En SVT, ranger <span class="btn-nom">Par thème</span> ou <span class="btn-nom">Par session</span> : chaque thème, chaque session a son onglet au-dessus de la liste. Chercher avec « Chercher un sujet : séisme, génétique, 2024… ».</li>
           <li data-cursor="#an-ligne" data-action="click">Cliquer un sujet : il s'ouvre dans le lecteur, avec le centre, la session et le code du sujet.</li>
           <li data-cursor="#an-outils" data-duration="3000">La barre du lecteur : page précédente ou suivante, zoom, largeur, <b>Nouvel onglet ↗</b>. La croix, Échap ou un clic à côté le ferme.</li>
           <li data-cursor="#an-plus" data-action="click">Le menu <b>⋯</b> d'un sujet : <b>Ouvrir dans un onglet</b>, <b>Copier le lien</b> (lien direct vers le PDF), et <b>Supprimer</b> pour un sujet qu'on a ajouté.</li>
@@ -950,7 +950,7 @@
           <ul>
             <li>Deux sources réunies : un catalogue intégré de sujets (sessions 2021 à 2025, toutes matières) et les sujets ajoutés depuis l'application, partagés entre collègues et avec les élèves.</li>
             <li>Un sujet ajouté ne peut être supprimé que par le compte qui l'a ajouté.</li>
-            <li>Matière, rangement et sections repliées sont gardés sur l'appareil.</li>
+            <li>Matière, rangement et onglet choisi sont gardés sur l'appareil.</li>
             <li>L'onglet Annales des élèves s'active par classe.</li>
           </ul>
         </aside>
@@ -980,18 +980,15 @@
                     <div class="segs" style="margin-bottom:10px"><span class="seg" id="an-svt" data-on="1-5">SVT</span><span class="seg">Physique-Chimie</span><span class="seg">Maths</span><span class="seg">Français</span><span class="seg">Histoire-Géo-EMC</span></div>
                     <div class="ligne" style="margin-bottom:10px"><span class="recherche" style="width:300px">Chercher un sujet : séisme, génétique, 2024…</span><span class="segs"><span class="seg" data-on="1">Par thème</span><span class="seg" id="an-session" data-on="2-5">Par session</span></span></div>
                     <div class="lib-carte" data-to="1">
-                      <div class="lib-niv"><span class="lib-chev">▾</span>Planète Terre, environnement et action humaine<span class="muet">3 sujets</span></div>
+                      <div class="mc-ongs mc-ongs--long"><span class="mc-ong is-actif">Planète Terre, environnement et action humaine<span class="muet">3</span></span><span class="mc-ong">Le vivant et son évolution<span class="muet">2</span></span><span class="mc-ong">Le corps humain et la santé<span class="muet">2</span></span></div>
                       <div class="lib-ligne"><span class="lib-ico"></span>Séismes et prévention<span class="esp"></span><span class="muet">2024</span><span class="lib-plus">⋯</span></div>
                       <div class="lib-ligne"><span class="lib-ico"></span>Un climat qui change<span class="esp"></span><span class="muet">2023</span><span class="lib-plus">⋯</span></div>
-                      <div class="lib-niv" style="border-top:1px solid var(--border)"><span class="lib-chev">▾</span>Le vivant et son évolution<span class="muet">2 sujets</span></div>
-                      <div class="lib-ligne"><span class="lib-ico"></span>Une plante et ses pollinisateurs<span class="esp"></span><span class="muet">2022</span><span class="lib-plus">⋯</span></div>
+                      <div class="lib-ligne"><span class="lib-ico"></span>Inondations et aménagement<span class="esp"></span><span class="muet">2022</span><span class="lib-plus">⋯</span></div>
                     </div>
                     <div class="lib-carte" data-from="2" style="position:absolute;left:20px;right:20px;top:100px">
-                      <div class="lib-niv"><span class="lib-chev">▾</span>Session 2024<span class="muet">2 sujets</span></div>
+                      <div class="mc-ongs"><span class="mc-ong is-actif">Session 2024<span class="muet">2</span></span><span class="mc-ong">Session 2023<span class="muet">2</span></span><span class="mc-ong">Session 2022<span class="muet">3</span></span></div>
                       <div class="lib-ligne" id="an-ligne" data-on="3"><span class="lib-ico"></span>Séismes et prévention<span class="esp"></span><span class="lib-plus" id="an-plus" data-on="5">⋯</span></div>
                       <div class="lib-ligne"><span class="lib-ico"></span>L'alimentation et la santé<span class="esp"></span><span class="lib-plus">⋯</span></div>
-                      <div class="lib-niv" style="border-top:1px solid var(--border)"><span class="lib-chev">▾</span>Session 2023<span class="muet">2 sujets</span></div>
-                      <div class="lib-ligne"><span class="lib-ico"></span>Un climat qui change<span class="esp"></span><span class="lib-plus">⋯</span></div>
                     </div>
                     <div class="menu glisse-haut" data-at="5" style="right:28px;top:176px;min-width:190px">
                       <div class="menu__it">Ouvrir dans un onglet</div><div class="menu__it">Copier le lien</div><div class="menu__it" style="color:var(--neg)">Supprimer</div>
@@ -1058,7 +1055,7 @@
                   <div class="app__corps">
                     <div class="segs" style="margin-bottom:10px"><span class="seg is-actif">SVT</span><span class="seg">Physique-Chimie</span><span class="seg">Maths</span><span class="seg">Français</span><span class="seg">Histoire-Géo-EMC</span></div>
                     <div class="lib-carte">
-                      <div class="lib-niv"><span class="lib-chev">▾</span>Session 2025<span class="repli muet" data-to="5">1 sujet</span><span class="muet repli" data-from="6">2 sujets</span></div>
+                      <div class="mc-ongs"><span class="mc-ong is-actif">Session 2025<span class="repli muet" data-to="5">1</span><span class="muet repli" data-from="6">2</span></span><span class="mc-ong">Session 2024<span class="muet">2</span></span><span class="mc-ong">Session 2023<span class="muet">2</span></span></div>
                       <div class="lib-ligne repli glisse-haut" data-from="6" style="background:var(--indigo-soft)"><span class="lib-ico"></span>Les ressources en eau d'un territoire<span class="esp"></span><span class="lib-plus">⋯</span></div>
                       <div class="lib-ligne"><span class="lib-ico"></span>Le sommeil des adolescents<span class="esp"></span><span class="lib-plus">⋯</span></div>
                     </div>
