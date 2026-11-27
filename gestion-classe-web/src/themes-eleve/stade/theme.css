@@ -1,0 +1,138 @@
+/* Thème « Stade » (espace élève) : nuit de match, vert pelouse, jaune fluo. */
+.el[data-theme='stade'] {
+  --el-bg: #0B1F17; --el-surface: #132E22; --el-line: #24503A; --el-line-soft: #1B3F2E; --el-line-strong: #33704F;
+  --el-text: #F1FFF6; --el-muted: #BFE0CC; --el-dim: #9CC4AE;
+  --el-indigo: #B8F24A; --el-indigo-ink: #D6FA96; --el-indigo-soft: #223F1A;
+  --el-pos: #6EE7A8; --el-pos-ink: #A6F2C8; --el-pos-soft: #0F3B2A;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8A8A; --el-neg-soft: #45191E;
+  --el-track: #1E4632; --el-on-accent: #10240A; --el-radio: #5E9278;
+  --el-radius: 10px; --el-radius-sm: 8px;
+  --el-font-display: 'Barlow Condensed', 'Arial Narrow', 'Inter', sans-serif;
+  color-scheme: dark;
+}
+.el[data-theme='stade'] .el-main { padding-top: 244px; }
+.el[data-theme='stade'] .el-h1 { font-size: 36px; line-height: 38px; font-weight: 700; font-style: italic; text-transform: uppercase; letter-spacing: 0.01em; }
+.el[data-theme='stade'] .el-big { font-size: 40px; line-height: 40px; font-weight: 700; }
+.el[data-theme='stade'] .el-mid { font-size: 30px; line-height: 32px; font-weight: 700; }
+.el[data-theme='stade'] .el-card,
+.el[data-theme='stade'] .el-tile,
+.el[data-theme='stade'] .el-tilebox { background: rgba(19, 46, 34, 0.94); }
+.el[data-theme='stade'] .el-btn--primary { font-family: var(--el-font-display); font-size: 20px; font-weight: 700; font-style: italic; text-transform: uppercase; letter-spacing: 0.04em; box-shadow: 0 6px 18px rgba(184, 242, 74, 0.28); }
+
+/* ---- La scène ---- */
+[data-scene='stade'] .st-sky {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 260px at 14% 30px, rgba(220, 255, 235, 0.2), transparent 70%),
+    radial-gradient(ellipse 60% 260px at 86% 30px, rgba(220, 255, 235, 0.2), transparent 70%),
+    linear-gradient(#06130E 0, #0A1C15 240px, #0B1F17 480px);
+}
+[data-scene='stade'] .st-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='stade'] .st-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* Tribunes : la foule est faite de points ; des flashs y crépitent au hasard */
+[data-scene='stade'] .st-stands { height: 130px; }
+[data-scene='stade'] .st-stands::after { content: ''; position: absolute; left: 0; right: 0; top: 129px; height: calc(100vh + 900px); background: #0F2B20; }
+[data-scene='stade'] .st-fan { fill: #3F7A5E; transform-box: fill-box; transform-origin: center; animation: st-flash var(--d) linear infinite; animation-delay: var(--delay); }
+[data-scene='stade'] .st-fan--1 { fill: #558F74; }
+[data-scene='stade'] .st-fan--2 { fill: #2F6A50; }
+@keyframes st-flash { 0%, 88% { fill: #3F7A5E; transform: scale(1); } 92% { fill: #FFFFFF; transform: scale(2); } 100% { fill: #3F7A5E; transform: scale(1); } }
+
+/* Projecteurs : les lampes brillent, les faisceaux respirent */
+[data-scene='stade'] .st-lights { height: 200px; }
+[data-scene='stade'] .st-beam { fill: rgba(232, 255, 240, 0.13); animation: st-beam 6s ease-in-out infinite alternate; }
+@keyframes st-beam { from { opacity: 0.55; } to { opacity: 1; } }
+[data-scene='stade'] .st-lamps circle { fill: #F6FFEA; filter: drop-shadow(0 0 3px rgba(240, 255, 220, 0.9)); }
+[data-scene='stade'] .st-board text { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; }
+[data-scene='stade'] .st-board__score { font-size: 9.5px; fill: #F1FFF6; letter-spacing: 0.06em; }
+[data-scene='stade'] .st-board__clock { font-size: 9px; fill: #B8F24A; letter-spacing: 0.1em; }
+[data-scene='stade'] .st-board__colon { animation: st-colon 1s steps(1) infinite; }
+@keyframes st-colon { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+[data-scene='stade'] .st-board__goal { font-size: 19px; font-style: italic; fill: #B8F24A; opacity: 0; }
+
+/* Pelouse : des bandes de tonte, les lignes blanches, le but et son filet */
+[data-scene='stade'] .st-pitch { height: 90px; }
+[data-scene='stade'] .st-grass {
+  position: absolute; left: 0; right: 0; top: 0; height: calc(100vh + 900px);
+  background:
+    linear-gradient(rgba(11, 31, 23, 0) 0, rgba(11, 31, 23, 0) 56px, rgba(11, 31, 23, 0.6) 78px, #0B1F17 100px),
+    repeating-linear-gradient(90deg, #1F7A3A 0 44px, #1A6A32 44px 88px);
+}
+[data-scene='stade'] .st-lines { fill: none; stroke: rgba(241, 255, 246, 0.82); stroke-width: 1.6; overflow: visible; }
+[data-scene='stade'] .st-goal { stroke: #FFFFFF; stroke-width: 2.4; }
+[data-scene='stade'] .st-net {
+  stroke: none; fill: rgba(255, 255, 255, 0.16); transform-box: fill-box; transform-origin: 0 50%;
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 5px);
+  mask: repeating-linear-gradient(90deg, #000 0 1px, transparent 1px 5px), repeating-linear-gradient(0deg, #000 0 1px, transparent 1px 5px);
+  fill: rgba(255, 255, 255, 0.85);
+}
+[data-scene='stade'] .st-shadow { fill: rgba(0, 0, 0, 0.35); stroke: none; }
+[data-scene='stade'] .st-ball { transform-box: fill-box; transform-origin: center; animation: st-idle 2.4s ease-in-out infinite; }
+@keyframes st-idle { 0%, 70%, 100% { transform: translateY(0); } 80% { transform: translateY(-5px); } 90% { transform: translateY(0); } 95% { transform: translateY(-2px); } }
+
+/* ---- Au toucher (le ballon) : frappe en cloche dans la lucarne ----
+   Le ballon avance à vitesse constante vers le but (`st-ballx`) pendant qu'il monte en ralentissant
+   puis redescend (`st-bally`) : une vraie trajectoire en cloche. Le filet se gonfle, la foule
+   s'illumine, le tableau affiche « BUT ! » ; le ballon retombe, puis revient à sa place. */
+[data-scene='stade'][data-fx~='but'] .st-ballx { animation: st-shot-x 3.8s linear both; }
+@keyframes st-shot-x {
+  0%, 4% { transform: translateX(0); }
+  30% { transform: translateX(204px); }
+  40% { transform: translateX(196px); }
+  62% { transform: translateX(190px); }
+  100% { transform: translateX(0); }
+}
+[data-scene='stade'][data-fx~='but'] .st-bally { animation: st-shot-y 3.8s linear both; }
+@keyframes st-shot-y {
+  0%, 4% { transform: translateY(0); animation-timing-function: cubic-bezier(0.15, 0.6, 0.35, 1); }
+  20% { transform: translateY(-86px); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  30% { transform: translateY(-74px); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  44% { transform: translateY(-4px); animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1); }
+  52% { transform: translateY(-20px); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  62%, 100% { transform: translateY(0); }
+}
+[data-scene='stade'][data-fx~='but'] .st-ball { animation: st-spin 3.8s linear both; }
+@keyframes st-spin { 0%, 4% { transform: rotate(0deg); } 62% { transform: rotate(760deg); } 100% { transform: rotate(0deg); } }
+[data-scene='stade'][data-fx~='but'] .st-shadow { animation: st-shadow 3.8s linear both; }
+@keyframes st-shadow { 0%, 4% { opacity: 1; transform: translateX(0); } 12%, 40% { opacity: 0; transform: translateX(196px); } 62% { opacity: 1; transform: translateX(190px); } 100% { opacity: 1; transform: translateX(0); } }
+[data-scene='stade'][data-fx~='but'] .st-net { animation: st-net 3.8s both; }
+@keyframes st-net { 0%, 29% { transform: scaleX(1); } 33% { transform: scaleX(1.28); } 40% { transform: scaleX(0.94); } 46%, 100% { transform: scaleX(1); } }
+[data-scene='stade'][data-fx~='but'] .st-fan { animation: st-cheer 0.5s ease-in-out 1.1s 4 alternate both; }
+@keyframes st-cheer { from { fill: #3F7A5E; transform: scale(1); } to { fill: #F6FFD0; transform: scale(1.9); } }
+[data-scene='stade'][data-fx~='but'] .st-board__goal { animation: st-goal 3.8s linear both; }
+@keyframes st-goal { 0%, 30% { opacity: 0; } 32%, 44% { opacity: 1; } 48% { opacity: 0.2; } 52%, 64% { opacity: 1; } 68% { opacity: 0.2; } 72%, 84% { opacity: 1; } 90%, 100% { opacity: 0; } }
+[data-scene='stade'][data-fx~='but'] .st-board__score,
+[data-scene='stade'][data-fx~='but'] .st-board__clock { animation: st-hide 3.8s linear both; }
+@keyframes st-hide { 0%, 30% { opacity: 1; } 32%, 88% { opacity: 0; } 92%, 100% { opacity: 1; } }
+
+/* ---- Au toucher (les tribunes) : la ola. Chaque point s'allume selon sa place de gauche à droite. ---- */
+[data-scene='stade'][data-fx~='ola'] .st-fan { animation: st-ola 1.5s ease-in-out both; animation-delay: calc(var(--u) * 1.5s); }
+@keyframes st-ola { 0%, 100% { fill: #3F7A5E; transform: translateY(0) scale(1); } 30% { fill: #F6FFD0; transform: translateY(-5px) scale(2.2); } 60% { fill: #B8F24A; transform: translateY(0) scale(1.3); } }
+
+/* ---- Changement d'onglet : le ballon traverse l'écran ----
+   La nouvelle page se découvre de gauche à droite, et un grand ballon roule exactement sur sa
+   limite (à 125 % de la largeur d'écran multipliée par l'avancement), en tournant ; quelques brins
+   d'herbe volent derrière lui. Même durée, même courbe, un seul mouvement. */
+html[data-el-nav='stade']::view-transition-old(root) { animation: none; }
+html[data-el-nav='stade']::view-transition-new(root) {
+  -webkit-mask: linear-gradient(90deg, #000 0 92%, transparent 100%) no-repeat 0 0 / 0% 100%;
+  mask: linear-gradient(90deg, #000 0 92%, transparent 100%) no-repeat 0 0 / 0% 100%;
+  animation: st-wipe 0.72s cubic-bezier(0.4, 0.05, 0.3, 1) both;
+}
+@keyframes st-wipe { from { -webkit-mask-size: 0% 100%; mask-size: 0% 100%; } to { -webkit-mask-size: 130% 100%; mask-size: 130% 100%; } }
+.el-front[data-scene='stade'] i:first-child {
+  left: -92px; top: calc(50% - 92px); width: 184px; height: 184px; border-radius: 50%; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23FFFFFF' stroke='%2310160F' stroke-width='3'/%3E%3Cpath d='M50 33L66.200 44.800L60 63.800H40L33.800 44.800Z' fill='%2310160F'/%3E%3Cg id='p' fill='%2310160F' stroke='%2310160F' stroke-width='2.400'%3E%3Cpath d='M50 33V17' fill='none'/%3E%3Cpath d='M50 17L60 9.500L56 2.500H44L40 9.500Z' stroke='none'/%3E%3C/g%3E%3Cuse href='%23p' transform='rotate(72 50 50)'/%3E%3Cuse href='%23p' transform='rotate(144 50 50)'/%3E%3Cuse href='%23p' transform='rotate(216 50 50)'/%3E%3Cuse href='%23p' transform='rotate(288 50 50)'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+.el-front[data-scene='stade'][data-on] i:first-child { animation: st-roll 0.72s cubic-bezier(0.4, 0.05, 0.3, 1) both; }
+@keyframes st-roll { from { opacity: 1; transform: translateX(0) rotate(0deg); } to { opacity: 1; transform: translateX(calc(125vw + 92px)) rotate(520deg); } }
+.el-front[data-scene='stade'] i:not(:first-child) {
+  left: -10px; top: calc(50% + 40px + var(--r2) * 70px); width: 4px; height: calc(8px + var(--r3) * 10px); border-radius: 3px 3px 0 0; background: #3FBF5A;
+}
+.el-front[data-scene='stade'][data-on] i:not(:first-child) { animation: st-turf 0.72s cubic-bezier(0.4, 0.05, 0.3, 1) both; }
+@keyframes st-turf {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(70vw + var(--r1) * 50vw), calc((var(--r1) - 0.7) * 120px)) rotate(calc(200deg + var(--r3) * 400deg)); }
+}

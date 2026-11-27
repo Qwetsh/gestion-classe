@@ -1,0 +1,139 @@
+/* Thème « Savane » (espace élève) : sable clair, ombres brunes, ciel doré. */
+.el[data-theme='savane'] {
+  --el-bg: #FBE7C4; --el-surface: #FFFCF4; --el-line: #E6CFA3; --el-line-soft: #F1E0BE; --el-line-strong: #CBAA72;
+  --el-text: #3A2410; --el-muted: #5A3E22; --el-dim: #6A4A2A;
+  --el-indigo: #A3470F; --el-indigo-ink: #7A3209; --el-indigo-soft: #F6D9B0;
+  --el-pos: #3F6B1A; --el-pos-ink: #35590F; --el-pos-soft: #E6ECC9;
+  --el-warn: #9A5A00; --el-warn-ink: #7C4700; --el-warn-soft: #F8E2AE;
+  --el-neg: #A32A1D; --el-neg-soft: #F7D8CB;
+  --el-track: #EAD3A6; --el-on-accent: #FFFFFF; --el-radio: #A88A5C;
+  --el-radius: 14px; --el-radius-sm: 12px;
+  --el-font-display: 'Baloo 2', 'Nunito', 'Inter', sans-serif;
+}
+.el[data-theme='savane'] .el-main { padding-top: 232px; }
+.el[data-theme='savane'] .el-h1 { font-size: 30px; line-height: 34px; }
+.el[data-theme='savane'] .el-btn--primary { box-shadow: 0 3px 0 #6E2E08; }
+
+/* ---- La scène ----
+   Chaque plan porte son sol (un aplat qui descend loin sous lui) : quand la scène s'en va au
+   défilement, un plan proche recouvre toujours ceux qui sont derrière. */
+[data-scene='savane'] {
+  --sa-blades: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='30' viewBox='0 0 120 30'%3E%3Cpath d='M0 30V14Q2 22 3 30ZM2 30Q3 18 0 8Q6 18 6 30ZM9 30Q11 14 15 4Q13 18 14 30ZM18 30Q18 20 14 12Q22 20 22 30ZM26 30Q29 12 35 0Q31 16 31 30ZM36 30Q36 22 33 15Q40 22 40 30ZM44 30Q46 16 43 6Q50 16 49 30ZM54 30Q56 18 62 9Q58 20 59 30ZM63 30Q64 12 60 2Q68 14 68 30ZM72 30Q73 22 77 14Q75 22 76 30ZM80 30Q82 14 88 5Q85 18 85 30ZM90 30Q90 18 86 9Q94 18 94 30ZM98 30Q100 20 104 12Q102 22 103 30ZM107 30Q108 12 105 3Q112 14 112 30ZM115 30Q117 20 120 14V30Z'/%3E%3C/svg%3E");
+}
+[data-scene='savane'] .sa-sky { height: 190px; background: linear-gradient(180deg, #FFF1C9 0%, #FFDD9E 52%, #FFBF78 100%); }
+[data-scene='savane'] .sa-sunlayer { height: 190px; }
+[data-scene='savane'] .sa-sun {
+  position: absolute; left: 150px; top: 78px; width: 118px; height: 118px; border-radius: 50%;
+  background: radial-gradient(circle, #FFFBE2 0 30%, #FFE9A6 44%, rgba(255, 214, 130, 0.55) 60%, rgba(255, 200, 120, 0) 74%);
+  animation: sa-sun 10s ease-in-out infinite alternate;
+}
+@keyframes sa-sun { from { transform: scale(1); } to { transform: scale(1.07); } }
+
+[data-scene='savane'] .sa-hills { height: 44px; }
+[data-scene='savane'] .sa-hills::after { content: ''; position: absolute; left: 0; right: 0; top: 43px; height: calc(100vh + 900px); background: #E08A42; }
+
+[data-scene='savane'] .sa-life { height: 190px; }
+[data-scene='savane'] .sa-animal, [data-scene='savane'] .sa-tree { position: absolute; height: auto; fill: #4E2A0C; stroke: #4E2A0C; }
+[data-scene='savane'] .sa-tree ellipse { fill: #5C3A10; stroke: none; }
+[data-scene='savane'] .sa-far { fill: #6A3F18; stroke: none; }
+[data-scene='savane'] .sa-ear { fill: #6A3F18; stroke: none; }
+[data-scene='savane'] .sa-tusk { stroke: #FFF2D2; }
+
+/* Le cou des girafes : un balancement lent, depuis l'épaule */
+[data-scene='savane'] .sa-neck { transform-box: view-box; transform-origin: 62px 104px; animation: sa-neck 7s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes sa-neck { from { transform: rotate(-2.2deg); } to { transform: rotate(2.6deg); } }
+[data-scene='savane'] .sa-tail { transform-box: view-box; transform-origin: 111px 103px; animation: sa-tail 3.4s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes sa-tail { from { transform: rotate(-7deg); } to { transform: rotate(9deg); } }
+/* L'oreille de l'éléphant s'ouvre et se referme, sa queue se balance */
+[data-scene='savane'] .sa-ear { transform-box: view-box; transform-origin: 119px 30px; animation: sa-ear 4.6s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes sa-ear { from { transform: scaleX(1); } to { transform: scaleX(0.8); } }
+[data-scene='savane'] .sa-etail { transform-box: view-box; transform-origin: 29px 46px; animation: sa-tail 4s ease-in-out infinite alternate; animation-delay: var(--delay); }
+
+/* Oiseaux : ils traversent le ciel en groupe, en battant des ailes */
+[data-scene='savane'] .sa-birds { height: 120px; }
+[data-scene='savane'] .sa-flock { position: absolute; top: 34px; left: 0; width: 120px; height: 40px; animation: sa-fly 44s linear infinite; }
+@keyframes sa-fly { from { transform: translate(-140px, 14px); } to { transform: translate(calc(100vw + 40px), -18px); } }
+[data-scene='savane'] .sa-bird { position: absolute; height: auto; fill: none; stroke: #5A3210; stroke-width: 1.8; stroke-linecap: round; animation: sa-flap 1.3s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.27s); }
+@keyframes sa-flap { from { transform: scaleY(1) translateY(0); } to { transform: scaleY(0.45) translateY(2px); } }
+
+/* Le sol des animaux : une bande sombre sous l'horizon, qui se fond dans le sable de la page */
+[data-scene='savane'] .sa-ground {
+  position: absolute; left: 0; right: 0; top: 176px; height: calc(100vh + 900px);
+  background: linear-gradient(#6E3B12 0, #B9783A 12px, #E9BE82 30px, #FBE7C4 52px);
+}
+
+/* Les herbes : un rang de brins (masque répété), puis leur sol */
+[data-scene='savane'] .sa-grass { left: -30px; right: -30px; height: 30px; --blade: #4E2A0C; }
+[data-scene='savane'] .sa-grass::before {
+  content: ''; position: absolute; inset: 0; background: var(--blade); transform-origin: 50% 100%;
+  -webkit-mask: var(--sa-blades) left bottom / 120px 30px repeat-x; mask: var(--sa-blades) left bottom / 120px 30px repeat-x;
+  animation: sa-sway 5.5s ease-in-out infinite alternate;
+}
+[data-scene='savane'] .sa-grass::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 29px; height: calc(100vh + 900px);
+  background: linear-gradient(var(--blade) 0, #B9783A 9px, #E9BE82 24px, #FBE7C4 44px);
+}
+[data-scene='savane'] .sa-grass--back { height: 22px; --blade: #6B3A14; }
+[data-scene='savane'] .sa-grass--back::before { -webkit-mask-size: 88px 22px; mask-size: 88px 22px; -webkit-mask-position: 31px bottom; mask-position: 31px bottom; }
+[data-scene='savane'] .sa-grass--back::after { top: 21px; }
+[data-scene='savane'] .sa-grass--front::before { animation-duration: 4.2s; animation-delay: -1.5s; }
+@keyframes sa-sway { from { transform: skewX(-5deg); } to { transform: skewX(6deg); } }
+
+/* La trompe : un léger balancement au repos */
+[data-scene='savane'] .sa-trunk { transform-box: view-box; transform-origin: 146px 40px; animation: sa-trunk 5s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes sa-trunk { from { transform: rotate(-3deg); } to { transform: rotate(4deg); } }
+[data-scene='savane'] .sa-toot path { opacity: 0; }
+
+/* ---- Au toucher (un éléphant) : il lève la trompe et barrit ---- */
+[data-scene='savane'][data-fx~='barrit'] .sa-trunk { animation: sa-trumpet 2.8s ease-in-out both; }
+@keyframes sa-trumpet {
+  0% { transform: rotate(0deg); }
+  22% { transform: rotate(-150deg); }
+  34% { transform: rotate(-140deg); }
+  46% { transform: rotate(-152deg); }
+  58% { transform: rotate(-141deg); }
+  72% { transform: rotate(-150deg); }
+  100% { transform: rotate(0deg); }
+}
+[data-scene='savane'][data-fx~='barrit'] .sa-ear { animation: sa-ear 0.32s ease-in-out infinite alternate; }
+[data-scene='savane'][data-fx~='barrit'] .sa-toot path { animation: sa-toot 2.8s linear both; }
+[data-scene='savane'][data-fx~='barrit'] .sa-toot path:nth-child(2) { animation-delay: 0.1s; }
+[data-scene='savane'][data-fx~='barrit'] .sa-toot path:nth-child(3) { animation-delay: 0.2s; }
+@keyframes sa-toot { 0%, 22% { opacity: 0; } 30% { opacity: 1; } 42% { opacity: 0; } 50% { opacity: 1; } 62% { opacity: 0; } 100% { opacity: 0; } }
+
+/* ---- Au toucher (une girafe) : elle baisse la tête pour saluer, puis se redresse ---- */
+[data-scene='savane'][data-fx~='salut'] .sa-neck { animation: sa-bow 3.8s ease-in-out both; animation-delay: 0s; }
+@keyframes sa-bow {
+  0% { transform: rotate(0deg); }
+  30% { transform: rotate(-38deg); }
+  42% { transform: rotate(-31deg); }
+  54% { transform: rotate(-38deg); }
+  66% { transform: rotate(-32deg); }
+  100% { transform: rotate(0deg); }
+}
+[data-scene='savane'][data-fx~='salut'] .sa-tail { animation-duration: 0.5s; }
+
+/* ---- Changement d'onglet : un nuage de poussière ----
+   La nouvelle page se découvre de gauche à droite, cachée derrière un nuage de sable : les bouffées
+   sont centrées sur la zone où elle se fond dans l'ancienne (de 114 % à 150 % de la largeur d'écran,
+   multipliés par l'avancement), avec la même durée et la même courbe. */
+html[data-el-nav='savane']::view-transition-old(root) { animation: none; }
+html[data-el-nav='savane']::view-transition-new(root) {
+  -webkit-mask: linear-gradient(90deg, #000 0 76%, transparent 100%) no-repeat 0 0 / 0% 100%;
+  mask: linear-gradient(90deg, #000 0 76%, transparent 100%) no-repeat 0 0 / 0% 100%;
+  animation: sa-sweep 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes sa-sweep { from { -webkit-mask-size: 0% 100%; mask-size: 0% 100%; } to { -webkit-mask-size: 150% 100%; mask-size: 150% 100%; } }
+.el-front[data-scene='savane'] i {
+  --w: calc(150px + var(--r3) * 130px);
+  left: 0; margin-left: calc(var(--w) * -0.5); top: calc(var(--r2) * 112% - 14%); width: var(--w); height: calc(var(--w) * 0.72); border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(226, 178, 112, 0.92), rgba(233, 190, 130, 0.5) 55%, rgba(233, 190, 130, 0));
+}
+.el-front[data-scene='savane'] i:nth-child(3n) { background: radial-gradient(closest-side, rgba(185, 120, 58, 0.62), rgba(185, 120, 58, 0.26) 55%, rgba(185, 120, 58, 0)); }
+.el-front[data-scene='savane'][data-on] i { animation: sa-dust 0.7s cubic-bezier(0.4, 0, 0.2, 1) both; }
+@keyframes sa-dust {
+  0% { opacity: 0; transform: translateX(0) scale(0.7); }
+  10% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(calc(112vw + var(--r1) * 38vw)) scale(1.2); }
+}

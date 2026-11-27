@@ -1,0 +1,167 @@
+/* Thème « Microscope » (espace élève) : lilas et rose des colorants, vert d'eau des paramécies. */
+.el[data-theme='microscope'] {
+  --el-bg: #F4EEFA; --el-surface: #FFFFFF; --el-line: #DDD0EC; --el-line-soft: #E8DEF3; --el-line-strong: #BFA9D8;
+  --el-text: #2A1B3D; --el-muted: #4E3D66; --el-dim: #62507C;
+  --el-indigo: #7A2FB8; --el-indigo-ink: #5E2291; --el-indigo-soft: #EBDDF8;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #E2D6EF; --el-on-accent: #FFFFFF; --el-radio: #9C88B8;
+  --el-radius: 18px; --el-radius-sm: 12px;
+  --el-font-display: 'Nunito', 'Inter', system-ui, sans-serif;
+}
+.el[data-theme='microscope'] .el-main { padding-top: 232px; }
+.el[data-theme='microscope'] .el-h1 { font-weight: 800; }
+.el[data-theme='microscope'] .el-btn--primary { box-shadow: 0 6px 18px rgba(122, 47, 184, 0.26); }
+
+/* ---- La scène ---- */
+[data-scene='microscope'] .mi-bg { height: 300px; background: linear-gradient(#E6D0F4 0, #EEDDF6 130px, #F4EEFA 290px); }
+[data-scene='microscope'] .mi-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='microscope'] .mi-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+
+/* Épiderme d'oignon : de longues cellules en briques, leurs noyaux contre la paroi */
+[data-scene='microscope'] .mi-tissue {
+  height: 236px; opacity: 0.85;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='184' viewBox='0 0 480 184'%3E%3Cg fill='none' stroke='%23D2B2E8' stroke-width='2.400' stroke-linecap='round'%3E%3Cpath d='M0 4H480M0 49C120 46 300 52 480 49M0 94C160 97 320 91 480 94M0 139C140 136 330 142 480 139M0 182H480'/%3E%3Cpath d='M150 4C147 20 153 34 150 49M310 4C313 20 307 34 311 50M478 4V49M70 49C73 64 67 80 70 94M232 50C229 66 235 80 231 94M400 50C403 66 397 80 400 93M120 94C117 110 123 124 120 138M290 93C293 108 287 124 291 140M440 93C437 110 443 124 440 140M40 139C43 154 37 168 40 182M200 138C197 154 203 168 200 182M362 140C365 154 359 168 362 182'/%3E%3C/g%3E%3Cg fill='%23CFA6E6'%3E%3Cellipse cx='128' cy='16' rx='7' ry='5'/%3E%3Cellipse cx='250' cy='38' rx='7' ry='5'/%3E%3Cellipse cx='420' cy='14' rx='7' ry='5'/%3E%3Cellipse cx='30' cy='82' rx='7' ry='5'/%3E%3Cellipse cx='180' cy='60' rx='7' ry='5'/%3E%3Cellipse cx='350' cy='84' rx='7' ry='5'/%3E%3Cellipse cx='455' cy='62' rx='7' ry='5'/%3E%3Cellipse cx='90' cy='128' rx='7' ry='5'/%3E%3Cellipse cx='240' cy='106' rx='7' ry='5'/%3E%3Cellipse cx='400' cy='128' rx='7' ry='5'/%3E%3Cellipse cx='150' cy='172' rx='7' ry='5'/%3E%3Cellipse cx='320' cy='150' rx='7' ry='5'/%3E%3Cellipse cx='452' cy='170' rx='7' ry='5'/%3E%3C/g%3E%3C/svg%3E") center top / 480px 184px repeat-x;
+  -webkit-mask: linear-gradient(#000 0, #000 46%, transparent 92%); mask: linear-gradient(#000 0, #000 46%, transparent 92%);
+}
+
+[data-scene='microscope'] .mi-life { height: 240px; }
+
+/* Amibe : une goutte de gelée qui change de forme et rampe */
+[data-scene='microscope'] .mi-amoeba {
+  position: absolute; left: 60px; top: 118px; width: 96px; height: 68px; border: 2px solid #9A7BDB;
+  background: radial-gradient(circle at 24% 66%, #B49DEA 0 3px, transparent 4px), radial-gradient(circle at 70% 74%, #B49DEA 0 2px, transparent 3px), radial-gradient(circle at 80% 30%, #B49DEA 0 2.500px, transparent 3.500px), radial-gradient(circle at 40% 38%, #E6DCFB, #CDBBF4);
+  border-radius: 58% 42% 38% 62% / 50% 60% 40% 50%;
+  animation: mi-morph 9s ease-in-out infinite, mi-crawl 23s ease-in-out infinite alternate;
+}
+@keyframes mi-morph {
+  0%, 100% { border-radius: 58% 42% 38% 62% / 50% 60% 40% 50%; }
+  33% { border-radius: 40% 60% 60% 40% / 62% 40% 60% 38%; }
+  66% { border-radius: 66% 34% 46% 54% / 40% 52% 48% 60%; }
+}
+@keyframes mi-crawl { from { transform: translate(0, 0) rotate(-6deg); } to { transform: translate(34px, -18px) rotate(10deg); } }
+[data-scene='microscope'] .mi-amoeba span { position: absolute; display: block; border-radius: 50%; }
+[data-scene='microscope'] .mi-amoeba__foot { right: -22px; top: 12px; width: 38px; height: 22px; border: 2px solid #9A7BDB; border-left: 0; background: #D6C7F6; border-radius: 0 60% 60% 0 / 0 50% 50% 0 !important; transform-origin: 0 50%; animation: mi-foot 6s ease-in-out infinite alternate; }
+@keyframes mi-foot { from { transform: scaleX(0.3) rotate(-10deg); } to { transform: scaleX(1.1) rotate(12deg); } }
+[data-scene='microscope'] .mi-amoeba__nucleus { left: 44%; top: 34%; width: 18px; height: 18px; background: #8E6BD0; box-shadow: inset 3px 3px 0 #A98CE0; }
+[data-scene='microscope'] .mi-amoeba__vac { left: 18%; top: 22%; width: 12px; height: 12px; background: #F6F1FE; border: 1.500px solid #B49DEA; animation: mi-vacuole 3.2s ease-in-out infinite alternate; }
+[data-scene='microscope'] .mi-amoeba__vac--b { left: 66%; top: 56%; width: 9px; height: 9px; animation-delay: -1.4s; }
+
+/* Bactéries, coques, diatomée */
+[data-scene='microscope'] .mi-rod { fill: #8E6BD0; opacity: 0.8; transform-box: fill-box; transform-origin: center; animation: mi-jitter 1.7s linear infinite; animation-delay: var(--delay); }
+@keyframes mi-jitter {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); } 20% { transform: translate(2px, -1px) rotate(8deg); } 40% { transform: translate(-1px, 2px) rotate(-5deg); }
+  60% { transform: translate(-2px, -1px) rotate(6deg); } 80% { transform: translate(1px, 1px) rotate(-9deg); }
+}
+[data-scene='microscope'] .mi-chain { fill: #EE9DC4; stroke: #D46AA0; stroke-width: 1; }
+[data-scene='microscope'] .mi-diatom { transform-box: fill-box; transform-origin: center; animation: mi-turn 40s linear infinite; }
+@keyframes mi-turn { from { transform: rotate(-14deg); } to { transform: rotate(346deg); } }
+
+/* Euglène */
+[data-scene='microscope'] .mi-euglena { animation: mi-cross 36s linear infinite; animation-delay: -9s; }
+@keyframes mi-cross {
+  0% { transform: translate(-70px, 196px) rotate(-12deg); } 25% { transform: translate(90px, 170px) rotate(-4deg); }
+  50% { transform: translate(250px, 150px) rotate(-14deg); } 75% { transform: translate(410px, 104px) rotate(-8deg); } 100% { transform: translate(580px, 72px) rotate(-14deg); }
+}
+[data-scene='microscope'] .mi-euglena__body { transform-box: fill-box; transform-origin: center; animation: mi-squeeze 2.8s ease-in-out infinite alternate; }
+@keyframes mi-squeeze { from { transform: scale(1.1, 0.86); } to { transform: scale(0.9, 1.14); } }
+[data-scene='microscope'] .mi-flagellum { fill: none; stroke: #5E9E33; stroke-width: 1.500; stroke-linecap: round; transform-box: view-box; transform-origin: -22px 0; animation: mi-whip 0.3s ease-in-out infinite alternate; }
+@keyframes mi-whip { from { transform: scaleY(1); } to { transform: scaleY(-1); } }
+
+/* La cellule ronde */
+[data-scene='microscope'] .mi-cellpulse,
+[data-scene='microscope'] .mi-cell,
+[data-scene='microscope'] .mi-nucleus { transform-box: fill-box; transform-origin: center; }
+[data-scene='microscope'] .mi-cellpulse { animation: mi-breathe 4.6s ease-in-out infinite alternate; }
+@keyframes mi-breathe { from { transform: scale(0.97); } to { transform: scale(1.04); } }
+[data-scene='microscope'] .mi-nucleus { animation: mi-nucleus 7s ease-in-out infinite alternate; }
+@keyframes mi-nucleus { from { transform: translate(-2px, 1px); } to { transform: translate(4px, -2px); } }
+
+/* Paramécie : elle va et vient, ses cils battent, ses vacuoles pulsent */
+[data-scene='microscope'] .mi-para { animation: mi-cruise 15s ease-in-out infinite alternate; }
+@keyframes mi-cruise { from { transform: translate(348px, 166px) rotate(-10deg); } to { transform: translate(376px, 146px) rotate(7deg); } }
+[data-scene='microscope'] .mi-para__dash { transform-box: fill-box; transform-origin: center; }
+[data-scene='microscope'] .mi-cilia { fill: none; stroke: #5FAF95; stroke-width: 8; stroke-dasharray: 1.500 4; opacity: 0.75; animation: mi-cilia 0.55s linear infinite; }
+@keyframes mi-cilia { to { stroke-dashoffset: -11; } }
+[data-scene='microscope'] .mi-vacuole { fill: #F3FBF8; stroke: #8FD0BB; stroke-width: 1.200; transform-box: fill-box; transform-origin: center; animation: mi-vacuole 2.6s ease-in-out infinite alternate; }
+[data-scene='microscope'] .mi-vacuole--b { animation-delay: -1.3s; }
+@keyframes mi-vacuole { from { transform: scale(0.35); } to { transform: scale(1); } }
+
+/* Premier plan : halos flous, puis un fondu vers la couleur de la page */
+[data-scene='microscope'] .mi-front { height: 240px; }
+[data-scene='microscope'] .mi-fade { position: absolute; left: 0; right: 0; top: 168px; height: calc(100vh + 900px); background: linear-gradient(rgba(244, 238, 250, 0) 0, #F4EEFA 76px); }
+[data-scene='microscope'] .mi-halo { position: absolute; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0, rgba(255, 255, 255, 0.5) 34%, rgba(255, 255, 255, 0) 68%); animation: mi-float var(--d) ease-in-out infinite alternate; }
+[data-scene='microscope'] .mi-halo--pink { background: radial-gradient(circle, rgba(249, 207, 226, 0.75) 0, rgba(249, 207, 226, 0.4) 34%, rgba(249, 207, 226, 0) 68%); }
+@keyframes mi-float { from { transform: translate(-8px, 6px) scale(0.94); } to { transform: translate(14px, -10px) scale(1.08); } }
+[data-scene='microscope'] .mi-motes { position: absolute; inset: 0; }
+[data-scene='microscope'] .mi-mote { position: absolute; border-radius: 50%; background: radial-gradient(circle, rgba(196, 160, 232, 0.3) 0, rgba(196, 160, 232, 0.16) 40%, rgba(196, 160, 232, 0) 70%); animation: mi-drift var(--d) ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes mi-drift { from { transform: translate(0, 0); } to { transform: translate(var(--dx), var(--dy)); } }
+
+/* ---- Au toucher (la cellule ronde) : elle se divise ----
+   Elle gonfle, s'étire, s'étrangle en son milieu : deux cellules, chacune avec son noyau. Une
+   cellule fille s'éloigne dans la goutte et sort du champ ; l'autre reprend la place. */
+[data-scene='microscope'][data-fx~='mitose'] .mi-cellpulse { animation: mi-swell 5.2s ease-in-out both; }
+@keyframes mi-swell { 0%, 100% { transform: scale(1); } 9% { transform: scale(1.12); } 22%, 60% { transform: scale(1); } }
+[data-scene='microscope'][data-fx~='mitose'] .mi-cell--a { animation: mi-split-a 5.2s both; }
+@keyframes mi-split-a {
+  0%, 9% { transform: translate(0, 0); animation-timing-function: ease-in-out; }
+  40% { transform: translate(-27px, 3px); animation-timing-function: ease-out; }
+  50% { transform: translate(-33px, 4px); animation-timing-function: ease-in-out; }
+  88%, 100% { transform: translate(0, 0); }
+}
+[data-scene='microscope'][data-fx~='mitose'] .mi-cell--b { animation: mi-split-b 5.2s both; }
+@keyframes mi-split-b {
+  0%, 9% { opacity: 1; transform: translate(0, 0); animation-timing-function: ease-in-out; }
+  40% { opacity: 1; transform: translate(27px, -3px); animation-timing-function: ease-out; }
+  50% { opacity: 1; transform: translate(33px, -4px); animation-timing-function: ease-in; }
+  80% { opacity: 1; }
+  92% { opacity: 0; transform: translate(150px, -64px); }
+  93%, 99% { opacity: 0; transform: translate(0, 0); }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+[data-scene='microscope'][data-fx~='mitose'] .mi-nucleus { animation: mi-nucleus-split 5.2s ease-in-out both; }
+@keyframes mi-nucleus-split { 0%, 100% { transform: translate(0, 0) scale(1); } 9% { transform: translate(3px, 3px) scale(1.25, 0.9); } 40%, 60% { transform: translate(3px, 3px) scale(0.86); } }
+
+/* ---- Au toucher (la paramécie) : elle file, fait demi-tour, revient ----
+   Sa position (`translate`) et son cap (`rotate`) sont menés séparément : elle part vite vers la
+   gauche, vire, repasse en haut de la goutte, vire encore et retrouve sa place. */
+[data-scene='microscope'][data-fx~='nage'] .mi-para__dash { animation: mi-dash 3.6s both; }
+@keyframes mi-dash {
+  0% { translate: 0 0; rotate: 0deg; animation-timing-function: ease-out; }
+  6% { translate: 7px 0; rotate: 4deg; animation-timing-function: cubic-bezier(0.3, 0, 0.5, 1); }
+  30% { translate: -232px -22px; rotate: 12deg; animation-timing-function: linear; }
+  38% { translate: -262px -48px; rotate: 90deg; animation-timing-function: linear; }
+  46% { translate: -236px -76px; rotate: 172deg; animation-timing-function: cubic-bezier(0.3, 0, 0.5, 1); }
+  70% { translate: -30px -92px; rotate: 186deg; animation-timing-function: linear; }
+  79% { translate: 10px -70px; rotate: 272deg; animation-timing-function: linear; }
+  88% { translate: 12px -26px; rotate: 330deg; animation-timing-function: ease-out; }
+  100% { translate: 0 0; rotate: 360deg; }
+}
+[data-scene='microscope'][data-fx~='nage'] .mi-cilia { animation-duration: 0.16s; }
+
+/* ---- Changement d'onglet : la mise au point ----
+   On tourne la molette : l'ancienne page devient floue en grossissant, la nouvelle sort du flou et
+   se met au net, pendant que des halos passent devant l'objectif. Un seul fondu, sans arrêt. */
+html[data-el-nav='microscope']::view-transition { background: #F4EEFA; }
+html[data-el-nav='microscope']::view-transition-old(root) { transform-origin: 50% 42%; animation: mi-defocus 0.76s linear both; }
+html[data-el-nav='microscope']::view-transition-new(root) { transform-origin: 50% 42%; animation: mi-focus 0.76s linear both; }
+@keyframes mi-defocus {
+  0% { opacity: 1; filter: blur(0); transform: scale(1); animation-timing-function: ease-in; }
+  36% { opacity: 1; filter: blur(9px); transform: scale(1.05); animation-timing-function: linear; }
+  64%, 100% { opacity: 0; filter: blur(16px); transform: scale(1.09); }
+}
+@keyframes mi-focus {
+  0%, 36% { opacity: 0; filter: blur(16px); transform: scale(0.92); animation-timing-function: linear; }
+  64% { opacity: 1; filter: blur(9px); transform: scale(0.955); animation-timing-function: ease-out; }
+  100% { opacity: 1; filter: blur(0); transform: scale(1); }
+}
+.el-front[data-scene='microscope'] i {
+  --w: calc(70px + var(--r2) * 170px);
+  left: calc(var(--r1) * 100%); top: calc(var(--r3) * 100%); width: var(--w); height: var(--w); margin: calc(var(--w) * -0.5) 0 0 calc(var(--w) * -0.5); border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.85) 0, rgba(233, 213, 245, 0.6) 36%, rgba(233, 213, 245, 0) 68%);
+}
+.el-front[data-scene='microscope'] i:nth-child(3n) { background: radial-gradient(circle, rgba(249, 207, 226, 0.85) 0, rgba(249, 207, 226, 0.5) 36%, rgba(249, 207, 226, 0) 68%); }
+.el-front[data-scene='microscope'] i:nth-child(4n) { background: radial-gradient(circle, rgba(205, 235, 223, 0.9) 0, rgba(205, 235, 223, 0.5) 36%, rgba(205, 235, 223, 0) 68%); }
+.el-front[data-scene='microscope'][data-on] i { animation: mi-bokeh 0.76s ease-in-out both; }
+@keyframes mi-bokeh { 0% { opacity: 0; transform: scale(0.5); } 50% { opacity: 0.9; transform: scale(1.15); } 100% { opacity: 0; transform: scale(1.8); } }

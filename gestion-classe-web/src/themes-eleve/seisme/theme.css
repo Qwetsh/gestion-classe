@@ -1,0 +1,156 @@
+/* Thème « Sismographe » (espace élève) : papier d'enregistreur, encre noire, tracé rouge. */
+.el[data-theme='seisme'] {
+  --el-bg: #F5F1E8; --el-surface: #FFFFFF; --el-line: #DDD5C3; --el-line-soft: #E8E1D2; --el-line-strong: #BDB39C;
+  --el-text: #20242B; --el-muted: #474C57; --el-dim: #5C6270;
+  --el-indigo: #C2261D; --el-indigo-ink: #9C1C15; --el-indigo-soft: #F9DEDB;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #E4DCCB; --el-on-accent: #FFFFFF; --el-radio: #A39A84;
+  --el-radius: 6px; --el-radius-sm: 4px;
+  --el-font-display: 'IBM Plex Mono', 'Courier New', monospace;
+}
+.el[data-theme='seisme'] .el-main { padding-top: 236px; }
+.el[data-theme='seisme'] .el-h1 { font-weight: 700; font-size: 25px; letter-spacing: -0.02em; }
+.el[data-theme='seisme'] .el-big { font-weight: 700; letter-spacing: -0.03em; }
+.el[data-theme='seisme'] .el-mid { font-weight: 700; letter-spacing: -0.03em; }
+.el[data-theme='seisme'] .el-btn--primary { box-shadow: 0 3px 0 #7E1611; }
+
+/* ---- La scène ---- */
+[data-scene='seisme'] .se-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='seisme'] .se-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+
+/* Papier millimétré */
+[data-scene='seisme'] .se-paper {
+  height: 270px;
+  background:
+    linear-gradient(rgba(245, 241, 232, 0) 190px, #F5F1E8 262px),
+    repeating-linear-gradient(0deg, rgba(176, 162, 130, 0.42) 0 1px, rgba(176, 162, 130, 0) 1px 40px),
+    repeating-linear-gradient(90deg, rgba(176, 162, 130, 0.42) 0 1px, rgba(176, 162, 130, 0) 1px 40px),
+    repeating-linear-gradient(0deg, rgba(176, 162, 130, 0.2) 0 1px, rgba(176, 162, 130, 0) 1px 8px),
+    repeating-linear-gradient(90deg, rgba(176, 162, 130, 0.2) 0 1px, rgba(176, 162, 130, 0) 1px 8px),
+    #F8F4EC;
+}
+
+/* Coupe du sol */
+[data-scene='seisme'] .se-ground,
+[data-scene='seisme'] .se-recorder { height: 240px; }
+[data-scene='seisme'] .se-bedrock { position: absolute; left: 0; right: 0; top: 139px; height: calc(100vh + 900px); background: #B7A07A; }
+[data-scene='seisme'] .se-label { font: 600 8px 'IBM Plex Mono', 'Courier New', monospace; fill: #474C57; }
+[data-scene='seisme'] .se-tree,
+[data-scene='seisme'] .se-house,
+[data-scene='seisme'] .se-bell,
+[data-scene='seisme'] .se-chimes path,
+[data-scene='seisme'] .se-ring,
+[data-scene='seisme'] .se-focus,
+[data-scene='seisme'] .se-smoke { transform-box: fill-box; }
+[data-scene='seisme'] .se-tree { transform-origin: 50% 100%; animation: se-sway 3.6s ease-in-out infinite alternate; }
+[data-scene='seisme'] .se-tree--b { animation-delay: -1.7s; }
+@keyframes se-sway { from { transform: rotate(-3deg); } to { transform: rotate(3.500deg); } }
+[data-scene='seisme'] .se-house { transform-origin: 50% 100%; }
+[data-scene='seisme'] .se-smoke { fill: #CFC8B8; opacity: 0; transform-origin: center; animation: se-smoke 3.4s ease-out infinite; }
+[data-scene='seisme'] .se-smoke--b { animation-delay: -1.7s; }
+@keyframes se-smoke { 0% { opacity: 0; transform: translate(0, 2px) scale(0.5); } 15% { opacity: 0.9; } 100% { opacity: 0; transform: translate(9px, -22px) scale(1.7); } }
+[data-scene='seisme'] .se-bell { transform-origin: 50% 0; }
+[data-scene='seisme'] .se-chimes path { fill: none; stroke: #C2261D; stroke-width: 1.300; stroke-linecap: round; opacity: 0; transform-origin: center; }
+[data-scene='seisme'] .se-bird { fill: none; stroke: #20242B; stroke-width: 1.300; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Le foyer : une étoile sur la faille, d'où part une onde pâle de temps en temps */
+[data-scene='seisme'] .se-focus { fill: #C2261D; stroke: #20242B; stroke-width: 0.800; transform-origin: center; animation: se-focus 2.4s ease-in-out infinite alternate; }
+@keyframes se-focus { from { transform: scale(0.86); } to { transform: scale(1.12); } }
+[data-scene='seisme'] .se-ring { fill: none; stroke: #C2261D; stroke-width: 1.400; vector-effect: non-scaling-stroke; opacity: 0; transform-origin: center; }
+[data-scene='seisme'] .se-ring--idle { animation: se-ring-idle 7s ease-out infinite; }
+@keyframes se-ring-idle { 0% { opacity: 0.55; transform: scale(0.3); } 42%, 100% { opacity: 0; transform: scale(6.500); } }
+
+/* L'enregistreur : la bande de papier défile de 40 px par seconde (trous et repères compris) */
+[data-scene='seisme'] .se-under { position: absolute; left: 0; right: 0; top: 213px; height: calc(100vh + 900px); background: #F5F1E8; }
+[data-scene='seisme'] .se-strip {
+  position: absolute; left: 0; right: 0; top: 150px; height: 64px; border-top: 1.500px solid #20242B; border-bottom: 1.500px solid #20242B;
+  background-color: #FFFDF8;
+  background-image:
+    radial-gradient(circle at 10px 5px, #CFC6B0 0 2.200px, rgba(207, 198, 176, 0) 2.800px),
+    radial-gradient(circle at 10px 5px, #CFC6B0 0 2.200px, rgba(207, 198, 176, 0) 2.800px),
+    repeating-linear-gradient(90deg, rgba(176, 162, 130, 0.5) 0 1px, rgba(176, 162, 130, 0) 1px 40px);
+  background-size: 20px 10px, 20px 10px, auto;
+  background-repeat: repeat-x, repeat-x, repeat;
+  background-position-y: 1px, calc(100% - 1px), 0;
+  animation: se-feed-paper 6s linear infinite;
+}
+@keyframes se-feed-paper { from { background-position-x: 0; } to { background-position-x: -240px; } }
+[data-scene='seisme'] .se-clip { position: absolute; left: -572px; top: 150px; width: 960px; height: 64px; overflow: hidden; }
+[data-scene='seisme'] .se-clip svg { position: absolute; top: 0; overflow: visible; }
+[data-scene='seisme'] .se-clip path { fill: none; stroke: #C2261D; stroke-width: 1.700; stroke-linejoin: round; stroke-linecap: round; }
+[data-scene='seisme'] .se-trace { left: 0; animation: se-feed 6s linear infinite; }
+@keyframes se-feed { from { transform: translateX(0); } to { transform: translateX(-240px); } }
+[data-scene='seisme'] .se-burst { left: 960px; opacity: 0; }
+/* Le stylet : mêmes hauteurs que le tracé (liste IDLE de index.tsx), un point toutes les 0,3 s */
+[data-scene='seisme'] .se-pen { animation: se-pen 6s linear infinite; }
+@keyframes se-pen { 0% { transform: translateY(0px); } 5% { transform: translateY(-2px); } 10% { transform: translateY(1px); } 15% { transform: translateY(-1px); } 20% { transform: translateY(3px); } 25% { transform: translateY(-4px); } 30% { transform: translateY(2px); } 35% { transform: translateY(0px); } 40% { transform: translateY(-1px); } 45% { transform: translateY(1px); } 50% { transform: translateY(-2px); } 55% { transform: translateY(5px); } 60% { transform: translateY(-6px); } 65% { transform: translateY(3px); } 70% { transform: translateY(-1px); } 75% { transform: translateY(0px); } 80% { transform: translateY(2px); } 85% { transform: translateY(-2px); } 90% { transform: translateY(1px); } 95% { transform: translateY(0px); } 100% { transform: translateY(0px); } }
+[data-scene='seisme'] .se-led { fill: #5EEA8A; animation: se-led 2s steps(1) infinite; }
+@keyframes se-led { 0%, 60% { opacity: 1; } 61%, 100% { opacity: 0.25; } }
+
+/* ---- Au toucher (le sol) : un séisme ----
+   Le bloc de gauche glisse d'un coup le long de la faille puis tremble sur place ; trois ondes
+   partent du foyer, deux fois ; le stylet s'affole (liste BURST de index.tsx, un point toutes les
+   0,1 s) et son train d'ondes défile avec le papier avant de s'effacer. */
+[data-scene='seisme'][data-fx~='seisme'] .se-block--left { animation: se-slip 6s both; }
+@keyframes se-slip {
+  0% { transform: translate(0, 0); animation-timing-function: cubic-bezier(0.2, 0.9, 0.3, 1); }
+  2.500% { transform: translate(-1.500px, 5px); }
+  6% { transform: translate(-0.500px, 4px); } 10% { transform: translate(-2.500px, 6px); } 14% { transform: translate(-1px, 4.500px); }
+  18% { transform: translate(-2px, 5.500px); } 24% { transform: translate(-1px, 5px); } 30% { transform: translate(-2px, 5px); } 38% { transform: translate(-1.500px, 5.400px); }
+  50%, 82% { transform: translate(-1.500px, 5px); animation-timing-function: ease-in-out; }
+  100% { transform: translate(0, 0); }
+}
+[data-scene='seisme'][data-fx~='seisme'] .se-block--right { animation: se-shudder 0.16s linear 18 alternate both; }
+@keyframes se-shudder { from { transform: translate(-1px, 0); } to { transform: translate(1px, 0.800px); } }
+[data-scene='seisme'][data-fx~='seisme'] .se-house,
+[data-scene='seisme'][data-fx~='seisme'] .se-tree { animation: se-wobble 0.2s ease-in-out 15 alternate both; }
+@keyframes se-wobble { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+[data-scene='seisme'][data-fx~='seisme'] .se-ring--a,
+[data-scene='seisme'][data-fx~='seisme'] .se-ring--b,
+[data-scene='seisme'][data-fx~='seisme'] .se-ring--c { animation: se-ring 1.7s ease-out 2 both; }
+[data-scene='seisme'][data-fx~='seisme'] .se-ring--b { animation-delay: 0.4s; }
+[data-scene='seisme'][data-fx~='seisme'] .se-ring--c { animation-delay: 0.8s; }
+@keyframes se-ring { from { opacity: 0.95; transform: scale(0.3); } to { opacity: 0; transform: scale(14); } }
+[data-scene='seisme'][data-fx~='seisme'] .se-focus { animation: se-focus 0.2s ease-in-out 16 alternate both; }
+[data-scene='seisme'][data-fx~='seisme'] .se-pen__quake { animation: se-quake-pen 6s linear both; }
+@keyframes se-quake-pen { 0% { transform: translateY(0px); } 1.667% { transform: translateY(-3px); } 3.333% { transform: translateY(5px); } 5% { transform: translateY(-4px); } 6.667% { transform: translateY(9px); } 8.333% { transform: translateY(-7px); } 10% { transform: translateY(13px); } 11.667% { transform: translateY(-10px); } 13.333% { transform: translateY(21px); } 15% { transform: translateY(-27px); } 16.667% { transform: translateY(25px); } 18.333% { transform: translateY(-29px); } 20% { transform: translateY(23px); } 21.667% { transform: translateY(-27px); } 23.333% { transform: translateY(19px); } 25% { transform: translateY(-23px); } 26.667% { transform: translateY(16px); } 28.333% { transform: translateY(-19px); } 30% { transform: translateY(13px); } 31.667% { transform: translateY(-15px); } 33.333% { transform: translateY(10px); } 35% { transform: translateY(-12px); } 36.667% { transform: translateY(8px); } 38.333% { transform: translateY(-9px); } 40% { transform: translateY(6px); } 41.667% { transform: translateY(-7px); } 43.333% { transform: translateY(5px); } 45% { transform: translateY(-4px); } 46.667% { transform: translateY(2px); } 48.333% { transform: translateY(-1px); } 50%, 100% { transform: translateY(0); } }
+[data-scene='seisme'][data-fx~='seisme'] .se-burst { animation: se-burst 6s linear both; }
+@keyframes se-burst { 0% { opacity: 1; transform: translateX(0); } 70% { opacity: 1; } 100% { opacity: 0; transform: translateX(-240px); } }
+[data-scene='seisme'][data-fx~='seisme'] .se-led { fill: #FF5A4D; animation: se-alarm 0.3s steps(1) 12 both; }
+@keyframes se-alarm { 0% { opacity: 1; } 50%, 100% { opacity: 0.2; } }
+
+/* ---- Au toucher (l'église) : la cloche sonne, les oiseaux s'envolent puis reviennent ---- */
+[data-scene='seisme'][data-fx~='cloche'] .se-bell { animation: se-toll 3.2s ease-in-out both; }
+@keyframes se-toll {
+  0%, 100% { transform: rotate(0deg); } 8% { transform: rotate(38deg); } 20% { transform: rotate(-34deg); } 32% { transform: rotate(30deg); }
+  44% { transform: rotate(-26deg); } 56% { transform: rotate(20deg); } 68% { transform: rotate(-14deg); } 80% { transform: rotate(8deg); } 90% { transform: rotate(-4deg); }
+}
+[data-scene='seisme'][data-fx~='cloche'] .se-chimes path { animation: se-chime 0.78s ease-out 3 both; }
+@keyframes se-chime { from { opacity: 0.95; transform: scale(0.6); } to { opacity: 0; transform: scale(1.7); } }
+[data-scene='seisme'][data-fx~='cloche'] .se-bird { animation: se-fly 3.2s ease-in-out both; }
+[data-scene='seisme'][data-fx~='cloche'] .se-bird--b { animation-name: se-fly-b; }
+@keyframes se-fly { 0%, 100% { transform: translate(0, 0); } 30% { transform: translate(-26px, -30px); } 55% { transform: translate(-44px, -20px); } 78% { transform: translate(-16px, -24px); } }
+@keyframes se-fly-b { 0%, 100% { transform: translate(0, 0); } 30% { transform: translate(22px, -34px); } 55% { transform: translate(40px, -24px); } 78% { transform: translate(14px, -26px); } }
+
+/* ---- Changement d'onglet : le papier avance d'un cran ----
+   L'ancienne page part à gauche comme la bande de l'enregistreur, la nouvelle arrive par la droite,
+   les deux secouées par la même vibration qui s'amortit ; le stylet et son train d'ondes voyagent
+   sur la jointure. Même durée, même courbe. */
+html[data-el-nav='seisme']::view-transition { background: #F5F1E8; }
+html[data-el-nav='seisme']::view-transition-old(root) { animation: se-roll-out 0.66s cubic-bezier(0.5, 0, 0.2, 1) both, se-jolt 0.66s linear both; }
+html[data-el-nav='seisme']::view-transition-new(root) { animation: se-roll-in 0.66s cubic-bezier(0.5, 0, 0.2, 1) both, se-jolt 0.66s linear both; }
+@keyframes se-roll-out { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(-100%); } }
+@keyframes se-roll-in { from { opacity: 1; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes se-jolt { 0%, 100% { translate: 0 0; } 12% { translate: 0 6px; } 26% { translate: 0 -5px; } 40% { translate: 0 4px; } 55% { translate: 0 -3px; } 70% { translate: 0 2px; } 85% { translate: 0 -1px; } }
+.el-front[data-scene='seisme'] i:first-child { left: 100vw; top: 0; bottom: 0; width: 6px; margin-left: -3px; background: #20242B; }
+.el-front[data-scene='seisme'] i:nth-child(2) {
+  left: 100vw; top: calc(50% - 46px); width: 76vw; height: 92px; margin-left: 4px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 92' preserveAspectRatio='none'%3E%3Cpath d='M0 46L8 40L16 54L24 30L32 66L40 14L48 80L56 8L64 84L72 18L80 72L88 26L96 64L104 32L112 58L122 38L132 54L144 41L156 51L170 43L184 48L200 45L220 46.500L240 46' fill='none' stroke='%23C2261D' stroke-width='3' stroke-linejoin='round' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+.el-front[data-scene='seisme'] i:nth-child(3) { left: 100vw; top: calc(50% - 11px); width: 30px; height: 22px; margin-left: -26px; background: #20242B; clip-path: polygon(0 50%, 30% 0, 100% 0, 100% 100%, 30% 100%); }
+.el-front[data-scene='seisme'][data-on] i:nth-child(-n + 3) { animation: se-rail 0.66s cubic-bezier(0.5, 0, 0.2, 1) both; }
+.el-front[data-scene='seisme'][data-on] i:nth-child(2) { animation-name: se-packet; }
+@keyframes se-rail { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(calc(-100vw - 30px)); } }
+@keyframes se-packet { 0% { opacity: 1; transform: translateX(0); } 68% { opacity: 1; } 100% { opacity: 0; transform: translateX(calc(-100vw - 30px)); } }

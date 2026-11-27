@@ -1,0 +1,153 @@
+/* Thème « Arcade » (espace élève) : les couleurs sont dans styles/eleve.css ; ici, la scène animée. */
+.el[data-theme='arcade'] .el-main { padding-top: 228px; }
+.el[data-theme='arcade'] .el-card,
+.el[data-theme='arcade'] .el-tile,
+.el[data-theme='arcade'] .el-tilebox { background: rgba(36, 24, 70, 0.95); }
+
+/* ---- La scène ---- */
+[data-scene='arcade'] .ar-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='arcade'] .ar-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+
+/* Ciel : étoiles qui clignotent par à-coups, score et cœurs */
+[data-scene='arcade'] .ar-sky { height: 260px; background: linear-gradient(#120B26 0, #1E1340 120px, #2C1C5C 196px, #170F2E 260px); }
+[data-scene='arcade'] .ar-star { position: absolute; animation: ar-blink var(--d) steps(1) infinite; animation-delay: var(--delay); }
+@keyframes ar-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+[data-scene='arcade'] .ar-hud { position: absolute; left: 4px; top: 12px; font: 700 14px/18px 'Pixelify Sans', 'Courier New', monospace; letter-spacing: 0.06em; color: #F6F0FF; }
+[data-scene='arcade'] .ar-score { color: #FFD23F; }
+[data-scene='arcade'] .ar-score--new { display: none; }
+[data-scene='arcade'] .ar-hearts { position: absolute; right: 4px; top: 12px; height: auto; }
+[data-scene='arcade'] .ar-heart--beat { transform-box: fill-box; transform-origin: center; animation: ar-beat 1.2s steps(1) infinite; }
+@keyframes ar-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.72); } }
+
+/* Lune et nuages */
+[data-scene='arcade'] .ar-heaven { height: 140px; }
+[data-scene='arcade'] .ar-moon { position: absolute; right: 30px; top: 44px; height: auto; }
+[data-scene='arcade'] .ar-cloud { position: absolute; left: 0; top: 56px; height: auto; animation: ar-cloud 54s linear infinite; animation-delay: -20s; }
+[data-scene='arcade'] .ar-cloud--b { top: 88px; animation-duration: 76s; animation-delay: -48s; }
+@keyframes ar-cloud { from { transform: translateX(-80px); } to { transform: translateX(calc(100vw + 80px)); } }
+
+/* Montagnes en escalier : une frise, puis son aplat */
+[data-scene='arcade'] .ar-far {
+  height: 88px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='88' viewBox='0 0 480 88' shape-rendering='crispEdges'%3E%3Cpath d='M0 88V64h16v-8h16v-8h16v-8h16v8h16v8h16v8h16v8h16v-8h16v-8h16v-8h16v-8h16v-8h16v8h16v8h16v8h16v8h16v8h16v-8h16v-8h16v-8h16v8h16v8h16v8h16v-8h16v-8h16v8h16v8h16v-8h16h16V88Z' fill='%2338287A'/%3E%3C/svg%3E") center top / 480px 88px repeat-x;
+}
+[data-scene='arcade'] .ar-far::after { content: ''; position: absolute; left: 0; right: 0; top: 87px; height: calc(100vh + 900px); background: #38287A; }
+
+/* Sol en briques, puis un fondu vers la couleur de la page */
+[data-scene='arcade'] .ar-world { height: 240px; }
+[data-scene='arcade'] .ar-ground {
+  position: absolute; left: 0; right: 0; top: 196px; height: calc(100vh + 900px);
+  background:
+    linear-gradient(#9B7CFF 0 4px, rgba(155, 124, 255, 0) 4px),
+    repeating-linear-gradient(90deg, #4A3690 0 12px, #3B2A78 12px 16px) 0 0 / 100% 16px no-repeat,
+    linear-gradient(#241846 0 16px, #170F2E 84px);
+}
+
+/* Gemmes : elles flottent par à-coups */
+[data-scene='arcade'] .ar-gem { animation: ar-float 1.2s steps(2) infinite alternate; }
+[data-scene='arcade'] .ar-gem--b { animation-delay: -0.6s; }
+@keyframes ar-float { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+
+/* Gelée : elle s'écrase, saute, retombe */
+[data-scene='arcade'] .ar-slime { animation: ar-slime-walk 5.6s steps(1) infinite; }
+@keyframes ar-slime-walk { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(16px); } 50% { transform: translateX(32px); } 75% { transform: translateX(16px); } }
+[data-scene='arcade'] .ar-slime__body { transform-box: fill-box; transform-origin: 50% 100%; animation: ar-slime 1.4s infinite; }
+@keyframes ar-slime {
+  0%, 100% { transform: translateY(0) scale(1.2, 0.76); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  14% { transform: translateY(0) scale(0.92, 1.12); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  42% { transform: translateY(-16px) scale(1, 1); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  70% { transform: translateY(0) scale(1.24, 0.72); animation-timing-function: ease-out; }
+  84% { transform: translateY(0) scale(1, 1); }
+}
+
+/* Le coffre */
+[data-scene='arcade'] .ar-chest__glow { fill: #FFE27A; opacity: 0; }
+[data-scene='arcade'] .ar-loot { opacity: 0; }
+[data-scene='arcade'] .ar-bonus { font: 700 13px 'Pixelify Sans', 'Courier New', monospace; fill: #FFD23F; opacity: 0; }
+
+/* Le robot : il fait les cent pas pixel par pixel, se retourne au bout, deux images pour les jambes */
+[data-scene='arcade'] .ar-robot { animation: ar-patrol 11s infinite; }
+@keyframes ar-patrol {
+  0% { transform: translateX(148px); animation-timing-function: steps(27); }
+  47% { transform: translateX(256px); animation-timing-function: steps(1); }
+  50% { transform: translateX(256px); animation-timing-function: steps(27); }
+  97%, 100% { transform: translateX(148px); }
+}
+[data-scene='arcade'] .ar-robot__face,
+[data-scene='arcade'] .ar-robot__spin { transform-box: fill-box; transform-origin: center; }
+[data-scene='arcade'] .ar-robot__face { animation: ar-face 11s steps(1) infinite; }
+@keyframes ar-face { 0%, 98.500% { transform: scaleX(1); } 48.500% { transform: scaleX(-1); } }
+[data-scene='arcade'] .ar-legs--a { animation: ar-step 0.4s steps(1) infinite; }
+[data-scene='arcade'] .ar-legs--b { animation: ar-step 0.4s steps(1) infinite; animation-delay: -0.2s; }
+@keyframes ar-step { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+[data-scene='arcade'] .ar-dust { fill: #C9BCE8; opacity: 0; }
+
+/* ---- Au toucher (le robot) : un saut périlleux ----
+   Il monte en ralentissant, tourne sur lui-même (huit crans), retombe en accélérant, rebondit un
+   peu ; la poussière part des deux côtés à chaque atterrissage. */
+[data-scene='arcade'][data-fx~='saut'] .ar-robot__jump { animation: ar-jump 2s both; }
+@keyframes ar-jump {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1); }
+  24% { transform: translateY(-72px); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  48% { transform: translateY(0); animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1); }
+  58% { transform: translateY(-18px); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  68%, 100% { transform: translateY(0); }
+}
+[data-scene='arcade'][data-fx~='saut'] .ar-robot__spin { animation: ar-flip 2s steps(8) both; }
+@keyframes ar-flip { 0%, 4% { transform: rotate(0deg); } 44%, 100% { transform: rotate(360deg); } }
+[data-scene='arcade'][data-fx~='saut'] .ar-legs { animation: none; }
+[data-scene='arcade'][data-fx~='saut'] .ar-legs--b { opacity: 0; }
+[data-scene='arcade'][data-fx~='saut'] .ar-dust--l { animation: ar-dust-l 2s steps(4) both; }
+[data-scene='arcade'][data-fx~='saut'] .ar-dust--r { animation: ar-dust-r 2s steps(4) both; }
+@keyframes ar-dust-l {
+  0% { opacity: 1; transform: translate(0, 0); } 14% { opacity: 0; transform: translate(-16px, -8px); }
+  47.900% { opacity: 0; transform: translate(0, 0); } 48% { opacity: 1; transform: translate(0, 0); } 64%, 100% { opacity: 0; transform: translate(-20px, -8px); }
+}
+@keyframes ar-dust-r {
+  0% { opacity: 1; transform: translate(0, 0); } 14% { opacity: 0; transform: translate(16px, -8px); }
+  47.900% { opacity: 0; transform: translate(0, 0); } 48% { opacity: 1; transform: translate(0, 0); } 64%, 100% { opacity: 0; transform: translate(20px, -8px); }
+}
+
+/* ---- Au toucher (le coffre) : il s'ouvre, les gemmes jaillissent ----
+   Le couvercle se soulève, l'intérieur brille ; chaque gemme part de côté à vitesse constante
+   (`translate`) pendant qu'elle monte en ralentissant puis retombe en accélérant (`transform`). */
+[data-scene='arcade'][data-fx~='coffre'] .ar-chest__lid { animation: ar-lid 3s steps(1) both; }
+@keyframes ar-lid { 0%, 86%, 100% { transform: translate(0, 0); } 8% { transform: translate(0, -4px); } 12%, 80% { transform: translate(-4px, -12px); } 83% { transform: translate(0, -4px); } }
+[data-scene='arcade'][data-fx~='coffre'] .ar-chest__glow { animation: ar-glow 3s steps(1) both; }
+@keyframes ar-glow { 0%, 82%, 100% { opacity: 0; } 12%, 30%, 48%, 66% { opacity: 1; } 21%, 39%, 57%, 75% { opacity: 0.55; } }
+[data-scene='arcade'][data-fx~='coffre'] .ar-loot { animation: ar-loot-x 1.5s linear both; animation-delay: var(--delay); }
+@keyframes ar-loot-x { 0% { opacity: 1; translate: 0 0; } 86% { opacity: 1; } 100% { opacity: 0; translate: var(--dx) 0; } }
+[data-scene='arcade'][data-fx~='coffre'] .ar-loot__gem { animation: ar-loot-y 1.5s both; animation-delay: var(--delay); }
+@keyframes ar-loot-y {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1); }
+  42% { transform: translateY(calc(var(--h) * -1)); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  100% { transform: translateY(64px); }
+}
+[data-scene='arcade'][data-fx~='coffre'] .ar-bonus { animation: ar-bonus 3s steps(12) both; }
+@keyframes ar-bonus { 0%, 14% { opacity: 0; transform: translateY(0); } 16% { opacity: 1; } 60% { opacity: 1; } 72%, 100% { opacity: 0; transform: translateY(-28px); } }
+[data-scene='arcade'][data-fx~='coffre'] .ar-score--old { display: none; }
+[data-scene='arcade'][data-fx~='coffre'] .ar-score--new { display: inline; animation: ar-score 0.24s steps(1) 4; }
+@keyframes ar-score { 0%, 100% { color: #FFD23F; } 50% { color: #FFFFFF; } }
+[data-scene='arcade'][data-fx~='coffre'] .ar-gem { animation: ar-float 0.24s steps(2) infinite alternate; }
+
+/* ---- Changement d'onglet : l'écran s'éteint et se rallume ----
+   Comme un vieux téléviseur : l'ancienne page s'écrase en un trait lumineux, le trait se resserre en
+   un point, puis s'élargit et s'ouvre sur la nouvelle page. Un seul mouvement, sans arrêt. */
+html[data-el-nav='arcade']::view-transition { background: #07040F; }
+html[data-el-nav='arcade']::view-transition-old(root) { animation: ar-crt-off 0.72s both; }
+html[data-el-nav='arcade']::view-transition-new(root) { animation: ar-crt-on 0.72s both; }
+@keyframes ar-crt-off {
+  0% { opacity: 1; transform: scale(1, 1); filter: brightness(1); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5); }
+  34% { opacity: 1; transform: scale(1, 0.008); filter: brightness(3.5); animation-timing-function: linear; }
+  50% { opacity: 1; transform: scale(0.03, 0.008); filter: brightness(5); }
+  50.100%, 100% { opacity: 0; transform: scale(0.03, 0.008); }
+}
+@keyframes ar-crt-on {
+  0%, 49.900% { opacity: 0; transform: scale(0.03, 0.008); }
+  50% { opacity: 1; transform: scale(0.03, 0.008); filter: brightness(5); animation-timing-function: linear; }
+  66% { opacity: 1; transform: scale(1, 0.008); filter: brightness(3.5); animation-timing-function: cubic-bezier(0.1, 0.5, 0.5, 1); }
+  100% { opacity: 1; transform: scale(1, 1); filter: brightness(1); }
+}
+.el-front[data-scene='arcade'] i:first-child { left: calc(50% - 5px); top: calc(50% - 5px); width: 10px; height: 10px; background: #FFFFFF; box-shadow: 0 0 0 4px #FFD23F, 0 0 26px 10px rgba(255, 210, 63, 0.7); }
+.el-front[data-scene='arcade'][data-on] i:first-child { animation: ar-spot 0.72s linear both; }
+@keyframes ar-spot { 0%, 30% { opacity: 0; transform: scale(0.4); } 50% { opacity: 1; transform: scale(1.4); } 70%, 100% { opacity: 0; transform: scale(0.4); } }

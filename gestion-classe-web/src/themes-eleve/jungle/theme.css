@@ -1,0 +1,191 @@
+/* Thème « Jungle » (espace élève) : les couleurs sont dans styles/eleve.css ; ici, la scène animée.
+   Tant qu'elle n'est pas chargée, le fond fixe de eleve.css (trois feuilles) reste affiché. */
+.el[data-theme='jungle'] { background-image: none; }
+.el[data-theme='jungle'] .el-main { padding-top: 256px; }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis sont posés dans `.ju-set`, un cadre de 480 px centré :
+   branches, animaux et feuillage gardent ainsi leurs distances quel que soit l'écran. Chaque plan
+   porte son aplat (qui descend loin sous lui) pour recouvrir les plans situés derrière. */
+[data-scene='jungle'] .ju-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='jungle'] .ju-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+[data-scene='jungle'] .ju-sky { height: 260px; background: linear-gradient(180deg, #BDE5B2 0%, #D6F0C7 55%, #EEF5E8 100%); }
+
+/* Rayons de soleil à travers la canopée : ils respirent lentement */
+[data-scene='jungle'] .ju-rays { height: 280px; }
+[data-scene='jungle'] .ju-beam {
+  position: absolute; top: -40px; height: 310px; transform: skewX(-22deg); transform-origin: 50% 0;
+  background: linear-gradient(rgba(255, 255, 214, 0.62), rgba(255, 255, 214, 0));
+  animation: ju-ray var(--d) ease-in-out infinite alternate; animation-delay: var(--delay);
+}
+@keyframes ju-ray { from { opacity: 0.3; } to { opacity: 0.95; } }
+
+/* Canopée lointaine, puis canopée proche : une frise de houppiers qui se répète sur la largeur */
+[data-scene='jungle'] .ju-far { height: 130px; }
+[data-scene='jungle'] .ju-far::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 130px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='130' viewBox='0 0 480 130'%3E%3Cpath d='M0 130V62Q14 40 34 54Q48 26 76 44Q96 22 122 46Q140 34 158 52Q180 28 208 48Q228 30 250 50Q272 26 300 46Q318 32 338 52Q360 30 386 48Q404 34 424 52Q446 30 468 50Q474 56 480 62V130Z' fill='%23A8D6A0'/%3E%3C/svg%3E") center top / 480px 130px repeat-x;
+}
+[data-scene='jungle'] .ju-far::after { content: ''; position: absolute; left: 0; right: 0; top: 129px; height: calc(100vh + 900px); background: #A8D6A0; }
+[data-scene='jungle'] .ju-mid { height: 150px; }
+[data-scene='jungle'] .ju-mid::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 150px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='150' viewBox='0 0 480 150'%3E%3Cpath d='M0 150V70Q18 44 42 60Q60 30 92 52Q116 34 140 58Q166 36 196 60Q220 44 244 64Q270 40 300 60Q326 42 350 64Q376 44 404 62Q428 46 452 64Q466 72 480 70V150Z' fill='%236DBB6B'/%3E%3Cpath d='M42 60Q60 30 92 52M196 60Q220 44 244 64M300 60Q326 42 350 64M404 62Q428 46 452 64' fill='none' stroke='%238ECF86' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") center top / 480px 150px repeat-x;
+}
+[data-scene='jungle'] .ju-mid::after { content: ''; position: absolute; left: 0; right: 0; top: 149px; height: calc(100vh + 900px); background: #6DBB6B; }
+[data-scene='jungle'] .ju-palm { transform-box: view-box; transform-origin: 84px 36px; animation: ju-sway 7s ease-in-out infinite alternate; }
+@keyframes ju-sway { from { transform: rotate(-2.5deg); } to { transform: rotate(3deg); } }
+
+/* Branches, toucan, caméléon */
+[data-scene='jungle'] .ju-near { height: 240px; }
+[data-scene='jungle'] .ju-set > .ju-toucan,
+[data-scene='jungle'] .ju-set > .ju-cham { left: auto; top: auto; }
+[data-scene='jungle'] .ju-toucan__body,
+[data-scene='jungle'] .ju-toucan__head,
+[data-scene='jungle'] .ju-jaw,
+[data-scene='jungle'] .ju-wing,
+[data-scene='jungle'] .ju-eye,
+[data-scene='jungle'] .ju-tongue,
+[data-scene='jungle'] .ju-monstera,
+[data-scene='jungle'] .ju-fronds,
+[data-scene='jungle'] .ju-liana { transform-box: view-box; }
+[data-scene='jungle'] .ju-toucan__head { transform-origin: 48px 34px; animation: ju-nod 4.5s ease-in-out infinite alternate; }
+@keyframes ju-nod { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+[data-scene='jungle'] .ju-eye { transform-origin: 43px 24px; animation: ju-blink 5s linear infinite; }
+@keyframes ju-blink { 0%, 91% { transform: scaleY(1); } 94% { transform: scaleY(0.1); } 97%, 100% { transform: scaleY(1); } }
+[data-scene='jungle'] .ju-jaw { transform-origin: 38px 31px; }
+[data-scene='jungle'] .ju-wing { transform-origin: 53px 36px; }
+
+[data-scene='jungle'] .ju-cham__fill { fill: #3FA34D; }
+[data-scene='jungle'] .ju-cham__line { stroke: #3FA34D; }
+[data-scene='jungle'] .ju-cham__pupil { animation: ju-look 6s ease-in-out infinite; }
+@keyframes ju-look { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(2.2px, -1px); } 50% { transform: translate(-2px, 1.2px); } 75% { transform: translate(1.6px, 2px); } }
+[data-scene='jungle'] .ju-tongue { transform-origin: 124px 43px; transform: scaleX(0); }
+[data-scene='jungle'] .ju-fly { animation: ju-buzz 0.9s linear infinite; }
+@keyframes ju-buzz { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(3px, -2px); } 50% { transform: translate(-2px, 2px); } 75% { transform: translate(2px, 3px); } }
+
+/* Papillons : un vol en boucle, les ailes qui battent */
+[data-scene='jungle'] .ju-air { height: 240px; }
+[data-scene='jungle'] .ju-bfly { position: absolute; left: 0; top: 0; }
+[data-scene='jungle'] .ju-bfly--a { animation: ju-fly-a 18s ease-in-out infinite; }
+[data-scene='jungle'] .ju-bfly--b { animation: ju-fly-b 15s ease-in-out infinite; }
+[data-scene='jungle'] .ju-bfly--c { animation: ju-fly-c 11s ease-in-out infinite; }
+@keyframes ju-fly-a { 0%, 100% { transform: translate(30px, 150px) rotate(10deg); } 25% { transform: translate(140px, 92px) rotate(-12deg); } 50% { transform: translate(250px, 128px) rotate(14deg); } 75% { transform: translate(170px, 58px) rotate(-8deg); } }
+@keyframes ju-fly-b { 0%, 100% { transform: translate(300px, 66px) rotate(-10deg); } 33% { transform: translate(214px, 150px) rotate(12deg); } 66% { transform: translate(330px, 176px) rotate(-6deg); } }
+@keyframes ju-fly-c { 0%, 100% { transform: translate(128px, 40px) rotate(8deg); } 50% { transform: translate(66px, 104px) rotate(-12deg); } }
+[data-scene='jungle'] .ju-bfly__wing { transform-box: view-box; transform-origin: 14px 11px; animation: ju-flap 0.28s ease-in-out infinite alternate; }
+@keyframes ju-flap { from { transform: scaleX(1); } to { transform: scaleX(0.22); } }
+
+/* Buissons du premier plan : un rang de feuilles (masque répété), puis leur aplat qui se fond dans la page */
+[data-scene='jungle'] {
+  --ju-leaves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='44' viewBox='0 0 160 44'%3E%3Cpath d='M0 40H160V44H0ZM6 44C2 30 4 14 12 2C20 14 20 30 14 44ZM22 44C24 30 34 18 48 12C46 26 38 38 30 44ZM44 44C40 28 44 12 54 0C62 12 60 30 52 44ZM66 44C62 32 52 22 40 20C42 32 52 42 60 44ZM70 44C70 28 78 14 92 6C94 20 88 36 80 44ZM96 44C92 30 96 16 106 6C112 18 110 32 104 44ZM118 44C114 32 104 24 92 24C96 34 106 42 112 44ZM122 44C124 28 134 14 148 8C148 22 140 38 132 44ZM146 44C144 30 148 18 156 10C162 20 160 34 156 44Z'/%3E%3C/svg%3E");
+}
+[data-scene='jungle'] .ju-bush { left: -30px; right: -30px; height: 40px; --leaf: #237A40; --blend: #6DBB6B; }
+[data-scene='jungle'] .ju-bush::before {
+  content: ''; position: absolute; inset: 0; background: var(--leaf); transform-origin: 50% 100%;
+  -webkit-mask: var(--ju-leaves) left bottom / 160px 40px repeat-x; mask: var(--ju-leaves) left bottom / 160px 40px repeat-x;
+  animation: ju-rustle 5s ease-in-out infinite alternate;
+}
+[data-scene='jungle'] .ju-bush::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 39px; height: calc(100vh + 900px);
+  background: linear-gradient(var(--leaf) 0, var(--blend) 10px, #CFE6C5 24px, #EEF5E8 38px);
+}
+[data-scene='jungle'] .ju-bush--back { height: 32px; --leaf: #3F9A52; --blend: #8CCB86; }
+[data-scene='jungle'] .ju-bush--back::before { -webkit-mask-size: 124px 32px; mask-size: 124px 32px; -webkit-mask-position: 47px bottom; mask-position: 47px bottom; animation-duration: 6.5s; }
+[data-scene='jungle'] .ju-bush--back::after { top: 31px; }
+@keyframes ju-rustle { from { transform: skewX(-4deg); } to { transform: skewX(5deg); } }
+
+/* Feuillage et lianes qui pendent du haut de l'écran */
+[data-scene='jungle'] .ju-top { height: 170px; }
+[data-scene='jungle'] .ju-monstera { transform-origin: 68px -8px; animation: ju-sway 6s ease-in-out infinite alternate; }
+[data-scene='jungle'] .ju-fronds { transform-origin: 484px -6px; animation: ju-sway 8s ease-in-out infinite alternate-reverse; }
+[data-scene='jungle'] .ju-liana { animation: ju-swing 6.5s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes ju-swing { from { transform: rotate(-3.5deg); } to { transform: rotate(3.5deg); } }
+
+/* Feuilles qui tombent, sur tout l'écran */
+[data-scene='jungle'] .ju-fall, [data-scene='jungle'] .ju-dew { position: absolute; inset: 0; }
+[data-scene='jungle'] .ju-leaf {
+  position: absolute; left: var(--x); top: -24px; width: var(--s); height: calc(var(--s) * 0.56);
+  border-radius: 90% 8% 90% 8%; background: #6DBB6B; opacity: 0.9;
+  animation: ju-fall var(--d) linear infinite; animation-delay: var(--delay);
+}
+[data-scene='jungle'] .ju-leaf--1 { background: #3F9A52; }
+[data-scene='jungle'] .ju-leaf--2 { background: #9BCB5A; }
+@keyframes ju-fall {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(var(--dx), 56vh) rotate(calc(var(--spin) * 0.5)); }
+  100% { transform: translate(calc(var(--dx) * 0.2), 114vh) rotate(var(--spin)); }
+}
+
+/* ---- Au toucher (le toucan) : il sautille, bat des ailes, claque du bec ---- */
+[data-scene='jungle'][data-fx~='toucan'] .ju-toucan__body { animation: ju-hop 2.6s ease-in-out both; }
+@keyframes ju-hop {
+  0%, 100% { transform: translateY(0); } 10% { transform: translateY(-8px); } 20% { transform: translateY(0); }
+  32% { transform: translateY(-6px); } 44% { transform: translateY(0); } 58% { transform: translateY(-5px); } 70% { transform: translateY(0); }
+}
+[data-scene='jungle'][data-fx~='toucan'] .ju-wing { animation: ju-wing 0.17s ease-in-out 12 alternate; }
+@keyframes ju-wing { from { transform: rotate(0deg); } to { transform: rotate(-62deg); } }
+[data-scene='jungle'][data-fx~='toucan'] .ju-jaw { animation: ju-jaw 0.3s ease-in-out 0.3s 6 alternate; }
+@keyframes ju-jaw { from { transform: rotate(0deg); } to { transform: rotate(-16deg); } }
+[data-scene='jungle'][data-fx~='toucan'] .ju-toucan__head { animation: ju-crow 2.6s ease-in-out both; }
+@keyframes ju-crow { 0%, 100% { transform: rotate(0deg); } 15%, 75% { transform: rotate(12deg); } }
+
+/* ---- Au toucher (le caméléon) : il change de couleur et attrape la mouche d'un coup de langue ---- */
+[data-scene='jungle'][data-fx~='cameleon'] .ju-cham__fill { animation: ju-hue-fill 3.8s linear both; }
+[data-scene='jungle'][data-fx~='cameleon'] .ju-cham__line { animation: ju-hue-line 3.8s linear both; }
+@keyframes ju-hue-fill { 0%, 100% { fill: #3FA34D; } 22% { fill: #F2A531; } 44% { fill: #E2557A; } 66% { fill: #3D9BE0; } 86% { fill: #8E6BD8; } }
+@keyframes ju-hue-line { 0%, 100% { stroke: #3FA34D; } 22% { stroke: #F2A531; } 44% { stroke: #E2557A; } 66% { stroke: #3D9BE0; } 86% { stroke: #8E6BD8; } }
+[data-scene='jungle'][data-fx~='cameleon'] .ju-tongue { animation: ju-tongue 3.8s linear both; }
+@keyframes ju-tongue {
+  0%, 24% { transform: scaleX(0); animation-timing-function: cubic-bezier(0.1, 0.7, 0.3, 1); }
+  29%, 33% { transform: scaleX(1); animation-timing-function: ease-in; }
+  40%, 100% { transform: scaleX(0); }
+}
+[data-scene='jungle'][data-fx~='cameleon'] .ju-fly { animation: ju-buzz 0.9s linear infinite, ju-caught 3.8s linear both; }
+@keyframes ju-caught { 0%, 29% { opacity: 1; } 30%, 94% { opacity: 0; } 100% { opacity: 1; } }
+
+/* ---- Au toucher (le feuillage du haut) : il s'ébroue et laisse tomber sa rosée ---- */
+[data-scene='jungle'][data-fx~='rosee'] .ju-monstera,
+[data-scene='jungle'][data-fx~='rosee'] .ju-fronds,
+[data-scene='jungle'][data-fx~='rosee'] .ju-liana { animation: ju-shake 1s ease-in-out both; animation-delay: 0s; }
+@keyframes ju-shake {
+  0%, 100% { transform: rotate(0deg); } 12% { transform: rotate(-7deg); } 28% { transform: rotate(6deg); }
+  44% { transform: rotate(-5deg); } 60% { transform: rotate(4deg); } 78% { transform: rotate(-2deg); }
+}
+[data-scene='jungle'] .ju-drop {
+  position: absolute; width: var(--s); height: calc(var(--s) * 1.35); border-radius: 50% 50% 50% 50% / 64% 64% 36% 36%; opacity: 0;
+  background: radial-gradient(circle at 35% 38%, #FFFFFF 0 16%, #9AD6FF 42%, #3D9BE0 100%);
+}
+[data-scene='jungle'][data-fx~='rosee'] .ju-drop { animation: ju-drop var(--d) cubic-bezier(0.5, 0, 0.9, 0.6) var(--delay) both; }
+@keyframes ju-drop { 0% { opacity: 0; transform: translateY(0); } 12% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(64vh); } }
+
+/* ---- Changement d'onglet : on écarte le feuillage ----
+   De grandes feuilles se referment des deux côtés de l'écran, la page change derrière elles
+   pendant qu'elles couvrent tout, puis elles s'écartent sur la nouvelle page. */
+html[data-el-nav='jungle']::view-transition-old(root) { animation: ju-page-out 0.9s linear both; }
+html[data-el-nav='jungle']::view-transition-new(root) { animation: ju-page-in 0.9s linear both; }
+/* La nouvelle page arrive en fondu par-dessus l'ancienne pendant que les feuilles couvrent l'écran :
+   dans les rares jours entre deux feuilles, on ne voit que la page, jamais un aplat de couleur. */
+@keyframes ju-page-out { 0%, 57% { opacity: 1; } 57.1%, 100% { opacity: 0; } }
+@keyframes ju-page-in { 0%, 43% { opacity: 0; } 57%, 100% { opacity: 1; } }
+.el-front[data-scene='jungle'] i {
+  top: calc(var(--i) * 3.9% - 12%); width: 86vw; height: 200px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 120' preserveAspectRatio='none'%3E%3Cpath d='M0 60C70 0 230 0 300 60C230 120 70 120 0 60Z' fill='%23278645'/%3E%3Cpath d='M0 60C70 0 230 0 300 60Z' fill='%2334A055'/%3E%3Cpath d='M0 60H300M60 60L84 28M110 60L138 18M160 60L186 18M210 60L232 30M60 60L84 92M110 60L138 102M160 60L186 102M210 60L232 90' fill='none' stroke='%231B6332' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+.el-front[data-scene='jungle'] i:nth-child(3n) { filter: brightness(0.84); }
+.el-front[data-scene='jungle'] i:nth-child(3n + 1) { filter: brightness(1.14); }
+.el-front[data-scene='jungle'] i:nth-child(even) { left: -9vw; transform-origin: 0 50%; }
+.el-front[data-scene='jungle'] i:nth-child(odd) { right: -9vw; transform-origin: 100% 50%; }
+.el-front[data-scene='jungle'][data-on] i:nth-child(even) { animation: ju-close-left 0.9s both; }
+.el-front[data-scene='jungle'][data-on] i:nth-child(odd) { animation: ju-close-right 0.9s both; }
+@keyframes ju-close-left {
+  0% { opacity: 1; transform: translateX(-104%) rotate(-18deg); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  42%, 58% { opacity: 1; transform: translateX(0) rotate(calc(var(--r1) * 14deg - 7deg)); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  100% { opacity: 1; transform: translateX(-104%) rotate(14deg); }
+}
+@keyframes ju-close-right {
+  0% { opacity: 1; transform: translateX(104%) rotate(18deg); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  42%, 58% { opacity: 1; transform: translateX(0) rotate(calc(7deg - var(--r1) * 14deg)); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  100% { opacity: 1; transform: translateX(104%) rotate(-14deg); }
+}

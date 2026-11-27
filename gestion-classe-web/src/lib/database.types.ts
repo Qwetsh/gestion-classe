@@ -1622,6 +1622,35 @@ export type Database = {
           },
         ]
       }
+      class_student_themes: {
+        Row: {
+          class_id: string
+          opened_at: string
+          theme_id: string
+          user_id: string
+        }
+        Insert: {
+          class_id: string
+          opened_at?: string
+          theme_id: string
+          user_id: string
+        }
+        Update: {
+          class_id?: string
+          opened_at?: string
+          theme_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "class_student_themes_class_id_fkey"
+            columns: ["class_id"]
+            isOneToOne: false
+            referencedRelation: "classes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       class_trimester_config: {
         Row: {
           base_grade: number | null
@@ -3970,6 +3999,10 @@ export type Database = {
         Args: { p_code: string; p_student_id?: string }
         Returns: Json
       }
+      get_student_themes: {
+        Args: { p_code: string; p_student_id?: string }
+        Returns: Json
+      }
       get_student_tp: {
         Args: { p_code: string; p_session_id: string; p_student_id?: string }
         Returns: Json
@@ -4013,6 +4046,10 @@ export type Database = {
         Args: { p_bonus_id: string; p_code: string; p_student_id?: string }
         Returns: Json
       }
+      set_student_theme: {
+        Args: { p_code: string; p_student_id?: string; p_theme: string }
+        Returns: Json
+      }
       storage_usage: {
         Args: never
         Returns: {
@@ -4047,6 +4084,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      unlock_student_theme: {
+        Args: { p_code: string; p_student_id?: string; p_theme: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

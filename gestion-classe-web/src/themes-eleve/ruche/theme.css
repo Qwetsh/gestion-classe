@@ -1,0 +1,154 @@
+/* Thème « Ruche » (espace élève) : crème, miel, brun chaud. */
+.el[data-theme='ruche'] {
+  --el-bg: #FFF6DC; --el-surface: #FFFDF5; --el-line: #EFD9A0; --el-line-soft: #F6E7BF; --el-line-strong: #D9B95E;
+  --el-text: #33240A; --el-muted: #5B4420; --el-dim: #6B5228;
+  --el-indigo: #9A5B00; --el-indigo-ink: #7C4700; --el-indigo-soft: #FBE6A8;
+  --el-pos: #3F6B1A; --el-pos-ink: #35590F; --el-pos-soft: #E6ECC9;
+  --el-warn: #A14A00; --el-warn-ink: #823B00; --el-warn-soft: #FBDDB8;
+  --el-neg: #A32A1D; --el-neg-soft: #F7D8CB;
+  --el-track: #F1DFAE; --el-on-accent: #FFFFFF; --el-radio: #B89A55;
+  --el-radius: 14px; --el-radius-sm: 12px;
+  --el-font-display: 'Comfortaa', 'Nunito', 'Inter', sans-serif;
+}
+.el[data-theme='ruche'] .el-main { padding-top: 246px; }
+.el[data-theme='ruche'] .el-h1 { font-weight: 700; letter-spacing: -0.01em; }
+.el[data-theme='ruche'] .el-btn--primary { box-shadow: 0 3px 0 #6A3D00; }
+
+/* ---- La scène ---- */
+[data-scene='ruche'] .ru-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='ruche'] .ru-set > svg { position: absolute; height: auto; overflow: visible; }
+[data-scene='ruche'] .ru-sky { height: 240px; background: linear-gradient(180deg, #FFE08A 0%, #FFEDB8 50%, #FFF6DC 100%); }
+[data-scene='ruche'] .ru-sunlayer { height: 200px; }
+[data-scene='ruche'] .ru-sun {
+  position: absolute; right: 30px; top: 12px; width: 128px; height: 128px; border-radius: 50%;
+  background: radial-gradient(circle, #FFFFFF 0 22%, #FFF3C4 36%, rgba(255, 226, 140, 0.55) 56%, rgba(255, 226, 140, 0) 74%);
+  animation: ru-sun 9s ease-in-out infinite alternate;
+}
+@keyframes ru-sun { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+/* Collines, sol de la prairie, herbes : chaque plan porte son aplat */
+[data-scene='ruche'] .ru-hills { height: 70px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='70' viewBox='0 0 480 70'%3E%3Cpath d='M0 70V36Q60 8 130 26T270 20T400 30T480 36V70Z' fill='%23C9DB8A'/%3E%3Cpath d='M0 70V50Q80 28 170 44T340 40T480 50V70Z' fill='%23A9C96A'/%3E%3C/svg%3E") center top / 480px 70px repeat-x; }
+[data-scene='ruche'] .ru-hills::after { content: ''; position: absolute; left: 0; right: 0; top: 69px; height: calc(100vh + 900px); background: #A9C96A; }
+[data-scene='ruche'] .ru-meadow { height: 240px; }
+[data-scene='ruche'] .ru-ground { position: absolute; left: 0; right: 0; top: 204px; height: calc(100vh + 900px); background: #7FB04A; }
+[data-scene='ruche'] {
+  --ru-blades: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='30' viewBox='0 0 120 30'%3E%3Cpath d='M0 30V14Q2 22 3 30ZM2 30Q3 18 0 8Q6 18 6 30ZM9 30Q11 14 15 4Q13 18 14 30ZM18 30Q18 20 14 12Q22 20 22 30ZM26 30Q29 12 35 0Q31 16 31 30ZM36 30Q36 22 33 15Q40 22 40 30ZM44 30Q46 16 43 6Q50 16 49 30ZM54 30Q56 18 62 9Q58 20 59 30ZM63 30Q64 12 60 2Q68 14 68 30ZM72 30Q73 22 77 14Q75 22 76 30ZM80 30Q82 14 88 5Q85 18 85 30ZM90 30Q90 18 86 9Q94 18 94 30ZM98 30Q100 20 104 12Q102 22 103 30ZM107 30Q108 12 105 3Q112 14 112 30ZM115 30Q117 20 120 14V30Z'/%3E%3C/svg%3E");
+}
+[data-scene='ruche'] .ru-grass { left: -30px; right: -30px; height: 30px; }
+[data-scene='ruche'] .ru-grass::before {
+  content: ''; position: absolute; inset: 0; background: #4F8A2B; transform-origin: 50% 100%;
+  -webkit-mask: var(--ru-blades) left bottom / 120px 30px repeat-x; mask: var(--ru-blades) left bottom / 120px 30px repeat-x;
+  animation: ru-sway 5s ease-in-out infinite alternate;
+}
+[data-scene='ruche'] .ru-grass::after { content: ''; position: absolute; left: 0; right: 0; top: 29px; height: calc(100vh + 900px); background: linear-gradient(#4F8A2B 0, #A9C96A 10px, #E9E2A8 24px, #FFF6DC 40px); }
+@keyframes ru-sway { from { transform: skewX(-5deg); } to { transform: skewX(6deg); } }
+
+/* Fleurs : elles se balancent depuis le pied */
+[data-scene='ruche'] .ru-flower { transform-origin: 50% 100%; animation: ru-nod 4.5s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes ru-nod { from { transform: rotate(-5deg); } to { transform: rotate(6deg); } }
+
+/* Abeilles : chacune suit sa boucle, se retourne quand elle repart vers la gauche ; les ailes vibrent */
+[data-scene='ruche'] .ru-air { height: 240px; }
+[data-scene='ruche'] .ru-bee { position: absolute; left: 0; top: 0; }
+[data-scene='ruche'] .ru-bee svg { display: block; overflow: visible; animation: ru-bob 0.5s ease-in-out infinite alternate; }
+@keyframes ru-bob { from { transform: translateY(-1.5px); } to { transform: translateY(1.5px); } }
+[data-scene='ruche'] .ru-wing { fill: rgba(255, 255, 255, 0.85); stroke: rgba(51, 36, 10, 0.4); stroke-width: 0.6; transform-box: fill-box; transform-origin: 50% 100%; animation: ru-buzz 0.09s linear infinite alternate; }
+[data-scene='ruche'] .ru-wing--back { opacity: 0.7; }
+@keyframes ru-buzz { from { transform: scaleY(1) rotate(-8deg); } to { transform: scaleY(0.45) rotate(8deg); } }
+[data-scene='ruche'] .ru-bee--a { animation: ru-path-a 17s ease-in-out infinite; }
+[data-scene='ruche'] .ru-bee--b { animation: ru-path-b 13s ease-in-out infinite; animation-delay: -4s; }
+[data-scene='ruche'] .ru-bee--c { animation: ru-path-c 21s ease-in-out infinite; animation-delay: -9s; }
+[data-scene='ruche'] .ru-bee--d { animation: ru-path-d 11s ease-in-out infinite; animation-delay: -2s; }
+@keyframes ru-path-a {
+  0%, 100% { transform: translate(28px, 132px) scaleX(-1); } 22% { transform: translate(118px, 96px) scaleX(-1); } 46% { transform: translate(250px, 124px) scaleX(-1); }
+  50% { transform: translate(262px, 120px) scaleX(1); } 74% { transform: translate(150px, 70px) scaleX(1); } 96% { transform: translate(34px, 128px) scaleX(1); }
+}
+@keyframes ru-path-b {
+  0%, 100% { transform: translate(300px, 150px) scaleX(1); } 30% { transform: translate(200px, 112px) scaleX(1); } 48% { transform: translate(140px, 140px) scaleX(1); }
+  52% { transform: translate(140px, 138px) scaleX(-1); } 80% { transform: translate(250px, 96px) scaleX(-1); } 98% { transform: translate(300px, 148px) scaleX(-1); }
+}
+@keyframes ru-path-c {
+  0%, 100% { transform: translate(80px, 60px) scaleX(-1); } 24% { transform: translate(190px, 44px) scaleX(-1); } 48% { transform: translate(300px, 90px) scaleX(-1); }
+  52% { transform: translate(300px, 94px) scaleX(1); } 76% { transform: translate(170px, 116px) scaleX(1); } 98% { transform: translate(84px, 64px) scaleX(1); }
+}
+@keyframes ru-path-d {
+  0%, 100% { transform: translate(210px, 160px) scaleX(-1); } 46% { transform: translate(296px, 130px) scaleX(-1); }
+  50% { transform: translate(296px, 128px) scaleX(1); } 96% { transform: translate(214px, 158px) scaleX(1); }
+}
+
+/* Rayon de miel : alvéoles pleines, vides ou operculées ; une goutte se forme et tombe */
+[data-scene='ruche'] .ru-comb { height: 150px; }
+[data-scene='ruche'] .ru-cell path { stroke: #B8770B; stroke-width: 1.6; stroke-linejoin: round; }
+[data-scene='ruche'] .ru-cell--honey path { fill: #F5A623; }
+[data-scene='ruche'] .ru-cell--empty path { fill: #FFD873; }
+[data-scene='ruche'] .ru-cell--cap path { fill: #FFEDB8; }
+[data-scene='ruche'] .ru-cell .ru-cell__shine { fill: none; stroke: #FFE9A6; stroke-width: 1.8; stroke-linecap: round; }
+[data-scene='ruche'] .ru-drip { fill: #F5A623; stroke: #B8770B; stroke-width: 1; opacity: 0; transform-box: fill-box; transform-origin: 50% 0; }
+[data-scene='ruche'] .ru-drip--idle { animation: ru-drip 7s ease-in infinite; }
+@keyframes ru-drip {
+  0% { opacity: 0; transform: translateY(0) scale(0.3); }
+  12% { opacity: 1; }
+  52% { opacity: 1; transform: translateY(0) scale(1, 1.25); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  74% { opacity: 1; transform: translateY(120px) scale(0.9, 1.3); }
+  75%, 100% { opacity: 0; transform: translateY(120px) scale(0.9, 1.3); }
+}
+
+/* Pollen qui flotte */
+[data-scene='ruche'] .ru-pollen { position: absolute; inset: 0; }
+[data-scene='ruche'] .ru-mote { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #F7B32B; opacity: 0.55; animation: ru-float var(--d) ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes ru-float { from { transform: translate(0, 0); } to { transform: translate(26px, -34px); } }
+
+/* ---- Au toucher (la ruche) : l'essaim sort en spirale, tourne autour de la ruche, puis rentre ---- */
+[data-scene='ruche'] .ru-swarmbee { opacity: 0; transform-box: view-box; transform-origin: 60px 96px; }
+[data-scene='ruche'][data-fx~='essaim'] .ru-swarmbee { animation: ru-swarm 3.6s ease-in-out var(--delay) both; }
+@keyframes ru-swarm {
+  0% { opacity: 0; transform: rotate(var(--a)) translateX(0); }
+  8% { opacity: 1; }
+  40% { opacity: 1; transform: rotate(calc(var(--a) + 260deg)) translateX(var(--rad)); }
+  70% { opacity: 1; transform: rotate(calc(var(--a) + 560deg)) translateX(calc(var(--rad) * 0.8)); }
+  94% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(calc(var(--a) + 760deg)) translateX(0); }
+}
+[data-scene='ruche'][data-fx~='essaim'] .ru-hive { animation: ru-shake 0.5s ease-in-out both; }
+@keyframes ru-shake { 0%, 100% { transform: rotate(0deg); } 25% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } 75% { transform: rotate(-2deg); } }
+
+/* ---- Au toucher (le rayon) : les alvéoles brillent tour à tour, quatre gouttes de miel tombent ---- */
+[data-scene='ruche'][data-fx~='miel'] .ru-cell--honey path:first-child { animation: ru-shine 1.1s ease-in-out both; animation-delay: calc(var(--i) * 0.07s); }
+@keyframes ru-shine { 0%, 100% { fill: #F5A623; } 45% { fill: #FFE08A; } }
+[data-scene='ruche'][data-fx~='miel'] .ru-drip:not(.ru-drip--idle) { animation: ru-fall 1.5s both; }
+[data-scene='ruche'][data-fx~='miel'] .ru-drip--b { animation-delay: 0.3s; }
+[data-scene='ruche'][data-fx~='miel'] .ru-drip--c { animation-delay: 0.6s; }
+[data-scene='ruche'][data-fx~='miel'] .ru-drip--d { animation-delay: 0.9s; }
+@keyframes ru-fall {
+  0% { opacity: 0; transform: translateY(0) scale(0.3); animation-timing-function: ease-out; }
+  30% { opacity: 1; transform: translateY(2px) scale(1, 1.3); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  92% { opacity: 1; transform: translateY(190px) scale(0.85, 1.4); }
+  100% { opacity: 0; transform: translateY(196px) scale(1.4, 0.4); }
+}
+
+/* ---- Changement d'onglet : le miel coule ----
+   Une nappe de miel descend sur l'écran d'un seul mouvement, coulures en tête, filets en queue ; la
+   page change derrière elle au moment où elle couvre tout (la moitié du temps). */
+html[data-el-nav='ruche']::view-transition-old(root) { animation: ru-page-out 1s linear both; }
+html[data-el-nav='ruche']::view-transition-new(root) { animation: ru-page-in 1s linear both; }
+@keyframes ru-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes ru-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='ruche'] i:first-child {
+  left: -2px; right: -2px; top: -250vh; height: 250vh;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.2) 0 5px, rgba(255, 255, 255, 0) 5px 54px, rgba(140, 78, 0, 0.12) 54px 60px, rgba(140, 78, 0, 0) 60px 118px),
+    linear-gradient(#F9BE3C, #E8920C);
+  --ru-drips: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='96' viewBox='0 0 160 96'%3E%3Cpath d='M0 0H160V26H0Z'/%3E%3Crect x='8' y='0' width='24' height='74' rx='12'/%3E%3Crect x='44' y='0' width='16' height='46' rx='8'/%3E%3Crect x='70' y='0' width='28' height='94' rx='14'/%3E%3Crect x='108' y='0' width='18' height='56' rx='9'/%3E%3Crect x='134' y='0' width='20' height='68' rx='10'/%3E%3C/svg%3E");
+  --ru-tails: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='96' viewBox='0 0 160 96'%3E%3Cpath d='M0 70H160V96H0Z'/%3E%3Crect x='14' y='30' width='10' height='66' rx='5'/%3E%3Crect x='52' y='52' width='8' height='44' rx='4'/%3E%3Crect x='82' y='8' width='12' height='88' rx='6'/%3E%3Crect x='116' y='44' width='8' height='52' rx='4'/%3E%3Crect x='140' y='24' width='10' height='72' rx='5'/%3E%3C/svg%3E");
+  -webkit-mask: var(--ru-tails) 0 0 / 160px 96px repeat-x, linear-gradient(#000, #000) 0 95px / 100% calc(100% - 190px) no-repeat, var(--ru-drips) 0 100% / 160px 96px repeat-x;
+  mask: var(--ru-tails) 0 0 / 160px 96px repeat-x, linear-gradient(#000, #000) 0 95px / 100% calc(100% - 190px) no-repeat, var(--ru-drips) 0 100% / 160px 96px repeat-x;
+}
+.el-front[data-scene='ruche'][data-on] i:first-child { animation: ru-pour 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+@keyframes ru-pour { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(350vh); } }
+/* Quelques gouttes devancent la nappe */
+.el-front[data-scene='ruche'] i:not(:first-child) {
+  left: calc(var(--r1) * 100%); top: -24px; width: calc(8px + var(--r2) * 8px); height: calc(12px + var(--r2) * 10px);
+  border-radius: 50% 50% 50% 50% / 38% 38% 62% 62%; background: #F0A21A;
+}
+.el-front[data-scene='ruche'][data-on] i:not(:first-child) { animation: ru-bead 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+@keyframes ru-bead { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(calc(360vh + var(--r3) * 40vh)); } }
