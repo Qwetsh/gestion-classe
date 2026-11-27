@@ -1096,6 +1096,8 @@ function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
       await saveQuestion(editId, order, editText, editAnswers);
       await load();
       startNew();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Enregistrement impossible.');
     } finally {
       setSaving(false);
     }
@@ -1103,7 +1105,12 @@ function QuestionsEditorModal({ onClose }: { onClose: () => void }) {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Supprimer cette question ?')) return;
-    await deleteQuestion(id);
+    try {
+      await deleteQuestion(id);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Suppression impossible.');
+      return;
+    }
     await load();
     startNew();
   };

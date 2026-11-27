@@ -8,7 +8,7 @@ Il n'y a pas d'application automatique. Une migration est appliquée à la main,
 
 Règle : **pas de migration en production sans son fichier dans `master`**, et inversement. Le contrôle se fait en comparant ce dossier à la liste des migrations enregistrées (`list_migrations`).
 
-Prochain numéro libre : **098**.
+Prochain numéro libre : **099**.
 
 Après l'avoir appliquée, régénérer la description de la base que lit le code web, et la commiter dans la même PR :
 

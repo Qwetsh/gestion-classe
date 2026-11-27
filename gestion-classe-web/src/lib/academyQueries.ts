@@ -245,20 +245,71 @@ export async function saveQuestion(
     qId = data.id;
   }
 
-  await supabase.from('academy_answers').delete().eq('question_id', qId!);
-  const answerRows = answers.map(a => ({
-    question_id: qId!,
+  // Les réponses possibles sont modifiées sur place : les effacer pour les
+  // recréer supprimerait les réponses déjà données par les élèves (le
+  // questionnaire est commun à tous les comptes).
+  let existing: { id: string; display_order: number }[] = [];
+  if (questionId) {
+    const { data, error } = await supabase
+      .from('academy_answers')
+      .select('id, display_order')
+      .eq('question_id', qId!)
+      .order('display_order');
+    if (error) throw error;
+    existing = data || [];
+  }
+
+  const plan = planAnswerSync(existing, answers);
+  for (const u of plan.updates) {
+    const { error } = await supabase.from('academy_answers').update(answerFields(u.answer)).eq('id', u.id);
+    if (error) throw error;
+  }
+  if (plan.inserts.length > 0) {
+    const { error } = await supabase
+      .from('academy_answers')
+      .insert(plan.inserts.map(a => ({ question_id: qId!, ...answerFields(a) })));
+    if (error) throw error;
+  }
+  if (plan.deleteIds.length > 0) {
+    const { error } = await supabase.from('academy_answers').delete().in('id', plan.deleteIds);
+    if (error) throw toQuestionnaireError(error, 'Des élèves ont déjà choisi une des réponses retirées : elle ne peut plus être supprimée.');
+  }
+
+  return qId!;
+}
+
+type AnswerInput = { answer_text: string; display_order: number; gryffondor_weight: number; serpentard_weight: number; serdaigle_weight: number; poufsouffle_weight: number };
+
+function answerFields(a: AnswerInput): AnswerInput {
+  return {
     answer_text: a.answer_text,
     display_order: a.display_order,
     gryffondor_weight: a.gryffondor_weight,
     serpentard_weight: a.serpentard_weight,
     serdaigle_weight: a.serdaigle_weight,
     poufsouffle_weight: a.poufsouffle_weight,
-  }));
-  const { error: aErr } = await supabase.from('academy_answers').insert(answerRows);
-  if (aErr) throw aErr;
+  };
+}
 
-  return qId!;
+/**
+ * Répartit les réponses saisies entre réponses existantes (mises à jour sur
+ * place, dans l'ordre d'affichage), réponses à créer et réponses en trop.
+ */
+export function planAnswerSync<A>(
+  existing: { id: string; display_order: number }[],
+  answers: A[],
+): { updates: { id: string; answer: A }[]; inserts: A[]; deleteIds: string[] } {
+  const sorted = [...existing].sort((a, b) => a.display_order - b.display_order);
+  return {
+    updates: answers.slice(0, sorted.length).map((answer, i) => ({ id: sorted[i].id, answer })),
+    inserts: answers.slice(sorted.length),
+    deleteIds: sorted.slice(answers.length).map(e => e.id),
+  };
+}
+
+/** Une suppression refusée parce que des élèves ont déjà répondu (clé étrangère, code 23503). */
+function toQuestionnaireError(error: { code?: string; message: string }, message: string): Error {
+  return error.code === '23503' ? new Error(message) : new Error(error.message);
 }
 
 export async function deleteQuestion(questionId: string): Promise<void> {
@@ -266,7 +317,7 @@ export async function deleteQuestion(questionId: string): Promise<void> {
     .from('academy_questions')
     .delete()
     .eq('id', questionId);
-  if (error) throw error;
+  if (error) throw toQuestionnaireError(error, 'Des élèves ont déjà répondu à cette question : elle ne peut plus être supprimée. Vous pouvez la modifier.');
 }
 
 export async function fetchTestResponses(classId: string) {
