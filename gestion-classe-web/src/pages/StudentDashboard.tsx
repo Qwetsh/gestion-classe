@@ -609,7 +609,7 @@ export function StudentDashboard() {
             <button type="button" className="el-back" onClick={() => { setHomePart('hub'); window.scrollTo(0, 0); }}>
               <ChevronLeft size={22} aria-hidden /> Accueil
             </button>
-            <StudentThemePicker value={theme} rights={rights} onChange={chooseTheme} onUnlock={unlockTheme} />
+            <StudentThemePicker value={theme} rights={rights} stampCount={stampCount} onChange={chooseTheme} onUnlock={unlockTheme} />
           </>
         )}
 

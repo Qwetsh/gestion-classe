@@ -365,46 +365,63 @@ html[data-el-nav]::view-transition-new(el-front) { animation: none; }
 @media (prefers-reduced-motion: reduce) { .el-front { display: none; } }
 /* Le contenu passe devant le décor */
 .el > .el-main, .el > .el-login { position: relative; z-index: 1; }
-.el-theme__tag { margin-left: 4px; padding: 1px 6px; border-radius: 4px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); font-size: 11px; font-weight: 600; }
 
 /* ---- Choix du thème (écran « Mon thème », ouvert depuis l'accueil) ---- */
+.el-collection { display: flex; align-items: center; gap: 12px; font-size: 14px; color: var(--el-muted); }
+.el-collection > span { flex-shrink: 0; }
+.el-collection b { color: var(--el-text); font-weight: 700; }
+.el-collection .el-bar { flex: 1; height: 6px; }
 .el-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .el-theme {
-  display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 10px; border: 1px solid var(--el-line);
+  display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 10px; border: 1px solid var(--el-line);
   border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-text);
   font: inherit; text-align: left; cursor: pointer; box-shadow: var(--el-card-shadow);
 }
-.el-theme[aria-pressed='true'] { border: 2px solid var(--el-indigo); padding: 7px 7px 9px; }
-.el-theme__view { position: relative; display: flex; flex-direction: column; gap: 5px; height: 64px; padding: 8px; border-radius: 6px; overflow: hidden; }
-.el-theme__line { display: block; height: 7px; border-radius: 3px; }
-.el-theme__card { display: flex; align-items: center; gap: 6px; flex: 1; padding: 0 8px; border-radius: 4px; }
-.el-theme__dot { display: block; width: 14px; height: 14px; border-radius: 7px; }
-.el-theme__name { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 4px; font-size: 15px; font-weight: 600; }
+.el-theme[aria-pressed='true'] { border: 2px solid var(--el-indigo); padding: 5px 5px 9px; }
+/* La vignette : une image du vrai décor du thème, sur sa couleur de fond */
+.el-theme__frame { position: relative; display: block; margin-bottom: 5px; }
+.el-theme__view, .el-sheet__view { display: block; aspect-ratio: 360 / 222; border-radius: calc(var(--el-radius) - 3px); overflow: hidden; }
+.el-theme__view img, .el-sheet__view img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.el-theme__name { padding: 0 4px; font-size: 15px; line-height: 20px; font-weight: 600; }
 .el-theme__note { padding: 0 4px; font-size: 13px; line-height: 17px; color: var(--el-dim); }
-/* Thème fermé : aperçu estompé, cadenas, et la façon de l'obtenir à la place de sa description */
-.el .el-theme:disabled { opacity: 1; cursor: default; }
-.el-theme--locked .el-theme__view > :not(.el-theme__lock) { opacity: 0.4; }
-.el-theme__lock {
-  position: absolute; right: 6px; top: 6px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 13px;
-  background: var(--el-surface); color: var(--el-muted); box-shadow: 0 0 0 1px var(--el-line-strong);
+/* Marque posée sur la vignette : la coche du thème porté, le cadenas, le cadeau d'un thème à choisir */
+.el-theme__mark {
+  position: absolute; inset: 0; margin: auto; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 17px;
+  background: rgba(20, 20, 26, 0.72); color: #FFFFFF;
 }
+.el-theme__mark--on { inset: 6px 6px auto auto; margin: 0; width: 24px; height: 24px; border-radius: 12px; background: var(--el-indigo); color: var(--el-on-accent); }
+/* Thème fermé : décor éteint sous un cadenas, et son défi à la place de sa description */
+.el-theme--locked .el-theme__view img { filter: grayscale(0.85) brightness(0.72); }
 .el-theme--locked .el-theme__name { color: var(--el-muted); }
-.el-theme__note--lock { color: var(--el-muted); }
-/* Thème que l'élève peut débloquer maintenant */
-.el-theme--earn { border: 2px dashed var(--el-indigo); padding: 7px 7px 9px; }
+.el-theme__goal { display: flex; align-items: center; gap: 5px; padding: 0 4px; font-size: 13px; line-height: 17px; font-weight: 500; color: var(--el-muted); }
+.el-theme__goal svg { flex-shrink: 0; }
+.el-theme__progress { display: block; height: 4px; margin: 5px 4px 0; border-radius: 2px; background: var(--el-track); overflow: hidden; }
+.el-theme__progress > span { display: block; height: 100%; border-radius: 2px; background: var(--el-indigo); }
+/* Thème que l'élève peut débloquer maintenant : le décor en couleurs, un cadeau, un cadre en pointillés */
+.el-theme--earn { border: 2px dashed var(--el-indigo); padding: 5px 5px 9px; }
+.el-theme--earn .el-theme__view img { filter: none; }
 .el-theme--earn .el-theme__name { color: var(--el-text); }
-.el-theme--earn .el-theme__note--lock { color: var(--el-indigo-ink); font-weight: 600; }
-.el-theme--earn .el-theme__lock { color: var(--el-indigo); box-shadow: 0 0 0 1px var(--el-indigo); }
-/* Confirmation posée au-dessus de la barre du bas */
+.el-theme--earn .el-theme__goal { color: var(--el-indigo-ink); font-weight: 600; }
+.el-theme--earn .el-theme__mark { background: var(--el-indigo); color: var(--el-on-accent); }
+/* Fiche d'un thème fermé, posée au-dessus de la barre du bas ; un appui à côté la referme */
 .el-sheet {
-  position: fixed; left: 0; right: 0; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 30;
-  padding: 0 max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); pointer-events: none;
+  position: fixed; inset: 0; z-index: 30; display: flex; align-items: flex-end; background: rgba(10, 10, 14, 0.5);
+  padding: 12px max(12px, env(safe-area-inset-right)) calc(76px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
 }
 .el-sheet__box {
-  pointer-events: auto; display: flex; flex-direction: column; gap: 14px; max-width: 456px; margin: 0 auto; padding: 16px;
-  border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-text);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+  display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 456px; max-height: 100%; margin: 0 auto; padding: 12px;
+  overflow-y: auto; border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface);
+  color: var(--el-text); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
+.el-sheet__view { flex-shrink: 0; aspect-ratio: 360 / 180; }
+.el-sheet__titles { display: flex; flex-direction: column; gap: 1px; padding: 0 2px; }
+.el-sheet__name { font-family: var(--el-font-display); font-size: 20px; line-height: 26px; font-weight: 700; }
+.el-goal { display: flex; gap: 12px; padding: 12px; border-radius: var(--el-radius); background: var(--el-bg); }
+.el-goal__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.el-goal__title { font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--el-dim); }
+.el-goal__text { font-size: 14px; line-height: 20px; }
+.el-goal .el-bar { margin-top: 4px; }
+.el-goal__count { font-size: 13px; line-height: 17px; font-weight: 600; color: var(--el-muted); font-variant-numeric: tabular-nums; }
 
 @media (max-width: 359px) {
   .el-main { padding-top: 20px; }
