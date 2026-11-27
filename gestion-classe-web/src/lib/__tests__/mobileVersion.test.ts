@@ -213,35 +213,39 @@ describe('ce que le téléphone affiche', () => {
 });
 
 describe('lien de partage en lecture seule (cahier de texte)', () => {
-  it('ouvre aussi une correction d’activité, mais jamais une évaluation, une copie modèle ni un devoir noté', () => {
+  it('ouvre corrections et évaluations, jamais une copie modèle', () => {
     for (const title of [
       'Activité 3 — La dérive des continents',
       'Activité 3 — La dérive des continents (documents)',
       'Activité 3 — La dérive des continents (correction)',
       'Activité 3 — La dérive des continents (corrigé)',
       'FM3 — Réaliser un dessin d’observation',
-    ]) expect(shareEligible(title), title).toBe(true);
-    for (const title of [
       'Évaluation — La Terre, de la surface au centre',
       'Évaluation — La Terre (correction)',
       'Correction de l’évaluation 1',
-      'Activité 3 — La dérive des continents (copie modèle)',
-      'Entraînement noté — Les angines',
+      'Entraînement noté — Lire un graphique, un tableau, une expérience (correction)',
       'Contrôle — Les volcans',
       'DS 2',
+    ]) expect(shareEligible(title), title).toBe(true);
+    for (const title of [
+      'Activité 3 — La dérive des continents (copie modèle)',
+      'Évaluation 1 — copie modele',
     ]) expect(shareEligible(title), title).toBe(false);
   });
 
-  it('le QR code imprimé reste fermé aux corrections', () => {
-    expect(linkEligible('qr', 'Activité 3 — Wegener (correction)')).toBe(false);
-    expect(linkEligible('share', 'Activité 3 — Wegener (correction)')).toBe(true);
+  it('le QR code imprimé reste fermé aux corrections et aux évaluations', () => {
+    for (const title of ['Activité 3 — Wegener (correction)', 'Évaluation — La Terre', 'Entraînement noté — Les angines (correction)']) {
+      expect(linkEligible('qr', title), title).toBe(false);
+      expect(linkEligible('share', title), title).toBe(true);
+    }
   });
 
   it('vise l’original de la bibliothèque, comme le QR code', () => {
     const copy = { id: 'copie', title: '5e B · mar. 10 nov.' };
     expect(linkTarget('share', copy, { id: 'orig', title: 'Activité 2 — Le climat (correction)' })).toBe('orig');
     expect(linkTarget('qr', copy, { id: 'orig', title: 'Activité 2 — Le climat (correction)' })).toBeNull();
-    expect(linkTarget('share', copy, { id: 'orig', title: 'Évaluation 1 — Le climat' })).toBeNull();
+    expect(linkTarget('share', copy, { id: 'orig', title: 'Évaluation 1 — Le climat' })).toBe('orig');
+    expect(linkTarget('share', copy, { id: 'orig', title: 'Évaluation 1 — Le climat (copie modèle)' })).toBeNull();
     expect(linkTarget('share', { id: 'a', title: 'Activité 2 (correction)' }, null)).toBe('a');
   });
 
