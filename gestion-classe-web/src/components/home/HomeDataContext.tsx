@@ -7,7 +7,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { supabase } from '../../lib/supabase';
-import { fetchTeacherEvents } from '../../lib/eventsQueries';
+import { loadStudentsPage } from '../../lib/studentsPageQueries';
+import { getCurrentSchoolYear } from '../../lib/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { pronoteFetcher } from '../../lib/pronoteFetcher';
 import type { TimetableClassLesson, Timetable, RefreshInformation } from 'pawnote';
@@ -103,6 +104,8 @@ export interface HomeData {
   studentAlerts: StudentAlert[];
   classAverages: ClassAverage[];
   avgImplication: number;
+  /** Trimestre en cours selon Suivi élèves (null tant qu'il n'est pas chargé). */
+  currentTrimester: number | null;
   alertCount: number;
   weekSessionsCount: number;
   weekSessionsDone: number;
@@ -247,6 +250,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
 
   // KPIs
   const [avgImplication, setAvgImplication] = useState<number>(0);
+  const [currentTrimester, setCurrentTrimester] = useState<number | null>(null);
   const [alertCount, setAlertCount] = useState<number>(0);
   const [weekSessionsCount, setWeekSessionsCount] = useState<number>(0);
   const [weekSessionsDone, setWeekSessionsDone] = useState<number>(0);
@@ -598,7 +602,6 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
           { data: classesData },
           { data: sessionsData },
           { data: weekSessions },
-          { data: studentsData },
         ] = await Promise.all([
           supabase.from('classes').select('id, name').eq('user_id', user.id).order('name'),
           supabase.from('sessions')
@@ -612,9 +615,6 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
             .eq('user_id', user.id)
             .gte('started_at', monday.toISOString())
             .lte('started_at', sunday.toISOString()),
-          supabase.from('students')
-            .select('id, pseudo, class_id, classes (name)')
-            .eq('user_id', user.id),
         ]);
 
         const cls = (classesData || []) as DashClass[];
@@ -650,86 +650,24 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
           setRecentSessions(sessions);
         }
 
-        // Grade calculations
-        if (studentsData && studentsData.length > 0) {
-          const classIds = cls.map(c => c.id);
-
-          // Parallel batch 2: config + events (via sessions join) + manual participations (via user_id)
-          const [
-            { data: configsData },
-            allEventsData,
-            { data: manualPartData },
-          ] = await Promise.all([
-            supabase.from('class_trimester_config').select('*').in('class_id', classIds),
-            fetchTeacherEvents(user.id),
-            supabase.from('manual_participations').select('student_id, count').eq('user_id', user.id),
-          ]);
-
-          const configMap = new Map<string, any>();
-          (configsData || []).forEach(c => configMap.set(c.class_id, c));
-
-          // Calculate grades per student
-          const eventsByStudent = new Map<string, any[]>();
-          allEventsData.forEach(e => {
-            const arr = eventsByStudent.get(e.student_id) || [];
-            arr.push(e);
-            eventsByStudent.set(e.student_id, arr);
-          });
-
-          const manualByStudent = new Map<string, number>();
-          (manualPartData || []).forEach(mp => {
-            manualByStudent.set(mp.student_id, (manualByStudent.get(mp.student_id) || 0) + mp.count);
-          });
-
-          // Count sessions per student (unique session_ids in events)
-          const sessionsByStudent = new Map<string, Set<string>>();
-          allEventsData.forEach(e => {
-            const set = sessionsByStudent.get(e.student_id) || new Set();
-            set.add(e.session_id);
-            sessionsByStudent.set(e.student_id, set);
-          });
-
-          const studentGrades: { id: string; pseudo: string; class_id: string; class_name: string; grade: number; malus: number; absences: number; sessionsCount: number; participations: number; }[] = [];
-
-          studentsData.forEach(student => {
-            const evts = eventsByStudent.get(student.id) || [];
-            const participations = evts.filter((e: any) => e.type === 'participation').length;
-            const malusCount = evts.filter((e: any) => e.type === 'bavardage').length;
-            const absences = evts.filter((e: any) => e.type === 'absence').length;
-            const manualPart = manualByStudent.get(student.id) || 0;
-            const totalPart = participations + manualPart;
-            const sessCount = sessionsByStudent.get(student.id)?.size || 0;
-
-            const config = student.class_id ? configMap.get(student.class_id) : undefined;
-            const targetPart = config?.target_participations || 15;
-            const totalSessionsExpected = config?.total_sessions_expected || 60;
-            const malusPenalty = config?.bavardage_penalty ?? false;
-            const baseGrade = config?.base_grade ?? null;
-
-            const effectivePart = malusPenalty ? Math.max(0, totalPart - malusCount) : totalPart;
-            const reductionPerAbsence = targetPart / totalSessionsExpected;
-            const adjustedTarget = Math.max(1, targetPart - (absences * reductionPerAbsence));
-
-            let grade: number;
-            if (baseGrade !== null && baseGrade > 0) {
-              const modifier = malusPenalty ? totalPart - malusCount : totalPart;
-              grade = Math.min(20, Math.max(0, baseGrade + modifier));
-            } else {
-              grade = Math.min(20, Math.max(0, (effectivePart / adjustedTarget) * 20));
-            }
-
-            studentGrades.push({
-              id: student.id,
-              pseudo: student.pseudo,
-              class_id: student.class_id ?? '',
-              class_name: (student.classes as any)?.name || 'Classe inconnue',
-              grade,
-              malus: malusCount,
-              absences,
-              sessionsCount: sessCount,
-              participations: totalPart,
-            });
-          });
+        // Notes d'implication : le même calcul que Suivi élèves (trimestre en cours, réglages de
+        // chaque classe, implications ajoutées à la main du trimestre), élèves témoins exclus.
+        {
+          const page = await loadStudentsPage(user.id, getCurrentSchoolYear());
+          setCurrentTrimester(page.settings.current_trimester);
+          const studentGrades = page.studentGrades
+            .filter(sg => !sg.student.is_witness)
+            .map(sg => ({
+              id: sg.student.id,
+              pseudo: sg.student.pseudo,
+              class_id: sg.student.class_id ?? '',
+              class_name: cls.find(c => c.id === sg.student.class_id)?.name || 'Classe inconnue',
+              grade: sg.grade,
+              malus: sg.malus,
+              absences: sg.absences,
+              sessionsCount: new Set(sg.events.map(e => e.session_id)).size,
+              participations: sg.totalParticipations,
+            }));
 
           // Compute class averages
           const gradesByClass = new Map<string, number[]>();
@@ -796,6 +734,7 @@ export function HomeDataProvider({ children, onOpenBoard, boardVersion = 0 }: {
     studentAlerts,
     classAverages,
     avgImplication,
+    currentTrimester,
     alertCount,
     weekSessionsCount,
     weekSessionsDone,

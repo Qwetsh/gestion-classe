@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { fromDb } from '../lib/dbJson';
+import { fetchCurrentPeriod, type CurrentPeriod } from '../lib/evaluationQueries';
 import { useAuth } from '../hooks/useAuth';
 import { Layout } from '../components/Layout';
 import { useUIFeedback } from '../contexts/UIFeedbackContext';
@@ -103,6 +104,7 @@ export function Analytics() {
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
   const [events, setEvents] = useState<EventData[]>([]);
   const [oralGrades, setOralGrades] = useState<OralGradeData[]>([]);
+  const [period, setPeriod] = useState<CurrentPeriod | null>(null);
   const [studentGenders, setStudentGenders] = useState<StudentGender[]>([]);
   const [students, setStudents] = useState<StudentData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -214,7 +216,7 @@ export function Analytics() {
     loadEvents();
   }, [user, selectedClasses, dateRange]);
 
-  // Load oral evaluations - simple query on oral_evaluations table
+  // Notes d'oral du trimestre en cours (comme Suivi élèves), pas de toutes les années
   useEffect(() => {
     if (!user) {
       setOralGrades([]);
@@ -223,10 +225,14 @@ export function Analytics() {
 
     async function loadOralGrades() {
       try {
+        const current = await fetchCurrentPeriod(user!.id);
+        setPeriod(current);
         const { data, error } = await supabase
           .from('oral_evaluations')
           .select('student_id, class_id, grade')
-          .eq('user_id', user!.id);
+          .eq('user_id', user!.id)
+          .eq('trimester', current.period)
+          .eq('school_year', current.schoolYear);
 
         if (error) {
           console.error('Error loading oral evaluations:', error);
@@ -266,7 +272,8 @@ export function Analytics() {
           return;
         }
 
-        setStudentGenders((data || []).map(s => ({ id: s.id, gender: s.gender === 'F' ? 'F' as const : 'M' as const })));
+        // Genre non renseigné : l'élève n'est compté ni avec les filles ni avec les garçons
+        setStudentGenders((data || []).flatMap(s => (s.gender === 'F' || s.gender === 'M') ? [{ id: s.id, gender: s.gender as 'M' | 'F' }] : []));
         setStudents(fromDb<StudentData[]>((data || []).map(s => ({
           id: s.id, pseudo: s.pseudo, class_id: s.class_id, gender: s.gender ?? null,
         }))));
@@ -449,7 +456,7 @@ export function Analytics() {
   };
 
   // Generate PDF report
-  const handleGenerateReport = () => {
+  const handleGenerateReport = async () => {
     if (selectedClasses.length === 0) return;
 
     setIsGeneratingReport(true);
@@ -463,17 +470,10 @@ export function Analytics() {
         student_id: e.student_id,
       }));
 
-      // Get current school year
-      const now = new Date();
-      const schoolYear = now.getMonth() >= 8
-        ? `${now.getFullYear()}/${now.getFullYear() + 1}`
-        : `${now.getFullYear() - 1}/${now.getFullYear()}`;
-
-      // Estimate trimester from current month
-      const month = now.getMonth();
-      let trimester = 1;
-      if (month >= 0 && month <= 2) trimester = 2;
-      else if (month >= 3 && month <= 5) trimester = 3;
+      // Trimestre et année des réglages de Suivi élèves (pas devinés d'après le mois)
+      const current = period ?? await fetchCurrentPeriod(user!.id);
+      const schoolYear = current.schoolYear;
+      const trimester = current.period;
 
       const reportData = prepareReportData(
         selectedClassObjects,
@@ -660,7 +660,7 @@ export function Analytics() {
                     <div>
                       <div className="text-sm font-semibold text-[var(--text)]">Moyenne /5</div>
                       <div className="text-xs text-[var(--text-dim)]">
-                        {oralStats.byClass.reduce((sum, c) => sum + c.count, 0)} eleves
+                        {oralStats.byClass.reduce((sum, c) => sum + c.count, 0)} élèves
                       </div>
                     </div>
                   </div>
@@ -710,7 +710,7 @@ export function Analytics() {
               >
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-[var(--text)]">
-                    Comparaison Filles / Garcons
+                    Comparaison Filles / Garçons
                   </h3>
                   <div className="flex gap-1">
                     {(['participations', 'malus', 'absences'] as const).map((metric) => (
@@ -736,7 +736,7 @@ export function Analytics() {
                         value: genderStats.filles.count > 0 ? +(genderStats.filles[genderMetric] / genderStats.filles.count).toFixed(1) : 0,
                       },
                       {
-                        name: `Garcons (${genderStats.garcons.count})`,
+                        name: `Garçons (${genderStats.garcons.count})`,
                         value: genderStats.garcons.count > 0 ? +(genderStats.garcons[genderMetric] / genderStats.garcons.count).toFixed(1) : 0,
                       },
                     ]}
