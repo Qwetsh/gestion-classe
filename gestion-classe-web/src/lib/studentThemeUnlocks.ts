@@ -66,7 +66,9 @@ export function themeGoal(theme: Pick<StudentTheme, 'unlock'>, stampCount: numbe
       detail: `Remplis une carte à tampons : à ${STAMPS_PER_THEME} tampons, tu choisis un thème parmi ceux-ci, et tu le gardes.`,
     };
     if (stampCount !== null) {
-      goal.progress = { value: Math.max(0, Math.min(STAMPS_PER_THEME, stampCount)), target: STAMPS_PER_THEME, unit: 'tampons' };
+      // Une carte pleine a déjà donné son thème : ce défi ne s'affiche que quand il n'y en a plus à
+      // choisir, donc on repart de zéro vers le suivant.
+      goal.progress = { value: Math.max(0, stampCount) % STAMPS_PER_THEME, target: STAMPS_PER_THEME, unit: 'tampons' };
     }
     return goal;
   }

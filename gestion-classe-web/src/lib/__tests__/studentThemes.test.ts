@@ -123,8 +123,9 @@ describe('thèmes de l’espace élève', () => {
     expect(stamps && goalRatio(stamps)).toBeCloseTo(0.7);
     // Une classe sans tampons : le défi reste dit, sans progression
     expect(themeGoal({ unlock: 'card' }, null)?.progress).toBeUndefined();
-    // Une carte pleine ne dépasse pas la barre
-    expect(themeGoal({ unlock: 'card' }, 14)?.progress?.value).toBe(STAMPS_PER_THEME);
+    // Une carte pleine a déjà donné son thème : la barre repart de zéro vers le suivant
+    expect(themeGoal({ unlock: 'card' }, STAMPS_PER_THEME)?.progress?.value).toBe(0);
+    expect(themeGoal({ unlock: 'card' }, 14)?.progress?.value).toBe(4);
   });
 
   it('prend le défi décrit par le serveur quand il y en a un, et écarte ce qu’il ne comprend pas', () => {
