@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Board } from '../boardsQueries';
 import { buildBinder, type BinderPage } from '../binder';
 import {
-  binderItems, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowFor, sequenceAnchors, servedEntries, staleAction, staleRows,
+  binderItems, bulkChanges, bulkState, bulkTargets, hasCorrection, itemStates, pageAccess, pagesFromReleased, parseReleased, releasedOf, rowFor, sequenceAnchors, servedEntries, staleAction, staleRows,
   type BinderItem, type BinderItemRow,
 } from '../binderRelease';
 import { withSummaries, type InkRun, type SummaryRuns } from '../binderSummary';
@@ -296,6 +296,60 @@ describe('titres tordus — rien ne s’ouvre par erreur', () => {
 describe('sequenceAnchors', () => {
   it('la page de garde et les activités, jamais la fiche de mémorisation ni l’évaluation', () => {
     expect(sequenceAnchors(items, S1).map(NAME)).toEqual(['garde1', 'a1', 'a2', 'a3']);
+  });
+});
+
+describe('cases « tout » de la grille', () => {
+  // Le groupe d'une séquence dans la grille : tout ce qui porte la séquence, sauf la fiche de mémorisation
+  const seq = items.filter((i) => i.chapter === S1 && i.role !== 'memo');
+  const names = (changes: { item: BinderItem }[]) => changes.map((c) => NAME(c.item.anchor));
+
+  it('« Tout » d’une séquence : la page de garde et les activités, jamais l’évaluation', () => {
+    expect(seq.some((i) => i.role === 'evaluation')).toBe(true);
+    expect(bulkTargets(seq, 'items').map((i) => NAME(i.anchor))).toEqual(sequenceAnchors(items, S1).map(NAME));
+    expect(bulkTargets(seq, 'corrections').map((i) => NAME(i.anchor))).toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('cocher ouvre seulement ce qui est fermé, sans les corrections', () => {
+    const states = itemStates([row('a1', true, true)]);
+    const changes = bulkChanges(seq, states, 'items', true);
+    expect(names(changes)).toEqual(['garde1', 'a2', 'a3']);
+    expect(changes.every((c) => c.state.visible && !c.state.correction)).toBe(true);
+    expect(bulkState(seq, states, 'items')).toBe('some');
+  });
+
+  it('décocher ferme tout, corrections comprises, et ne touche pas à l’évaluation', () => {
+    const states = itemStates([row('garde1', true), row('a1', true, true), row('eval', true)]);
+    const changes = bulkChanges(seq, states, 'items', false);
+    expect(names(changes)).toEqual(['garde1', 'a1']);
+    expect(changes.every((c) => !c.state.visible && !c.state.correction)).toBe(true);
+  });
+
+  it('« Corrections » cochée ouvre chaque correction avec son activité ; décochée, laisse les activités ouvertes', () => {
+    const states = itemStates([row('a1', true)]);
+    const open = bulkChanges(seq, states, 'corrections', true);
+    expect(names(open)).toEqual(['a1', 'a2', 'a3']);
+    expect(open.every((c) => c.state.visible && c.state.correction)).toBe(true);
+
+    const all = itemStates(open.map((c) => rowFor(c.item, CLASS, c.state)));
+    expect(bulkState(seq, all, 'corrections')).toBe('all');
+    const close = bulkChanges(seq, all, 'corrections', false);
+    expect(close.every((c) => c.state.visible && !c.state.correction)).toBe(true);
+    expect(names(close)).toEqual(['a1', 'a2', 'a3']);
+  });
+
+  it('une correction ouverte se referme même si l’activité n’en a plus', () => {
+    const bare = { ...item('a1'), copy: undefined, summary: undefined };
+    const states = new Map([[bare.anchor, { visible: true, correction: true }]]);
+    expect(bulkTargets([bare], 'corrections')).toEqual([]);
+    expect(bulkChanges([bare], states, 'corrections', false)).toEqual([{ item: bare, state: { visible: true, correction: false } }]);
+  });
+
+  it('les fiches méthodes et « Je révise » se cochent d’un bloc', () => {
+    const methods = items.filter((i) => i.role === 'method');
+    expect(bulkState(methods, new Map(), 'items')).toBe('none');
+    expect(names(bulkChanges(methods, new Map(), 'items', true))).toEqual(['fm1']);
+    expect(bulkState(methods, itemStates([row('fm1', true)]), 'items')).toBe('all');
   });
 });
 

@@ -178,6 +178,53 @@ export function sequenceAnchors(items: BinderItem[], chapter: string): string[] 
   return items.filter((i) => i.chapter === chapter && (i.role === 'cover' || i.role === 'activity')).map((i) => i.anchor);
 }
 
+/**
+ * Cases « tout » de la grille (une par groupe et par classe) : `items` ouvre ou ferme d'un coup les
+ * éléments du groupe (une séquence, les fiches méthodes, « Je révise »), `corrections` les
+ * corrections de ses activités. Jamais une évaluation : elle se règle pour tout le niveau à la fois.
+ */
+export type BulkKind = 'items' | 'corrections';
+export type BulkState = 'all' | 'some' | 'none';
+
+/** Éléments du groupe qu'une case « tout » compte : tous sauf l'évaluation ; pour les corrections, les activités qui en ont une. */
+export function bulkTargets(items: BinderItem[], kind: BulkKind): BinderItem[] {
+  const pool = items.filter((i) => i.role !== 'evaluation');
+  return kind === 'items' ? pool : pool.filter((i) => i.role === 'activity' && hasCorrection(i));
+}
+
+const isOn = (states: Map<string, ItemState>, item: BinderItem, kind: BulkKind): boolean => (
+  kind === 'items' ? stateOf(states, item.anchor).visible : stateOf(states, item.anchor).correction
+);
+
+/** Cochée si tout est ouvert, à moitié si une partie l'est. */
+export function bulkState(items: BinderItem[], states: Map<string, ItemState>, kind: BulkKind): BulkState {
+  const targets = bulkTargets(items, kind);
+  const open = targets.filter((i) => isOn(states, i, kind)).length;
+  return open === 0 ? 'none' : open === targets.length ? 'all' : 'some';
+}
+
+/**
+ * Ce qu'il faut écrire quand on coche (`on`) ou décoche une case « tout » : seulement les éléments
+ * dont l'état change.
+ *  - éléments cochés : ceux qui étaient fermés s'ouvrent, sans leur correction ;
+ *  - éléments décochés : tout se ferme, corrections comprises ;
+ *  - corrections cochées : chaque correction s'ouvre, avec son activité si elle était fermée ;
+ *  - corrections décochées : les corrections se referment, les activités restent ouvertes (y
+ *    compris une correction ouverte d'une activité qui n'en a plus).
+ */
+export function bulkChanges(items: BinderItem[], states: Map<string, ItemState>, kind: BulkKind, on: boolean): { item: BinderItem; state: ItemState }[] {
+  const targets = kind === 'corrections' && !on
+    ? items.filter((i) => i.role === 'activity' && stateOf(states, i.anchor).correction)
+    : bulkTargets(items, kind);
+  return targets.flatMap((item) => {
+    const cur = stateOf(states, item.anchor);
+    const next: ItemState = kind === 'items'
+      ? (on ? { visible: true, correction: cur.correction } : CLOSED)
+      : (on ? { visible: true, correction: true } : { visible: cur.visible, correction: false });
+    return next.visible === cur.visible && next.correction === cur.correction ? [] : [{ item, state: next }];
+  });
+}
+
 // ---------------------------------------------------------------------------------------------
 // Lecture des lignes
 // ---------------------------------------------------------------------------------------------

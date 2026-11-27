@@ -6,12 +6,12 @@
  * même classeur (useBinderLibrary). Fermé par défaut. Les évaluations ne se règlent qu'ici, pour
  * tout le niveau à la fois (lot 5).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import {
-  hasCorrection, itemStates, rowFor, sequenceAnchors, staleRows, stateOf,
-  type BinderItem, type BinderItemRow, type ItemState,
+  bulkChanges, bulkState, bulkTargets, hasCorrection, itemStates, rowFor, staleRows, stateOf,
+  type BinderItem, type BinderItemRow, type BulkKind, type BulkState, type ItemState,
 } from '../../lib/binderRelease';
 import { binderReleaseUnavailable, fetchBinderClasses, fetchBinderItemsOfClasses, saveBinderItems, type BinderClass } from '../../lib/binderReleaseQueries';
 import { useBinderLibrary } from './useBinderLibrary';
@@ -121,6 +121,25 @@ function EvaluationCell({ item, level, classes, stateIn, stale, saving, onApply 
   );
 }
 
+/** Case « tout » d'un groupe : cochée si tout est ouvert, à moitié (tiret) si une partie l'est. Cliquer à moitié ouvre tout. */
+function BulkCheck({ state, disabled, label, ariaLabel, title, onChange }: {
+  state: BulkState;
+  disabled: boolean;
+  label: string;
+  ariaLabel: string;
+  title: string;
+  onChange: (on: boolean) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (ref.current) ref.current.indeterminate = state === 'some'; }, [state]);
+  return (
+    <label className="bg-check bg-check--bulk" title={title}>
+      <input ref={ref} type="checkbox" checked={state === 'all'} disabled={disabled} aria-label={ariaLabel} onChange={(e) => onChange(e.target.checked)} />
+      {label}
+    </label>
+  );
+}
+
 function mergeRows(rows: BinderItemRow[], next: BinderItemRow[]): BinderItemRow[] {
   const anchors = new Set(next.map((r) => r.anchor_board_id));
   return [...rows.filter((r) => !anchors.has(r.anchor_board_id)), ...next];
@@ -153,7 +172,6 @@ export function BinderGrid({ userId }: { userId: string }) {
   const data = loaded && loaded.level === level ? loaded : null;
   const classes = useMemo(() => data?.classes ?? [], [data]);
   const groups = useMemo(() => groupItems(items), [items]);
-  const itemByAnchor = useMemo(() => new Map(items.map((i) => [i.anchor, i])), [items]);
   const statesOf = useMemo(() => new Map(classes.map((c) => [c.id, itemStates(data?.rows.get(c.id) ?? [])])), [classes, data]);
   /** Lignes ouvertes qui ne disent plus ce que dit le classeur, par classe : les cours d'ancrage concernés. */
   const staleOf = useMemo(
@@ -212,7 +230,7 @@ export function BinderGrid({ userId }: { userId: string }) {
     <div className="bg">
       <div className="bg-head">
         <p className="bg-intro">
-          Ce que chaque classe voit du classeur. Tout est fermé au départ. « Correction » ouvre la copie modèle et le bilan de l’activité.
+          Ce que chaque classe voit du classeur. Tout est fermé au départ. « Correction » ouvre la copie modèle et le bilan de l’activité. Sur la ligne d’un groupe, « Tout » et « Corrections » règlent d’un coup tout le groupe pour la classe.
         </p>
         {levels.length > 1 && (
           <select className="bg-select" value={level} aria-label="Niveau" onChange={(e) => setWantedLevel(e.target.value)}>
@@ -256,20 +274,34 @@ export function BinderGrid({ userId }: { userId: string }) {
                   <th scope="rowgroup">{group.title}</th>
                   {classes.map((c) => {
                     const states = statesOf.get(c.id)!;
-                    const closed = group.chapter ? sequenceAnchors(items, group.chapter).filter((a) => !stateOf(states, a).visible).flatMap((a) => itemByAnchor.get(a) ?? []) : [];
+                    const toggle = (kind: BulkKind, on: boolean) => void apply(bulkChanges(group.items, states, kind, on).map(({ item, state }) => ({ classId: c.id, item, state })));
+                    const correctionState = bulkState(group.items, states, 'corrections');
+                    const anyCorrection = bulkTargets(group.items, 'corrections').length > 0
+                      || group.items.some((i) => i.role === 'activity' && stateOf(states, i.anchor).correction);
                     return (
                       <td key={c.id}>
-                        {closed.length > 0 && (
-                          <button
-                            type="button"
-                            className="bg-all"
+                        {bulkTargets(group.items, 'items').length > 1 && (
+                          <BulkCheck
+                            state={bulkState(group.items, states, 'items')}
                             disabled={saving}
-                            aria-label={`Tout ouvrir : ${group.title}, ${c.name}`}
-                            title="La page de garde et les activités de la séquence. Ni les corrections, ni la fiche de mémorisation, ni l’évaluation."
-                            onClick={() => void apply(closed.map((item) => ({ classId: c.id, item, state: { visible: true, correction: stateOf(states, item.anchor).correction } })))}
-                          >
-                            Tout ouvrir
-                          </button>
+                            label="Tout"
+                            ariaLabel={`${group.title}, ${c.name} : tout`}
+                            title={group.chapter
+                              ? 'Ouvre ou ferme d’un coup la page de garde et les activités de la séquence. Pas l’évaluation, qui se règle pour tout le niveau. Fermer referme aussi les corrections.'
+                              : 'Ouvre ou ferme d’un coup toutes les pages de ce groupe.'}
+                            onChange={(on) => toggle('items', on)}
+                          />
+                        )}
+                        {group.chapter && anyCorrection && (
+                          <BulkCheck
+                            state={correctionState}
+                            // Ouvrir une correction demande les bilans ; refermer, jamais
+                            disabled={saving || (textsFailed && correctionState === 'none')}
+                            label="Corrections"
+                            ariaLabel={`${group.title}, ${c.name} : toutes les corrections`}
+                            title="Ouvre ou ferme d’un coup les corrections des activités de la séquence (copie modèle et bilan). Ouvrir une correction ouvre aussi son activité ; fermer les corrections laisse les activités ouvertes."
+                            onChange={(on) => toggle('corrections', on && !textsFailed)}
+                          />
                         )}
                       </td>
                     );
@@ -334,7 +366,7 @@ export function BinderGrid({ userId }: { userId: string }) {
       )}
       {!unavailable && data && classes.length > 0 && (
         <p className="bg-note">
-          Une évaluation s’ouvre pour toutes les classes du niveau à la fois : un élève d’une classe peut montrer le sujet à une autre. Elle ne s’ouvre jamais avec « Tout ouvrir ».
+          Une évaluation s’ouvre pour toutes les classes du niveau à la fois : un élève d’une classe peut montrer le sujet à une autre. Elle ne s’ouvre jamais avec la case « Tout » d’une séquence.
         </p>
       )}
     </div>

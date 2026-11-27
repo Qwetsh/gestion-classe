@@ -50,3 +50,6 @@
 .bg-eval { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; white-space: normal; }
 .bg-eval__sep { margin-left: 10px; padding-left: 14px; border-left: 1px solid var(--border-strong); }
 .bg-eval__warn { flex: 1; min-width: 260px; color: var(--accent-ink); font-weight: 600; line-height: 1.4; }
+
+/* Cases « tout » sur la ligne d'un groupe : même case, texte du groupe */
+.bg-check--bulk { font-size: 12px; font-weight: 600; color: var(--text-muted); }

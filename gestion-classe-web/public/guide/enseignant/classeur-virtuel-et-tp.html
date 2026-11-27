@@ -141,6 +141,7 @@
 .bg-stale { display: block; font-size: 10px; color: var(--accent-strong, #C2410C); font-weight: 600; }
 .bg-grp th, .bg-grp td { background: var(--surface-2); font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-dim); font-weight: 650; }
 .bg-ck { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--text-muted); margin-right: 8px; }
+.bg-grp .bg-ck { text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 11px; margin-right: 6px; }
 .bg-all { font-size: 11px; padding: 2px 8px; border-radius: 5px; border: 1px solid var(--border-strong); background: #fff; color: var(--text); text-transform: none; letter-spacing: 0; font-weight: 500; transition: all .25s; }
 .bg-all.is-on { border-color: var(--indigo); box-shadow: 0 0 0 3px rgba(79,70,229,.15); }
 
@@ -640,14 +641,15 @@
           <li data-cursor="#cc-tab" data-action="click">Dans Mes cours, cliquer l'onglet <span class="btn-nom">Classeur des classes</span> (présent s'il existe un classeur).</li>
           <li data-cursor="#cc-a1-4a" data-action="click">Dans la colonne d'une classe, cocher <b>Activité</b> (ou <b>Visible</b> pour une page seule)…</li>
           <li data-cursor="#cc-c1-4a" data-action="click">… puis <b>Correction</b> : copie modèle et bilan de l'activité.</li>
-          <li data-cursor="#cc-tout-4b" data-action="click">Sur la ligne d'une séquence, <span class="btn-nom">Tout ouvrir</span> ouvre à une classe la page de garde et les activités.</li>
+          <li data-cursor="#cc-tout-4b" data-action="click">Sur la ligne d'une séquence, la case <b>Tout</b> ouvre ou ferme d'un coup, pour une classe, la page de garde et les activités ; la case <b>Corrections</b> fait de même pour toutes les corrections. Les fiches méthodes et « Je révise » ont aussi leur case <b>Tout</b>.</li>
           <li data-cursor="#cc-eval" data-action="click" data-duration="3800">Évaluation : « Sujet : fermé » puis <span class="btn-nom">Ouvrir aux 4e</span>. Une confirmation rappelle de le faire quand toutes les classes ont composé.</li>
           <li data-cursor="#cc-4a" data-action="click">Cliquer le nom d'une classe en tête de colonne ouvre son réglage dans le classeur.</li>
         </ol>
         <aside class="regles">
           <h3>À savoir</h3>
           <ul>
-            <li>Une évaluation s'ouvre pour toutes les classes du niveau à la fois, jamais avec « Tout ouvrir ». Sa correction s'ouvre ensuite, une fois le sujet ouvert partout.</li>
+            <li>Une évaluation s'ouvre pour toutes les classes du niveau à la fois, jamais avec la case « Tout » d'une séquence. Sa correction s'ouvre ensuite, une fois le sujet ouvert partout.</li>
+            <li>Une case « Tout » ou « Corrections » à moitié cochée (un tiret) : une partie seulement est ouverte ; cliquer ouvre le reste. Fermer avec « Tout » referme aussi les corrections ; fermer avec « Corrections » laisse les activités ouvertes.</li>
             <li>Sous une classe, « 3 à mettre à jour » signale des pages ouvertes qui ont changé depuis.</li>
             <li>Chaque coche s'enregistre aussitôt (« Enregistrement… ») ; si l'écriture échoue, l'écran revient à l'état réel.</li>
           </ul>
@@ -677,14 +679,14 @@
                   <div class="app__corps">
                     <div class="segs" style="margin-bottom:10px"><span class="seg">Bibliothèque</span><span class="seg">Fiches méthode</span><span class="seg">Par classe</span><span class="seg" id="cc-tab" data-on="1-6">Classeur des classes</span></div>
                     <div data-from="1">
-                      <div class="ligne" style="margin-bottom:8px"><span class="muet" style="font-size:12px;white-space:normal;flex:1">Ce que chaque classe voit du classeur. Tout est fermé au départ. « Correction » ouvre la copie modèle et le bilan de l'activité.</span><span class="b b--fantome b--petit">Classeur</span></div>
+                      <div class="ligne" style="margin-bottom:8px"><span class="muet" style="font-size:12px;white-space:normal;flex:1">Ce que chaque classe voit du classeur. Tout est fermé au départ. « Correction » ouvre la copie modèle et le bilan de l'activité. Sur la ligne d'un groupe, « Tout » et « Corrections » règlent d'un coup tout le groupe pour la classe.</span><span class="b b--fantome b--petit">Classeur</span></div>
                       <div class="lib-carte">
                         <table class="bg-t">
                           <thead><tr><th style="width:230px"><span class="repli muet" data-at="2-4">Enregistrement…</span></th><th><span class="bg-class" id="cc-4a" data-on="6">4A</span></th><th><span class="bg-class">4B</span></th><th><span class="bg-class">4C</span><span class="bg-stale">3 à mettre à jour</span></th></tr></thead>
                           <tbody>
                             <tr class="bg-grp"><th>Première page</th><td></td><td></td><td></td></tr>
                             <tr><th style="font-weight:500">Mon classeur</th><td><span class="bg-ck"><span class="case case--on"></span>Visible</span></td><td><span class="bg-ck"><span class="case case--on"></span>Visible</span></td><td><span class="bg-ck"><span class="case case--on"></span>Visible</span></td></tr>
-                            <tr class="bg-grp"><th>Séquence 2 — La Terre en mouvement</th><td><span class="bg-all">Tout ouvrir</span></td><td><span class="repli bg-all" id="cc-tout-4b" data-on="4" data-to="3">Tout ouvrir</span></td><td></td></tr>
+                            <tr class="bg-grp"><th>Séquence 2 — La Terre en mouvement</th><td><span class="bg-ck"><span class="case"></span>Tout</span><span class="bg-ck"><span class="case"></span>Corrections</span></td><td><span class="bg-ck" id="cc-tout-4b"><span class="case" data-on="4-6"></span>Tout</span><span class="bg-ck"><span class="case"></span>Corrections</span></td><td><span class="bg-ck"><span class="case case--on"></span>Tout</span><span class="bg-ck"><span class="case"></span>Corrections</span></td></tr>
                             <tr><th style="font-weight:500">Page de garde</th><td><span class="bg-ck"><span class="case case--on"></span>Visible</span></td><td><span class="bg-ck"><span class="case" data-on="4-6"></span>Visible</span></td><td><span class="bg-ck"><span class="case case--on"></span>Visible</span></td></tr>
                             <tr><th style="font-weight:500">Activité 1 — Les séismes</th><td><span class="bg-ck" id="cc-a1-4a"><span class="case" data-on="2-6"></span>Activité</span><span class="bg-ck" id="cc-c1-4a"><span class="case" data-on="3-6"></span>Correction</span></td><td><span class="bg-ck"><span class="case" data-on="4-6"></span>Activité</span><span class="bg-ck"><span class="case"></span>Correction</span></td><td><span class="bg-ck"><span class="case case--on"></span>Activité</span><span class="bg-ck"><span class="case case--on"></span>Correction</span></td></tr>
                             <tr><th style="font-weight:500">Activité 2 — Les volcans</th><td><span class="bg-ck"><span class="case"></span>Activité</span><span class="bg-ck"><span class="case"></span>Correction</span></td><td><span class="bg-ck"><span class="case" data-on="4-6"></span>Activité</span><span class="bg-ck"><span class="case"></span>Correction</span></td><td><span class="bg-ck"><span class="case case--on"></span>Activité</span><span class="bg-ck"><span class="case"></span>Correction</span></td></tr>
