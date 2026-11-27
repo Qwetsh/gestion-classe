@@ -55,11 +55,13 @@ const EVENT_STYLE: Record<string, { color: string; label: string }> = {
   remarque: { color: '#60A5FA', label: 'Remarque' },
 };
 
+// Les quatre motifs de sortie du téléphone (contrainte de la table events). « Convocation » et
+// « Exclusion » s'affichaient « Sortie » ; « vie_scolaire » n'existe pas côté téléphone.
 const SORTIE_LABEL: Record<string, string> = {
   infirmerie: 'Infirmerie',
   toilettes: 'Toilettes',
-  vie_scolaire: 'Vie scolaire',
-  autre: 'Sortie',
+  convocation: 'Convocation',
+  exclusion: 'Exclusion',
 };
 
 function firstName(pseudo: string): string {

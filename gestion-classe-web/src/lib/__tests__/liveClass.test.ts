@@ -96,10 +96,16 @@ describe('construireBandeau : pas connectés, absents, sortis', () => {
   });
 
   it("lit les sorties dans l'ordre des heures, pas dans l'ordre reçu", () => {
-    const b = construireBandeau(classe, [], [ev('a', 'retour', '14:50'), ev('a', 'sortie', '14:40', 'vie_scolaire')]);
+    const b = construireBandeau(classe, [], [ev('a', 'retour', '14:50'), ev('a', 'sortie', '14:40', 'convocation')]);
     expect(b.sortis).toEqual([]);
-    const c = construireBandeau(classe, [], [ev('a', 'sortie', '14:55', 'vie_scolaire'), ev('a', 'retour', '14:50')]);
-    expect(c.sortis.map((s) => s.motif)).toEqual(['vie scolaire']);
+    const c = construireBandeau(classe, [], [ev('a', 'sortie', '14:55', 'convocation'), ev('a', 'retour', '14:50')]);
+    expect(c.sortis.map((s) => s.motif)).toEqual(['convocation']);
+  });
+
+  it('nomme les quatre motifs de sortie du téléphone', () => {
+    const motifs = ['infirmerie', 'toilettes', 'convocation', 'exclusion'].map((m, i) =>
+      construireBandeau(classe, [], [ev('a', 'sortie', `14:4${i}`, m)]).sortis[0].motif);
+    expect(motifs).toEqual(['infirmerie', 'toilettes', 'convocation', 'exclusion']);
   });
 
   it("ignore les événements d'élèves hors de la liste (autre demi-groupe)", () => {
