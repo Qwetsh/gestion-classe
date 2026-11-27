@@ -48,6 +48,7 @@ function NavIcon({ name, size = 15 }: { name: string; size?: number }) {
     case 'book': return <svg {...common}><path d="M4 4.5A1.5 1.5 0 015.5 3H19v16H5.5A1.5 1.5 0 004 20.5V4.5z"/><path d="M4 17.5h15"/></svg>;
     case 'cloud': return <svg {...common}><path d="M7 18h10.5a3.5 3.5 0 000-7 5 5 0 00-9.7-1.3A3.85 3.85 0 007 18z"/></svg>;
     case 'wrench': return <svg {...common}><path d="M15.5 3.5a5 5 0 00-6.1 6.4l-6 6a2 2 0 102.8 2.8l6-6a5 5 0 006.4-6.1l-3 3-2.8-.3-.3-2.8 3-3z"/></svg>;
+    case 'phone': return <svg {...common}><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg>;
     case 'link': return <svg {...common}><path d="M10 13.5a4 4 0 005.7 0l3-3a4 4 0 00-5.7-5.7l-1.4 1.4"/><path d="M14 10.5a4 4 0 00-5.7 0l-3 3a4 4 0 005.7 5.7l1.4-1.4"/></svg>;
     case 'dev': return <svg {...common}><path d="M8.5 16.5L4 12l4.5-4.5M15.5 7.5L20 12l-4.5 4.5M13.5 4.5l-3 15"/></svg>;
     case 'bell': return <svg {...common}><path d="M6 8a6 6 0 0112 0v5l2 3H4l2-3V8z"/><path d="M10 20a2 2 0 004 0"/></svg>;

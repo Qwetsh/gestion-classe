@@ -21,6 +21,7 @@ import {
   ToolGrid,
   ToolView,
   Students,
+  StudentPreview,
   Rewards,
   StudentDashboard,
   StudentBinder,
@@ -204,6 +205,15 @@ function App() {
           element={
             <ProtectedRoute>
               <Students />
+            </ProtectedRoute>
+          }
+        />
+        {/* Vision élève : l'espace élève dans un téléphone simulé, avec les codes à côté */}
+        <Route
+          path="/vision-eleve"
+          element={
+            <ProtectedRoute>
+              <StudentPreview />
             </ProtectedRoute>
           }
         />
