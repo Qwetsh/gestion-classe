@@ -944,7 +944,7 @@ function OverviewTab({
   onResetStudent: (s: StudentStampOverview) => void;
 }) {
   // Colonne Bonus seulement si elle a quelque chose à dire pour au moins un élève affiché
-  const showBonus = overview.some(s => s.stamp_count >= 10 || !!s.bonus_label || !!s.bonus_selection_id);
+  const showBonus = overview.some(s => s.stamp_count >= 10 || !!s.bonus_label || !!s.bonus_selection_id || !!s.pending_bonus);
   return (
     <div className="space-y-4">
       {overview.length === 0 ? (
@@ -995,13 +995,17 @@ function OverviewTab({
                       </div>
                     </td>
                     {showBonus && <td className="px-4 py-3">
-                      {s.bonus_label ? (
+                      {s.pending_bonus ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium bg-[var(--warn-soft)] text-[var(--warn)]" title="Choisi par l'élève, pas encore accordé">
+                          À accorder : {s.pending_bonus.label}{s.pending_bonus.others > 0 ? ` (+${s.pending_bonus.others})` : ''}
+                        </span>
+                      ) : s.bonus_label ? (
                         <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${
                           s.bonus_used
                             ? 'bg-[var(--pos-soft)] text-[var(--pos)]'
                             : 'bg-[var(--warn-soft)] text-[var(--warn)]'
                         }`}>
-                          🎁 {s.bonus_label} {s.bonus_used ? '✓' : '⏳'}
+                          {s.bonus_label} {s.bonus_used ? '(accordé)' : '(à accorder)'}
                         </span>
                       ) : s.stamp_count === 10 ? (
                         <span className="text-xs text-[var(--warn)] font-medium">En attente de choix</span>
@@ -1024,13 +1028,14 @@ function OverviewTab({
                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--warn)] bg-[var(--warn-soft)] hover:bg-[var(--warn-soft)] transition-colors"
                             title="Choisir le bonus avec l'élève"
                           >
-                            🎁 Choisir le bonus
+                            Choisir le bonus
                           </button>
                         )}
-                        {s.bonus_selection_id && !s.bonus_used && (
+                        {(s.pending_bonus || (s.bonus_selection_id && !s.bonus_used)) && (
                           <button
-                            onClick={() => onMarkBonusUsed(s.bonus_selection_id!)}
+                            onClick={() => onMarkBonusUsed(s.pending_bonus?.id ?? s.bonus_selection_id!)}
                             className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--pos)] bg-[var(--pos-soft)] hover:bg-[var(--pos-soft)] transition-colors"
+                            title={`Marquer « ${s.pending_bonus?.label ?? s.bonus_label ?? 'le bonus'} » comme accordé`}
                           >
                             Valider bonus
                           </button>

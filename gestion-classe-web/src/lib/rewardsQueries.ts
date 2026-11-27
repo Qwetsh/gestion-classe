@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { fromDb, fromJson } from './dbJson';
+import { pendingBonusByStudent, type PendingBonus } from './pendingBonus';
 
 // ============================================
 // Types
@@ -70,6 +71,8 @@ export interface StudentStampOverview {
   bonus_selection_id: string | null;
   bonus_label: string | null;
   bonus_used: boolean;
+  /** Bonus choisi et pas encore accordé (sa carte est close) : à valider. */
+  pending_bonus: PendingBonus | null;
 }
 
 // ============================================
@@ -402,14 +405,20 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
   // Get bonus selections to know which completed cards already have a bonus
   const allCardIds = (cards || []).map(c => c.id);
   const cardsWithBonus = new Set<string>();
+  let pendingBonus = new Map<string, PendingBonus>();
   if (allCardIds.length > 0) {
     const { data: bonusSels } = await supabase
       .from('bonus_selections')
-      .select('card_id')
+      .select('id, card_id, student_id, used_at, selected_at, bonuses(label)')
       .in('card_id', allCardIds);
     for (const bs of (bonusSels || [])) {
       cardsWithBonus.add(bs.card_id);
     }
+    // Bonus choisis, pas encore accordés : leur carte est close, ils restent à valider
+    pendingBonus = pendingBonusByStudent((bonusSels || []).map(bs => ({
+      id: bs.id, student_id: bs.student_id, used_at: bs.used_at, selected_at: bs.selected_at,
+      label: (bs.bonuses as { label?: string } | null)?.label || 'Bonus',
+    })));
   }
 
   // Get stamp counts per card (needed for card priority logic below)
@@ -490,6 +499,7 @@ export async function fetchStudentStampOverview(userId: string, classFilter?: st
       bonus_selection_id: selection?.id || null,
       bonus_label: selection?.label || null,
       bonus_used: selection?.used || false,
+      pending_bonus: pendingBonus.get(s.id) ?? null,
     };
   })).sort((a, b) => a.pseudo.localeCompare(b.pseudo));
 }
