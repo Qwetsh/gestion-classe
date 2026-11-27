@@ -550,7 +550,7 @@ export function Pronote() {
                   className="p-3 text-xs text-[var(--text-dim)] bg-[var(--surface-3)]"
                   style={{ borderRadius: 'var(--radius)' }}
                 >
-                  Compatible ENT (MonBureauNumerique, etc.). Vos donnees ne sont pas stockees.
+                  Compatible ENT (MonBureauNumérique, etc.). Votre mot de passe n'est pas enregistré ; un jeton de reconnexion reste dans ce navigateur jusqu'à la déconnexion.
                 </div>
               </div>
             ) : (
@@ -625,7 +625,7 @@ export function Pronote() {
                   className="p-3 text-xs text-[var(--text-dim)] bg-[var(--surface-3)]"
                   style={{ borderRadius: 'var(--radius)' }}
                 >
-                  Vos identifiants ne sont pas stockes. La connexion est temporaire et directe avec votre serveur Pronote.
+                  Votre mot de passe n'est pas enregistré. Les échanges passent par le relais de l'application ; un jeton de reconnexion reste dans ce navigateur jusqu'à la déconnexion.
                 </div>
               </div>
             )}

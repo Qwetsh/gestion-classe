@@ -296,7 +296,7 @@
           <ul>
             <li>Le QR code de Pronote expire vite : le coller peu après l'avoir généré, sinon « Code PIN incorrect ou QR code expire ».</li>
             <li>Autres messages : « Donnees QR invalides. Copiez le contenu JSON du QR code. », « Le code PIN doit etre 4 chiffres », « Impossible de joindre le serveur Pronote. ».</li>
-            <li>La note « Vos donnees ne sont pas stockees » est inexacte : de quoi se reconnecter est gardé dans ce navigateur (voir <a href="#pn-memoire">Reconnexion automatique</a>).</li>
+            <li>Le mot de passe n'est pas enregistré ; un jeton de reconnexion reste dans ce navigateur jusqu'à la déconnexion, et les échanges passent par le relais de l'application (voir <a href="#pn-memoire">Reconnexion automatique</a>).</li>
           </ul>
         </aside>
       </div>
@@ -323,7 +323,7 @@
             <div class="pn-lab">Code PIN (4 chiffres)</div>
             <div class="pn-pin" id="p2-pin" data-on="3"><span class="repli" data-from="3">••••</span></div>
             <div class="pn-btn" id="p2-btn" data-on="4"><span class="sw"><span class="avant" data-to="3">Se connecter via QR Code</span><span class="apres" data-from="4" style="display:inline-flex;gap:8px;align-items:center"><span class="tourne"></span>Connexion...</span></span></div>
-            <div class="pn-note">Compatible ENT (MonBureauNumerique, etc.). Vos donnees ne sont pas stockees.</div>
+            <div class="pn-note">Compatible ENT (MonBureauNumérique, etc.). Votre mot de passe n'est pas enregistré ; un jeton de reconnexion reste dans ce navigateur jusqu'à la déconnexion.</div>
           </div>
           <div class="toast toast--ok apres" data-at="4" style="transition-delay:2s">Connecte a Pronote !</div>
         </div>
@@ -375,7 +375,7 @@
             <div class="pn-lab">Mot de passe</div>
             <div class="pn-ch" data-on="3"><span class="repli" data-from="3">••••••••</span></div>
             <div class="pn-btn pn-btn--gris" id="p3-btn" data-on="4">Se connecter</div>
-            <div class="pn-note">Vos identifiants ne sont pas stockes. La connexion est temporaire et directe avec votre serveur Pronote.</div>
+            <div class="pn-note">Votre mot de passe n'est pas enregistré. Les échanges passent par le relais de l'application ; un jeton de reconnexion reste dans ce navigateur jusqu'à la déconnexion.</div>
           </div>
         </div>
       </div></div></div></div></div></div></div>
