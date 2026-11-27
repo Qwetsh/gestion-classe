@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useSettings, type EstablishmentInfo, type HiddenTabs, type ThemeMode } from '../contexts/SettingsContext';
+import { useSettings, type EstablishmentInfo, type HiddenTabs } from '../contexts/SettingsContext';
 import { MASKABLE_TABS } from '../lib/appTabs';
 import { settingsLabel } from '../lib/appNav';
 import { settingsSectionLabel, type SettingsSectionKey } from '../lib/settingsSections';
@@ -46,7 +46,6 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
   { key: 'establishment', label: settingsSectionLabel('establishment'), icon: 'M3 21h18M9 21V7l6-3v17M9 7l-6 3v11M15 4l6 3v14' },
   { key: 'teacher', label: settingsSectionLabel('teacher'), icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
   { key: 'schoolYear', label: settingsSectionLabel('schoolYear'), icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
-  { key: 'theme', label: settingsSectionLabel('theme'), icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
   { key: 'import', label: settingsSectionLabel('import'), icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z' },
   { key: 'data', label: settingsSectionLabel('data'), icon: 'M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7zm0 5h16' },
 ];
@@ -133,10 +132,6 @@ export default function SettingsModal({ open, initialSection, onClose }: Setting
     updateSettings({
       schoolYear: { ...settings.schoolYear, [field]: value },
     });
-  };
-
-  const handleTheme = (theme: ThemeMode) => {
-    updateSettings({ theme });
   };
 
   const handleExport = () => {
@@ -294,49 +289,6 @@ export default function SettingsModal({ open, initialSection, onClose }: Setting
                   </button>
                 ))}
               </div>
-            </div>
-          </div>
-        );
-
-      // Section 5 : Theme
-      case 'theme':
-        return (
-          <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-[var(--indigo)] mb-4">Theme</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {([
-                { value: 'light' as ThemeMode, label: 'Clair', icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
-                { value: 'dark' as ThemeMode, label: 'Sombre', icon: 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z' },
-                { value: 'system' as ThemeMode, label: 'Systeme', icon: 'M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
-              ]).map(({ value, label, icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => handleTheme(value)}
-                  className="flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all"
-                  style={{
-                    borderColor: settings.theme === value ? 'var(--indigo)' : 'var(--border)',
-                    backgroundColor: settings.theme === value ? 'var(--indigo-soft)' : 'var(--surface)',
-                  }}
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    style={{ color: settings.theme === value ? 'var(--indigo)' : 'var(--text-muted)' }}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
-                  </svg>
-                  <span
-                    className="text-sm font-medium"
-                    style={{ color: settings.theme === value ? 'var(--indigo)' : 'var(--text)' }}
-                  >
-                    {label}
-                  </span>
-                </button>
-              ))}
             </div>
           </div>
         );

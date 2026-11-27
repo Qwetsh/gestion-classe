@@ -64,7 +64,7 @@ describe('searchItems', () => {
 
   it('trouve un outil par ses mots-clés et un réglage par les siens', () => {
     expect(titles('partage', 'tool')).toEqual(['QR Code']);
-    expect(titles('sombre', 'setting')).toEqual(['Thème']);
+    expect(titles('trimestre', 'setting')).toEqual(['Année scolaire']);
   });
 
   it('limite chaque famille', () => {

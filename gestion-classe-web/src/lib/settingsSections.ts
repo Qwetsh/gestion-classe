@@ -3,7 +3,7 @@
  * globale, qui peut ouvrir les Réglages sur une section précise (lot R1 de PLAN_mes_cours.md).
  */
 
-export type SettingsSectionKey = 'tabs' | 'home' | 'timetable' | 'establishment' | 'teacher' | 'schoolYear' | 'theme' | 'import' | 'data';
+export type SettingsSectionKey = 'tabs' | 'home' | 'timetable' | 'establishment' | 'teacher' | 'schoolYear' | 'import' | 'data';
 
 export interface SettingsSection {
   key: SettingsSectionKey;
@@ -19,7 +19,6 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   { key: 'establishment', label: 'Établissement', keywords: 'collège adresse téléphone' },
   { key: 'teacher', label: 'Profil enseignant', keywords: 'nom matière fonction' },
   { key: 'schoolYear', label: 'Année scolaire', keywords: 'trimestre période' },
-  { key: 'theme', label: 'Thème', keywords: 'sombre clair apparence couleurs' },
   { key: 'import', label: 'Jeton d’import', keywords: 'claude dépôt cours clé' },
   { key: 'data', label: 'Données', keywords: 'export sauvegarde effacer stockage' },
 ];
