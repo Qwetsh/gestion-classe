@@ -12,8 +12,20 @@
 }
 .mc-level__chevron { flex-shrink: 0; color: var(--text-muted); transition: transform 0.12s; }
 .mc-level__head[aria-expanded='false'] .mc-level__chevron { transform: rotate(-90deg); }
+.mc-level__head--static { cursor: default; }
 .mc-level__name { font-weight: 700; font-size: 15px; }
 .mc-level__count { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* Onglets de niveau, sur le dessus de la carte : un seul niveau à l'écran. L'onglet choisi est
+   souligné de la teinte de son niveau (la même que les pastilles de classe). */
+.mc-level-tabs { display: flex; gap: 2px; padding: 0 6px; overflow-x: auto; scrollbar-width: none; }
+.mc-level-tab {
+  display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+  min-height: 46px; padding: 3px 14px 0; border: 0; border-bottom: 3px solid transparent;
+  background: none; cursor: pointer; font: inherit; color: var(--text-muted); white-space: nowrap;
+}
+.mc-level-tab:hover { color: var(--text); }
+.mc-level-tab[aria-selected='true'] { color: var(--text); border-bottom-color: var(--mc-tab-tone, var(--indigo)); }
 
 .mc-seq { border-top: 1px solid var(--border); padding: 6px 0 8px; }
 .mc-seq__head {

@@ -8,14 +8,14 @@
  * Le même composant montre l'onglet « Fiches méthode » (`shelf="methodes"`) : chaque fiche y a son
  * bouton « Fiche », pour l'aperçu au survol, et les fiches sans niveau sont « Tous niveaux ».
  */
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, ClipboardCheck, ExternalLink, FileText, FlaskConical, Play, Presentation } from 'lucide-react';
+import { ClipboardCheck, ExternalLink, FileText, FlaskConical, Play, Presentation } from 'lucide-react';
 import { NO_LEVEL, type Board } from '../../lib/boardsQueries';
 import { classTone } from '../../lib/classColors';
 import { ACCEPTED_FILES, filesOfSequence, sequenceKey, type CourseFile } from '../../lib/courseFiles';
 import {
-  groupActivities, VARIANT_LABEL, variantLabel, withoutEvaluationPrefix, type CourseVariant, type LibraryLevel,
+  groupActivities, levelOnTab, VARIANT_LABEL, variantLabel, withoutEvaluationPrefix, type CourseVariant, type LibraryLevel,
 } from '../../lib/courseLibrary';
 import { formatSlot, type PlacementChip } from '../../lib/coursePlacements';
 import { MoreMenu, type MoreMenuItem } from '../MoreMenu';
@@ -24,15 +24,16 @@ import { shareEligible } from '../../lib/mobileVersion';
 import { SequenceFiles } from './SequenceFiles';
 import { CoursePeek, prefetchPreview, type PeekTarget } from './CoursePeek';
 
-const COLLAPSED_KEY = 'mes-cours-collapsed';
+const LEVEL_TAB_KEY = 'mes-cours-niveau';
 
-function readCollapsed(): Record<string, boolean> {
-  try { return JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '{}') as Record<string, boolean>; } catch { return {}; }
+/** Onglet de niveau choisi la dernière fois, pour chaque rayon. */
+function readLevelTabs(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(LEVEL_TAB_KEY) || '{}') as Record<string, string>; } catch { return {}; }
 }
 
 interface Props {
   levels: LibraryLevel[];
-  /** Recherche en cours : tous les niveaux sont dépliés, sans toucher au choix mémorisé. */
+  /** Recherche en cours : tous les niveaux sont montrés l'un sous l'autre, sans onglets ni toucher au choix mémorisé. */
   expandAll?: boolean;
   /** Classes où chaque original est placé (par identifiant d'original). */
   chips: Map<string, PlacementChip[]>;
@@ -87,7 +88,16 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
     fileTarget.current = { level, chapter };
     fileInput.current?.click();
   };
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(readCollapsed);
+  // ---- Onglets de niveau : un seul niveau à l'écran, le dernier choisi étant mémorisé à part pour chaque rayon ----
+  const levelName = (level: string | null) => level ?? (methods ? 'Tous niveaux' : NO_LEVEL);
+  const [pickedLevel, setPickedLevel] = useState<string | undefined>(() => readLevelTabs()[shelf]);
+  const pickLevel = (name: string) => {
+    setPickedLevel(name);
+    try { localStorage.setItem(LEVEL_TAB_KEY, JSON.stringify({ ...readLevelTabs(), [shelf]: name })); } catch { /* stockage indisponible */ }
+  };
+  const tabbed = !expandAll && levels.length > 1;
+  const current = levelOnTab(levels, pickedLevel, levelName);
+  const shownLevels = expandAll ? levels : current ? [current] : [];
 
   // ---- Aperçu de la première page au survol des boutons Fiche / Documents / Correction (souris
   // seulement : au doigt, un appui ouvre). Pas sur le nom de l'activité : il gênait en parcourant la liste ----
@@ -157,14 +167,6 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
   ));
   /** Séquence en cours de renommage : son niveau, son nom d'origine, la saisie. */
   const [renaming, setRenaming] = useState<{ level: string | null; from: string; value: string; busy: boolean } | null>(null);
-
-  const toggle = (key: string) => {
-    setCollapsed((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      try { localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next)); } catch { /* stockage indisponible */ }
-      return next;
-    });
-  };
 
   const commitRename = async () => {
     if (!renaming || renaming.busy) return;
@@ -279,20 +281,39 @@ export function CourseLibrary({ levels, expandAll, chips, onOpenCopy, onPlace, o
           }}
         />
       )}
-      {levels.map(({ level, count, sequences }) => {
-        const name = level ?? (methods ? 'Tous niveaux' : NO_LEVEL);
-        // Pliage mémorisé à part pour chaque rayon
-        const key = methods ? `methodes:${name}` : name;
-        const open = expandAll || !collapsed[key];
+      {shownLevels.map(({ level, count, sequences }) => {
+        const name = levelName(level);
         const named = sequences.some((s) => s.chapter !== '');
         return (
-          <section key={key} className="mc-level">
-            <button type="button" className="mc-level__head" onClick={() => toggle(key)} aria-expanded={open}>
-              <ChevronDown size={16} className="mc-level__chevron" aria-hidden />
-              <span className="mc-level__name">{name}</span>
-              <span className="mc-level__count">{count}</span>
-            </button>
-            {open && sequences.map(({ chapter, boards }) => {
+          <section key={name} className="mc-level" aria-label={name}>
+            {tabbed ? (
+              // Les onglets coiffent la carte du niveau montré ; chacun porte la teinte de son niveau
+              <div className="mc-level-tabs" role="tablist" aria-label="Niveau">
+                {levels.map((l) => {
+                  const tabName = levelName(l.level);
+                  return (
+                    <button
+                      key={tabName}
+                      type="button"
+                      role="tab"
+                      aria-selected={tabName === name}
+                      className="mc-level-tab"
+                      style={{ '--mc-tab-tone': classTone(tabName).solid } as CSSProperties}
+                      onClick={() => pickLevel(tabName)}
+                    >
+                      <span className="mc-level__name">{tabName}</span>
+                      <span className="mc-level__count">{l.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mc-level__head mc-level__head--static">
+                <span className="mc-level__name">{name}</span>
+                <span className="mc-level__count">{count}</span>
+              </div>
+            )}
+            {sequences.map(({ chapter, boards }) => {
               const isRenaming = renaming !== null && renaming.level === level && renaming.from === chapter;
               const seqKey = sequenceKey(level, chapter);
               // Une séquence nommée accepte des fichiers : par son menu, ou glissés dessus

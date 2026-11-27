@@ -63,6 +63,14 @@ export function groupLibrary(boards: Board[], extraSequences: { level: string | 
     }));
 }
 
+/**
+ * Niveau montré sous les onglets : celui de l'onglet choisi, à défaut le premier (aucun choix
+ * encore, ou le niveau choisi n'a plus de cours). `nameOf` : nom affiché d'un niveau, « sans niveau » compris.
+ */
+export function levelOnTab<T extends { level: string | null }>(levels: T[], picked: string | undefined, nameOf: (level: string | null) => string): T | null {
+  return levels.find((l) => nameOf(l.level) === picked) ?? levels[0] ?? null;
+}
+
 // ---------------------------------------------------------------------------------------------
 // Rayons : bibliothèque des activités, fiches méthode (boards.category, migration 082)
 // ---------------------------------------------------------------------------------------------
