@@ -1,0 +1,160 @@
+/* Thème « Banquise » (espace élève) : blanc de glace, bleu polaire. */
+.el[data-theme='banquise'] {
+  --el-bg: #EAF4FB; --el-surface: #FFFFFF; --el-line: #CFE0EC; --el-line-soft: #DFECF5; --el-line-strong: #AFC8DA;
+  --el-text: #0F2A3D; --el-muted: #35556B; --el-dim: #4A6A80;
+  --el-indigo: #0B6FA4; --el-indigo-ink: #08557E; --el-indigo-soft: #D6ECF8;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #9A5A00; --el-warn-ink: #7C4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #D5E4EE; --el-on-accent: #FFFFFF; --el-radio: #8AA6B8;
+  --el-radius: 16px; --el-radius-sm: 14px;
+  --el-font-display: 'Quicksand', 'Nunito', 'Inter', sans-serif;
+}
+.el[data-theme='banquise'] .el-main { padding-top: 246px; }
+.el[data-theme='banquise'] .el-h1 { font-weight: 700; }
+.el[data-theme='banquise'] .el-btn--primary { box-shadow: 0 3px 0 #064A6E; }
+
+/* ---- La scène ---- */
+[data-scene='banquise'] .bq-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='banquise'] .bq-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+[data-scene='banquise'] .bq-sky { height: 240px; background: linear-gradient(180deg, #A9DAF5 0%, #CFEAF9 55%, #EAF4FB 100%); }
+[data-scene='banquise'] .bq-sunlayer { height: 200px; }
+[data-scene='banquise'] .bq-sun {
+  position: absolute; right: 44px; top: 34px; width: 112px; height: 112px; border-radius: 50%;
+  background: radial-gradient(circle, #FFFFFF 0 24%, #FFF6D8 36%, rgba(255, 240, 200, 0.5) 54%, rgba(255, 240, 200, 0) 72%);
+  animation: bq-sun 9s ease-in-out infinite alternate;
+}
+@keyframes bq-sun { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+/* Nuages : une rangée répétée deux fois, qui dérive sans raccord */
+[data-scene='banquise'] .bq-clouds { height: 70px; overflow: hidden; }
+[data-scene='banquise'] .bq-drift { position: absolute; top: 0; left: 0; width: 200%; height: 100%; display: flex; animation: bq-drift 120s linear infinite; }
+@keyframes bq-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+[data-scene='banquise'] .bq-cloudset { position: relative; flex: 0 0 50%; height: 100%; }
+[data-scene='banquise'] .bq-cloud { position: absolute; height: 22px; border-radius: 22px; background: #FFFFFF; opacity: 0.9; }
+[data-scene='banquise'] .bq-cloud::before { content: ''; position: absolute; left: 18%; top: -11px; width: 44%; height: 24px; border-radius: 50%; background: #FFFFFF; }
+[data-scene='banquise'] .bq-cloud::after { content: ''; position: absolute; left: 48%; top: -6px; width: 32%; height: 18px; border-radius: 50%; background: #FFFFFF; }
+
+/* Icebergs, mer, plaque de glace : chaque plan porte son aplat pour recouvrir ceux de derrière */
+[data-scene='banquise'] .bq-bergs { height: 110px; }
+[data-scene='banquise'] .bq-sea { height: 60px; }
+[data-scene='banquise'] .bq-waves {
+  position: absolute; left: 0; right: 0; top: 0; height: calc(100vh + 900px); background-color: #4E9CCC;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='22' viewBox='0 0 96 22'%3E%3Cpath d='M0 6Q12 0 24 6T48 6M48 16Q60 10 72 16T96 16' fill='none' stroke='%23BFE3F7' stroke-opacity='.75' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-size: 96px 22px; background-repeat: repeat-x; background-position: 0 6px;
+  animation: bq-waves 7s linear infinite;
+}
+[data-scene='banquise'] .bq-waves::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 34px; background: inherit; background-position: 40px 26px; animation: inherit; animation-duration: 10s; opacity: 0.7; }
+@keyframes bq-waves { from { background-position-x: 0; } to { background-position-x: -96px; } }
+[data-scene='banquise'] .bq-floe { height: 40px; }
+[data-scene='banquise'] .bq-floe::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 30px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='30' viewBox='0 0 480 30'%3E%3Cpath d='M0 30V12Q40 2 96 8T220 5T350 9T480 12V30Z' fill='%23CFE7F6'/%3E%3Cpath d='M0 30V16Q40 6 96 12T220 9T350 13T480 16V30Z' fill='%23FFFFFF'/%3E%3C/svg%3E") center top / 480px 30px repeat-x;
+}
+[data-scene='banquise'] .bq-floe::after { content: ''; position: absolute; left: 0; right: 0; top: 29px; height: calc(100vh + 900px); background: linear-gradient(#FFFFFF 0, #F4FAFE 22px, #EAF4FB 46px); }
+
+/* La queue de baleine : elle sort de l'eau, retombe, laisse un rond */
+[data-scene='banquise'] .bq-tailbox { position: absolute; left: 300px; top: -44px; width: 56px; height: 50px; overflow: hidden; }
+[data-scene='banquise'] .bq-tail { position: absolute; left: 0; top: 0; width: 56px; height: auto; fill: #1E4A6B; transform-origin: 50% 100%; animation: bq-tail 16s ease-in-out infinite; animation-delay: -9s; }
+@keyframes bq-tail {
+  0%, 62% { transform: translateY(104%) rotate(0deg); }
+  70% { transform: translateY(10%) rotate(-8deg); }
+  76% { transform: translateY(0) rotate(10deg); }
+  82% { transform: translateY(14%) rotate(-12deg); }
+  90%, 100% { transform: translateY(104%) rotate(0deg); }
+}
+[data-scene='banquise'] .bq-ripple { position: absolute; left: 306px; top: 2px; width: 44px; height: 9px; border-radius: 50%; border: 1.6px solid rgba(234, 246, 253, 0.9); opacity: 0; animation: bq-ripple 16s ease-out infinite; animation-delay: -9s; }
+@keyframes bq-ripple { 0%, 84% { opacity: 0; transform: scale(0.4); } 87% { opacity: 1; } 100% { opacity: 0; transform: scale(2.2); } }
+
+/* Manchots */
+[data-scene='banquise'] .bq-coat { fill: #17324A; }
+[data-scene='banquise'] .bq-flipper { fill: #17324A; }
+[data-scene='banquise'] .bq-belly, [data-scene='banquise'] .bq-cheek { fill: #FFFFFF; }
+[data-scene='banquise'] .bq-beak, [data-scene='banquise'] .bq-feet { fill: #F29A2E; }
+[data-scene='banquise'] .bq-penguin--chick .bq-coat, [data-scene='banquise'] .bq-penguin--chick .bq-flipper { fill: #8FA6B4; }
+[data-scene='banquise'] .bq-penguin--chick .bq-belly { fill: #E3EDF3; }
+[data-scene='banquise'] .bq-penguin__all, [data-scene='banquise'] .bq-flipper, [data-scene='banquise'] .bq-chunk, [data-scene='banquise'] .bq-splash ellipse { transform-box: view-box; }
+[data-scene='banquise'] .bq-flipper--left { transform-origin: 10px 23px; }
+[data-scene='banquise'] .bq-flipper--right { transform-origin: 30px 23px; }
+[data-scene='banquise'] .bq-penguin--flap .bq-flipper--left { animation: bq-flap-left 1.1s ease-in-out infinite alternate; }
+[data-scene='banquise'] .bq-penguin--flap .bq-flipper--right { animation: bq-flap-right 1.1s ease-in-out infinite alternate; }
+@keyframes bq-flap-left { from { transform: rotate(0deg); } to { transform: rotate(38deg); } }
+@keyframes bq-flap-right { from { transform: rotate(0deg); } to { transform: rotate(-38deg); } }
+/* Celui qui se dandine : il traverse la glace et revient, en tanguant à chaque pas */
+[data-scene='banquise'] .bq-penguin--walk { animation: bq-walk 12s ease-in-out infinite alternate; }
+@keyframes bq-walk { from { translate: 0 0; } to { translate: 96px 0; } }
+[data-scene='banquise'] .bq-penguin__all { transform-origin: 20px 56px; }
+[data-scene='banquise'] .bq-penguin--walk .bq-penguin__all { animation: bq-waddle 0.42s ease-in-out infinite alternate; }
+[data-scene='banquise'] .bq-penguin--chick .bq-penguin__all { animation: bq-waddle 0.9s ease-in-out infinite alternate; }
+@keyframes bq-waddle { from { transform: rotate(-6deg); } to { transform: rotate(6deg); } }
+
+/* Flocons */
+[data-scene='banquise'] .bq-snow { position: absolute; inset: 0; }
+[data-scene='banquise'] .bq-flake { position: absolute; left: var(--x); top: -12px; width: var(--s); height: var(--s); border-radius: 50%; background: #9CCBEA; opacity: 0.85; animation: bq-fall var(--d) linear infinite; animation-delay: var(--delay); }
+@keyframes bq-fall { from { transform: translate(0, 0); } 50% { transform: translate(var(--dx), 56vh); } to { transform: translate(calc(var(--dx) * 0.3), 112vh); } }
+
+/* ---- Au toucher (un manchot) : glissade sur le ventre, puis retour à sa place ----
+   Le corps se couche (rotation autour des pattes) et glisse en ralentissant, comme sur de la
+   glace ; puis il se relève et revient en se dandinant. */
+[data-scene='banquise'][data-fx~='glissade'] .bq-penguin--flap { animation: bq-slide-x 4.6s both; }
+[data-scene='banquise'][data-fx~='glissade'] .bq-penguin--flap .bq-penguin__all { animation: bq-slide-pose 4.6s both; }
+[data-scene='banquise'][data-fx~='glissade'] .bq-penguin--chick { animation: bq-slide-x 4.6s 0.35s both; }
+[data-scene='banquise'][data-fx~='glissade'] .bq-penguin--chick .bq-penguin__all { animation: bq-slide-pose 4.6s 0.35s both; }
+@keyframes bq-slide-x {
+  0%, 8% { translate: 0 0; animation-timing-function: cubic-bezier(0.1, 0.6, 0.2, 1); }
+  46% { translate: 118px 0; }
+  58% { translate: 118px 0; animation-timing-function: ease-in-out; }
+  100% { translate: 0 0; }
+}
+@keyframes bq-slide-pose {
+  0% { transform: rotate(0deg); animation-timing-function: ease-in; }
+  8% { transform: rotate(82deg) translateY(4px); }
+  46% { transform: rotate(82deg) translateY(4px); animation-timing-function: ease-out; }
+  56% { transform: rotate(0deg); }
+  62% { transform: rotate(-7deg); } 68% { transform: rotate(7deg); } 74% { transform: rotate(-7deg); } 80% { transform: rotate(7deg); }
+  86% { transform: rotate(-7deg); } 92% { transform: rotate(7deg); } 100% { transform: rotate(0deg); }
+}
+
+/* ---- Au toucher (le grand iceberg) : le vêlage. Un bloc bascule, tombe à la mer, éclabousse. ---- */
+[data-scene='banquise'] .bq-chunk { transform-origin: 196px 110px; }
+[data-scene='banquise'] .bq-splash { opacity: 0; }
+[data-scene='banquise'] .bq-splash ellipse { fill: none; stroke: #FFFFFF; stroke-width: 1.6; transform-origin: 212px 108px; }
+[data-scene='banquise'] .bq-splash path { fill: none; stroke: #FFFFFF; stroke-width: 2.4; stroke-linecap: round; }
+[data-scene='banquise'][data-fx~='velage'] .bq-chunk { animation: bq-calve 3.8s both; }
+@keyframes bq-calve {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); animation-timing-function: ease-in; }
+  10% { transform: translate(2px, 0) rotate(3deg); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  34% { opacity: 1; transform: translate(26px, 58px) rotate(34deg); animation-timing-function: ease-out; }
+  44% { opacity: 1; transform: translate(30px, 44px) rotate(40deg); animation-timing-function: ease-in-out; }
+  70% { opacity: 1; transform: translate(46px, 52px) rotate(46deg); }
+  84% { opacity: 0; transform: translate(60px, 56px) rotate(48deg); }
+  85% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+}
+[data-scene='banquise'][data-fx~='velage'] .bq-splash { animation: bq-splash 3.8s both; }
+@keyframes bq-splash { 0%, 31% { opacity: 0; } 35% { opacity: 1; } 52% { opacity: 0.8; } 62%, 100% { opacity: 0; } }
+[data-scene='banquise'][data-fx~='velage'] .bq-splash ellipse { animation: bq-splash-ring 1.3s ease-out 1.25s both; }
+[data-scene='banquise'][data-fx~='velage'] .bq-splash ellipse:nth-child(2) { animation-delay: 1.55s; }
+@keyframes bq-splash-ring { from { transform: scale(0.6); } to { transform: scale(3.4, 2.4); } }
+
+/* ---- Changement d'onglet : un iceberg passe ----
+   Un grand bloc de glace traverse l'écran de droite à gauche, d'un seul mouvement ; la page change
+   derrière lui au moment où il couvre tout (la moitié du temps). Des flocons filent avec lui. */
+html[data-el-nav='banquise']::view-transition-old(root) { animation: bq-page-out 0.95s linear both; }
+html[data-el-nav='banquise']::view-transition-new(root) { animation: bq-page-in 0.95s linear both; }
+@keyframes bq-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes bq-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='banquise'] i:first-child {
+  left: 100%; top: -2%; width: 250vw; height: 104%;
+  background:
+    linear-gradient(104deg, rgba(169, 210, 234, 0) 0 30%, rgba(169, 210, 234, 0.55) 30% 44%, rgba(169, 210, 234, 0) 44% 62%, rgba(191, 223, 242, 0.7) 62% 78%, rgba(169, 210, 234, 0) 78%),
+    linear-gradient(#FFFFFF, #E3F2FB);
+  clip-path: polygon(8% 0, 96% 0, 100% 14%, 94% 30%, 99% 52%, 93% 74%, 98% 100%, 4% 100%, 0 82%, 7% 60%, 1% 38%, 6% 18%);
+}
+.el-front[data-scene='banquise'][data-on] i:first-child { animation: bq-berg 0.95s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+@keyframes bq-berg { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(-350vw); } }
+.el-front[data-scene='banquise'] i:not(:first-child) {
+  left: calc(100% + var(--r1) * 250vw); top: calc(var(--r2) * 100%); width: calc(14px + var(--r3) * 26px); height: 3px; border-radius: 3px;
+  background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0));
+}
+.el-front[data-scene='banquise'][data-on] i:not(:first-child) { animation: bq-berg 0.95s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }

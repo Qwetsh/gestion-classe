@@ -1,0 +1,138 @@
+/* Thème « Cosmos » (espace élève) : les couleurs sont dans styles/eleve.css ; ici, la scène animée.
+   Tant qu'elle n'est pas chargée, le fond fixe de eleve.css (planète dessinée) reste affiché. */
+.el[data-theme='cosmos'] { background-image: none; }
+.el[data-theme='cosmos'] .el-main { padding-top: 152px; }
+
+/* ---- Nébuleuses : trois nuages de lumière qui respirent lentement ---- */
+[data-scene='cosmos'] .co-nebula { height: 100vh; }
+[data-scene='cosmos'] .co-cloud { position: absolute; border-radius: 50%; animation: co-breathe 16s ease-in-out infinite alternate; }
+[data-scene='cosmos'] .co-cloud--violet { right: -18%; top: -120px; width: 110%; height: 460px; background: radial-gradient(closest-side, rgba(124, 92, 255, 0.42), rgba(124, 92, 255, 0)); }
+[data-scene='cosmos'] .co-cloud--blue { left: -30%; top: 30px; width: 90%; height: 380px; background: radial-gradient(closest-side, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0)); animation-delay: -6s; }
+[data-scene='cosmos'] .co-cloud--rose { left: -10%; bottom: -160px; width: 120%; height: 420px; background: radial-gradient(closest-side, rgba(236, 112, 200, 0.18), rgba(236, 112, 200, 0)); animation-delay: -11s; }
+@keyframes co-breathe { from { opacity: 0.6; transform: scale(1); } to { opacity: 1; transform: scale(1.12); } }
+
+/* ---- Étoiles : trois champs qui dérivent, le plus proche le plus vite ---- */
+[data-scene='cosmos'] .co-stars { height: 100vh; }
+[data-scene='cosmos'] .co-drift { position: absolute; top: 0; left: 0; width: 200%; height: 100%; display: flex; animation: co-drift 420s linear infinite; }
+[data-scene='cosmos'] .co-drift--mid { animation-duration: 240s; }
+[data-scene='cosmos'] .co-drift--near { animation-duration: 130s; }
+@keyframes co-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+[data-scene='cosmos'] .co-set { position: relative; flex: 0 0 50%; height: 100%; }
+[data-scene='cosmos'] .co-star { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #FFFFFF; opacity: var(--o); }
+[data-scene='cosmos'] .co-star--1 { background: #BECDFF; }
+[data-scene='cosmos'] .co-star--2 { background: #FFECC8; }
+[data-scene='cosmos'] .co-star--3 { background: #D9C8FF; }
+[data-scene='cosmos'] .co-drift--mid .co-star,
+[data-scene='cosmos'] .co-drift--near .co-star { animation: co-twinkle var(--d) ease-in-out infinite alternate; animation-delay: var(--delay); }
+[data-scene='cosmos'] .co-drift--near .co-star { box-shadow: 0 0 5px 1px rgba(190, 205, 255, 0.55); }
+@keyframes co-twinkle { from { opacity: 0.25; } to { opacity: 1; } }
+
+/* ---- Comètes : une tête claire, une traîne ; chacune passe à son rythme ---- */
+[data-scene='cosmos'] .co-comets { position: absolute; inset: 0; }
+[data-scene='cosmos'] .co-comet {
+  position: absolute; width: 130px; height: 2.5px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, #FFFFFF, rgba(190, 205, 255, 0.7) 18%, rgba(142, 162, 255, 0));
+}
+[data-scene='cosmos'] .co-comet::before {
+  content: ''; position: absolute; left: -3px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
+  background: #FFFFFF; box-shadow: 0 0 10px 3px rgba(190, 205, 255, 0.9);
+}
+[data-scene='cosmos'] .co-comet--a { top: 60px; left: 64%; animation: co-comet-a 17s linear infinite; animation-delay: -12s; }
+[data-scene='cosmos'] .co-comet--b { top: 42vh; left: 88%; width: 170px; animation: co-comet-b 29s linear infinite; animation-delay: -8s; }
+[data-scene='cosmos'] .co-comet--c { top: 22vh; left: 30%; width: 90px; animation: co-comet-c 41s linear infinite; animation-delay: -30s; }
+@keyframes co-comet-a {
+  0%, 88% { opacity: 0; transform: translate(90px, -40px) rotate(-24deg); }
+  90% { opacity: 1; }
+  96% { opacity: 1; }
+  98%, 100% { opacity: 0; transform: translate(-300px, 134px) rotate(-24deg); }
+}
+@keyframes co-comet-b {
+  0%, 90% { opacity: 0; transform: translate(60px, -60px) rotate(-38deg); }
+  91.5% { opacity: 1; }
+  96% { opacity: 1; }
+  98%, 100% { opacity: 0; transform: translate(-380px, 284px) rotate(-38deg); }
+}
+@keyframes co-comet-c {
+  0%, 94% { opacity: 0; transform: translate(40px, -12px) rotate(-14deg); }
+  95% { opacity: 0.9; }
+  98% { opacity: 0.9; }
+  99%, 100% { opacity: 0; transform: translate(-220px, 53px) rotate(-14deg); }
+}
+
+/* ---- La grande planète ---- */
+[data-scene='cosmos'] .co-main { height: 240px; }
+[data-scene='cosmos'] .co-planet { position: absolute; right: 62px; top: 22px; width: 116px; height: 116px; animation: co-float 13s ease-in-out infinite alternate; }
+@keyframes co-float { from { transform: translateY(-3px); } to { transform: translateY(5px); } }
+[data-scene='cosmos'] .co-halo { position: absolute; inset: -34px; border-radius: 50%; background: radial-gradient(closest-side, rgba(142, 122, 255, 0.5) 52%, rgba(142, 122, 255, 0) 100%); }
+[data-scene='cosmos'] .co-globe {
+  position: absolute; inset: 0; z-index: 2; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(160deg, #A99BFF 0%, #6B5BE0 45%, #3A2EA6 100%);
+}
+/* La surface : une sphère qui tourne, dessinée par Globe.tsx */
+[data-scene='cosmos'] .co-surface { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* L'éclairage : un reflet en haut à gauche, la nuit en bas à droite */
+[data-scene='cosmos'] .co-shade {
+  position: absolute; inset: 0; border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 24%, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 34% 30%, rgba(11, 16, 38, 0) 46%, rgba(11, 16, 38, 0.5) 76%, rgba(11, 16, 38, 0.82) 100%);
+  box-shadow: inset 0 0 14px rgba(11, 16, 38, 0.45);
+}
+/* L'anneau, en deux moitiés : l'une passe derrière la planète, l'autre devant */
+[data-scene='cosmos'] .co-ring { position: absolute; left: 50%; top: 50%; width: 232px; height: auto; margin: -34px 0 0 -116px; transform: rotate(-16deg); }
+[data-scene='cosmos'] .co-ring--back { z-index: 1; clip-path: inset(0 0 50% 0); }
+[data-scene='cosmos'] .co-ring--front { z-index: 3; clip-path: inset(50% 0 0 0); }
+/* La lune : elle passe devant la planète en allant vers la droite, derrière en revenant */
+[data-scene='cosmos'] .co-orbit { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(-16deg); z-index: 4; animation: co-depth 22s step-end infinite; }
+@keyframes co-depth { 0% { z-index: 4; } 50% { z-index: 0; } 100% { z-index: 0; } }
+[data-scene='cosmos'] .co-moonx { animation: co-moonx 11s ease-in-out infinite alternate; }
+@keyframes co-moonx { from { transform: translateX(-138px); } to { transform: translateX(138px); } }
+[data-scene='cosmos'] .co-moon {
+  width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px; border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #F4F1FF 0, #B9B2E6 48%, #5D5796 100%);
+  animation: co-moony 11s ease-in-out infinite alternate; animation-delay: -5.5s;
+}
+@keyframes co-moony { from { transform: translateY(-26px) scale(0.82); } to { transform: translateY(26px) scale(1.12); } }
+
+/* ---- Une petite planète lointaine, en croissant ---- */
+[data-scene='cosmos'] .co-far { height: 100vh; }
+[data-scene='cosmos'] .co-small {
+  position: absolute; left: 30px; top: 74px; width: 26px; height: 26px; border-radius: 50%; overflow: hidden;
+  background: linear-gradient(150deg, #7FE3D0, #2A8FA6); animation: co-float 17s ease-in-out infinite alternate;
+}
+[data-scene='cosmos'] .co-small__shade { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 26% 30%, rgba(11, 16, 38, 0) 38%, rgba(11, 16, 38, 0.9) 78%); }
+
+/* ---- Au toucher (la planète) : une onde, puis une pluie d'étoiles filantes ---- */
+[data-scene='cosmos'] .co-wave { position: absolute; inset: -6px; border-radius: 50%; border: 2px solid rgba(201, 192, 255, 0.85); opacity: 0; }
+[data-scene='cosmos'][data-fx~='pluie'] .co-wave { animation: co-wave 1.5s ease-out both; }
+[data-scene='cosmos'][data-fx~='pluie'] .co-wave--late { animation-delay: 0.35s; }
+@keyframes co-wave { 0% { opacity: 0.95; transform: scale(0.8); } 100% { opacity: 0; transform: scale(2.6); } }
+[data-scene='cosmos'][data-fx~='pluie'] .co-globe { animation: co-bump 0.8s ease-out both; }
+@keyframes co-bump { 0% { transform: scale(1); } 30% { transform: scale(1.08); } 100% { transform: scale(1); } }
+[data-scene='cosmos'][data-fx~='pluie'] .co-meteor { animation: co-meteor var(--d) linear var(--delay) both; }
+@keyframes co-meteor {
+  0% { opacity: 0; transform: translate(0, 0) rotate(-30deg); }
+  12% { opacity: 1; }
+  78% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-380px, 219px) rotate(-30deg); }
+}
+
+/* ---- Changement d'onglet : un saut dans les étoiles ----
+   L'ancienne page file vers l'avant et s'efface, la nouvelle arrive du fond ; des traits de lumière
+   partent du centre de l'écran au même instant. */
+html[data-el-nav='cosmos']::view-transition { background: #0B1026; }
+html[data-el-nav='cosmos']::view-transition-old(root) { animation: co-warp-out 0.4s cubic-bezier(0.5, 0, 0.9, 0.4) both; }
+html[data-el-nav='cosmos']::view-transition-new(root) { animation: co-warp-in 0.6s cubic-bezier(0.1, 0.6, 0.3, 1) both; }
+@keyframes co-warp-out { to { opacity: 0; transform: scale(1.8); filter: blur(5px); } }
+@keyframes co-warp-in { 0% { opacity: 0; transform: scale(0.7); } 35% { opacity: 0; transform: scale(0.7); } 100% { opacity: 1; transform: scale(1); } }
+.el-front[data-scene='cosmos'] i {
+  left: 50%; top: 46%; width: 2px; height: 22vh; margin-left: -1px; border-radius: 2px; transform-origin: 50% 0;
+  background: linear-gradient(rgba(255, 255, 255, 0), #C9D2FF 60%, #FFFFFF);
+  --a: calc(var(--i) * 12.86deg + var(--r1) * 9deg);
+}
+.el-front[data-scene='cosmos'][data-on] i { animation: co-streak 0.5s cubic-bezier(0.5, 0, 0.8, 0.5) both; animation-delay: calc(var(--r2) * 0.06s); }
+@keyframes co-streak {
+  0% { opacity: 0; transform: rotate(var(--a)) translateY(6vh) scaleY(0.1); }
+  30% { opacity: 0.95; }
+  100% { opacity: 0; transform: rotate(var(--a)) translateY(70vh) scaleY(1.6); }
+}

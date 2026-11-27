@@ -12,14 +12,20 @@ import { StudentAnnales } from '../components/StudentAnnales';
 import { StudentAr } from '../components/StudentAr';
 import { StudentGrades } from '../components/StudentGrades';
 import { StudentBinderToc } from '../components/student/StudentBinderToc';
+import { StudentDecor } from '../components/student/StudentDecor';
+import { sceneTransition } from '../lib/studentSceneTransition';
 import { StudentHome } from '../components/student/StudentHome';
 import { StudentImplication } from '../components/student/StudentImplication';
+import { StudentThemePicker } from '../components/student/StudentThemePicker';
 import type { DashboardData } from '../lib/studentDashboard';
 import { StudentNav, type StudentView } from '../components/student/StudentNav';
 import { StudentStamps, type StampData } from '../components/student/StudentStamps';
 import { fetchStudentGrades, type StudentAssessment } from '../lib/studentGrades';
 import type { HouseId } from '../lib/academyQueries';
-import { readStudentTheme, saveStudentTheme, studentTheme, studentThemeFontUrl, type StudentThemeId } from '../lib/studentThemes';
+import { DEFAULT_STUDENT_THEME, readStudentTheme, saveStudentTheme, studentTheme, studentThemeFontUrl, type StudentThemeId } from '../lib/studentThemes';
+import {
+  FREE_THEME_RIGHTS, chooseStudentTheme, fetchStudentThemeRights, isThemeUnlocked, themeToApply, unlockStudentTheme, type StudentThemeRights,
+} from '../lib/studentThemeUnlocks';
 import hpMusicUrl from '../Musique/Musique Générique - HARRY POTTER.mp3';
 import '../styles/eleve.css';
 
@@ -46,6 +52,8 @@ export function StudentDashboard() {
   const [view, setView] = useState<StudentView>('home');
   const [notesPart, setNotesPart] = useState<'marks' | 'implication'>('marks');
   const [coursPart, setCoursPart] = useState<CoursPart>('hub');
+  /** Accueil : l'accueil lui-même, ou l'écran « Mon thème » ouvert depuis sa dernière ligne. */
+  const [homePart, setHomePart] = useState<'hub' | 'themes'>('hub');
   // Notes d'évaluation : ouvertes par la classe (class_student_tabs.show_grades), résolu
   // par la RPC elle-même pour ne pas avoir à toucher get_student_dashboard.
   const [showMarks, setShowMarks] = useState(false);
@@ -117,10 +125,34 @@ export function StudentDashboard() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   /** Thème de l'espace, gardé sur l'appareil (lib/studentThemes.ts). L'onglet Maison n'en dépend pas. */
   const [theme, setTheme] = useState<StudentThemeId>(() => readStudentTheme());
-  const chooseTheme = useCallback((id: StudentThemeId) => {
+  /** Ce que le serveur ouvre à cet élève ; null tant qu'il n'a pas répondu (seuls les thèmes libres valent alors). */
+  const [themeRights, setThemeRights] = useState<StudentThemeRights | null>(null);
+  const rights = themeRights ?? FREE_THEME_RIGHTS;
+  const applyTheme = useCallback((id: StudentThemeId) => {
     setTheme(id);
     saveStudentTheme(id);
   }, []);
+  const chooseTheme = (id: StudentThemeId) => {
+    if (!isThemeUnlocked(rights, id)) return;
+    applyTheme(id);
+    // Le décor d'un thème est en haut de la page : on y remonte pour le voir
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const code = currentCodeRef.current;
+    if (!code || !themeRights) return;
+    void chooseStudentTheme(code, id).then((change) => { if (change.rights && currentCodeRef.current === code) setThemeRights(change.rights); });
+  };
+  /** Débloque un thème gagné, puis l'applique. */
+  const unlockTheme = async (id: StudentThemeId): Promise<boolean> => {
+    const code = currentCodeRef.current;
+    if (!code) return false;
+    const change = await unlockStudentTheme(code, id);
+    if (currentCodeRef.current !== code) return false;
+    if (change.rights) setThemeRights(change.rights);
+    if (change.error || !change.rights) return false;
+    applyTheme(id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return true;
+  };
   /** Attribut posé sur la racine : le thème de départ n'en a pas besoin. */
   const themeAttr = theme === 'carnet' ? undefined : theme;
 
@@ -240,6 +272,9 @@ export function StudentDashboard() {
     currentCodeRef.current = fullCode;
 
     try {
+      // Les droits de thème sont demandés en même temps que le reste : le bon thème est posé avant
+      // que la page s'affiche (un thème de l'appareil auquel cet élève n'a pas droit n'apparaît pas).
+      const themesAsked = fetchStudentThemeRights(fullCode).catch(() => null);
       const { data: rawResult, error: rpcError } = await supabase.rpc('get_student_dashboard', { p_code: fullCode });
       if (rpcError) throw rpcError;
       // Les deux refus de get_student_dashboard : code inconnu ou bloqué, et élève présent chez plusieurs
@@ -253,6 +288,12 @@ export function StudentDashboard() {
       }
       // La RPC get_student_dashboard renvoie « bavardages » (nom historique du type d'événement) ;
       // l'interface parle de « malus » depuis le renommage des libellés.
+      const served = await themesAsked;
+      const wanted = themeToApply(served ?? FREE_THEME_RIGHTS, readStudentTheme(), DEFAULT_STUDENT_THEME);
+      setThemeRights(served);
+      applyTheme(wanted);
+      // Premier passage depuis que le thème est gardé par le serveur : on lui confie celui de l'appareil
+      if (served && !served.chosen && wanted !== DEFAULT_STUDENT_THEME) void chooseStudentTheme(fullCode, wanted);
       setData({ ...result, malus: Number(result.malus ?? result.bavardages ?? 0) });
 
       // Tampons
@@ -351,6 +392,8 @@ export function StudentDashboard() {
     setView('home');
     setNotesPart('marks');
     setCoursPart('hub');
+    setHomePart('hub');
+    setThemeRights(null);
     setShowMarks(false);
     setMarks([]);
     setBinderCode(null);
@@ -365,9 +408,12 @@ export function StudentDashboard() {
 
   /** Change d'entrée : on arrive en haut de la page, sur le premier écran de l'entrée. */
   const goTo = (next: StudentView) => {
-    if (next === 'cours') setCoursPart('hub');
-    setView(next);
-    window.scrollTo(0, 0);
+    sceneTransition(theme, () => {
+      if (next === 'cours') setCoursPart('hub');
+      setHomePart('hub');
+      setView(next);
+      window.scrollTo(0, 0);
+    });
   };
 
   // ============================================
@@ -377,6 +423,7 @@ export function StudentDashboard() {
     const complete = code.join('').length === 6;
     return (
       <div className="el" data-theme={themeAttr}>
+      <StudentDecor theme={theme} />
         <div className="el-login">
           <form className="el-card el-login__card" onSubmit={(e) => { e.preventDefault(); void handleSubmit(); }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -555,8 +602,18 @@ export function StudentDashboard() {
 
   return (
     <div className="el" data-theme={themeAttr}>
+      <StudentDecor theme={theme} />
       <main className="el-main">
-        {current === 'home' && (
+        {current === 'home' && homePart === 'themes' && (
+          <>
+            <button type="button" className="el-back" onClick={() => { setHomePart('hub'); window.scrollTo(0, 0); }}>
+              <ChevronLeft size={22} aria-hidden /> Accueil
+            </button>
+            <StudentThemePicker value={theme} rights={rights} onChange={chooseTheme} onUnlock={unlockTheme} />
+          </>
+        )}
+
+        {current === 'home' && homePart === 'hub' && (
           <StudentHome
             data={data}
             activeTp={tpCode ? activeTp : null}
@@ -568,8 +625,9 @@ export function StudentDashboard() {
             onOpenImplication={() => { setNotesPart('implication'); goTo('notes'); }}
             onOpenStamps={() => goTo('stamps')}
             onLogout={handleLogout}
-            theme={theme}
-            onTheme={chooseTheme}
+            themeName={studentTheme(theme).name}
+            themeCredits={rights.credits}
+            onOpenThemes={() => { setHomePart('themes'); window.scrollTo(0, 0); }}
           />
         )}
 

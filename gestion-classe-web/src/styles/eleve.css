@@ -330,7 +330,44 @@ div.el-stat { cursor: default; }
 .el[data-theme='jungle'] .el-seg button { border-radius: 20px; }
 .el[data-theme='jungle'] .el-choice { border-radius: 16px; }
 
-/* ---- Choix du thème (accueil) ---- */
+/* =====================================================================
+   Thèmes illustrés : le décor (components/student/StudentDecor.tsx) est une scène en plusieurs
+   plans, fixe, derrière tout le contenu. Chaque plan `.el-layer` se décale selon sa profondeur :
+   `--k` au défilement (0 = immobile), `--kx` de côté. Le décalage de côté vient d'un lent mouvement
+   de caméra automatique (et du pointeur d'une souris) : les plans glissent les uns devant les
+   autres sans que l'élève touche à rien. Un plan déborde donc de 28 px de chaque côté de l'écran.
+   ===================================================================== */
+.el-decor { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; --sy: 0; --px: 0; --py: 0; }
+.el-decor svg { display: block; overflow: visible; }
+.el-layer {
+  position: absolute; left: -28px; right: -28px; will-change: transform;
+  transform: translate3d(calc(var(--px) * var(--kx, 0) * -1px), calc(var(--sy) * var(--k, 0) * -1px + var(--py) * var(--kx, 0) * -0.6px), 0);
+}
+.el-decor[data-paused] * { animation-play-state: paused !important; }
+.el-decor[data-still] * { animation: none !important; }
+.el-decor[data-still] .el-layer { transform: none; }
+@media (prefers-reduced-motion: reduce) {
+  .el-decor * { animation: none !important; }
+  .el-decor .el-layer { transform: none; }
+}
+/* Zone centrale d'une scène : la largeur de la colonne de contenu, centrée */
+.el-stage { position: absolute; top: 0; left: 50%; width: min(480px, calc(100% - 56px)); height: 100%; transform: translateX(-50%); }
+/* Changement d'onglet (lib/studentSceneTransition.ts) : un calque devant le contenu porte l'effet du
+   thème (ses éléments `i` sont habillés par le `theme.css` du thème, le temps de `data-on`), pendant
+   que l'ancienne page laisse la place à la nouvelle. La barre du bas ne bouge pas. */
+.el-front { position: fixed; inset: 0; z-index: 60; overflow: hidden; pointer-events: none; view-transition-name: el-front; }
+.el-front i { position: absolute; display: block; opacity: 0; }
+.el[data-theme] .el-nav { view-transition-name: el-nav; }
+html[data-el-nav]::view-transition-old(root),
+html[data-el-nav]::view-transition-new(root) { mix-blend-mode: normal; }
+html[data-el-nav]::view-transition-old(el-front) { display: none; }
+html[data-el-nav]::view-transition-new(el-front) { animation: none; }
+@media (prefers-reduced-motion: reduce) { .el-front { display: none; } }
+/* Le contenu passe devant le décor */
+.el > .el-main, .el > .el-login { position: relative; z-index: 1; }
+.el-theme__tag { margin-left: 4px; padding: 1px 6px; border-radius: 4px; background: var(--el-indigo-soft); color: var(--el-indigo-ink); font-size: 11px; font-weight: 600; }
+
+/* ---- Choix du thème (écran « Mon thème », ouvert depuis l'accueil) ---- */
 .el-themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .el-theme {
   display: flex; flex-direction: column; gap: 8px; padding: 8px 8px 10px; border: 1px solid var(--el-line);
@@ -338,12 +375,36 @@ div.el-stat { cursor: default; }
   font: inherit; text-align: left; cursor: pointer; box-shadow: var(--el-card-shadow);
 }
 .el-theme[aria-pressed='true'] { border: 2px solid var(--el-indigo); padding: 7px 7px 9px; }
-.el-theme__view { display: flex; flex-direction: column; gap: 5px; height: 64px; padding: 8px; border-radius: 6px; overflow: hidden; }
+.el-theme__view { position: relative; display: flex; flex-direction: column; gap: 5px; height: 64px; padding: 8px; border-radius: 6px; overflow: hidden; }
 .el-theme__line { display: block; height: 7px; border-radius: 3px; }
 .el-theme__card { display: flex; align-items: center; gap: 6px; flex: 1; padding: 0 8px; border-radius: 4px; }
 .el-theme__dot { display: block; width: 14px; height: 14px; border-radius: 7px; }
 .el-theme__name { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 4px; font-size: 15px; font-weight: 600; }
 .el-theme__note { padding: 0 4px; font-size: 13px; line-height: 17px; color: var(--el-dim); }
+/* Thème fermé : aperçu estompé, cadenas, et la façon de l'obtenir à la place de sa description */
+.el .el-theme:disabled { opacity: 1; cursor: default; }
+.el-theme--locked .el-theme__view > :not(.el-theme__lock) { opacity: 0.4; }
+.el-theme__lock {
+  position: absolute; right: 6px; top: 6px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 13px;
+  background: var(--el-surface); color: var(--el-muted); box-shadow: 0 0 0 1px var(--el-line-strong);
+}
+.el-theme--locked .el-theme__name { color: var(--el-muted); }
+.el-theme__note--lock { color: var(--el-muted); }
+/* Thème que l'élève peut débloquer maintenant */
+.el-theme--earn { border: 2px dashed var(--el-indigo); padding: 7px 7px 9px; }
+.el-theme--earn .el-theme__name { color: var(--el-text); }
+.el-theme--earn .el-theme__note--lock { color: var(--el-indigo-ink); font-weight: 600; }
+.el-theme--earn .el-theme__lock { color: var(--el-indigo); box-shadow: 0 0 0 1px var(--el-indigo); }
+/* Confirmation posée au-dessus de la barre du bas */
+.el-sheet {
+  position: fixed; left: 0; right: 0; bottom: calc(66px + env(safe-area-inset-bottom)); z-index: 30;
+  padding: 0 max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); pointer-events: none;
+}
+.el-sheet__box {
+  pointer-events: auto; display: flex; flex-direction: column; gap: 14px; max-width: 456px; margin: 0 auto; padding: 16px;
+  border: 1px solid var(--el-line-strong); border-radius: var(--el-radius); background: var(--el-surface); color: var(--el-text);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+}
 
 @media (max-width: 359px) {
   .el-main { padding-top: 20px; }

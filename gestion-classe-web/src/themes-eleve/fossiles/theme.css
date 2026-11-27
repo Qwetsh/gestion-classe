@@ -1,0 +1,107 @@
+/* Thème « Fossiles » (espace élève) : falaise en coupe, roche claire, terre cuite.
+   Les strates restent claires partout : un titre posé dessus doit rester lisible jusqu'en bas. */
+.el[data-theme='fossiles'] {
+  --el-bg: #F0E2CC; --el-surface: #FBF3E4; --el-line: #D9C19A; --el-line-soft: #EADBC0; --el-line-strong: #C2A678;
+  --el-text: #33261A; --el-muted: #4B3A28; --el-dim: #5A4632;
+  --el-indigo: #853D12; --el-indigo-ink: #7E3B12; --el-indigo-soft: #F1DCC2;
+  --el-pos: #3F6B1A; --el-pos-ink: #35590F; --el-pos-soft: #E4EBCB;
+  --el-warn: #9A5A00; --el-warn-ink: #7C4700; --el-warn-soft: #F6E3B8;
+  --el-neg: #A32A1D; --el-neg-soft: #F6D9CF;
+  --el-track: #E3CFAA; --el-on-accent: #FFFFFF; --el-radio: #A08660;
+  --el-radius: 4px; --el-radius-sm: 4px;
+  --el-font-display: 'Bitter', Georgia, 'Times New Roman', serif;
+  --el-card-shadow: 0 2px 0 rgba(133, 61, 18, 0.16);
+}
+.el[data-theme='fossiles'] .el-main { padding-top: 168px; }
+.el[data-theme='fossiles'] .el-h2 {
+  font-family: var(--el-font-display); letter-spacing: 0.07em;
+  /* Un titre de section peut passer sur un fossile gravé : il porte un petit fond */
+  align-self: flex-start; margin-left: -8px; padding: 3px 8px; border-radius: 4px;
+  background: color-mix(in srgb, var(--el-bg) 86%, transparent);
+}
+.el[data-theme='fossiles'] .el-btn--primary { box-shadow: 0 3px 0 #5A2708; }
+.el[data-theme='fossiles'] .el-nav { border-top: 2px solid var(--el-line-strong); }
+
+/* ---- La scène ---- */
+[data-scene='fossiles'] .fo-top { height: 260px; }
+[data-scene='fossiles'] .fo-band { left: -40px; right: -40px; height: 140vh; background-repeat: repeat; }
+[data-scene='fossiles'] .fo-band .el-stage { width: min(480px, calc(100% - 80px)); }
+/* Bord ondulé du haut de la strate, dans sa couleur, souligné d'un trait */
+[data-scene='fossiles'] .fo-edge { position: absolute; left: 0; right: 0; top: -17px; height: 18px; background-repeat: repeat-x; background-size: 240px 18px; }
+
+/* Grès : petits grains */
+[data-scene='fossiles'] .fo-band--1 { background-color: #ECDAB9; background-image: radial-gradient(rgba(133, 61, 18, 0.2) 1px, transparent 1.4px), radial-gradient(rgba(133, 61, 18, 0.13) 1px, transparent 1.4px); background-size: 17px 17px, 23px 23px; background-position: 0 0, 9px 12px; }
+[data-scene='fossiles'] .fo-band--1 .fo-edge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='18' viewBox='0 0 240 18'%3E%3Cpath d='M0 18V9C30 1 50 1 80 8s60 9 90 2 50-6 70-1v9z' fill='%23ECDAB9'/%3E%3Cpath d='M0 9C30 1 50 1 80 8s60 9 90 2 50-6 70-1' fill='none' stroke='%23C9A777' stroke-width='1.6'/%3E%3C/svg%3E"); }
+/* Calcaire : lits horizontaux en pointillés */
+[data-scene='fossiles'] .fo-band--2 { background-color: #E8D2AB; background-image: repeating-linear-gradient(90deg, rgba(133, 61, 18, 0.2) 0 14px, transparent 14px 26px); background-size: 100% 1px; background-repeat: repeat-y; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='28'%3E%3Cpath d='M0 7h22M30 7h26M10 21h28M46 21h18' stroke='%23853D12' stroke-opacity='.2' stroke-width='1.2' fill='none'/%3E%3C/svg%3E"); background-size: 64px 28px; background-repeat: repeat; }
+[data-scene='fossiles'] .fo-band--2 .fo-edge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='18' viewBox='0 0 240 18'%3E%3Cpath d='M0 18V6c40 6 70 8 110 3s80-8 130-3v12z' fill='%23E8D2AB'/%3E%3Cpath d='M0 6c40 6 70 8 110 3s80-8 130-3' fill='none' stroke='%23C39E69' stroke-width='1.6'/%3E%3C/svg%3E"); }
+/* Schiste : feuillets fins */
+[data-scene='fossiles'] .fo-band--3 { background-color: #E4CBA1; background-image: repeating-linear-gradient(176deg, rgba(133, 61, 18, 0.14) 0 1px, transparent 1px 7px); }
+[data-scene='fossiles'] .fo-band--3 .fo-edge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='18' viewBox='0 0 240 18'%3E%3Cpath d='M0 18V10C24 4 60 3 96 9s72 7 104 1 30-3 40 0v8z' fill='%23E4CBA1'/%3E%3Cpath d='M0 10C24 4 60 3 96 9s72 7 104 1 30-3 40 0' fill='none' stroke='%23BD9660' stroke-width='1.6'/%3E%3C/svg%3E"); }
+/* Poudingue : galets */
+[data-scene='fossiles'] .fo-band--4 { background-color: #E0C59A; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='60'%3E%3Cg fill='none' stroke='%23853D12' stroke-opacity='.22' stroke-width='1.2'%3E%3Cellipse cx='14' cy='14' rx='8' ry='5'/%3E%3Cellipse cx='48' cy='10' rx='5' ry='3.500'/%3E%3Cellipse cx='34' cy='36' rx='9' ry='5.500' transform='rotate(-14 34 36)'/%3E%3Cellipse cx='62' cy='44' rx='6' ry='4'/%3E%3Cellipse cx='10' cy='50' rx='5' ry='3.200'/%3E%3C/g%3E%3C/svg%3E"); background-size: 72px 60px; }
+[data-scene='fossiles'] .fo-band--4 .fo-edge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='18' viewBox='0 0 240 18'%3E%3Cpath d='M0 18V7c36 7 64 6 100 2s86-7 140-2v11z' fill='%23E0C59A'/%3E%3Cpath d='M0 7c36 7 64 6 100 2s86-7 140-2' fill='none' stroke='%23B88F58' stroke-width='1.6'/%3E%3C/svg%3E"); }
+/* Marne : hachures croisées */
+[data-scene='fossiles'] .fo-band--5 { background-color: #DCBF93; background-image: repeating-linear-gradient(35deg, rgba(133, 61, 18, 0.13) 0 1px, transparent 1px 9px), repeating-linear-gradient(-35deg, rgba(133, 61, 18, 0.13) 0 1px, transparent 1px 9px); }
+[data-scene='fossiles'] .fo-band--5 .fo-edge { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='18' viewBox='0 0 240 18'%3E%3Cpath d='M0 18V9C40 3 76 4 120 9s80 6 120 0v9z' fill='%23DCBF93'/%3E%3Cpath d='M0 9C40 3 76 4 120 9s80 6 120 0' fill='none' stroke='%23B28850' stroke-width='1.6'/%3E%3C/svg%3E"); }
+
+/* Fossiles gravés : un trait sombre, doublé d'un reflet clair pour le relief */
+[data-scene='fossiles'] .fo-fossil { position: absolute; height: auto; }
+[data-scene='fossiles'] .fo-band .fo-fossil { opacity: 0.62; }
+[data-scene='fossiles'] .fo-fill { fill: rgba(133, 61, 18, 0.13); }
+[data-scene='fossiles'] .fo-ink { stroke: rgba(105, 52, 16, 0.62); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+[data-scene='fossiles'] .fo-fill.fo-ink { fill: rgba(133, 61, 18, 0.13); }
+[data-scene='fossiles'] .fo-ink--bold { stroke-width: 1.9; stroke: rgba(96, 44, 12, 0.72); }
+[data-scene='fossiles'] .fo-light { stroke: rgba(255, 248, 232, 0.75); stroke-width: 1.1; stroke-linecap: round; fill: none; }
+[data-scene='fossiles'] .fo-dot { fill: rgba(96, 44, 12, 0.72); }
+
+/* ---- Au toucher (la grande ammonite) : l'animal sort de sa coquille, regarde, puis rentre ---- */
+[data-scene='fossiles'] .fo-live { opacity: 0; transform: scale(0.3, 0); }
+[data-scene='fossiles'] .fo-live__body { fill: #C98A55; stroke: #6A3410; stroke-width: 1.2; }
+[data-scene='fossiles'] .fo-live__arm { fill: none; stroke: #A9622E; stroke-width: 2.6; stroke-linecap: round; }
+[data-scene='fossiles'] .fo-live__eye { fill: #FBF3E4; stroke: #6A3410; stroke-width: 0.9; }
+[data-scene='fossiles'] .fo-live__pupil { fill: #33261A; }
+[data-scene='fossiles'] .fo-shell { transform-origin: 50px 50px; }
+[data-scene='fossiles'][data-fx~='reveil'] .fo-live { animation: fo-emerge 4.6s ease-in-out both; }
+[data-scene='fossiles'][data-fx~='reveil'] .fo-live__arm { animation: fo-arm 0.8s ease-in-out infinite alternate; animation-delay: calc(var(--i) * -0.23s); }
+[data-scene='fossiles'][data-fx~='reveil'] .fo-shell { animation: fo-wiggle 4.6s ease-in-out both; }
+@keyframes fo-emerge {
+  0% { opacity: 0; transform: scale(0.3, 0); }
+  12% { opacity: 1; transform: scale(1, 1.1); }
+  18% { opacity: 1; transform: scale(1, 1); }
+  84% { opacity: 1; transform: scale(1, 1); }
+  100% { opacity: 0; transform: scale(0.4, 0); }
+}
+@keyframes fo-arm { from { transform: rotate(-10deg); } to { transform: rotate(10deg); } }
+@keyframes fo-wiggle {
+  0% { transform: rotate(0deg); } 7% { transform: rotate(-6deg); } 14% { transform: rotate(4deg); } 21% { transform: rotate(-2deg); }
+  28%, 84% { transform: rotate(0deg); } 92% { transform: rotate(3deg); } 100% { transform: rotate(0deg); }
+}
+
+/* ---- Au toucher (le trilobite du haut) : quelques pas en avant, puis il recule à sa place ---- */
+[data-scene='fossiles'] .fo-wobble { transform-origin: 30px 50px; }
+[data-scene='fossiles'][data-fx~='trotte'] .fo-walk { animation: fo-walk 3.2s ease-in-out both; }
+[data-scene='fossiles'][data-fx~='trotte'] .fo-wobble { animation: fo-wobble 0.18s ease-in-out infinite alternate; }
+@keyframes fo-walk { 0% { transform: translate(0, 0); } 40% { transform: translate(0, -20px); } 58% { transform: translate(0, -20px); } 100% { transform: translate(0, 0); } }
+@keyframes fo-wobble { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+
+/* ---- Changement d'onglet : on descend d'une couche dans la falaise ----
+   L'ancienne page part vers le haut, la nouvelle monte d'en dessous, et la limite entre les deux est
+   un lit de roche (trait ondulé, galets) qui monte exactement avec la jointure des deux pages. */
+html[data-el-nav='fossiles']::view-transition { background: #E4CBA1; }
+html[data-el-nav='fossiles']::view-transition-old(root) { animation: fo-layer-out 0.62s cubic-bezier(0.45, 0, 0.2, 1) both; }
+html[data-el-nav='fossiles']::view-transition-new(root) { animation: fo-layer-in 0.62s cubic-bezier(0.45, 0, 0.2, 1) both; }
+@keyframes fo-layer-out { to { transform: translateY(-100%); } }
+@keyframes fo-layer-in { from { transform: translateY(100%); } }
+/* Le lit de roche, posé à cheval sur la jointure */
+.el-front[data-scene='fossiles'] i:first-child {
+  left: 0; right: 0; top: -19px; height: 38px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='38' viewBox='0 0 240 38'%3E%3Cpath d='M0 9C30 1 50 1 80 8C110 15 140 17 170 10C200 3 210 17 240 9V29C210 22 200 38 170 31C140 24 110 24 80 30C50 36 30 36 0 29Z' fill='%23B98F58'/%3E%3Cpath d='M0 9C30 1 50 1 80 8C110 15 140 17 170 10C200 3 210 17 240 9M0 29C30 36 50 36 80 30C110 24 140 24 170 31C200 38 210 22 240 29' fill='none' stroke='%237A4A1E' stroke-width='1.8'/%3E%3Cg fill='none' stroke='%237A4A1E' stroke-opacity='.55' stroke-width='1.2'%3E%3Cellipse cx='34' cy='18' rx='8' ry='4.500'/%3E%3Cellipse cx='96' cy='21' rx='5' ry='3'/%3E%3Cellipse cx='150' cy='17' rx='9' ry='4.500' transform='rotate(-10 150 17)'/%3E%3Cellipse cx='206' cy='19' rx='6' ry='3.500'/%3E%3C/g%3E%3C/svg%3E") repeat-x 0 0 / 240px 38px;
+}
+/* Quelques éclats de roche, juste sous la jointure */
+.el-front[data-scene='fossiles'] i:not(:first-child) {
+  left: calc(var(--r1) * 100%); top: calc(22px + var(--r2) * 46px); width: calc(3px + var(--r3) * 4px); height: calc(3px + var(--r3) * 3px); border-radius: 40%;
+  background: #A9763E;
+}
+.el-front[data-scene='fossiles'][data-on] i { animation: fo-seam 0.62s cubic-bezier(0.45, 0, 0.2, 1) both; }
+@keyframes fo-seam { 0% { opacity: 1; transform: translateY(100vh); } 90% { opacity: 1; } 100% { opacity: 0; transform: translateY(0); } }

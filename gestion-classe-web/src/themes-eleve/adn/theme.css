@@ -1,0 +1,96 @@
+/* Thème « ADN » (espace élève) : blanc de laboratoire, vert d'eau, quatre couleurs de bases. */
+.el[data-theme='adn'] {
+  --el-bg: #EDF6F5; --el-surface: #FFFFFF; --el-line: #CFE3E1; --el-line-soft: #DDECEA; --el-line-strong: #A9CBC7;
+  --el-text: #0F2B2E; --el-muted: #35545A; --el-dim: #4A6A70;
+  --el-indigo: #0B7A75; --el-indigo-ink: #075E5A; --el-indigo-soft: #D5EFEC;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #D8E8E6; --el-on-accent: #FFFFFF; --el-radio: #86AAA6;
+  --el-radius: 16px; --el-radius-sm: 12px;
+  --el-font-display: 'Manrope', 'Inter', system-ui, sans-serif;
+}
+.el[data-theme='adn'] .el-main { padding-top: 232px; }
+.el[data-theme='adn'] .el-h1 { font-weight: 800; letter-spacing: -0.01em; }
+.el[data-theme='adn'] .el-btn--primary { box-shadow: 0 6px 18px rgba(11, 122, 117, 0.28); }
+
+/* ---- La scène ---- */
+[data-scene='adn'] .dn-bg { height: 300px; background: linear-gradient(#D3ECE8 0, #E2F2EF 140px, #EDF6F5 290px); }
+[data-scene='adn'] .dn-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='adn'] .dn-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+[data-scene='adn'] .dn-far,
+[data-scene='adn'] .dn-main,
+[data-scene='adn'] .dn-front { height: 240px; }
+
+/* Gel d'électrophorèse : cinq pistes, des bandes qui migrent lentement */
+[data-scene='adn'] .dn-gel { position: absolute; left: 318px; top: 14px; width: 104px; height: 86px; padding: 5px; border-radius: 8px; background: rgba(169, 203, 199, 0.42); display: flex; gap: 5px; }
+[data-scene='adn'] .dn-lane {
+  flex: 1; border-radius: 3px; background-color: rgba(255, 255, 255, 0.5);
+  background-image: linear-gradient(#5FB3AC 0 4px, rgba(95, 179, 172, 0) 4px), linear-gradient(#8CCBC5 0 3px, rgba(140, 203, 197, 0) 3px), linear-gradient(#5FB3AC 0 3px, rgba(95, 179, 172, 0) 3px);
+  background-repeat: no-repeat; background-size: 100% 4px, 100% 3px, 100% 3px;
+  animation: dn-migrate 12s ease-in-out infinite alternate; animation-delay: calc(var(--lane) * -2.3s);
+}
+@keyframes dn-migrate {
+  from { background-position: 0 calc(8px + var(--lane) * 5px), 0 calc(30px - var(--lane) * 3px), 0 calc(52px + var(--lane) * 2px); }
+  to { background-position: 0 calc(20px + var(--lane) * 6px), 0 calc(44px - var(--lane) * 2px), 0 calc(66px + var(--lane) * 1px); }
+}
+
+/* Chromosomes : deux chromatides croisées, tenues par le centromère */
+[data-scene='adn'] .dn-chromo,
+[data-scene='adn'] .dn-chromatid { transform-box: fill-box; transform-origin: center; }
+[data-scene='adn'] .dn-chromo { animation: dn-sway 8s ease-in-out infinite alternate; }
+[data-scene='adn'] .dn-chromo--b { animation-duration: 11s; animation-delay: -4s; }
+[data-scene='adn'] .dn-chromo--c { animation-duration: 9s; animation-delay: -7s; }
+@keyframes dn-sway { from { transform: rotate(-9deg) translateY(-3px); } to { transform: rotate(11deg) translateY(4px); } }
+[data-scene='adn'] .dn-chromatid rect { fill: #9ED3CD; stroke: #5FB3AC; stroke-width: 1.600; }
+[data-scene='adn'] .dn-chromatid--a { transform: rotate(-17deg); }
+[data-scene='adn'] .dn-chromatid--b { transform: rotate(17deg); }
+[data-scene='adn'] .dn-centromere { fill: #0B7A75; }
+
+/* Double hélice : dessinée sur un canvas (Helix.tsx), qui déborde de 40 px de chaque côté du cadre */
+[data-scene='adn'] .dn-helix { position: absolute; left: -40px; top: 44px; width: 560px; height: 240px; }
+[data-scene='adn'] .dn-helixtap { position: absolute; left: -40px; top: 84px; width: 560px; height: 80px; }
+
+/* Premier plan : lettres des bases, puis un fondu vers la couleur de la page */
+[data-scene='adn'] .dn-fade { position: absolute; left: 0; right: 0; top: 168px; height: calc(100vh + 900px); background: linear-gradient(rgba(237, 246, 245, 0) 0, #EDF6F5 76px); }
+[data-scene='adn'] .dn-letter {
+  position: absolute; width: 20px; height: 20px; border-radius: 6px; background: #FFFFFF; box-shadow: 0 1px 0 rgba(15, 43, 46, 0.12), 0 0 0 1px rgba(15, 43, 46, 0.06);
+  font: 800 12px/20px 'Manrope', 'Inter', system-ui, sans-serif; text-align: center;
+  animation: dn-drift var(--d) ease-in-out infinite alternate; animation-delay: var(--delay);
+}
+@keyframes dn-drift { from { transform: translate(0, 0) rotate(calc(var(--rot) * -1)); } to { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); } }
+
+/* ---- Au toucher (l'hélice) : elle se copie. Le mouvement est mené par le canvas (Helix.tsx). ---- */
+
+/* ---- Au toucher (le grand chromosome) : les chromatides se séparent, puis se rejoignent ---- */
+[data-scene='adn'][data-fx~='chromatides'] .dn-chromatid--a { animation: dn-part-a 3.4s ease-in-out both; }
+[data-scene='adn'][data-fx~='chromatides'] .dn-chromatid--b { animation: dn-part-b 3.4s ease-in-out both; }
+@keyframes dn-part-a { 0%, 100% { transform: translateX(0) rotate(-17deg); } 12% { transform: translateX(0) rotate(-24deg); } 34%, 66% { transform: translateX(-20px) rotate(-4deg); } 50% { transform: translateX(-22px) rotate(4deg); } }
+@keyframes dn-part-b { 0%, 100% { transform: translateX(0) rotate(17deg); } 12% { transform: translateX(0) rotate(24deg); } 34%, 66% { transform: translateX(20px) rotate(4deg); } 50% { transform: translateX(22px) rotate(-4deg); } }
+[data-scene='adn'][data-fx~='chromatides'] .dn-centromere { animation: dn-centro 3.4s ease-in-out both; }
+@keyframes dn-centro { 0%, 14%, 86%, 100% { opacity: 1; transform: scale(1); } 28%, 72% { opacity: 0; transform: scale(0.4); } }
+[data-scene='adn'] .dn-centromere { transform-box: fill-box; transform-origin: center; }
+
+/* ---- Changement d'onglet : la fermeture éclair ----
+   Comme l'ADN qui s'ouvre pour être copié, l'ancienne page s'ouvre par le milieu et laisse voir la
+   nouvelle ; deux brins de bases suivent exactement les deux bords : même durée, même courbe. */
+html[data-el-nav='adn']::view-transition-new(root) { animation: none; }
+html[data-el-nav='adn']::view-transition-old(root) { z-index: 1; animation: dn-unzip 0.74s cubic-bezier(0.5, 0, 0.25, 1) both; }
+@keyframes dn-unzip {
+  from { opacity: 1; clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%, 0 50%, 100% 50%, 100% 100%, 0 100%); }
+  to { opacity: 1; clip-path: polygon(0 0, 100% 0, 100% -2%, 0 -2%, 0 102%, 100% 102%, 100% 100%, 0 100%); }
+}
+.el-front[data-scene='adn'] i {
+  top: calc(50% - 34px); width: 18px; height: 34px; margin-left: -9px; left: calc(var(--i) * 7.600% + 0.600%);
+  background: radial-gradient(circle at 50% 9px, #0B7A75 0 8.500px, rgba(11, 122, 117, 0) 9px), linear-gradient(90deg, rgba(0, 0, 0, 0) 0 7px, var(--c, #E4572E) 7px 11px, rgba(0, 0, 0, 0) 11px) 0 14px / 100% 20px no-repeat;
+}
+.el-front[data-scene='adn'] i:nth-child(n + 15) {
+  top: 50%; left: calc((var(--i) - 14) * 7.600% + 0.600%);
+  background: radial-gradient(circle at 50% 25px, #4DB6AC 0 8.500px, rgba(77, 182, 172, 0) 9px), linear-gradient(90deg, rgba(0, 0, 0, 0) 0 7px, var(--c, #F2B134) 7px 11px, rgba(0, 0, 0, 0) 11px) 0 0 / 100% 20px no-repeat;
+}
+.el-front[data-scene='adn'] i:nth-child(4n + 1) { --c: #2E86AB; }
+.el-front[data-scene='adn'] i:nth-child(4n + 2) { --c: #3BB273; }
+.el-front[data-scene='adn'][data-on] i { animation: dn-strand-up 0.74s cubic-bezier(0.5, 0, 0.25, 1) both; }
+.el-front[data-scene='adn'][data-on] i:nth-child(n + 15) { animation-name: dn-strand-down; }
+@keyframes dn-strand-up { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(calc(-52vh - 34px)); } }
+@keyframes dn-strand-down { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(calc(52vh + 34px)); } }

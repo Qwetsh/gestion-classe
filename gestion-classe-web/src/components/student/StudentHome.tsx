@@ -1,9 +1,7 @@
-import { ChevronRight, FlaskConical, Gift, LogOut } from 'lucide-react';
+import { ChevronRight, FlaskConical, Gift, LogOut, Palette } from 'lucide-react';
 import { formatGrade } from '../../lib/gradeStats';
 import type { StudentAssessment } from '../../lib/studentGrades';
-import type { StudentThemeId } from '../../lib/studentThemes';
 import type { StudentTpItem } from '../../lib/studentTp';
-import { StudentThemePicker } from './StudentThemePicker';
 import { ordinal, type DashboardData } from '../../lib/studentDashboard';
 
 interface Props {
@@ -21,9 +19,11 @@ interface Props {
   onOpenImplication: () => void;
   onOpenStamps: () => void;
   onLogout: () => void;
-  /** Thème de l'espace et son changement. */
-  theme: StudentThemeId;
-  onTheme: (id: StudentThemeId) => void;
+  /** Nom du thème en cours ; l'appui ouvre l'écran « Mon thème ». */
+  themeName: string;
+  /** Nombre de thèmes gagnés que l'élève n'a pas encore choisis. */
+  themeCredits: number;
+  onOpenThemes: () => void;
 }
 
 const hourOf = (iso: string): string => {
@@ -38,7 +38,7 @@ const listOf = (names: string[]): string => (names.length <= 1 ? names.join('') 
  * dernière note, puis le trimestre en trois chiffres. Une section sans contenu ne s'affiche pas.
  */
 export function StudentHome({
-  data, activeTp, onOpenTp, lastGrade, stampCount, bonusToPick, onOpenMarks, onOpenImplication, onOpenStamps, onLogout, theme, onTheme,
+  data, activeTp, onOpenTp, lastGrade, stampCount, bonusToPick, onOpenMarks, onOpenImplication, onOpenStamps, onLogout, themeName, themeCredits, onOpenThemes,
 }: Props) {
   const firstName = data.pseudo.split(' ')[0] || data.pseudo;
   const tpLine = activeTp
@@ -59,7 +59,7 @@ export function StudentHome({
         </button>
       </div>
 
-      {(activeTp || bonusToPick) && (
+      {(activeTp || bonusToPick || themeCredits > 0) && (
         <section className="el-section">
           <h2 className="el-h2">À faire</h2>
           {activeTp && (
@@ -83,6 +83,16 @@ export function StudentHome({
               <span className="el-row__body">
                 <span className="el-row__title">Ta carte à tampons est pleine</span>
                 <span className="el-row__meta">Choisis ton bonus</span>
+              </span>
+              <ChevronRight size={20} className="el-row__chev" aria-hidden />
+            </button>
+          )}
+          {themeCredits > 0 && (
+            <button type="button" className="el-tile" onClick={onOpenThemes}>
+              <span className="el-icon-box"><Palette size={22} strokeWidth={1.8} aria-hidden /></span>
+              <span className="el-row__body">
+                <span className="el-row__title">{themeCredits > 1 ? `Tu as gagné ${themeCredits} thèmes` : 'Tu as gagné un thème'}</span>
+                <span className="el-row__meta">{themeCredits > 1 ? 'Choisis-les' : 'Choisis-le'}</span>
               </span>
               <ChevronRight size={20} className="el-row__chev" aria-hidden />
             </button>
@@ -128,7 +138,17 @@ export function StudentHome({
         </button>
       </section>
 
-      <StudentThemePicker value={theme} onChange={onTheme} />
+      <section className="el-section">
+        <h2 className="el-h2">Mon espace</h2>
+        <button type="button" className="el-tile" onClick={onOpenThemes}>
+          <span className="el-icon-box"><Palette size={22} strokeWidth={1.8} aria-hidden /></span>
+          <span className="el-row__body">
+            <span className="el-row__title">Mon thème</span>
+            <span className="el-row__meta">{themeName}</span>
+          </span>
+          <ChevronRight size={20} className="el-row__chev" aria-hidden />
+        </button>
+      </section>
     </>
   );
 }

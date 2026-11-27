@@ -1,0 +1,167 @@
+/* Thème « Abysses » (espace élève) : bleu de grande profondeur, lueurs turquoise. */
+.el[data-theme='abysses'] {
+  --el-bg: #06142B; --el-surface: #0E2244; --el-line: #1E3A66; --el-line-soft: #17305A; --el-line-strong: #2F5590;
+  --el-text: #EAF6FF; --el-muted: #B4CCE6; --el-dim: #93B0D0;
+  --el-indigo: #4FE3D0; --el-indigo-ink: #9CF3E8; --el-indigo-soft: #0F3A4A;
+  --el-pos: #6EE7A8; --el-pos-ink: #A6F2C8; --el-pos-soft: #0F3B33;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8A8A; --el-neg-soft: #45191E;
+  --el-track: #1A3560; --el-on-accent: #06142B; --el-radio: #5F82AE;
+  --el-radius: 16px; --el-radius-sm: 12px;
+  --el-font-display: 'Sora', 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+}
+.el[data-theme='abysses'] .el-main { padding-top: 232px; }
+.el[data-theme='abysses'] .el-card,
+.el[data-theme='abysses'] .el-tile,
+.el[data-theme='abysses'] .el-tilebox { background: rgba(14, 34, 68, 0.93); }
+.el[data-theme='abysses'] .el-btn--primary { box-shadow: 0 6px 20px rgba(79, 227, 208, 0.3); }
+
+/* ---- La scène ---- */
+[data-scene='abysses'] .ab-water { position: absolute; inset: 0; background: linear-gradient(#0C3266 0, #082048 250px, #06142B 540px); }
+[data-scene='abysses'] .ab-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='abysses'] .ab-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* Rais de lumière venus de la surface */
+[data-scene='abysses'] .ab-shafts { height: 320px; }
+[data-scene='abysses'] .ab-shaft {
+  position: absolute; top: -30px; height: 340px; transform-origin: 50% 0;
+  background: linear-gradient(rgba(150, 225, 255, 0.34), rgba(150, 225, 255, 0));
+  animation: ab-shaft var(--d) ease-in-out infinite alternate; animation-delay: var(--delay);
+}
+@keyframes ab-shaft { from { opacity: 0.35; transform: skewX(-16deg); } to { opacity: 0.95; transform: skewX(-10deg); } }
+
+/* La baleine, très loin : elle traverse l'écran en plus d'une minute */
+[data-scene='abysses'] .ab-deep { height: 130px; }
+[data-scene='abysses'] .ab-whale { position: absolute; left: 0; top: 0; width: 230px; height: auto; fill: #12396C; opacity: 0.75; animation: ab-whale 78s linear infinite; animation-delay: -30s; }
+@keyframes ab-whale {
+  0% { transform: translate(calc(100vw + 60px), 14px); }
+  50% { transform: translate(calc(50vw - 115px), -8px); }
+  100% { transform: translate(-300px, 10px); }
+}
+
+/* Le banc de poissons */
+[data-scene='abysses'] .ab-mid { height: 80px; }
+[data-scene='abysses'] .ab-school { position: absolute; left: 0; top: 0; width: 90px; height: 50px; animation: ab-school 30s linear infinite; animation-delay: -6s; }
+@keyframes ab-school { from { transform: translate(-130px, 26px); } 50% { transform: translate(50vw, 0); } to { transform: translate(calc(100vw + 50px), 30px); } }
+[data-scene='abysses'] .ab-fish { position: absolute; height: auto; fill: #7FD6F2; }
+[data-scene='abysses'] .ab-fish__tail { transform-box: view-box; transform-origin: 6px 5px; animation: ab-tail 0.32s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes ab-tail { from { transform: scaleY(1) rotate(-14deg); } to { transform: scaleY(0.7) rotate(14deg); } }
+
+/* Rochers et algues : chaque plan porte son aplat sombre, qui recouvre les plans de derrière */
+[data-scene='abysses'] .ab-reef { height: 90px; }
+[data-scene='abysses'] .ab-reef::after { content: ''; position: absolute; left: 0; right: 0; top: 89px; height: calc(100vh + 900px); background: #0B2448; }
+[data-scene='abysses'] .ab-reef--near::after { top: 79px; background: linear-gradient(#071A36 0, #06142B 60px); }
+[data-scene='abysses'] .ab-kelp { fill: none; stroke-linecap: round; transform-box: view-box; animation: ab-kelp 5.5s ease-in-out infinite alternate; animation-delay: var(--delay); }
+[data-scene='abysses'] .ab-kelp--far0 { stroke: #0F4F5A; }
+[data-scene='abysses'] .ab-kelp--far1 { stroke: #0C4050; }
+[data-scene='abysses'] .ab-kelp--near0 { stroke: #14806E; }
+[data-scene='abysses'] .ab-kelp--near1 { stroke: #0F6658; }
+@keyframes ab-kelp { from { transform: rotate(-5deg); } to { transform: rotate(6deg); } }
+
+/* Méduses : la cloche pulse, les filaments suivent, l'ensemble dérive */
+[data-scene='abysses'] .ab-life { height: 240px; }
+[data-scene='abysses'] .ab-jelly { animation: ab-drift 9s ease-in-out infinite alternate; animation-delay: var(--delay); }
+[data-scene='abysses'] .ab-jelly--far { opacity: 0.6; }
+@keyframes ab-drift { from { transform: translate(-6px, 10px); } to { transform: translate(8px, -12px); } }
+[data-scene='abysses'] .ab-jelly__swim,
+[data-scene='abysses'] .ab-bell,
+[data-scene='abysses'] .ab-tent,
+[data-scene='abysses'] .ab-jelly__ring,
+[data-scene='abysses'] .ab-jaw,
+[data-scene='abysses'] .ab-angler__body,
+[data-scene='abysses'] .ab-lure__halo { transform-box: view-box; }
+[data-scene='abysses'] .ab-bell { transform-origin: 30px 34px; animation: ab-pulse 2.6s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes ab-pulse { from { transform: scale(1.06, 0.9); } to { transform: scale(0.92, 1.08); } }
+[data-scene='abysses'] .ab-bell__body { fill: rgba(232, 150, 255, 0.72); stroke: #F4C8FF; stroke-width: 1.2; }
+[data-scene='abysses'] .ab-bell__shine { fill: rgba(255, 255, 255, 0.55); }
+[data-scene='abysses'] .ab-bell__core { fill: rgba(255, 230, 255, 0.55); }
+[data-scene='abysses'] .ab-tent { transform-origin: 30px 34px; animation: ab-tent 2.6s ease-in-out infinite alternate; animation-delay: var(--delay); }
+[data-scene='abysses'] .ab-tent path { fill: none; stroke: rgba(232, 150, 255, 0.75); stroke-width: 1.6; stroke-linecap: round; }
+[data-scene='abysses'] .ab-arm { fill: none; stroke: rgba(255, 200, 255, 0.85); stroke-width: 3; stroke-linecap: round; }
+@keyframes ab-tent { from { transform: scale(1.12, 0.92); } to { transform: scale(0.9, 1.06); } }
+[data-scene='abysses'] .ab-jelly__ring { fill: none; stroke: #9CF3E8; stroke-width: 1.6; opacity: 0; transform-origin: 30px 26px; }
+
+/* Baudroie : le leurre palpite, le poisson respire */
+[data-scene='abysses'] .ab-angler__body { transform-origin: 80px 56px; animation: ab-lurk 6s ease-in-out infinite alternate; }
+@keyframes ab-lurk { from { transform: translate(0, 0); } to { transform: translate(-4px, 3px); } }
+[data-scene='abysses'] .ab-jaw { transform-origin: 74px 72px; }
+[data-scene='abysses'] .ab-lure { fill: #CFFFF8; }
+[data-scene='abysses'] .ab-lure__halo { fill: rgba(79, 227, 208, 0.5); transform-origin: 15px 15px; animation: ab-lure 2.2s ease-in-out infinite alternate; }
+@keyframes ab-lure { from { opacity: 0.35; transform: scale(0.8); } to { opacity: 0.95; transform: scale(1.25); } }
+
+/* Bulles qui montent sur tout l'écran */
+[data-scene='abysses'] .ab-bubbles { position: absolute; inset: 0; }
+[data-scene='abysses'] .ab-bubble {
+  position: absolute; left: var(--x); bottom: -16px; width: var(--s); height: var(--s); border-radius: 50%; opacity: 0;
+  border: 1.2px solid rgba(190, 235, 255, 0.8); background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.7) 0 16%, rgba(150, 215, 255, 0.14) 40%);
+  animation: ab-bubble var(--d) linear infinite; animation-delay: var(--delay);
+}
+@keyframes ab-bubble {
+  0% { opacity: 0; transform: translate(0, 0); }
+  8% { opacity: 0.85; }
+  50% { transform: translate(var(--sway), -56vh); opacity: 0.75; }
+  100% { opacity: 0; transform: translate(calc(var(--sway) * -0.5), -110vh); }
+}
+
+/* ---- Au toucher (une méduse) : elles s'illuminent et filent vers le haut, puis redescendent ---- */
+[data-scene='abysses'][data-fx~='meduse'] .ab-jelly__swim { animation: ab-jet 3.2s both; }
+@keyframes ab-jet {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.15, 0.8, 0.3, 1); }
+  18% { transform: translateY(-34px); animation-timing-function: ease-in-out; }
+  34% { transform: translateY(-26px); animation-timing-function: cubic-bezier(0.15, 0.8, 0.3, 1); }
+  48% { transform: translateY(-52px); animation-timing-function: ease-in-out; }
+  100% { transform: translateY(0); }
+}
+[data-scene='abysses'][data-fx~='meduse'] .ab-bell__body { animation: ab-glow 3.2s ease-in-out both; }
+[data-scene='abysses'][data-fx~='meduse'] .ab-bell__core { animation: ab-core 3.2s ease-in-out both; }
+@keyframes ab-glow { 0%, 100% { fill: rgba(232, 150, 255, 0.72); } 15%, 55% { fill: rgba(156, 243, 232, 0.92); } }
+@keyframes ab-core { 0%, 100% { fill: rgba(255, 230, 255, 0.55); } 15%, 55% { fill: #FFFFFF; } }
+[data-scene='abysses'][data-fx~='meduse'] .ab-jelly__ring { animation: ab-ring 1.3s ease-out both; }
+[data-scene='abysses'][data-fx~='meduse'] .ab-jelly__ring--late { animation-delay: 0.45s; }
+@keyframes ab-ring { from { opacity: 0.9; transform: scale(0.6); } to { opacity: 0; transform: scale(2.4); } }
+
+/* ---- Au toucher (la baudroie) : elle bondit, la gueule grande ouverte, le leurre flamboie ---- */
+[data-scene='abysses'][data-fx~='baudroie'] .ab-angler__body { animation: ab-lunge 2.8s both; }
+@keyframes ab-lunge {
+  0% { transform: translate(0, 0); animation-timing-function: ease-in; }
+  10% { transform: translate(8px, 0); animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1); }
+  24% { transform: translate(-34px, -4px); animation-timing-function: ease-in-out; }
+  60% { transform: translate(-30px, -2px); animation-timing-function: ease-in-out; }
+  100% { transform: translate(0, 0); }
+}
+[data-scene='abysses'][data-fx~='baudroie'] .ab-jaw { animation: ab-bite 2.8s both; }
+@keyframes ab-bite {
+  0%, 8% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.1, 0.8, 0.3, 1); }
+  22% { transform: rotate(-30deg); }
+  52% { transform: rotate(-30deg); animation-timing-function: cubic-bezier(0.7, 0, 0.9, 0.4); }
+  60% { transform: rotate(0deg); }
+  66% { transform: rotate(-8deg); }
+  72%, 100% { transform: rotate(0deg); }
+}
+[data-scene='abysses'][data-fx~='baudroie'] .ab-lure__halo { animation: ab-flare 2.8s ease-in-out both; }
+@keyframes ab-flare { 0%, 100% { opacity: 0.6; transform: scale(1); } 22%, 52% { opacity: 1; transform: scale(2.6); } }
+
+/* ---- Changement d'onglet : une nuée de bulles ----
+   La nouvelle page monte du bas de l'écran, et les bulles voyagent exactement dans la zone où elle
+   se fond dans l'ancienne (de 100 % à 122 % de la hauteur d'écran, multipliés par l'avancement) :
+   même durée, même courbe, un seul mouvement. */
+html[data-el-nav='abysses']::view-transition-old(root) { animation: none; }
+html[data-el-nav='abysses']::view-transition-new(root) {
+  -webkit-mask: linear-gradient(to top, #000 0 82%, transparent 100%) no-repeat 0 100% / 100% 0%;
+  mask: linear-gradient(to top, #000 0 82%, transparent 100%) no-repeat 0 100% / 100% 0%;
+  animation: ab-surge 0.72s cubic-bezier(0.4, 0.05, 0.3, 1) both;
+}
+@keyframes ab-surge { from { -webkit-mask-size: 100% 0%; mask-size: 100% 0%; } to { -webkit-mask-size: 100% 122%; mask-size: 100% 122%; } }
+.el-front[data-scene='abysses'] i {
+  --w: calc(12px + var(--r3) * 34px);
+  left: calc(var(--r2) * 100%); bottom: calc(var(--w) * -1); width: var(--w); height: var(--w); margin-left: calc(var(--w) * -0.5); border-radius: 50%;
+  border: 1.6px solid rgba(200, 240, 255, 0.9);
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.85) 0 14%, rgba(140, 215, 255, 0.24) 38%, rgba(79, 227, 208, 0.16) 100%);
+}
+.el-front[data-scene='abysses'][data-on] i { animation: ab-swarm 0.72s cubic-bezier(0.4, 0.05, 0.3, 1) both; }
+@keyframes ab-swarm {
+  0% { opacity: 0; transform: translate(0, 0); }
+  8% { opacity: 1; }
+  100% { opacity: 1; transform: translate(calc((var(--r1) - 0.5) * 30px), calc(-100vh - var(--r1) * 24vh - var(--w))); }
+}

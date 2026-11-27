@@ -1,0 +1,140 @@
+/* Thème « Crépuscule » (espace élève) : indigo du soir, rose des nuages. */
+.el[data-theme='crepuscule'] {
+  --el-bg: #171A44; --el-surface: #232659; --el-line: #3A3E85; --el-line-soft: #2E3170; --el-line-strong: #5A5EB0;
+  --el-text: #F5F2FF; --el-muted: #C9C4EE; --el-dim: #A9A3DC;
+  --el-indigo: #FF9DBB; --el-indigo-ink: #FFC2D4; --el-indigo-soft: #3B2C73;
+  --el-pos: #7BE3B5; --el-pos-ink: #A8F0CF; --el-pos-soft: #163A3A;
+  --el-warn: #FFD27A; --el-warn-ink: #FFE0A3; --el-warn-soft: #45361A;
+  --el-neg: #FF8F9C; --el-neg-soft: #4A1C36;
+  --el-track: #343878; --el-on-accent: #2A1038; --el-radio: #7C7FC4;
+  --el-radius: 18px; --el-radius-sm: 999px;
+  --el-font-display: 'M PLUS Rounded 1c', 'Nunito', 'Inter', sans-serif;
+  color-scheme: dark;
+}
+.el[data-theme='crepuscule'] .el-main { padding-top: 222px; }
+.el[data-theme='crepuscule'] .el-h1 { font-size: 28px; font-weight: 800; }
+.el[data-theme='crepuscule'] .el-card,
+.el[data-theme='crepuscule'] .el-tile,
+.el[data-theme='crepuscule'] .el-tilebox { background: rgba(35, 38, 89, 0.93); }
+.el[data-theme='crepuscule'] .el-btn { padding: 0 20px; }
+.el[data-theme='crepuscule'] .el-btn--primary { box-shadow: 0 6px 18px rgba(255, 157, 187, 0.35); }
+.el[data-theme='crepuscule'] .el-seg { border-radius: 999px; }
+.el[data-theme='crepuscule'] .el-choice { border-radius: 16px; }
+
+/* ---- La scène ---- */
+[data-scene='crepuscule'] .cr-sky {
+  height: 240px;
+  background: linear-gradient(180deg, #23246E 0%, #4A3AA5 30%, #A455B5 54%, #F0709F 74%, #FF9E72 90%, #FFC98A 100%);
+}
+[data-scene='crepuscule'] .cr-stars { position: absolute; inset: 0; }
+[data-scene='crepuscule'] .cr-star {
+  position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #FFFFFF;
+  animation: cr-twinkle var(--d) ease-in-out infinite alternate; animation-delay: var(--delay);
+}
+@keyframes cr-twinkle { from { opacity: 0.25; } to { opacity: 1; } }
+[data-scene='crepuscule'] .cr-shoot {
+  position: absolute; top: 26px; left: 62%; width: 96px; height: 2px; border-radius: 1px; opacity: 0;
+  background: linear-gradient(90deg, #FFFFFF, rgba(255, 255, 255, 0));
+  transform: rotate(-22deg); animation: cr-shoot 14s ease-in infinite;
+}
+@keyframes cr-shoot {
+  0%, 86% { opacity: 0; transform: translate(70px, -26px) rotate(-22deg); }
+  89% { opacity: 1; }
+  97%, 100% { opacity: 0; transform: translate(-150px, 62px) rotate(-22deg); }
+}
+
+[data-scene='crepuscule'] .cr-sunlayer { height: 240px; }
+[data-scene='crepuscule'] .cr-sun {
+  position: absolute; left: 64px; top: 146px; width: 132px; height: 132px; border-radius: 50%;
+  background: radial-gradient(circle, #FFF8D6 0 26%, #FFDD8C 40%, rgba(255, 190, 120, 0.55) 56%, rgba(255, 160, 120, 0) 72%);
+  animation: cr-sun 9s ease-in-out infinite alternate;
+}
+@keyframes cr-sun { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+[data-scene='crepuscule'] .cr-clouds { height: 130px; overflow: hidden; }
+[data-scene='crepuscule'] .cr-drift { position: absolute; top: 0; left: 0; width: 200%; height: 100%; display: flex; animation: cr-drift 110s linear infinite; }
+[data-scene='crepuscule'] .cr-clouds--near .cr-drift { animation-duration: 70s; }
+@keyframes cr-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+[data-scene='crepuscule'] .cr-set { position: relative; flex: 0 0 50%; height: 100%; }
+[data-scene='crepuscule'] .cr-cloud { position: absolute; height: auto; }
+[data-scene='crepuscule'] .cr-clouds--far .cr-cloud__body { fill: #D98BC0; }
+[data-scene='crepuscule'] .cr-clouds--far .cr-cloud__shade { fill: #7B58B4; }
+[data-scene='crepuscule'] .cr-clouds--far .cr-cloud__light { fill: #F6C4DA; }
+[data-scene='crepuscule'] .cr-clouds--near .cr-cloud__body { fill: #FFC2D6; }
+[data-scene='crepuscule'] .cr-clouds--near .cr-cloud__shade { fill: #9A6FD0; }
+[data-scene='crepuscule'] .cr-clouds--near .cr-cloud__light { fill: #FFF3F6; }
+
+/* Collines et toits : chacun porte un aplat de la couleur de la page, qui cache le bas du ciel */
+[data-scene='crepuscule'] .cr-hills { height: 40px; }
+[data-scene='crepuscule'] .cr-hills::after,
+[data-scene='crepuscule'] .cr-town::after { content: ''; position: absolute; left: -40px; right: -40px; top: 39px; height: calc(100vh + 900px); background: #171A44; }
+[data-scene='crepuscule'] .cr-town::after { top: 98px; }
+[data-scene='crepuscule'] .cr-hills path { fill: #171A44; }
+[data-scene='crepuscule'] .cr-town { height: 110px; }
+[data-scene='crepuscule'] .cr-roofs { position: absolute; left: 50%; top: 0; width: 480px; margin-left: -240px; height: auto; fill: #171A44; stroke: #171A44; }
+[data-scene='crepuscule'] .cr-windows { fill: #FFD98A; stroke: none; }
+[data-scene='crepuscule'] .cr-window-pink { fill: #FFB7CE; stroke: none; }
+
+[data-scene='crepuscule'] .cr-petals { position: absolute; inset: 0; }
+[data-scene='crepuscule'] .cr-petal {
+  position: absolute; left: var(--x); top: -20px; width: var(--s); height: calc(var(--s) * 0.62);
+  border-radius: 80% 10% 80% 10%; background: #FFB7CE; opacity: 0.85;
+  animation: cr-fall var(--d) linear infinite; animation-delay: var(--delay);
+}
+@keyframes cr-fall {
+  from { transform: translate(0, 0) rotate(0deg); }
+  to { transform: translate(var(--dx), 112vh) rotate(var(--spin)); }
+}
+
+/* ---- Au toucher (les toits) : les oiseaux du fil s'envolent, puis reviennent se poser ---- */
+[data-scene='crepuscule'] .cr-fly { opacity: 0; }
+[data-scene='crepuscule'][data-fx~='envol'] .cr-perch { opacity: 0; }
+[data-scene='crepuscule'][data-fx~='envol'] .cr-fly { animation: cr-fly 8.4s ease-in-out var(--delay) both; }
+[data-scene='crepuscule'][data-fx~='envol'] .cr-fly__wings { transform-origin: 0 -5px; animation: cr-flap 0.2s ease-in-out infinite alternate; }
+@keyframes cr-fly {
+  0% { opacity: 1; transform: translate(0, 0); }
+  24% { opacity: 1; transform: translate(var(--fx), var(--fy)); }
+  28%, 70% { opacity: 0; transform: translate(var(--fx), var(--fy)); }
+  74% { opacity: 1; transform: translate(var(--fx), var(--fy)); }
+  100% { opacity: 1; transform: translate(0, 0); }
+}
+@keyframes cr-flap { from { transform: scaleY(1); } to { transform: scaleY(-0.55); } }
+
+/* ---- Au toucher (le ciel) : une rafale de pétales traverse l'écran ---- */
+[data-scene='crepuscule'] .cr-gust { position: absolute; inset: 0; }
+[data-scene='crepuscule'] .cr-gp {
+  position: absolute; left: -30px; width: var(--s); height: calc(var(--s) * 0.62);
+  border-radius: 80% 10% 80% 10%; background: #FFC4D6; opacity: 0;
+}
+[data-scene='crepuscule'][data-fx~='rafale'] .cr-gp { animation: cr-gust var(--d) cubic-bezier(0.3, 0.1, 0.55, 1) var(--delay) both; }
+@keyframes cr-gust {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  10% { opacity: 0.95; }
+  50% { transform: translate(52vw, calc(var(--dy) * -0.5)) rotate(calc(var(--spin) * 0.5)); }
+  90% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(calc(100vw + 70px), var(--dy)) rotate(var(--spin)); }
+}
+
+/* ---- Changement d'onglet : un coup de vent ----
+   La nouvelle page se découvre de gauche à droite, et les pétales voyagent exactement dans la zone
+   où elle se fond dans l'ancienne : même durée, même courbe, et chaque pétale garde sa place dans
+   cette zone du début à la fin (elle va de 108 % à 150 % de la largeur d'écran, multipliés par
+   l'avancement). Ce sont donc bien les pétales qui amènent la page. */
+html[data-el-nav='crepuscule']::view-transition-old(root) { animation: none; }
+html[data-el-nav='crepuscule']::view-transition-new(root) {
+  -webkit-mask: linear-gradient(90deg, #000 0 72%, transparent 100%) no-repeat 0 0 / 0% 100%;
+  mask: linear-gradient(90deg, #000 0 72%, transparent 100%) no-repeat 0 0 / 0% 100%;
+  animation: cr-sweep 0.7s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+@keyframes cr-sweep { from { -webkit-mask-size: 0% 100%; mask-size: 0% 100%; } to { -webkit-mask-size: 150% 100%; mask-size: 150% 100%; } }
+.el-front[data-scene='crepuscule'] i {
+  left: -10px; top: calc(var(--r2) * 100%); width: calc(10px + var(--r3) * 9px); height: calc(6.5px + var(--r3) * 6px);
+  border-radius: 80% 10% 80% 10%; background: #FFC4D6;
+}
+.el-front[data-scene='crepuscule'] i:nth-child(3n) { background: #FFE3EC; }
+.el-front[data-scene='crepuscule'][data-on] i { animation: cr-rush 0.7s cubic-bezier(0.4, 0, 0.2, 1) both; }
+@keyframes cr-rush {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg); }
+  8% { opacity: 1; }
+  100% { opacity: 1; transform: translate(calc(104vw + var(--r1) * 48vw), calc((var(--r3) - 0.45) * 90px)) rotate(calc(300deg + var(--r1) * 420deg)); }
+}

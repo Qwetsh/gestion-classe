@@ -15,6 +15,8 @@ import { fetchAcademyConfig, toggleAcademyModule } from '../lib/academyQueries';
 import { fetchStudentTabs, saveStudentTabs, applyStudentTabsToAll } from '../lib/studentTabsQueries';
 import { transferStudent, describeTransfer } from '../lib/studentTransferQueries';
 import { GroupSplitter } from '../components/class-groups/GroupSplitter';
+import { ClassThemesSetting } from '../components/classes/ClassThemesSetting';
+import { FoldHeading } from '../components/classes/FoldHeading';
 import { AccommodationBadges } from '../components/AccommodationBadges';
 import { SeatingGeneratorModal } from '../components/SeatingGeneratorModal';
 import { Sparkles, X } from 'lucide-react';
@@ -1486,25 +1488,15 @@ export function Classes() {
             <div style={{ paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {/* Ce que voient les élèves (espace /eleve) — replié par défaut (densité) */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <button
-                  type="button"
-                  onClick={() => setVisibilityOpen((o) => !o)}
-                  aria-expanded={visibilityOpen}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 32,
-                    fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-dim)',
-                    padding: '4px 8px', background: 'none', border: 'none', borderRadius: 6, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
-                  }}
-                  title="Onglets visibles dans l'espace élève de cette classe"
-                >
-                  <span aria-hidden="true" style={{ display: 'inline-block', transform: visibilityOpen ? 'rotate(90deg)' : 'none', transition: 'transform .12s' }}>▸</span>
+                <FoldHeading open={visibilityOpen} onToggle={() => setVisibilityOpen((o) => !o)} title="Onglets et thèmes visibles dans l'espace élève de cette classe">
                   Visibilité élèves
-                </button>
+                </FoldHeading>
                 {visibilityOpen && (<>
                 <VisibilityToggle icon="⭐" label="Tampons" enabled={showStampsTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('stamps')} accent="var(--warn)" />
                 <VisibilityToggle icon="🏰" label="Maison" enabled={academyEnabled} disabled={academyLoading} onToggle={handleToggleAcademy} />
                 <VisibilityToggle icon="📚" label="Annales" enabled={showAnnalesTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('annales')} accent="var(--pos)" />
                 <VisibilityToggle icon="📄" label="Notes" enabled={showGradesTab} disabled={tabsLoading} onToggle={() => handleToggleStudentTab('grades')} accent="var(--indigo)" />
+                {selectedClass && user && <ClassThemesSetting classId={selectedClass.id} userId={user.id} />}
                 {classes.length > 1 && (
                   <button
                     onClick={handleApplyTabsToAll}

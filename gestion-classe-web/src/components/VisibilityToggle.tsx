@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react';
+
 /** Interrupteur d'une ligne « ce que voient les élèves » de la page Classes. */
 export function VisibilityToggle({ icon, label, enabled, disabled, onToggle, accent }: {
-  icon: string; label: string; enabled: boolean; disabled?: boolean; onToggle: () => void; accent?: string;
+  icon: ReactNode; label: string; enabled: boolean; disabled?: boolean; onToggle: () => void; accent?: string;
 }) {
   const color = accent || 'var(--indigo)';
   return (

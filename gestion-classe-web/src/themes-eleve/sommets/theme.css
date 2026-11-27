@@ -1,0 +1,115 @@
+/* Thème « Sommets » (espace élève) : blanc de neige, bleu d'altitude, orange de sécurité. */
+.el[data-theme='sommets'] {
+  --el-bg: #F1F5FA; --el-surface: #FFFFFF; --el-line: #D5DEE9; --el-line-soft: #E3EAF2; --el-line-strong: #B5C3D4;
+  --el-text: #14243A; --el-muted: #3B4E66; --el-dim: #50637B;
+  --el-indigo: #C2410C; --el-indigo-ink: #9A3209; --el-indigo-soft: #FCE3D6;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #DCE4EE; --el-on-accent: #FFFFFF; --el-radio: #8C9DB2;
+  --el-radius: 12px; --el-radius-sm: 10px;
+  --el-font-display: 'Outfit', 'Inter', system-ui, sans-serif;
+}
+.el[data-theme='sommets'] .el-main { padding-top: 250px; }
+.el[data-theme='sommets'] .el-h1 { font-weight: 700; letter-spacing: -0.01em; }
+.el[data-theme='sommets'] .el-btn--primary { box-shadow: 0 3px 0 #7E2A07; }
+
+/* ---- La scène ---- */
+[data-scene='sommets'] .so-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='sommets'] .so-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+[data-scene='sommets'] .so-sky { height: 250px; background: linear-gradient(180deg, #5FAEEC 0%, #A9D4F5 50%, #E3F0FA 86%, #F1F5FA 100%); }
+
+/* Crêtes lointaines : une frise qui se répète, puis son aplat */
+[data-scene='sommets'] .so-range { height: 90px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='90' viewBox='0 0 480 90'%3E%3Cpath d='M0 90V50L40 26L70 44L112 10L150 40L186 24L230 52L270 18L306 46L350 28L392 50L436 16L480 50V90Z' fill='%23B4CBE4'/%3E%3Cpath d='M112 10L128 32L112 26L98 34ZM270 18L286 40L270 34L256 40ZM436 16L452 38L436 32L422 38ZM40 26L52 40L40 36L30 40Z' fill='%23FFFFFF'/%3E%3C/svg%3E") center top / 480px 90px repeat-x; }
+[data-scene='sommets'] .so-range::after { content: ''; position: absolute; left: 0; right: 0; top: 89px; height: calc(100vh + 900px); background: #B4CBE4; }
+[data-scene='sommets'] .so-peak { height: 200px; }
+
+/* Cabine du téléphérique : elle suit le câble du pylône du bas au pylône du haut, et se balance */
+[data-scene='sommets'] .so-cabin { animation: so-ride 24s ease-in-out infinite alternate; }
+@keyframes so-ride { from { transform: translate(104px, 130px); } to { transform: translate(396px, 56px); } }
+[data-scene='sommets'] .so-cabin__swing { transform-origin: 0 0; animation: so-sway 3.2s ease-in-out infinite alternate; }
+@keyframes so-sway { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+
+/* L'aigle plane en cercles */
+[data-scene='sommets'] .so-skylife { height: 120px; }
+[data-scene='sommets'] .so-eagle { position: absolute; left: 0; top: 0; width: 46px; height: auto; fill: #2A3B52; animation: so-soar 26s linear infinite; }
+@keyframes so-soar {
+  0%, 100% { transform: translate(60px, 26px) rotate(8deg) scale(1); }
+  25% { transform: translate(150px, 6px) rotate(-6deg) scale(0.8); }
+  50% { transform: translate(230px, 30px) rotate(-12deg) scale(0.7); }
+  75% { transform: translate(140px, 54px) rotate(10deg) scale(0.9); }
+}
+
+/* La piste : son aplat blanc se fond dans la page */
+[data-scene='sommets'] .so-slope { height: 240px; }
+[data-scene='sommets'] .so-snow { position: absolute; left: 0; right: 0; top: 238px; height: calc(100vh + 900px); background: linear-gradient(#FFFFFF 0, #F1F5FA 30px); }
+/* Skieur qui descend en godille, en boucle */
+[data-scene='sommets'] .so-skier__pose { transform: rotate(-14deg); }
+[data-scene='sommets'] .so-skier--cruise { animation: so-cruise 9s linear infinite; }
+@keyframes so-cruise {
+  0% { transform: translate(510px, 72px); }
+  20% { transform: translate(400px, 102px); }
+  40% { transform: translate(300px, 120px); }
+  60% { transform: translate(196px, 158px); }
+  80% { transform: translate(90px, 180px); }
+  100% { transform: translate(-30px, 196px); }
+}
+[data-scene='sommets'] .so-skier--cruise .so-skier__pose { animation: so-carve 1.6s ease-in-out infinite alternate; }
+@keyframes so-carve { from { transform: rotate(-22deg) translateY(-3px); } to { transform: rotate(-6deg) translateY(3px); } }
+[data-scene='sommets'] .so-skier--jumper { opacity: 0; }
+
+/* Flocons */
+[data-scene='sommets'] .so-flakes { position: absolute; inset: 0; }
+[data-scene='sommets'] .so-flake { position: absolute; left: var(--x); top: -12px; width: var(--s); height: var(--s); border-radius: 50%; background: #A9C8E6; opacity: 0.8; animation: so-fall var(--d) linear infinite; animation-delay: var(--delay); }
+@keyframes so-fall { from { transform: translate(0, 0); } 50% { transform: translate(var(--dx), 56vh); } to { transform: translate(calc(var(--dx) * 0.3), 112vh); } }
+
+/* ---- Au toucher (le tremplin) : un skieur s'élance, décolle, fait un salto arrière, se réceptionne ----
+   Sa position suit la piste (`translate`, à vitesse à peu près constante) ; le saut s'y ajoute
+   (`transform`) : montée qui ralentit, chute qui accélère, un tour complet en l'air. */
+[data-scene='sommets'][data-fx~='saut'] .so-skier--jumper { animation: so-run 3.8s linear both; }
+@keyframes so-run {
+  0% { opacity: 1; translate: 510px 72px; }
+  36% { opacity: 1; translate: 266px 124px; }
+  62% { opacity: 1; translate: 150px 166px; }
+  96% { opacity: 1; translate: -30px 196px; }
+  100% { opacity: 0; translate: -30px 196px; }
+}
+[data-scene='sommets'][data-fx~='saut'] .so-skier--jumper .so-skier__pose { animation: so-flip 3.8s linear both; }
+@keyframes so-flip {
+  0%, 36% { transform: translateY(0) rotate(-14deg); animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1); }
+  48% { transform: translateY(-46px) rotate(170deg); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  62% { transform: translateY(0) rotate(346deg); animation-timing-function: ease-out; }
+  66% { transform: translateY(2px) rotate(336deg); }
+  72%, 100% { transform: translateY(0) rotate(346deg); }
+}
+
+/* ---- Au toucher (la cabine) : elle se balance comme un pendule, de moins en moins fort ---- */
+[data-scene='sommets'][data-fx~='cabine'] .so-cabin__swing { animation: so-pendulum 3.6s ease-in-out both; }
+@keyframes so-pendulum {
+  0% { transform: rotate(0deg); } 10% { transform: rotate(22deg); } 26% { transform: rotate(-18deg); } 42% { transform: rotate(14deg); }
+  58% { transform: rotate(-10deg); } 72% { transform: rotate(6deg); } 86% { transform: rotate(-3deg); } 100% { transform: rotate(0deg); }
+}
+
+/* ---- Changement d'onglet : une coulée de poudreuse ----
+   Un nuage de neige dévale l'écran de haut en bas, d'un seul mouvement ; la page change derrière
+   lui au moment où il couvre tout (la moitié du temps), et sa traîne s'éclaircit sur la nouvelle. */
+html[data-el-nav='sommets']::view-transition-old(root) { animation: so-page-out 1s linear both; }
+html[data-el-nav='sommets']::view-transition-new(root) { animation: so-page-in 1s linear both; }
+@keyframes so-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes so-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+@keyframes so-powder { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(340vh); } }
+.el-front[data-scene='sommets'] i:first-child {
+  left: -4px; right: -4px; top: -240vh; height: 240vh;
+  background: linear-gradient(rgba(255, 255, 255, 0) 0, #F6FAFE 60vh, #FFFFFF 120vh, #EAF2FA 224vh, rgba(234, 242, 250, 0) 240vh);
+}
+.el-front[data-scene='sommets'][data-on] i:first-child { animation: so-powder 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+/* Les volutes de neige : neuf bordent le front, les autres remplissent le nuage et sa traîne */
+.el-front[data-scene='sommets'] i:not(:first-child) {
+  --w: calc(130px + var(--r2) * 150px);
+  width: var(--w); height: calc(var(--w) * 0.82); margin-left: calc(var(--w) * -0.5); border-radius: 50%;
+  left: calc(var(--r1) * 100%); top: calc(-30vh - var(--r3) * 170vh);
+  background: radial-gradient(ellipse at 46% 40%, #FFFFFF 0, rgba(246, 250, 254, 0.95) 34%, rgba(214, 229, 244, 0.7) 52%, rgba(214, 229, 244, 0) 70%);
+}
+.el-front[data-scene='sommets'] i:nth-child(-n + 10):not(:first-child) { left: calc((var(--i) - 1) * 13% - 2%); top: calc(var(--w) * -0.55 - var(--r3) * 50px); }
+.el-front[data-scene='sommets'][data-on] i:not(:first-child) { animation: so-powder 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both, so-puff 1s linear both; }
+@keyframes so-puff { from { scale: 0.8; } to { scale: 1.5; } }

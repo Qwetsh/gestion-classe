@@ -1,0 +1,188 @@
+/* Thème « Parquet » (espace élève) : bois clair du gymnase, bleu roi, orange du ballon. */
+.el[data-theme='parquet'] {
+  --el-bg: #FAEEDC; --el-surface: #FFFFFF; --el-line: #E6D3B4; --el-line-soft: #EFE1C8; --el-line-strong: #CDB48A;
+  --el-text: #1E1B33; --el-muted: #45405E; --el-dim: #5A5573;
+  --el-indigo: #1D4ED8; --el-indigo-ink: #1A3FA8; --el-indigo-soft: #DCE6FD;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #EADBC1; --el-on-accent: #FFFFFF; --el-radio: #A8946F;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Lilita One', 'Inter', system-ui, sans-serif;
+}
+.el[data-theme='parquet'] .el-main { padding-top: 246px; }
+.el[data-theme='parquet'] .el-h1 { font-weight: 400; font-size: 30px; letter-spacing: 0.01em; }
+.el[data-theme='parquet'] .el-big,
+.el[data-theme='parquet'] .el-mid { font-weight: 400; }
+.el[data-theme='parquet'] .el-btn--primary { box-shadow: 0 4px 0 #14389C; }
+
+/* ---- La scène ---- */
+[data-scene='parquet'] .pq-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='parquet'] .pq-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+
+/* Mur, hautes fenêtres, rayons de soleil */
+[data-scene='parquet'] .pq-wall { height: 270px; background: linear-gradient(#EED6AE 0, #F5E2C2 190px, #FAEEDC 268px); }
+[data-scene='parquet'] .pq-window {
+  position: absolute; top: 12px; width: 24%; height: 44px; border: 3px solid #E0C08C; border-radius: 4px;
+  background: linear-gradient(90deg, rgba(224, 192, 140, 0) 0 calc(50% - 1.500px), #E0C08C calc(50% - 1.500px) calc(50% + 1.500px), rgba(224, 192, 140, 0) calc(50% + 1.500px)), linear-gradient(#CDE7F8, #EAF6FD);
+}
+[data-scene='parquet'] .pq-beam {
+  position: absolute; top: 58px; width: 24%; height: 170px; transform-origin: 50% 0; transform: skewX(-24deg);
+  background: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0)); animation: pq-beam 7s ease-in-out infinite alternate; animation-delay: var(--delay);
+}
+@keyframes pq-beam { from { opacity: 0.45; } to { opacity: 1; } }
+
+/* Gradins : trois rangées de sièges, puis leur aplat */
+[data-scene='parquet'] .pq-stands {
+  height: 84px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='84' viewBox='0 0 480 84'%3E%3Cdefs%3E%3Cpattern id='a' width='20' height='84' patternUnits='userSpaceOnUse'%3E%3Crect x='3' y='10' width='14' height='11' rx='2.500' fill='%235C80E6'/%3E%3Crect x='3' y='36' width='14' height='11' rx='2.500' fill='%23F4A868'/%3E%3Crect x='3' y='62' width='14' height='11' rx='2.500' fill='%235C80E6'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='480' height='84' fill='%23D8B682'/%3E%3Cpath d='M0 1H480M0 27H480M0 53H480' stroke='%23C29C64' stroke-width='2'/%3E%3Crect width='480' height='84' fill='url(%23a)'/%3E%3C/svg%3E") center top / 480px 84px repeat-x;
+}
+[data-scene='parquet'] .pq-stands::after { content: ''; position: absolute; left: 0; right: 0; top: 83px; height: calc(100vh + 900px); background: #D8B682; }
+[data-scene='parquet'] .pq-deco { height: 250px; }
+[data-scene='parquet'] .pq-fan { transform-box: fill-box; transform-origin: 50% 100%; }
+[data-scene='parquet'] .pq-fan--lively { animation: pq-bob 1.4s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes pq-bob { from { transform: translateY(0); } to { transform: translateY(-2.500px); } }
+[data-scene='parquet'] .pq-flag { transform-box: fill-box; transform-origin: 50% 0; animation: pq-flag 2.8s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes pq-flag { from { transform: rotate(-8deg); } to { transform: rotate(9deg); } }
+
+/* Tableau d'affichage */
+[data-scene='parquet'] .pq-board text { font-family: 'Lilita One', 'Arial Black', 'Inter', sans-serif; }
+[data-scene='parquet'] .pq-board__case { fill: #1E1B33; stroke: #F08A3C; stroke-width: 2.400; }
+[data-scene='parquet'] .pq-board__label { font-size: 6.500px; fill: #B9B4CC; letter-spacing: 0.08em; font-family: 'Inter', system-ui, sans-serif !important; font-weight: 700; }
+[data-scene='parquet'] .pq-board__score { font-size: 24px; fill: #FFD23F; }
+[data-scene='parquet'] .pq-board__score--new { opacity: 0; }
+[data-scene='parquet'] .pq-board__clock { font-size: 13px; fill: #FF7A6B; }
+[data-scene='parquet'] .pq-board__colon { animation: pq-colon 1s steps(1) infinite; }
+@keyframes pq-colon { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+[data-scene='parquet'] .pq-board__count { font-size: 22px; fill: #FF7A6B; opacity: 0; }
+
+/* Parquet : des lames, puis un fondu vers la couleur de la page */
+[data-scene='parquet'] .pq-court { height: 250px; }
+[data-scene='parquet'] .pq-boards {
+  position: absolute; left: 0; right: 0; top: 200px; height: calc(100vh + 900px);
+  background: linear-gradient(rgba(250, 238, 220, 0) 0, rgba(250, 238, 220, 0) 14px, #FAEEDC 78px), linear-gradient(#F3CF96 0 3px, rgba(243, 207, 150, 0) 3px), repeating-linear-gradient(90deg, #E7B56E 0 58px, #D9A458 58px 60px, #EDBE7C 60px 118px, #D9A458 118px 120px);
+}
+[data-scene='parquet'] .pq-rim { fill: none; stroke: #E8502A; stroke-width: 2.600; }
+[data-scene='parquet'] .pq-net { transform-box: view-box; transform-origin: 344px 113px; }
+[data-scene='parquet'] .pq-shadow { fill: rgba(60, 35, 10, 0.3); transform-box: fill-box; transform-origin: center; animation: pq-shade 0.95s infinite; }
+@keyframes pq-shade {
+  0%, 100% { transform: scale(1.1); opacity: 1; animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  50% { transform: scale(0.7); opacity: 0.5; animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+}
+/* Le ballon dribble tout seul : il s'écrase au sol, repart vite, ralentit en haut, retombe */
+[data-scene='parquet'] .pq-ball { transform-box: fill-box; transform-origin: 50% 100%; animation: pq-dribble 0.95s infinite; }
+@keyframes pq-dribble {
+  0%, 100% { transform: translateY(0) scale(1.12, 0.86); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  7% { transform: translateY(-4px) scale(0.96, 1.05); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  50% { transform: translateY(-36px) scale(1, 1); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  93% { transform: translateY(-4px) scale(0.96, 1.05); animation-timing-function: linear; }
+}
+
+/* Poussière dans la lumière ; confettis rangés au-dessus de l'écran */
+[data-scene='parquet'] .pq-air { position: absolute; inset: 0; }
+[data-scene='parquet'] .pq-dust { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); animation: pq-dust var(--d) ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes pq-dust { from { opacity: 0.2; transform: translate(0, 0); } to { opacity: 0.9; transform: translate(14px, -22px); } }
+[data-scene='parquet'] .pq-confetti { position: absolute; top: -14px; width: 7px; height: 11px; border-radius: 1.500px; opacity: 0; box-shadow: 0 0 0 0.500px rgba(30, 27, 51, 0.15); }
+
+/* ---- Au toucher (le ballon) : un tir en cloche ----
+   Le ballon avance à vitesse constante vers le panier (`pq-shot-x`) pendant qu'il monte en
+   ralentissant puis retombe en accélérant (`pq-shot-y`) ; le filet le freine et claque, le score
+   passe de 68 à 71 ; le ballon tombe, rebondit de moins en moins haut, puis revient en roulant. */
+[data-scene='parquet'][data-fx~='tir'] .pq-ballx { animation: pq-shot-x 4.6s linear both; }
+@keyframes pq-shot-x {
+  0%, 6% { transform: translateX(0); }
+  40%, 46% { transform: translateX(214px); }
+  54% { transform: translateX(210px); }
+  64% { transform: translateX(194px); }
+  71% { transform: translateX(183px); }
+  74% { transform: translateX(178px); animation-timing-function: cubic-bezier(0.4, 0, 0.3, 1); }
+  100% { transform: translateX(0); }
+}
+[data-scene='parquet'][data-fx~='tir'] .pq-bally { animation: pq-shot-y 4.6s linear both; }
+@keyframes pq-shot-y {
+  0%, 6% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  26% { transform: translateY(-152px); animation-timing-function: cubic-bezier(0.6, 0, 0.85, 0.5); }
+  40% { transform: translateY(-75px); animation-timing-function: linear; }
+  46% { transform: translateY(-46px); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  54% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  59% { transform: translateY(-40px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  64% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  67.500% { transform: translateY(-15px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  71%, 100% { transform: translateY(0); }
+}
+[data-scene='parquet'][data-fx~='tir'] .pq-ball { transform-origin: 50% 50%; animation: pq-spin 4.6s linear both; }
+@keyframes pq-spin {
+  0% { transform: scale(1.14, 0.84) rotate(0deg); }
+  6% { transform: scale(1, 1) rotate(0deg); }
+  40% { transform: rotate(-500deg); }
+  74% { transform: rotate(-620deg); animation-timing-function: cubic-bezier(0.4, 0, 0.3, 1); }
+  100% { transform: rotate(-1440deg); }
+}
+[data-scene='parquet'][data-fx~='tir'] .pq-shadow { animation: pq-shade-shot 4.6s linear both; }
+@keyframes pq-shade-shot { 0%, 6% { opacity: 1; transform: scale(1); } 14%, 48% { opacity: 0.25; transform: scale(0.6); } 54%, 100% { opacity: 1; transform: scale(1); } }
+[data-scene='parquet'][data-fx~='tir'] .pq-net { animation: pq-swish 4.6s both; }
+@keyframes pq-swish {
+  0%, 39.500% { transform: scale(1, 1) skewX(0deg); animation-timing-function: ease-out; }
+  44% { transform: scale(1.06, 1.3) skewX(-5deg); animation-timing-function: ease-in-out; }
+  49% { transform: scale(0.96, 0.9) skewX(4deg); animation-timing-function: ease-in-out; }
+  54% { transform: scale(1.02, 1.08) skewX(-2deg); animation-timing-function: ease-in-out; }
+  60%, 100% { transform: scale(1, 1) skewX(0deg); }
+}
+[data-scene='parquet'][data-fx~='tir'] .pq-board__score--old { animation: pq-score-out 4.6s steps(1) both; }
+[data-scene='parquet'][data-fx~='tir'] .pq-board__score--new { transform-box: fill-box; transform-origin: center; animation: pq-score-in 4.6s both; }
+@keyframes pq-score-out { 0% { opacity: 1; } 43%, 96% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes pq-score-in {
+  0%, 42.900% { opacity: 0; transform: scale(1); }
+  43% { opacity: 1; transform: scale(1.6); animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  52% { opacity: 1; transform: scale(1); }
+  95.900% { opacity: 1; }
+  96%, 100% { opacity: 0; transform: scale(1); }
+}
+[data-scene='parquet'][data-fx~='tir'] .pq-board__case { animation: pq-case 4.6s steps(1) both; }
+@keyframes pq-case { 0%, 42%, 48%, 54%, 60%, 100% { stroke: #F08A3C; } 43%, 51%, 57% { stroke: #FFD23F; } }
+[data-scene='parquet'][data-fx~='tir'] .pq-fan { animation: pq-jump 0.42s ease-in-out 5 alternate both; animation-delay: calc(2s + var(--u) * 1s); }
+@keyframes pq-jump { from { transform: translateY(0); } to { transform: translateY(-7px); } }
+
+/* ---- Au toucher (le tableau) : la sirène de fin de match ----
+   Le chrono égrène 3, 2, 1, 0 ; à zéro le tableau clignote, les gradins se lèvent et les confettis
+   tombent en tournoyant. */
+[data-scene='parquet'][data-fx~='buzzer'] .pq-board__clock { animation: pq-clock-hide 4.2s steps(1) both; }
+@keyframes pq-clock-hide { 0% { opacity: 0; } 88%, 100% { opacity: 1; } }
+[data-scene='parquet'][data-fx~='buzzer'] .pq-board__count { transform-box: fill-box; transform-origin: center; animation: pq-count 0.44s both; animation-delay: calc(var(--n) * 0.44s); }
+[data-scene='parquet'][data-fx~='buzzer'] .pq-board__count:last-of-type { animation: pq-count-zero 2.3s both; animation-delay: 1.32s; }
+@keyframes pq-count { 0% { opacity: 1; transform: scale(1.5); } 30% { opacity: 1; transform: scale(1); } 99% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes pq-count-zero { 0% { opacity: 1; transform: scale(1.7); } 8% { opacity: 1; transform: scale(1); } 16%, 32%, 48% { opacity: 0.25; } 24%, 40%, 56%, 96% { opacity: 1; } 100% { opacity: 0; } }
+[data-scene='parquet'][data-fx~='buzzer'] .pq-board__case { animation: pq-siren 0.3s steps(1) 7 both; animation-delay: 1.32s; }
+@keyframes pq-siren { 0% { stroke: #FF4D3A; fill: #3A1420; } 50%, 100% { stroke: #F08A3C; fill: #1E1B33; } }
+[data-scene='parquet'][data-fx~='buzzer'] .pq-fan { animation: pq-jump 0.36s ease-in-out 6 alternate both; animation-delay: calc(1.35s + var(--u) * 0.6s); }
+[data-scene='parquet'][data-fx~='buzzer'] .pq-flag { animation: pq-flag-wild 0.5s ease-in-out 5 alternate both; animation-delay: 1.3s; }
+@keyframes pq-flag-wild { from { transform: rotate(-22deg); } to { transform: rotate(24deg); } }
+[data-scene='parquet'][data-fx~='buzzer'] .pq-confetti { animation: pq-confetti var(--d) linear both; animation-delay: var(--delay); }
+@keyframes pq-confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg) scaleX(1); }
+  25% { transform: translate(calc(var(--dx) * 0.6), 60px) rotate(calc(var(--rot) * 0.25)) scaleX(0.3); }
+  50% { transform: translate(calc(var(--dx) * -0.3), 122px) rotate(calc(var(--rot) * 0.5)) scaleX(1); }
+  75% { transform: translate(var(--dx), 186px) rotate(calc(var(--rot) * 0.75)) scaleX(0.3); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(var(--dx) * 0.4), 236px) rotate(var(--rot)) scaleX(1); }
+}
+
+/* ---- Changement d'onglet : les lames du parquet ----
+   Huit lames tombent l'une après l'autre, de gauche à droite, en accélérant ; quand toutes couvrent
+   l'écran (à 0,49 s), la page change derrière elles, puis elles finissent de tomber. */
+html[data-el-nav='parquet']::view-transition-old(root) { animation: pq-page-out 0.82s linear both; }
+html[data-el-nav='parquet']::view-transition-new(root) { animation: pq-page-in 0.82s linear both; }
+@keyframes pq-page-out { 0%, 60% { opacity: 1; } 60.1%, 100% { opacity: 0; } }
+@keyframes pq-page-in { 0%, 60% { opacity: 0; } 60.1%, 100% { opacity: 1; } }
+.el-front[data-scene='parquet'] i:nth-child(-n + 8) {
+  left: calc(var(--i) * 12.500%); top: -280vh; width: calc(12.500% + 1px); height: 280vh; border-radius: 0 0 5px 5px;
+  background:
+    linear-gradient(90deg, rgba(110, 66, 20, 0.34) 0 2px, rgba(110, 66, 20, 0) 2px),
+    linear-gradient(0deg, rgba(110, 66, 20, 0.4) 0 5px, rgba(110, 66, 20, 0) 5px),
+    repeating-linear-gradient(180deg, rgba(110, 66, 20, 0) 0 calc(58px + var(--r2) * 40px), rgba(110, 66, 20, 0.16) calc(58px + var(--r2) * 40px) calc(60px + var(--r2) * 40px)),
+    #E7B56E;
+}
+.el-front[data-scene='parquet'] i:nth-child(2n):nth-child(-n + 8) { background-color: #EDBE7C; }
+.el-front[data-scene='parquet'] i:nth-child(3n):nth-child(-n + 8) { background-color: #DFA85C; }
+.el-front[data-scene='parquet'][data-on] i:nth-child(-n + 8) { animation: pq-drop 0.66s cubic-bezier(0.35, 0, 0.75, 0.65) both; animation-delay: calc(var(--i) * 0.022s); }
+@keyframes pq-drop { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(380vh); } }

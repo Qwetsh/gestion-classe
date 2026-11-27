@@ -1,0 +1,182 @@
+/* Thème « Skatepark » (espace élève) : béton clair, encre, rose vif de la bombe de peinture. */
+.el[data-theme='skate'] {
+  --el-bg: #EEF0F4; --el-surface: #FFFFFF; --el-line: #D5D9E3; --el-line-soft: #E4E7EE; --el-line-strong: #AEB5C6;
+  --el-text: #1B1D2A; --el-muted: #454A5E; --el-dim: #5A6076;
+  --el-indigo: #C2185B; --el-indigo-ink: #9C1249; --el-indigo-soft: #FBDCE8;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #DCE0E9; --el-on-accent: #FFFFFF; --el-radio: #8F96A8;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Bangers', 'Inter', system-ui, sans-serif;
+  --el-card-shadow: 3px 3px 0 rgba(27, 29, 42, 0.16);
+}
+.el[data-theme='skate'] .el-main { padding-top: 240px; }
+.el[data-theme='skate'] .el-h1 { font-weight: 400; font-size: 34px; line-height: 38px; letter-spacing: 0.035em; }
+.el[data-theme='skate'] .el-big,
+.el[data-theme='skate'] .el-mid { font-weight: 400; letter-spacing: 0.03em; }
+.el[data-theme='skate'] .el-unit { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; letter-spacing: 0; }
+.el[data-theme='skate'] .el-tile,
+.el[data-theme='skate'] .el-tilebox { box-shadow: var(--el-card-shadow); }
+.el[data-theme='skate'] .el-btn--primary { box-shadow: 0 4px 0 #8A0F40; }
+
+/* ---- La scène ---- */
+[data-scene='skate'] .sk-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='skate'] .sk-set > svg { position: absolute; left: 0; top: 0; height: auto; overflow: visible; }
+
+/* Ciel, soleil, nuages */
+[data-scene='skate'] .sk-sky { height: 270px; background: linear-gradient(#6FBFF0 0, #C3E6FA 96px, #EEF0F4 262px); }
+[data-scene='skate'] .sk-sun {
+  position: absolute; left: 8%; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: #FFE27A;
+  box-shadow: 0 0 0 9px rgba(255, 226, 122, 0.4), 0 0 0 20px rgba(255, 226, 122, 0.18); animation: sk-sun 5s ease-in-out infinite alternate;
+}
+@keyframes sk-sun { from { transform: scale(1); } to { transform: scale(1.08); } }
+[data-scene='skate'] .sk-cloud {
+  position: absolute; left: 0; width: 70px; height: 18px; border-radius: 10px; background: #FFFFFF; opacity: 0.95;
+  animation: sk-drift var(--d) linear infinite; animation-delay: var(--delay);
+}
+[data-scene='skate'] .sk-cloud::before { content: ''; position: absolute; left: 12px; top: -11px; width: 26px; height: 24px; border-radius: 50%; background: #FFFFFF; }
+[data-scene='skate'] .sk-cloud::after { content: ''; position: absolute; left: 32px; top: -7px; width: 22px; height: 18px; border-radius: 50%; background: #FFFFFF; }
+@keyframes sk-drift { from { transform: translateX(-120px) scale(var(--s)); } to { transform: translateX(calc(100vw + 120px)) scale(var(--s)); } }
+
+/* Immeubles lointains, arbres, cerf-volant */
+[data-scene='skate'] .sk-city { height: 250px; }
+[data-scene='skate'] .sk-skyline { position: absolute; left: 0; right: 0; top: 28px; height: 60px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='480' height='60' viewBox='0 0 480 60'%3E%3Crect x='0' y='26' width='36' height='34' fill='%23AEBDDA'/%3E%3Crect x='40' y='12' width='28' height='48' fill='%239FB0D0'/%3E%3Crect x='72' y='34' width='44' height='26' fill='%23AEBDDA'/%3E%3Crect x='120' y='6' width='30' height='54' fill='%239FB0D0'/%3E%3Crect x='154' y='24' width='50' height='36' fill='%23AEBDDA'/%3E%3Crect x='208' y='16' width='26' height='44' fill='%239FB0D0'/%3E%3Crect x='238' y='30' width='46' height='30' fill='%23AEBDDA'/%3E%3Crect x='288' y='4' width='32' height='56' fill='%239FB0D0'/%3E%3Crect x='324' y='22' width='42' height='38' fill='%23AEBDDA'/%3E%3Crect x='370' y='12' width='28' height='48' fill='%239FB0D0'/%3E%3Crect x='402' y='32' width='40' height='28' fill='%23AEBDDA'/%3E%3Crect x='446' y='18' width='34' height='42' fill='%239FB0D0'/%3E%3Cpath d='M6 33h3v4h-3zM15 33h3v4h-3zM24 33h3v4h-3zM6 44h3v4h-3zM15 44h3v4h-3zM55 30h3v4h-3zM55 41h3v4h-3zM46 52h3v4h-3zM55 52h3v4h-3zM78 41h3v4h-3zM87 52h3v4h-3zM96 52h3v4h-3zM135 24h3v4h-3zM135 46h3v4h-3zM169 31h3v4h-3zM160 42h3v4h-3zM196 53h3v4h-3zM214 23h3v4h-3zM214 34h3v4h-3zM223 34h3v4h-3zM223 45h3v4h-3zM262 37h3v4h-3zM244 48h3v4h-3zM262 48h3v4h-3zM294 11h3v4h-3zM303 11h3v4h-3zM294 22h3v4h-3zM294 33h3v4h-3zM303 33h3v4h-3zM312 33h3v4h-3zM312 44h3v4h-3zM330 29h3v4h-3zM339 29h3v4h-3zM357 29h3v4h-3zM339 51h3v4h-3zM348 51h3v4h-3zM385 41h3v4h-3zM376 52h3v4h-3zM408 39h3v4h-3zM417 39h3v4h-3zM435 39h3v4h-3zM408 50h3v4h-3zM417 50h3v4h-3zM426 50h3v4h-3zM452 25h3v4h-3zM461 25h3v4h-3zM470 25h3v4h-3zM470 36h3v4h-3zM452 47h3v4h-3zM461 47h3v4h-3zM470 47h3v4h-3z' fill='%23C9D6EC'/%3E%3C/svg%3E") center top / 480px 60px repeat-x; }
+[data-scene='skate'] .sk-tree { transform-box: fill-box; transform-origin: 50% 100%; animation: sk-sway 4.6s ease-in-out infinite alternate; }
+[data-scene='skate'] .sk-tree--b { animation-duration: 5.4s; animation-delay: -2s; }
+@keyframes sk-sway { from { transform: rotate(-2.500deg); } to { transform: rotate(2.500deg); } }
+[data-scene='skate'] .sk-kite { transform-box: view-box; transform-origin: 336px 150px; animation: sk-kite 6.4s ease-in-out infinite alternate; }
+@keyframes sk-kite { from { transform: rotate(-6deg); } to { transform: rotate(7deg); } }
+[data-scene='skate'] .sk-kite__bow { transform-box: fill-box; transform-origin: center; animation: sk-bow 0.9s ease-in-out infinite alternate; animation-delay: var(--delay); }
+@keyframes sk-bow { from { transform: rotate(-22deg); } to { transform: rotate(22deg); } }
+
+/* Le mur */
+[data-scene='skate'] .sk-wall { height: 250px; }
+[data-scene='skate'] .sk-bricks {
+  position: absolute; left: 0; right: 0; top: 80px; height: 260px;
+  background: linear-gradient(#B3ABA1 0 4px, rgba(179, 171, 161, 0) 4px), repeating-linear-gradient(#DDD7D0 0 27px, #CFC8C0 27px 28px);
+}
+[data-scene='skate'] .sk-pigeon__head { animation: sk-peck 3.4s infinite; animation-delay: var(--delay); }
+@keyframes sk-peck { 0%, 78%, 86%, 94%, 100% { transform: translate(0, 0); } 82%, 90% { transform: translate(1.500px, 4px); } }
+[data-scene='skate'] .sk-pigeon__wing { transform-box: fill-box; transform-origin: 50% 20%; }
+/* Le graff et la bombe attendent le toucher */
+[data-scene='skate'] .sk-tag path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; }
+[data-scene='skate'] .sk-tag__out { stroke: #1B1D2A; stroke-width: 9.500; }
+[data-scene='skate'] .sk-tag__in { stroke: #FFFFFF; stroke-width: 5.500; }
+[data-scene='skate'] .sk-can {
+  position: absolute; left: 0; top: 0; width: 20px; height: 34px; opacity: 0;
+  offset-path: path('M240 98L257.6 152.3L211.5 118.7L268.5 118.7L222.4 152.3L240 98C206 94 190 146 208 164Q240 178 284 160');
+  offset-rotate: 0deg; offset-anchor: 1px 5px; offset-distance: 0%;
+}
+[data-scene='skate'] .sk-can svg { overflow: visible; transform-origin: 10px 20px; }
+[data-scene='skate'] .sk-can__mist { fill: #FFFFFF; opacity: 0; transform-box: fill-box; transform-origin: center; }
+
+/* La rampe, le copain, le sol */
+[data-scene='skate'] .sk-park { height: 250px; }
+[data-scene='skate'] .sk-floor {
+  position: absolute; left: 0; right: 0; top: 207px; height: calc(100vh + 900px);
+  background: linear-gradient(#AEB4C2 0 2px, #CBD0DA 2px, #EEF0F4 46px);
+}
+[data-scene='skate'] .sk-flag { transform-box: fill-box; transform-origin: 0 50%; animation: sk-flag 0.7s ease-in-out infinite alternate; }
+@keyframes sk-flag { from { transform: skewY(-9deg) scaleX(1); } to { transform: skewY(8deg) scaleX(0.88); } }
+[data-scene='skate'] .sk-weed { fill: none; stroke: #57A877; stroke-width: 1.800; stroke-linecap: round; }
+[data-scene='skate'] .sk-friend { animation: sk-wait 2.6s ease-in-out infinite alternate; }
+@keyframes sk-wait { from { transform: translateY(0); } to { transform: translateY(-1px); } }
+[data-scene='skate'] .sk-friend__up { opacity: 0; }
+
+/* ---- Au toucher (le skateur ou la rampe) : la figure ----
+   Le mouvement du skateur est calculé (Rider.tsx) ; pendant son vol, `data-trick` est posé sur le
+   dessin : le copain lève les bras et saute sur place, le fanion s'affole. */
+[data-scene='skate'] svg[data-trick] .sk-friend { animation: sk-cheer 0.3s ease-in-out infinite alternate; }
+@keyframes sk-cheer { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+[data-scene='skate'] svg[data-trick] .sk-friend__up { opacity: 1; }
+[data-scene='skate'] svg[data-trick] .sk-friend__down { opacity: 0; }
+[data-scene='skate'] svg[data-trick] .sk-flag { animation-duration: 0.22s; }
+
+/* ---- Au toucher (le mur) : un graff d'un seul trait ----
+   La bombe apparaît et s'agite (le bruit de la bille), suit le tracé pendant que le trait se pose
+   exactement sous sa buse (même tracé, même durée), puis tombe ; la peinture coule en deux gouttes ;
+   les pigeons s'envolent au premier bruit et reviennent à la fin. */
+[data-scene='skate'][data-fx~='graff'] .sk-can { animation: sk-can 5.2s linear both; }
+@keyframes sk-can {
+  0% { opacity: 0; offset-distance: 0%; }
+  3%, 14% { opacity: 1; offset-distance: 0%; }
+  62% { opacity: 1; offset-distance: 100%; }
+  68%, 100% { opacity: 0; offset-distance: 100%; }
+}
+[data-scene='skate'][data-fx~='graff'] .sk-can svg { animation: sk-rattle 5.2s both; }
+@keyframes sk-rattle {
+  0% { transform: translateY(0) scale(0.4) rotate(0deg); }
+  3% { transform: translateY(0) scale(1) rotate(0deg); }
+  4.500%, 7.500%, 10.500% { transform: translateY(0) scale(1) rotate(-17deg); }
+  6%, 9% { transform: translateY(0) scale(1) rotate(15deg); }
+  12.500%, 62% { transform: translateY(0) scale(1) rotate(-8deg); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  68%, 100% { transform: translateY(34px) scale(1) rotate(40deg); }
+}
+[data-scene='skate'][data-fx~='graff'] .sk-can__mist { animation: sk-mist 0.24s ease-in-out 0.73s 10 alternate both; }
+@keyframes sk-mist { from { opacity: 0.15; transform: scale(0.7); } to { opacity: 0.75; transform: scale(1.15); } }
+[data-scene='skate'][data-fx~='graff'] .sk-tag__main { animation: sk-draw 5.2s linear both; }
+@keyframes sk-draw {
+  0%, 13.900% { opacity: 0; stroke-dashoffset: 1; }
+  14% { opacity: 1; stroke-dashoffset: 1; }
+  62%, 92% { opacity: 1; stroke-dashoffset: 0; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+[data-scene='skate'][data-fx~='graff'] .sk-tag__drip { animation: sk-drip 5.2s both; }
+[data-scene='skate'][data-fx~='graff'] .sk-tag__drip--b { animation-name: sk-drip-b; }
+@keyframes sk-drip {
+  0%, 57.900% { opacity: 0; stroke-dashoffset: 1; }
+  58% { opacity: 1; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  80%, 92% { opacity: 1; stroke-dashoffset: 0; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+@keyframes sk-drip-b {
+  0%, 63.900% { opacity: 0; stroke-dashoffset: 1; }
+  64% { opacity: 1; stroke-dashoffset: 1; animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1); }
+  84%, 92% { opacity: 1; stroke-dashoffset: 0; }
+  100% { opacity: 0; stroke-dashoffset: 0; }
+}
+[data-scene='skate'][data-fx~='graff'] .sk-pigeon { animation: sk-flee 5.2s both; }
+@keyframes sk-flee {
+  0%, 3% { opacity: 1; transform: translate(0, 0) rotate(0deg); animation-timing-function: cubic-bezier(0.3, 0, 0.5, 1); }
+  20% { opacity: 1; transform: translate(-150px, -86px) rotate(-18deg); }
+  26% { opacity: 0; transform: translate(-190px, -104px) rotate(-18deg); }
+  76% { opacity: 0; transform: translate(150px, -96px) rotate(12deg); animation-timing-function: cubic-bezier(0.3, 0.4, 0.4, 1); }
+  79% { opacity: 1; }
+  96%, 100% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+}
+[data-scene='skate'][data-fx~='graff'] .sk-pigeon__wing { animation: sk-flap 0.15s ease-in-out 0.16s 8 alternate, sk-flap-b 0.15s ease-in-out 3.95s 7 alternate; }
+@keyframes sk-flap { from { transform: scaleY(1); } to { transform: scaleY(-2.4); } }
+@keyframes sk-flap-b { from { transform: scaleY(1); } to { transform: scaleY(-2.4); } }
+[data-scene='skate'][data-fx~='graff'] .sk-pigeon__head { animation: none; }
+
+/* ---- Changement d'onglet : la page fait un « kickflip » ----
+   Comme une planche qui tourne sur elle-même : l'ancienne page pivote jusqu'à se présenter de
+   profil, on voit passer le dessous de la planche (roues, axes, décor), puis la nouvelle page finit
+   le tour. Une seule rotation à vitesse constante, sans arrêt ; la page recule un peu au milieu. */
+html[data-el-nav='skate']::view-transition { background: #CBD0DA; }
+html[data-el-nav='skate']::view-transition-old(root) { animation: sk-flip-out 0.84s linear both; }
+html[data-el-nav='skate']::view-transition-new(root) { animation: sk-flip-in 0.84s linear both; }
+@keyframes sk-flip-out {
+  0% { opacity: 1; transform: perspective(1500px) rotateY(0deg) scale(1); }
+  12.500% { opacity: 1; transform: perspective(1500px) rotateY(45deg) scale(0.916); }
+  25% { opacity: 1; transform: perspective(1500px) rotateY(90deg) scale(0.844); }
+  25.010%, 100% { opacity: 0; transform: perspective(1500px) rotateY(90deg) scale(0.844); }
+}
+@keyframes sk-flip-in {
+  0%, 74.990% { opacity: 0; transform: perspective(1500px) rotateY(-90deg) scale(0.844); }
+  75% { opacity: 1; transform: perspective(1500px) rotateY(-90deg) scale(0.844); }
+  87.500% { opacity: 1; transform: perspective(1500px) rotateY(-45deg) scale(0.916); }
+  100% { opacity: 1; transform: perspective(1500px) rotateY(0deg) scale(1); }
+}
+.el-front[data-scene='skate'] i:first-child { inset: 0; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 390 844' preserveAspectRatio='none'%3E%3Cdefs%3E%3CclipPath id='a'%3E%3Crect x='10' y='10' width='370' height='824' rx='168'/%3E%3C/clipPath%3E%3C/defs%3E%3Crect x='10' y='10' width='370' height='824' rx='168' fill='%23C2185B'/%3E%3Cg clip-path='url(%23a)'%3E%3Cpath d='M0 560L390 330V420L0 650Z' fill='%23FFC93C'/%3E%3Cpath d='M0 668L390 438V470L0 700Z' fill='%2319B5C8'/%3E%3Cpath d='M0 250L390 20V56L0 286Z' fill='%239C1249'/%3E%3C/g%3E%3Crect x='10' y='10' width='370' height='824' rx='168' fill='none' stroke='%231B1D2A' stroke-width='7'/%3E%3Cpath d='M236 236L146 434H204L160 612L270 398H210Z' fill='%23FFFFFF' stroke='%231B1D2A' stroke-width='6' stroke-linejoin='round'/%3E%3Crect x='26' y='112' width='52' height='72' rx='16' fill='%23F4F1E8' stroke='%231B1D2A' stroke-width='5'/%3E%3Crect x='312' y='112' width='52' height='72' rx='16' fill='%23F4F1E8' stroke='%231B1D2A' stroke-width='5'/%3E%3Crect x='74' y='137' width='242' height='22' rx='11' fill='%23C9CED9' stroke='%231B1D2A' stroke-width='4'/%3E%3Crect x='150' y='118' width='90' height='60' rx='9' fill='%239AA1B2' stroke='%231B1D2A' stroke-width='4'/%3E%3Ccircle cx='166' cy='130' r='5' fill='%231B1D2A'/%3E%3Ccircle cx='224' cy='130' r='5' fill='%231B1D2A'/%3E%3Ccircle cx='166' cy='166' r='5' fill='%231B1D2A'/%3E%3Ccircle cx='224' cy='166' r='5' fill='%231B1D2A'/%3E%3Crect x='26' y='660' width='52' height='72' rx='16' fill='%23F4F1E8' stroke='%231B1D2A' stroke-width='5'/%3E%3Crect x='312' y='660' width='52' height='72' rx='16' fill='%23F4F1E8' stroke='%231B1D2A' stroke-width='5'/%3E%3Crect x='74' y='685' width='242' height='22' rx='11' fill='%23C9CED9' stroke='%231B1D2A' stroke-width='4'/%3E%3Crect x='150' y='666' width='90' height='60' rx='9' fill='%239AA1B2' stroke='%231B1D2A' stroke-width='4'/%3E%3Ccircle cx='166' cy='678' r='5' fill='%231B1D2A'/%3E%3Ccircle cx='224' cy='678' r='5' fill='%231B1D2A'/%3E%3Ccircle cx='166' cy='714' r='5' fill='%231B1D2A'/%3E%3Ccircle cx='224' cy='714' r='5' fill='%231B1D2A'/%3E%3C/svg%3E") center / 100% 100% no-repeat; }
+.el-front[data-scene='skate'][data-on] i:first-child { animation: sk-flip-deck 0.84s linear both; }
+@keyframes sk-flip-deck {
+  0%, 24.990% { opacity: 0; transform: perspective(1500px) rotateY(-90deg) scale(0.844); }
+  25% { opacity: 1; transform: perspective(1500px) rotateY(-90deg) scale(0.844); }
+  37.500% { opacity: 1; transform: perspective(1500px) rotateY(-45deg) scale(0.797); }
+  50% { opacity: 1; transform: perspective(1500px) rotateY(0deg) scale(0.78); }
+  62.500% { opacity: 1; transform: perspective(1500px) rotateY(45deg) scale(0.797); }
+  75% { opacity: 1; transform: perspective(1500px) rotateY(90deg) scale(0.844); }
+  75.010%, 100% { opacity: 0; transform: perspective(1500px) rotateY(90deg) scale(0.844); }
+}
