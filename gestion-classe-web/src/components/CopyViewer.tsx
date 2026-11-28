@@ -24,6 +24,14 @@ const FILTERS: [Filter, string][] = [
   ['absent', 'Absents'],
 ];
 
+/**
+ * Hauteurs calées sur la fenêtre : la liste, la page et la correction tiennent dans l'écran
+ * sous l'en-tête compact de la fiche, sans faire défiler la page pour corriger.
+ */
+const LIST_MAX_HEIGHT = 'max(320px, calc(100vh - 290px))';
+const PAGE_MAX_HEIGHT = 'max(420px, calc(100vh - 330px))';
+const PAGE_IMG_MAX_HEIGHT = 'max(400px, calc(100vh - 350px))';
+
 interface CopyViewerProps {
   assessment: AssessmentRow;
   onError: (message: string) => void;
@@ -37,6 +45,8 @@ interface CopyViewerProps {
   onClassAddClosed?: () => void;
   /** Élève affiché à l'ouverture ; sinon le premier qui a une copie. */
   initialStudentId?: string | null;
+  /** Bouton « Ajouter les copies de la classe » en tête de liste (la fiche le met dans le menu de la classe). */
+  showClassAddButton?: boolean;
 }
 
 /**
@@ -45,7 +55,7 @@ interface CopyViewerProps {
  * Clavier : ← → pages, ↑ ↓ élèves. Données et gestes : hooks/useAssessmentCopies.ts (partagés
  * avec la modale élève × éval du carnet).
  */
-export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddClosed, initialStudentId = null }: CopyViewerProps) {
+export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, openClassAdd = false, onClassAddClosed, initialStudentId = null, showClassAddButton = true }: CopyViewerProps) {
   const aiAllowed = useAiCorrectionAllowed();
   const [filter, setFilter] = useState<Filter>('all');
   // L'élève affiché, pour une éval donnée : changer d'éval repart du premier élève sans effet à part.
@@ -253,7 +263,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
     <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 16, alignItems: 'start' }}>
       {/* ---- Élèves ---- */}
       <div>
-        {!paperless && (
+        {!paperless && showClassAddButton && (
           <button
             onClick={() => setAddingClass(true)}
             style={{ ...btn, width: '100%', marginBottom: 8 }}
@@ -304,7 +314,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
             ))}
           </div>
         )}
-        <div style={{ maxHeight: 640, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
+        <div style={{ maxHeight: LIST_MAX_HEIGHT, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 10 }}>
           {visible.length === 0 && (
             <div style={{ padding: 12, fontSize: 12, color: 'var(--text-dim)' }}>Personne ici.</div>
           )}
@@ -510,7 +520,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                 <div
                   style={{
                     border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface-3)',
-                    maxHeight: 760, overflow: 'auto', textAlign: 'center',
+                    maxHeight: PAGE_MAX_HEIGHT, overflow: 'auto', textAlign: 'center',
                   }}
                 >
                   {page && urls[page.storage_path] ? (
@@ -521,7 +531,7 @@ export function CopyViewer({ assessment, onError, onChanged, refreshKey = 0, ope
                       style={{
                         display: 'block', margin: '0 auto', cursor: zoom ? 'zoom-out' : 'zoom-in',
                         width: zoom ? '180%' : 'auto', maxWidth: zoom ? 'none' : '100%',
-                        maxHeight: zoom ? 'none' : 740,
+                        maxHeight: zoom ? 'none' : PAGE_IMG_MAX_HEIGHT,
                       }}
                     />
                   ) : (
