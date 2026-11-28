@@ -1,0 +1,291 @@
+/* Thème « Moyen Âge » (espace élève) : parchemin, bleu royal et or.
+   Contrastes calculés (WCAG) : texte 13,1 sur le fond et 15,7 sur une carte ; --el-muted 7,2 et 8,6 ;
+   --el-dim 5,7 et 6,9 ; texte clair sur l'accent 8,0. */
+.el[data-theme='moyenage'] {
+  --el-bg: #EFE6D2; --el-surface: #FFFBF1; --el-line: #E0D3B8; --el-line-soft: #EADFC8; --el-line-strong: #CDBC98;
+  --el-text: #2A1E12; --el-muted: #5A4630; --el-dim: #6A5440;
+  --el-indigo: #1F4E8C; --el-indigo-ink: #173C6E; --el-indigo-soft: #DCE6F3;
+  --el-pos: #2E6B35; --el-pos-ink: #24552A; --el-pos-soft: #E1EEDB;
+  --el-warn: #8A5200; --el-warn-ink: #6E4100; --el-warn-soft: #F6E5C3;
+  --el-neg: #A42A1E; --el-neg-soft: #F6DDD6;
+  --el-track: #E4D8BE; --el-on-accent: #FFFBF1; --el-radio: #A8946F;
+  --el-radius: 12px; --el-radius-sm: 10px;
+  --el-font-display: 'Uncial Antiqua', 'Georgia', serif;
+}
+.el[data-theme='moyenage'] .el-main { padding-top: 246px; }
+/* La police des titres n'a qu'une graisse : pas de gras imité */
+.el[data-theme='moyenage'] .el-h1,
+.el[data-theme='moyenage'] .el-sheet__name { font-weight: 400; letter-spacing: 0; }
+/* Les notes restent dans la police du texte : des chiffres onciaux se lisent moins vite */
+.el[data-theme='moyenage'] .el-big,
+.el[data-theme='moyenage'] .el-mid { font-family: inherit; }
+.el[data-theme='moyenage'] .el-btn--primary { box-shadow: 0 3px 0 #10305A; }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis sont posés dans `.mg-set`, un cadre de 480 px centré ;
+   les collines et le sol sont des SVG trois fois plus larges, pour couvrir aussi un grand écran. */
+[data-scene='moyenage'] .mg-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='moyenage'] .mg-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+[data-scene='moyenage'] .mg-set > .mg-wide { left: -480px; width: 1440px; }
+[data-scene='moyenage'] svg g, [data-scene='moyenage'] svg path { transform-box: view-box; }
+
+[data-scene='moyenage'] .mg-sky { height: 250px; background: linear-gradient(180deg, #9CC3E6 0%, #C3DAEC 48%, #E4E3D6 82%, #EFE6D2 100%); }
+[data-scene='moyenage'] .mg-sunlayer { height: 200px; }
+[data-scene='moyenage'] .mg-sun {
+  position: absolute; left: 18px; top: 26px; width: 84px; height: 84px; border-radius: 50%;
+  background: radial-gradient(circle, #FFF9E2 0 26%, #FCE9AE 38%, rgba(252, 233, 174, 0.45) 56%, rgba(252, 233, 174, 0) 72%);
+  animation: mg-sun 9s ease-in-out infinite alternate;
+}
+@keyframes mg-sun { from { transform: scale(1); } to { transform: scale(1.08); } }
+
+/* Nuages : une rangée répétée deux fois, qui dérive sans raccord */
+[data-scene='moyenage'] .mg-clouds { height: 120px; }
+[data-scene='moyenage'] .mg-drift { position: absolute; top: 0; left: 0; width: 200%; height: 70px; display: flex; animation: mg-drift 130s linear infinite; }
+@keyframes mg-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+[data-scene='moyenage'] .mg-cloudset { position: relative; flex: 0 0 50%; height: 100%; }
+[data-scene='moyenage'] .mg-cloud { position: absolute; height: auto; fill: #FFFDF6; opacity: 0.95; }
+
+/* Deux oiseaux qui traversent lentement, et le vol d'oies de temps en temps */
+[data-scene='moyenage'] .mg-birdbox { position: absolute; left: 0; top: 46px; animation: mg-bird-cross 40s linear infinite; animation-delay: -12s; }
+[data-scene='moyenage'] .mg-birdbox--2 { top: 64px; animation-duration: 52s; animation-delay: -35s; }
+@keyframes mg-bird-cross {
+  0% { transform: translate(-40px, 0); } 25% { transform: translate(25vw, -8px); } 50% { transform: translate(50vw, 4px); }
+  75% { transform: translate(75vw, -6px); } 100% { transform: translate(calc(100vw + 60px), 0); }
+}
+[data-scene='moyenage'] .mg-bird { width: 13px; height: auto; fill: #4A3B2C; animation: mg-flap 0.55s ease-in-out infinite alternate; }
+[data-scene='moyenage'] .mg-birdbox--2 .mg-bird { width: 10px; animation-duration: 0.48s; }
+@keyframes mg-flap { from { transform: scaleY(1); } to { transform: scaleY(-0.5); } }
+[data-scene='moyenage'] .mg-geese { position: absolute; left: 100%; top: 14px; animation: mg-geese 26s linear infinite; animation-delay: -10s; }
+[data-scene='moyenage'] .mg-geese svg { display: block; height: auto; }
+@keyframes mg-geese {
+  0%, 60% { transform: translate(0, 0); }
+  80% { transform: translate(calc(-50vw - 100px), 10px); }
+  100% { transform: translate(calc(-100vw - 200px), 4px); }
+}
+[data-scene='moyenage'] .mg-goose__wing { transform-origin: 8px 3.5px; animation: mg-goose-wing var(--d) ease-in-out infinite alternate; }
+@keyframes mg-goose-wing { from { transform: scaleY(1); } to { transform: scaleY(-0.9); } }
+
+/* Collines lointaines et ville ; chaque plan opaque porte son aplat pour recouvrir ceux de derrière */
+[data-scene='moyenage'] .mg-far { height: 90px; }
+[data-scene='moyenage'] .mg-far::after { content: ''; position: absolute; left: 0; right: 0; top: 89px; height: calc(100vh + 900px); background: #B5C69D; }
+[data-scene='moyenage'] .mg-smoke circle { fill: #F4F1EA; opacity: 0; transform-box: fill-box; transform-origin: center; animation: mg-smoke 5.4s ease-out infinite; }
+[data-scene='moyenage'] .mg-smoke circle:nth-child(2) { animation-delay: -1.8s; }
+[data-scene='moyenage'] .mg-smoke circle:nth-child(3) { animation-delay: -3.6s; }
+@keyframes mg-smoke { 0% { opacity: 0; transform: translate(0, 0) scale(0.6); } 15% { opacity: 0.85; } 100% { opacity: 0; transform: translate(9px, -22px) scale(2.2); } }
+
+[data-scene='moyenage'] .mg-castlelayer { height: 160px; }
+[data-scene='moyenage'] .mg-castlelayer::after { content: ''; position: absolute; left: 0; right: 0; top: 159px; height: calc(100vh + 900px); background: #A9C27F; }
+[data-scene='moyenage'] .mg-fields { height: 60px; }
+[data-scene='moyenage'] .mg-fields::after { content: ''; position: absolute; left: 0; right: 0; top: 59px; height: calc(100vh + 900px); background: #B7CB86; }
+[data-scene='moyenage'] .mg-lists { height: 60px; }
+[data-scene='moyenage'] .mg-lists::after { content: ''; position: absolute; left: 0; right: 0; top: 59px; height: calc(100vh + 900px); background: linear-gradient(#E4D2A6 0, #EFE6D2 34px); }
+
+/* Au vent : oriflamme du donjon, fanions, bannières de la courtine, ailes du moulin */
+[data-scene='moyenage'] .mg-flag { transform-origin: 342px 11px; animation: mg-flag 1.6s ease-in-out infinite alternate; }
+@keyframes mg-flag { from { transform: skewY(0deg) scaleX(1); } to { transform: skewY(-6deg) scaleX(0.92); } }
+[data-scene='moyenage'] .mg-pennant { animation: mg-pennant var(--d, 1.5s) ease-in-out infinite alternate; }
+@keyframes mg-pennant { from { transform: skewY(2deg) scaleX(1); } to { transform: skewY(-9deg) scaleX(0.8); } }
+[data-scene='moyenage'] .mg-banner { animation: mg-banner 3.4s ease-in-out infinite alternate; animation-delay: var(--delay, 0s); }
+@keyframes mg-banner { from { transform: rotate(-3deg); } to { transform: rotate(3deg); } }
+[data-scene='moyenage'] .mg-sails { transform-origin: 100px -34px; animation: mg-spin 11s linear infinite; }
+@keyframes mg-spin { to { transform: rotate(360deg); } }
+
+/* Château : en temps normal, le pont-levis est relevé, la herse baissée, la grande bannière roulée */
+[data-scene='moyenage'] .mg-bridge { transform-origin: 342px 122px; }
+[data-scene='moyenage'] .mg-unroll { transform-origin: 342px 46px; transform: scaleY(0); }
+[data-scene='moyenage'] .mg-rod, [data-scene='moyenage'] .mg-petal { opacity: 0; }
+[data-scene='moyenage'] .mg-petal { transform-box: fill-box; transform-origin: center; }
+
+/* Lice : tentes, héraut, chevalier, quintaine */
+[data-scene='moyenage'] .mg-set > .mg-tents { left: 30px; top: -56px; width: 140px; }
+[data-scene='moyenage'] .mg-set > .mg-herald { left: 148px; top: -32px; width: 40px; }
+[data-scene='moyenage'] .mg-set > .mg-knight { left: 192px; top: -44px; width: 100px; }
+[data-scene='moyenage'] .mg-set > .mg-quintain { left: 372px; top: -36px; width: 60px; }
+[data-scene='moyenage'] .mg-set > .mg-shard { left: 350px; top: -18px; width: 26px; opacity: 0; transform-origin: 13px 3px; }
+[data-scene='moyenage'] .mg-set > .mg-splinters { left: 352px; top: -33px; width: 40px; opacity: 0; }
+
+/* Le cheval piaffe, hoche la tête, bat de la queue ; le panache et le pennon ondulent */
+[data-scene='moyenage'] .mg-knight__turn { transform-origin: 50px 40px; }
+[data-scene='moyenage'] .mg-knight__ride { animation: mg-breathe 3.2s ease-in-out infinite alternate; }
+@keyframes mg-breathe { from { transform: translateY(0); } to { transform: translateY(0.8px); } }
+[data-scene='moyenage'] .mg-leg--hf { transform-origin: 26.5px 57px; }
+[data-scene='moyenage'] .mg-leg--ff { transform-origin: 68.5px 57px; }
+[data-scene='moyenage'] .mg-leg--hn { transform-origin: 34.5px 59px; }
+[data-scene='moyenage'] .mg-leg--fn { transform-origin: 76.5px 59px; animation: mg-paw 4.2s ease-in-out infinite; }
+@keyframes mg-paw {
+  0%, 52%, 100% { transform: rotate(0deg); } 58% { transform: rotate(-34deg); } 64% { transform: rotate(-6deg); }
+  70% { transform: rotate(-32deg); } 77% { transform: rotate(0deg); }
+}
+[data-scene='moyenage'] .mg-head { transform-origin: 80px 26px; animation: mg-nod 4.2s ease-in-out infinite; }
+@keyframes mg-nod { 0%, 50%, 100% { transform: rotate(0deg); } 58%, 72% { transform: rotate(7deg); } 65% { transform: rotate(3deg); } }
+[data-scene='moyenage'] .mg-tail { transform-origin: 21px 37px; animation: mg-tail 2.6s ease-in-out infinite alternate; }
+@keyframes mg-tail { from { transform: rotate(-5deg); } to { transform: rotate(9deg); } }
+[data-scene='moyenage'] .mg-plume { transform-origin: 50px 3px; animation: mg-plume 1.3s ease-in-out infinite alternate; }
+@keyframes mg-plume { from { transform: rotate(0deg) scaleX(1); } to { transform: rotate(-7deg) scaleX(0.9); } }
+[data-scene='moyenage'] .mg-pennon { transform-origin: 66px 27px; animation: mg-pennon 0.9s ease-in-out infinite alternate; }
+@keyframes mg-pennon { from { transform: skewY(0deg) scaleX(1); } to { transform: skewY(8deg) scaleX(0.85); } }
+/* La lance est tenue haute, inclinée vers l'arrière… vers le ciel */
+[data-scene='moyenage'] .mg-lance { transform-origin: 60px 24px; transform: rotate(-62deg); }
+[data-scene='moyenage'] .mg-arm { transform-origin: 30px 18px; }
+[data-scene='moyenage'] .mg-sack { transform-origin: 53px 20px; animation: mg-sack 3s ease-in-out infinite alternate; }
+@keyframes mg-sack { from { transform: rotate(-4deg); } to { transform: rotate(4deg); } }
+/* Le héraut : il se balance un peu, trompette baissée le long du corps */
+[data-scene='moyenage'] .mg-herald__body { transform-origin: 18px 48px; animation: mg-herald 3.6s ease-in-out infinite alternate; }
+@keyframes mg-herald { from { transform: rotate(-1.5deg); } to { transform: rotate(1.5deg); } }
+[data-scene='moyenage'] .mg-trumpet { transform-origin: 19.5px 19.5px; transform: rotate(78deg); }
+[data-scene='moyenage'] .mg-trumpet__flag { transform-origin: 35px 13.5px; animation: mg-pennon 1.1s ease-in-out infinite alternate; }
+[data-scene='moyenage'] .mg-note { opacity: 0; transform-box: view-box; }
+
+/* ---- Au toucher (le chevalier) : la joute contre la quintaine ----
+   Il baisse sa lance, charge au galop, la lance se brise sur l'écu (un morceau vole et retombe dans
+   le sable, des échardes), la quintaine tourne sur elle-même ; il fait demi-tour, revient au trot à
+   sa place, se retourne, et relève une lance de nouveau entière. */
+[data-scene='moyenage'][data-fx~='joute'] .mg-knight { animation: mg-charge 6s both; }
+@keyframes mg-charge {
+  0%, 8% { translate: 0 0; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  30% { translate: 57px 0; animation-timing-function: ease-out; }
+  36% { translate: 48px 0; }
+  43% { translate: 48px 0; animation-timing-function: ease-in-out; }
+  82%, 100% { translate: 0 0; }
+}
+[data-scene='moyenage'][data-fx~='joute'] .mg-knight__turn { animation: mg-turn 6s both; }
+@keyframes mg-turn {
+  0%, 36% { transform: scaleX(1); } 43%, 80% { transform: scaleX(-1); } 87%, 100% { transform: scaleX(1); }
+}
+[data-scene='moyenage'][data-fx~='joute'] .mg-knight__ride { animation: mg-gallop-bob 0.34s ease-in-out 9 alternate, mg-trot-bob 0.5s ease-in-out 2.9s 7 alternate; }
+@keyframes mg-gallop-bob { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(-2.5px) rotate(-1.5deg); } }
+@keyframes mg-trot-bob { from { transform: translateY(0); } to { transform: translateY(-1.5px); } }
+[data-scene='moyenage'][data-fx~='joute'] .mg-lance { animation: mg-lower 6s both; }
+@keyframes mg-lower {
+  0% { transform: rotate(-62deg); animation-timing-function: ease-in-out; }
+  8%, 80% { transform: rotate(6deg); animation-timing-function: ease-in-out; }
+  94%, 100% { transform: rotate(-62deg); }
+}
+[data-scene='moyenage'][data-fx~='joute'] .mg-lance__tip { animation: mg-tip 6s both; }
+@keyframes mg-tip { 0%, 29.9% { opacity: 1; } 30%, 86% { opacity: 0; } 94%, 100% { opacity: 1; } }
+[data-scene='moyenage'][data-fx~='joute'] .mg-leg--ff,
+[data-scene='moyenage'][data-fx~='joute'] .mg-leg--fn { animation: mg-gallop-front 0.34s ease-in-out 17 alternate; }
+[data-scene='moyenage'][data-fx~='joute'] .mg-leg--hf,
+[data-scene='moyenage'][data-fx~='joute'] .mg-leg--hn { animation: mg-gallop-hind 0.34s ease-in-out 17 alternate; }
+[data-scene='moyenage'][data-fx~='joute'] .mg-leg--fn,
+[data-scene='moyenage'][data-fx~='joute'] .mg-leg--hn { animation-delay: -0.17s; }
+@keyframes mg-gallop-front { from { transform: rotate(-30deg); } to { transform: rotate(20deg); } }
+@keyframes mg-gallop-hind { from { transform: rotate(24deg); } to { transform: rotate(-22deg); } }
+[data-scene='moyenage'][data-fx~='joute'] .mg-shard { animation: mg-shard 6s both; }
+@keyframes mg-shard {
+  0%, 29.9% { opacity: 0; transform: translate(0, 0) rotate(6deg); }
+  30% { opacity: 1; transform: translate(0, 0) rotate(6deg); animation-timing-function: ease-out; }
+  40% { transform: translate(14px, -38px) rotate(-160deg); animation-timing-function: ease-in; }
+  53% { transform: translate(30px, 46px) rotate(-354deg); }
+  56% { transform: translate(31px, 43px) rotate(-350deg); }
+  59%, 80% { opacity: 1; transform: translate(32px, 46px) rotate(-354deg); }
+  88%, 100% { opacity: 0; transform: translate(32px, 46px) rotate(-354deg); }
+}
+[data-scene='moyenage'][data-fx~='joute'] .mg-splinters { animation: mg-splinters 6s both; }
+@keyframes mg-splinters {
+  0%, 29.9% { opacity: 0; transform: scale(0.3); } 30% { opacity: 1; transform: scale(0.5); animation-timing-function: ease-out; }
+  40%, 100% { opacity: 0; transform: scale(1.5) rotate(12deg); }
+}
+[data-scene='moyenage'][data-fx~='joute'] .mg-arm { animation: mg-whirl 6s both; }
+@keyframes mg-whirl {
+  0%, 30% { transform: scaleX(1); animation-timing-function: ease-in; }
+  33% { transform: scaleX(-1); animation-timing-function: linear; }
+  36.5% { transform: scaleX(1); } 40.5% { transform: scaleX(-1); } 45% { transform: scaleX(1); }
+  50.5% { transform: scaleX(-1); animation-timing-function: ease-out; }
+  58% { transform: scaleX(1); } 62% { transform: scaleX(0.8); } 66%, 100% { transform: scaleX(1); }
+}
+[data-scene='moyenage'][data-fx~='joute'] .mg-quintain { animation: mg-quintain-shake 6s both; }
+@keyframes mg-quintain-shake { 0%, 30%, 40%, 100% { rotate: 0deg; } 32% { rotate: 4deg; } 35% { rotate: -2deg; } }
+[data-scene='moyenage'] .mg-quintain { transform-origin: 30px 68px; }
+
+/* ---- Au toucher (le château) : le pont-levis s'abaisse, la herse se lève, la grande bannière se
+   déroule du haut du donjon et des pétales s'envolent ; puis tout se referme. ---- */
+[data-scene='moyenage'][data-fx~='chateau'] .mg-bridge { animation: mg-bridge 5.6s both; }
+@keyframes mg-bridge {
+  0% { transform: scaleY(1); animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1); }
+  18%, 76% { transform: scaleY(-0.45); animation-timing-function: ease-in-out; }
+  94%, 100% { transform: scaleY(1); }
+}
+[data-scene='moyenage'][data-fx~='chateau'] .mg-herse { animation: mg-herse 5.6s both; }
+@keyframes mg-herse {
+  0%, 10% { transform: translateY(0); animation-timing-function: ease-in-out; }
+  28%, 72% { transform: translateY(-24px); animation-timing-function: ease-in; }
+  88%, 100% { transform: translateY(0); }
+}
+[data-scene='moyenage'][data-fx~='chateau'] .mg-unroll { animation: mg-unroll 5.6s both; }
+@keyframes mg-unroll {
+  0%, 12% { transform: scaleY(0); animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1); }
+  32%, 76% { transform: scaleY(1); animation-timing-function: ease-in; }
+  92%, 100% { transform: scaleY(0); }
+}
+[data-scene='moyenage'][data-fx~='chateau'] .mg-rod { animation: mg-rod 5.6s both; }
+@keyframes mg-rod { 0%, 6% { opacity: 0; } 12%, 92% { opacity: 1; } 98%, 100% { opacity: 0; } }
+[data-scene='moyenage'][data-fx~='chateau'] .mg-petal { animation: mg-petal 2.6s cubic-bezier(0.2, 0.7, 0.5, 1) calc(1.6s + var(--delay)) both; }
+@keyframes mg-petal {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.6); }
+  10% { opacity: 1; }
+  35% { transform: translate(calc(var(--dx) * 0.6), calc(var(--up) * -1)) rotate(calc(var(--spin) * 0.4)) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), 30px) rotate(var(--spin)) scale(1); }
+}
+
+/* ---- Au toucher (le héraut) : il lève sa trompette et sonne ; les notes s'envolent ---- */
+[data-scene='moyenage'][data-fx~='fanfare'] .mg-trumpet { animation: mg-trumpet 3.4s both; }
+@keyframes mg-trumpet {
+  0% { transform: rotate(78deg); animation-timing-function: cubic-bezier(0.3, 0, 0.3, 1); }
+  14% { transform: rotate(-18deg); }
+  24% { transform: rotate(-14deg); } 34% { transform: rotate(-20deg); } 44% { transform: rotate(-14deg); }
+  54% { transform: rotate(-20deg); } 64% { transform: rotate(-15deg); }
+  76% { transform: rotate(-18deg); animation-timing-function: ease-in-out; }
+  92%, 100% { transform: rotate(78deg); }
+}
+[data-scene='moyenage'][data-fx~='fanfare'] .mg-herald__body { animation: mg-puff 3.4s both; }
+@keyframes mg-puff { 0%, 14%, 78%, 100% { transform: rotate(0deg); } 20%, 40%, 60% { transform: rotate(-4deg); } 30%, 50%, 70% { transform: rotate(-2deg); } }
+[data-scene='moyenage'][data-fx~='fanfare'] .mg-note { animation: mg-note 1.6s ease-out calc(0.5s + var(--delay, 0s)) both; }
+@keyframes mg-note {
+  0% { opacity: 0; transform: translate(10px, 2px) scale(0.6) rotate(0deg); }
+  15% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(26px, -26px) scale(1.15) rotate(12deg); }
+}
+
+/* ---- Changement d'onglet : une grande bannière héraldique passe ----
+   Une bannière bleue à bordure d'or, pendue à sa hampe, descend d'un seul mouvement du haut vers le
+   bas de l'écran ; la page change derrière elle au moment où elle couvre tout (la moitié du temps).
+   Même durée, même courbe pour la page et pour la bannière. */
+html[data-el-nav='moyenage']::view-transition-old(root) { animation: mg-page-out 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+html[data-el-nav='moyenage']::view-transition-new(root) { animation: mg-page-in 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+@keyframes mg-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes mg-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='moyenage'][data-on] i:nth-child(-n + 6) { animation: mg-banner-pass 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+@keyframes mg-banner-pass { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(280vh); } }
+/* L'étoffe : bordure d'or, plis, queue d'aronde en bas */
+.el-front[data-scene='moyenage'] i:nth-child(1) {
+  left: 0; top: -170vh; width: 100vw; height: 165vh;
+  background:
+    linear-gradient(90deg, #E3B23C 0 4%, rgba(0, 0, 0, 0) 4% 96%, #E3B23C 96%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0) 0 6%, #E3B23C 6% 7%, rgba(0, 0, 0, 0) 7% 93%, #E3B23C 93% 94%, rgba(0, 0, 0, 0) 94%),
+    repeating-linear-gradient(90deg, rgba(23, 60, 110, 0) 0 8vw, rgba(23, 60, 110, 0.5) 11vw, rgba(23, 60, 110, 0) 14vw, rgba(23, 60, 110, 0) 20vw),
+    #1F4E8C;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 22vh), 0 100%);
+}
+/* Les armoiries au milieu : écu d'or au chevron de gueules, besant d'azur */
+.el-front[data-scene='moyenage'] i:nth-child(2) {
+  left: calc(50% - min(28vw, 150px)); top: calc(-90vh - min(31vw, 166px)); width: min(56vw, 300px); height: min(62vw, 332px);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 110'%3E%3Cpath d='M10 8H90V50Q90 88 50 104Q10 88 10 50Z' fill='%23E3B23C' stroke='%23FFFBF1' stroke-width='3'/%3E%3Cpath d='M22 66L50 38L78 66V80L50 52L22 80Z' fill='%23B8402F'/%3E%3Ccircle cx='50' cy='24' r='8' fill='%231F4E8C'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+/* La hampe de bois aux pommeaux d'or */
+.el-front[data-scene='moyenage'] i:nth-child(3) {
+  left: 1vw; top: calc(-170vh - 9px); width: 98vw; height: 14px; border-radius: 7px;
+  background: radial-gradient(circle at 7px 50%, #E3B23C 0 6px, rgba(0, 0, 0, 0) 6.5px), radial-gradient(circle at calc(100% - 7px) 50%, #E3B23C 0 6px, rgba(0, 0, 0, 0) 6.5px), linear-gradient(#A8743E, #6B4424);
+}
+/* Trois glands d'or au bas de l'étoffe */
+.el-front[data-scene='moyenage'] i:nth-child(4),
+.el-front[data-scene='moyenage'] i:nth-child(5),
+.el-front[data-scene='moyenage'] i:nth-child(6) {
+  top: -5vh; width: 16px; height: 30px; border-radius: 45% 45% 30% 30% / 30% 30% 70% 70%;
+  background: linear-gradient(180deg, #C89526 0 22%, #E3B23C 22% 30%, #C89526 30% 36%, #E3B23C 36%);
+}
+.el-front[data-scene='moyenage'] i:nth-child(4) { left: calc(50% - 8px); top: calc(-27vh - 4px); }
+.el-front[data-scene='moyenage'] i:nth-child(5) { left: 1vw; top: calc(-5vh - 8px); }
+.el-front[data-scene='moyenage'] i:nth-child(6) { left: calc(99vw - 16px); top: calc(-5vh - 8px); }

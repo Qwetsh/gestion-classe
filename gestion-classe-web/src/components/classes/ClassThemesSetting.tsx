@@ -5,14 +5,21 @@ import { fetchClassThemes, setClassTheme } from '../../lib/studentThemeUnlocks';
 import { VisibilityToggle } from '../VisibilityToggle';
 
 const WITH_COURSE = STUDENT_THEMES.filter((t) => t.unlock === 'class');
+/** Thèmes « avec le cours », rangés par matière (sciences, français). */
+const COURSE_SUBJECTS = [
+  { title: 'Avec le cours de sciences', themes: WITH_COURSE.filter((t) => t.group === 'sciences') },
+  { title: 'Avec le cours de français', themes: WITH_COURSE.filter((t) => t.group === 'francais') },
+  { title: 'Avec le cours', themes: WITH_COURSE.filter((t) => t.group !== 'sciences' && t.group !== 'francais') },
+].filter((s) => s.themes.length > 0);
 const TO_EARN = STUDENT_THEMES.filter((t) => t.unlock === 'card');
 
 const heading: React.CSSProperties = { padding: '6px 8px 2px', fontSize: 11, lineHeight: '15px', color: 'var(--text-muted)' };
 
 /**
  * Thèmes de l'espace élève ouverts à une classe (page Classes, sous « Visibilité élèves »).
- * Six thèmes sont libres pour tous et n'apparaissent pas ici. Les thèmes de sciences s'ouvrent avec
- * le cours ; les autres se gagnent par les tampons, mais peuvent aussi être ouverts à toute la classe.
+ * Six thèmes sont libres pour tous et n'apparaissent pas ici. Les thèmes de sciences et ceux de
+ * français s'ouvrent avec le cours ; les autres se gagnent par les tampons, mais peuvent aussi être
+ * ouverts à toute la classe.
  */
 export function ClassThemesSetting({ classId, userId }: { classId: string; userId: string }) {
   const { toast } = useUIFeedback();
@@ -78,8 +85,12 @@ export function ClassThemesSetting({ classId, userId }: { classId: string; userI
       </button>
       {unfolded && (
         <>
-          <div style={heading}>Avec le cours</div>
-          {WITH_COURSE.map(line)}
+          {COURSE_SUBJECTS.map((subject) => (
+            <div key={subject.title}>
+              <div style={heading}>{subject.title}</div>
+              {subject.themes.map(line)}
+            </div>
+          ))}
           <div style={heading}>Se gagnent aussi par les tampons</div>
           {TO_EARN.map(line)}
         </>
