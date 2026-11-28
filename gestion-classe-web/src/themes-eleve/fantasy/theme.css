@@ -1,0 +1,303 @@
+/* Thème « Fantasy » (espace élève) : nuit violette, lilas, îles volantes. */
+.el[data-theme='fantasy'] {
+  --el-bg: #130F26; --el-surface: #1F1A3A; --el-line: #352D5E; --el-line-soft: #2A2449; --el-line-strong: #4D4383;
+  --el-text: #F3EFFF; --el-muted: #CFC5EE; --el-dim: #ADA2D6;
+  --el-indigo: #C6A6FF; --el-indigo-ink: #DCC8FF; --el-indigo-soft: #2F2660;
+  --el-pos: #7BE0B0; --el-pos-ink: #A6EFCB; --el-pos-soft: #173A33;
+  --el-warn: #FFD27A; --el-warn-ink: #FFE2A6; --el-warn-soft: #3E3218;
+  --el-neg: #FF8F9C; --el-neg-soft: #45192E;
+  --el-track: #2E2756; --el-on-accent: #1E1240; --el-radio: #8277B8;
+  --el-radius: 14px; --el-radius-sm: 12px;
+  --el-font-display: 'Cinzel', 'Georgia', serif;
+  color-scheme: dark;
+}
+.el[data-theme='fantasy'] .el-main { padding-top: 244px; }
+.el[data-theme='fantasy'] .el-h1 { font-size: 23px; font-weight: 700; letter-spacing: 0; }
+.el[data-theme='fantasy'] .el-btn--primary { box-shadow: 0 4px 16px rgba(198, 166, 255, 0.3); }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis sont posés dans `.fy-set`, un cadre de 480 px centré
+   (sur un téléphone de 390 px, on voit de x = 45 à x = 435). Les plans opaques (brume lointaine,
+   deux rangs de nuages) portent leur aplat, qui descend loin sous eux. */
+[data-scene='fantasy'] .fy-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='fantasy'] .fy-set > svg,
+[data-scene='fantasy'] .fy-bob > svg { position: absolute; left: 0; top: 0; height: auto; }
+[data-scene='fantasy'] svg g, [data-scene='fantasy'] svg path, [data-scene='fantasy'] svg circle { transform-box: view-box; }
+
+/* Ciel du crépuscule et ses étoiles */
+[data-scene='fantasy'] .fy-sky {
+  height: 260px;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='150' viewBox='0 0 300 150'%3E%3Cg fill='%23FFFFFF'%3E%3Ccircle cx='14' cy='22' r='1.1' opacity='.8'/%3E%3Ccircle cx='52' cy='8' r='.8' opacity='.6'/%3E%3Ccircle cx='88' cy='40' r='1' opacity='.7'/%3E%3Ccircle cx='132' cy='14' r='1.3' opacity='.9'/%3E%3Ccircle cx='170' cy='58' r='.8' opacity='.5'/%3E%3Ccircle cx='204' cy='26' r='1' opacity='.75'/%3E%3Ccircle cx='238' cy='6' r='.9' opacity='.6'/%3E%3Ccircle cx='266' cy='46' r='1.2' opacity='.8'/%3E%3Ccircle cx='290' cy='18' r='.8' opacity='.55'/%3E%3Ccircle cx='30' cy='70' r='.8' opacity='.45'/%3E%3Ccircle cx='112' cy='84' r='.9' opacity='.4'/%3E%3Ccircle cx='226' cy='92' r='.8' opacity='.4'/%3E%3C/g%3E%3C/svg%3E") center top / 300px 150px repeat-x,
+    linear-gradient(180deg, #1A1238 0%, #2A1B56 30%, #4A2F7E 54%, #7E4F9F 72%, #B873AA 86%, #DA94AE 100%);
+}
+[data-scene='fantasy'] .fy-twinkle {
+  position: absolute; width: 9px; height: 9px; margin: -4px; background: #FFF4D6;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  animation: fy-twinkle var(--d) ease-in-out infinite alternate; animation-delay: var(--delay);
+}
+@keyframes fy-twinkle { from { opacity: 0.2; transform: scale(0.45); } to { opacity: 1; transform: scale(1); } }
+
+/* Deux lunes, leur halo qui respire, une étoile filante de temps en temps */
+[data-scene='fantasy'] .fy-moons { height: 130px; }
+[data-scene='fantasy'] .fy-halo {
+  position: absolute; left: 52px; top: -6px; width: 120px; height: 120px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(242, 230, 255, 0.42), rgba(242, 230, 255, 0.12) 60%, rgba(242, 230, 255, 0));
+  animation: fy-halo 8s ease-in-out infinite alternate;
+}
+@keyframes fy-halo { from { transform: scale(0.92); opacity: 0.8; } to { transform: scale(1.1); opacity: 1; } }
+[data-scene='fantasy'] .fy-shoot {
+  position: absolute; left: 300px; top: 14px; width: 80px; height: 2px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, #FFFFFF, rgba(255, 244, 214, 0));
+  animation: fy-shoot 15s linear infinite; animation-delay: -6s;
+}
+@keyframes fy-shoot {
+  0%, 88% { opacity: 0; transform: translate(0, 0) rotate(-24deg); }
+  89% { opacity: 1; }
+  95% { opacity: 0; transform: translate(-170px, 76px) rotate(-24deg); }
+  100% { opacity: 0; transform: translate(-170px, 76px) rotate(-24deg); }
+}
+
+/* Îles lointaines au-dessus d'une brume rose ; leur aplat recouvre le bas du ciel */
+[data-scene='fantasy'] {
+  --fy-puffs: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='40' viewBox='0 0 240 40'%3E%3Cpath d='M0 40V26C8 14 22 12 30 20C34 8 52 4 60 16C66 10 78 10 84 20C92 6 112 4 120 18C128 10 142 12 146 22C154 12 170 10 178 22C186 14 200 14 204 24C212 16 228 16 240 26V40Z'/%3E%3C/svg%3E");
+}
+[data-scene='fantasy'] .fy-far::before,
+[data-scene='fantasy'] .fy-clouds::before {
+  content: ''; position: absolute; top: 0; left: 0; width: calc(100% + 240px); height: 40px;
+  -webkit-mask: var(--fy-puffs) left bottom / 240px 40px repeat-x; mask: var(--fy-puffs) left bottom / 240px 40px repeat-x;
+  animation: fy-cloud 90s linear infinite;
+}
+@keyframes fy-cloud { from { transform: translateX(0); } to { transform: translateX(-240px); } }
+[data-scene='fantasy'] .fy-far { height: 210px; }
+[data-scene='fantasy'] .fy-far::before { top: 166px; background: linear-gradient(#B07CB8 0, #8C62AE 26px); animation-duration: 140s; }
+[data-scene='fantasy'] .fy-far::after { content: ''; position: absolute; left: 0; right: 0; top: 205px; height: calc(100vh + 900px); background: #8C62AE; }
+[data-scene='fantasy'] .fy-bob--a { animation: fy-bob-sm 6s ease-in-out infinite alternate; }
+[data-scene='fantasy'] .fy-bob--b { animation: fy-bob-sm 7.5s ease-in-out -2s infinite alternate; }
+[data-scene='fantasy'] .fy-bob--c { animation: fy-bob-sm 5.5s ease-in-out -4s infinite alternate; }
+@keyframes fy-bob-sm { from { transform: translateY(0); } to { transform: translateY(-3px); } }
+
+/* Le dragon qui plane au loin : il va d'une île à l'autre, fait demi-tour, revient */
+[data-scene='fantasy'] .fy-skyway { height: 240px; }
+[data-scene='fantasy'] .fy-glide { position: absolute; left: 0; top: 0; width: 76px; animation: fy-glide 22s ease-in-out infinite; }
+@keyframes fy-glide {
+  0% { transform: translate(160px, 72px); }
+  22% { transform: translate(205px, 62px); }
+  44% { transform: translate(250px, 70px); }
+  50% { transform: translate(254px, 75px); }
+  72% { transform: translate(205px, 86px); }
+  94% { transform: translate(162px, 77px); }
+  100% { transform: translate(160px, 72px); }
+}
+[data-scene='fantasy'] .fy-face { animation: fy-face 22s ease-in-out infinite; }
+@keyframes fy-face { 0%, 45% { transform: scaleX(1); } 50%, 95% { transform: scaleX(-1); } 100% { transform: scaleX(1); } }
+[data-scene='fantasy'] .fy-dragon { display: block; width: 100%; height: auto; }
+[data-scene='fantasy'] .fy-dragon--far { animation: fy-heave 2.6s ease-in-out infinite; }
+@keyframes fy-heave { 0%, 30% { transform: translateY(0); } 15%, 45% { transform: translateY(-3px); } 60% { transform: translateY(0); } 100% { transform: translateY(2px); } }
+[data-scene='fantasy'] .fy-wing--near { transform-origin: 78px 44px; animation: fy-flap-near 2.6s ease-in-out infinite; }
+[data-scene='fantasy'] .fy-wing--far { transform-origin: 70px 42px; animation: fy-flap-far 2.6s ease-in-out infinite; }
+@keyframes fy-flap-near { 0%, 30%, 60%, 100% { transform: scaleY(1); } 15%, 45% { transform: scaleY(-0.55); } }
+@keyframes fy-flap-far { 0%, 30%, 60%, 100% { transform: scaleY(1); } 15%, 45% { transform: scaleY(-0.3); } }
+[data-scene='fantasy'] .fy-eye { transform-origin: 116px 21px; animation: fy-blink 4.6s linear infinite; }
+@keyframes fy-blink { 0%, 92% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } 98%, 100% { transform: scaleY(1); } }
+[data-scene='fantasy'] .fy-zone { position: absolute; left: 154px; top: 46px; width: 180px; height: 86px; }
+[data-scene='fantasy'] .fy-flame { transform-origin: 137px 28px; transform: scale(0); }
+[data-scene='fantasy'] .fy-puff { opacity: 0; transform-box: fill-box; transform-origin: center; }
+[data-scene='fantasy'] .fy-puff--0 { fill: #FFE58A; }
+[data-scene='fantasy'] .fy-puff--1 { fill: #FF9FD0; }
+[data-scene='fantasy'] .fy-puff--2 { fill: #9FF4FF; }
+
+/* Méduses volantes : un banc qui monte de la mer de nuages, de temps en temps */
+[data-scene='fantasy'] .fy-jellies { height: 240px; }
+[data-scene='fantasy'] .fy-jelly { position: absolute; left: 0; top: 0; width: 24px; opacity: 0; animation: fy-jelly 34s linear infinite; }
+[data-scene='fantasy'] .fy-jelly--a { --jx: 196px; --jd: 46px; animation-delay: -4s; }
+[data-scene='fantasy'] .fy-jelly--b { --jx: 222px; --jd: 24px; width: 18px; animation-delay: -5.2s; }
+[data-scene='fantasy'] .fy-jelly--c { --jx: 176px; --jd: 60px; width: 15px; animation-delay: -6.4s; }
+@keyframes fy-jelly {
+  0%, 56% { opacity: 0; transform: translate(var(--jx), 250px); }
+  60% { opacity: 0.95; }
+  92% { opacity: 0.9; }
+  97%, 100% { opacity: 0; transform: translate(calc(var(--jx) + var(--jd)), -50px); }
+}
+[data-scene='fantasy'] .fy-jelly__bell { transform-origin: 15px 2px; animation: fy-pulse 1.5s ease-in-out infinite alternate; }
+@keyframes fy-pulse { from { transform: scale(1, 1); } to { transform: scale(0.86, 1.08); } }
+[data-scene='fantasy'] .fy-jelly__tails { transform-origin: 15px 18px; animation: fy-tails 1.5s ease-in-out infinite alternate; }
+@keyframes fy-tails { from { transform: skewX(-8deg) scaleY(1.05); } to { transform: skewX(8deg) scaleY(0.92); } }
+
+/* Les deux îles proches : elles flottent, leurs cascades tombent dans le vide */
+[data-scene='fantasy'] .fy-isle { height: 240px; }
+[data-scene='fantasy'] .fy-bob { position: absolute; inset: 0; }
+[data-scene='fantasy'] .fy-bob--left { animation: fy-bob 7s ease-in-out infinite alternate; }
+[data-scene='fantasy'] .fy-bob--right { animation: fy-bob 9s ease-in-out -3s infinite alternate; }
+@keyframes fy-bob { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+[data-scene='fantasy'] .fy-fall {
+  position: absolute; width: 10px; overflow: hidden; border-radius: 2px 2px 0 0;
+  background: linear-gradient(90deg, #BDEBFA, #A9E2F5 40%, #7CC4E6);
+  -webkit-mask: linear-gradient(#000 0, #000 55%, rgba(0, 0, 0, 0.35) 80%, transparent 100%);
+  mask: linear-gradient(#000 0, #000 55%, rgba(0, 0, 0, 0.35) 80%, transparent 100%);
+}
+[data-scene='fantasy'] .fy-fall__water {
+  position: absolute; left: 1px; right: 1px; top: -26px; bottom: 0;
+  background:
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0 6px, rgba(255, 255, 255, 0) 6px 26px) 2px 0 / 2px 100% no-repeat,
+    repeating-linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0 9px, rgba(255, 255, 255, 0) 9px 26px) 5px 13px / 2px 100% no-repeat;
+  animation: fy-water 0.75s linear infinite;
+}
+@keyframes fy-water { from { transform: translateY(0); } to { transform: translateY(26px); } }
+[data-scene='fantasy'] .fy-tree { transform-origin: 152px 126px; animation: fy-sway 5s ease-in-out infinite alternate; }
+@keyframes fy-sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+[data-scene='fantasy'] .fy-crystals { transform-origin: 98px 132px; }
+[data-scene='fantasy'] .fy-crystals__glow { transform-origin: 98px 116px; animation: fy-glow 3.2s ease-in-out infinite alternate; }
+@keyframes fy-glow { from { opacity: 0.45; transform: scale(0.9); } to { opacity: 0.9; transform: scale(1.06); } }
+[data-scene='fantasy'] .fy-window-glow { transform-origin: 352px 85px; animation: fy-glow 2.8s ease-in-out infinite alternate; }
+[data-scene='fantasy'] .fy-lamp { animation: fy-lamp 3.4s ease-in-out infinite alternate; }
+@keyframes fy-lamp { from { opacity: 0.7; } to { opacity: 1; } }
+[data-scene='fantasy'] .fy-flag { transform-origin: 352px 13px; animation: fy-flag 1.3s ease-in-out infinite alternate; }
+@keyframes fy-flag { from { transform: scaleX(0.82) skewY(6deg); } to { transform: scaleX(1) skewY(-6deg); } }
+[data-scene='fantasy'] .fy-star { transform-origin: 352px 22px; }
+
+/* Lucioles (ambiance), volée des cristaux, étincelles de la tour : une petite lumière ronde */
+[data-scene='fantasy'] .fy-mote--0 { --c: 255, 224, 138; }
+[data-scene='fantasy'] .fy-mote--1 { --c: 232, 214, 255; }
+[data-scene='fantasy'] .fy-mote--2 { --c: 168, 255, 226; }
+[data-scene='fantasy'] .fy-mote, [data-scene='fantasy'] .fy-swarm {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle, #FFFFFF 0 22%, rgba(var(--c), 0.95) 38%, rgba(var(--c), 0) 70%);
+}
+[data-scene='fantasy'] .fy-motes { height: 240px; }
+[data-scene='fantasy'] .fy-mote {
+  width: calc(var(--s) * 2); height: calc(var(--s) * 2);
+  animation: fy-float var(--d) ease-in-out var(--delay) infinite alternate, fy-glim var(--g) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes fy-float { from { transform: translate(0, 0); } to { transform: translate(var(--dx), var(--dy)); } }
+@keyframes fy-glim { from { opacity: 0.2; } to { opacity: 1; } }
+[data-scene='fantasy'] .fy-swarm { left: 92px; top: 108px; width: 14px; height: 14px; opacity: 0; }
+[data-scene='fantasy'] .fy-spark {
+  position: absolute; left: 346px; top: 79px; width: 12px; height: 12px; opacity: 0; background: rgb(var(--c));
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+[data-scene='fantasy'] .fy-spark.fy-mote--1 { --c: 255, 159, 208; }
+
+/* Le dragon qui repasse tout près, devant les îles (toutes les 26 s) */
+[data-scene='fantasy'] .fy-pass { height: 240px; }
+[data-scene='fantasy'] .fy-pass__path { position: absolute; left: 0; top: 0; width: 150px; animation: fy-pass 26s linear infinite; animation-delay: -9s; }
+@keyframes fy-pass {
+  0%, 74% { transform: translate(-190px, 128px); }
+  87% { transform: translate(calc(50vw - 50px), 92px); }
+  100% { transform: translate(calc(100vw + 120px), 64px); }
+}
+[data-scene='fantasy'] .fy-pass__bob { animation: fy-heave 1.4s ease-in-out infinite; }
+[data-scene='fantasy'] .fy-dragon--near .fy-wing--near { animation-duration: 1.4s; }
+[data-scene='fantasy'] .fy-dragon--near .fy-wing--far { animation-duration: 1.4s; }
+
+/* Mer de nuages : deux rangs qui dérivent ; le rang de devant devient le fond de la page */
+[data-scene='fantasy'] .fy-clouds { height: 40px; }
+[data-scene='fantasy'] .fy-clouds::after { content: ''; position: absolute; left: 0; right: 0; top: 39px; height: calc(100vh + 900px); }
+[data-scene='fantasy'] .fy-clouds--back::before { background: linear-gradient(#7F62B6 0, #54409A 24px); animation-duration: 110s; }
+[data-scene='fantasy'] .fy-clouds--back::after { background: linear-gradient(#54409A 0, #3E2E7C 40px); }
+[data-scene='fantasy'] .fy-clouds--front::before { background: linear-gradient(#45358A 0, #2A1F5E 24px); animation-duration: 70s; animation-direction: reverse; }
+[data-scene='fantasy'] .fy-clouds--front::after { background: linear-gradient(#2A1F5E 0, #1A1438 22px, #130F26 44px); }
+
+/* ---- Au toucher (le dragon) : un looping, puis une gerbe d'étincelles colorées ----
+   Le dragon tourne sur lui-même en battant vite des ailes, se remet à plat et souffle : une
+   petite flamme dorée et des étincelles (or, rose, bleu ciel) qui s'ouvrent en éventail. */
+[data-scene='fantasy'] .fy-dragon__spin { transform-origin: 75px 45px; }
+[data-scene='fantasy'][data-fx~='souffle'] .fy-dragon--far .fy-dragon__spin { animation: fy-loop 3.2s both; }
+@keyframes fy-loop {
+  0% { transform: rotate(0deg) translateY(0); animation-timing-function: cubic-bezier(0.45, 0, 0.4, 1); }
+  32% { transform: rotate(-360deg) translateY(0); }
+  40% { transform: rotate(-372deg) translateY(-2px); animation-timing-function: ease-in-out; }
+  52%, 82% { transform: rotate(-366deg) translateY(-1px); }
+  100% { transform: rotate(-360deg) translateY(0); }
+}
+[data-scene='fantasy'][data-fx~='souffle'] .fy-dragon--far .fy-wing--near { animation: fy-flap-near 0.65s ease-in-out 3; }
+[data-scene='fantasy'][data-fx~='souffle'] .fy-dragon--far .fy-wing--far { animation: fy-flap-far 0.65s ease-in-out 3; }
+[data-scene='fantasy'][data-fx~='souffle'] .fy-flame { animation: fy-flame 3.2s both; }
+@keyframes fy-flame {
+  0%, 36% { transform: scale(0); animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  42% { transform: scale(1, 1); }
+  50% { transform: scale(1.06, 0.84); } 58% { transform: scale(0.96, 1.1); } 66% { transform: scale(1.04, 0.9); }
+  72% { transform: scale(1, 1); animation-timing-function: ease-in; }
+  80%, 100% { transform: scale(0); }
+}
+[data-scene='fantasy'][data-fx~='souffle'] .fy-puff { animation: fy-puff 1.5s cubic-bezier(0.2, 0.7, 0.4, 1) both; animation-delay: calc(1.25s + var(--delay)); }
+@keyframes fy-puff {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5) rotate(0deg); }
+  10% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.9) rotate(140deg); }
+}
+
+/* ---- Au toucher (les cristaux) : ils s'illuminent et libèrent une volée de lucioles ---- */
+[data-scene='fantasy'][data-fx~='lucioles'] .fy-crystals { animation: fy-crystals 3.4s both; }
+@keyframes fy-crystals {
+  0% { transform: scale(1); animation-timing-function: cubic-bezier(0.3, 1.6, 0.5, 1); }
+  10% { transform: scale(1.12); }
+  22%, 100% { transform: scale(1); }
+}
+[data-scene='fantasy'][data-fx~='lucioles'] .fy-crystals__glow { animation: fy-flare 3.4s ease-out both; }
+@keyframes fy-flare {
+  0% { opacity: 0.6; transform: scale(1); }
+  10% { opacity: 1; transform: scale(2.1); }
+  55% { opacity: 1; transform: scale(1.6); }
+  100% { opacity: 0.6; transform: scale(1); }
+}
+[data-scene='fantasy'][data-fx~='lucioles'] .fy-swarm { animation: fy-swarm 2.8s cubic-bezier(0.2, 0.6, 0.4, 1) both; animation-delay: calc(0.15s + var(--delay)); }
+@keyframes fy-swarm {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  8% { opacity: 1; }
+  45% { opacity: 1; transform: translate(calc(var(--bx) * 0.75), calc(var(--by) * 0.8)) scale(1); }
+  60% { opacity: 0.5; }
+  75% { opacity: 1; transform: translate(var(--bx), var(--by)) scale(0.9); }
+  100% { opacity: 0; transform: translate(calc(var(--bx) * 1.1), calc(var(--by) - 24px)) scale(0.6); }
+}
+
+/* ---- Au toucher (le haut de la tour) : la fenêtre s'embrase et lance un feu d'artifice ----
+   Deux gerbes d'étincelles montent, s'ouvrent et retombent ; l'étoile du toit fait deux tours. */
+[data-scene='fantasy'][data-fx~='etincelles'] .fy-window-glow { animation: fy-flare 3s ease-out both; }
+[data-scene='fantasy'][data-fx~='etincelles'] .fy-window { animation: fy-window 3s both; }
+@keyframes fy-window { 0%, 100% { fill: #FFD27A; } 8%, 60% { fill: #FFF7DC; } }
+[data-scene='fantasy'][data-fx~='etincelles'] .fy-star { animation: fy-star 3s both; }
+@keyframes fy-star {
+  0% { transform: rotate(0deg) scale(1); animation-timing-function: cubic-bezier(0.3, 0, 0.3, 1); }
+  20% { transform: rotate(0deg) scale(1.7); }
+  70% { transform: rotate(720deg) scale(1.7); animation-timing-function: ease-in-out; }
+  100% { transform: rotate(720deg) scale(1); }
+}
+[data-scene='fantasy'][data-fx~='etincelles'] .fy-spark { animation: fy-spark 1.2s cubic-bezier(0.15, 0.7, 0.4, 1) 2 both; animation-delay: calc(0.2s + var(--delay)); }
+@keyframes fy-spark {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  8% { opacity: 1; }
+  45% { opacity: 1; transform: translate(var(--sx), var(--sy2)) scale(1.2) rotate(90deg); }
+  100% { opacity: 0; transform: translate(calc(var(--sx) * 1.25), var(--fall)) scale(0.5) rotate(180deg); }
+}
+
+/* ---- Changement d'onglet : le dragon passe en gros plan ----
+   Le dragon, vu d'en dessous, traverse l'écran de droite à gauche, la tête la première : ses deux
+   grandes ailes déployées balaient toute la page, qui change derrière elles au moment où elles la
+   couvrent ; une traînée de poussière d'étoiles suit sa queue. Un seul mouvement, 1,05 s ; la page
+   et le dragon ont la même durée et la même courbe. Le dessin tient dans un carré (vmax) : il garde
+   ses proportions sur tous les écrans, et ses ailes couvrent tout l'écran à mi-course. */
+html[data-el-nav='fantasy']::view-transition-old(root) { animation: fy-page-out 1.05s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+html[data-el-nav='fantasy']::view-transition-new(root) { animation: fy-page-in 1.05s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes fy-page-out { 0%, 47% { opacity: 1; } 53%, 100% { opacity: 0; } }
+@keyframes fy-page-in { 0%, 47% { opacity: 0; } 53%, 100% { opacity: 1; } }
+.el-front[data-scene='fantasy'] i:first-child {
+  left: 100%; top: calc(50% - 105vmax); width: 210vmax; height: 210vmax;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 1000' preserveAspectRatio='none'%3E%3Cg id='w'%3E%3Cpath d='M188 480C178 380 176 280 190 190L214 4C270 160 350 220 420 40C470 220 560 250 630 70C670 230 740 250 820 120C814 240 822 360 842 480Z' fill='%232C8C83'/%3E%3Cpath d='M200 190L420 40C470 220 560 250 630 70Z' fill='%233AA394'/%3E%3Cpath d='M200 190L820 120C814 240 822 360 842 480H190Z' fill='%233AA394'/%3E%3Cpath d='M188 480L200 190L214 4M200 190L420 40M200 190L630 70M200 190L820 120' fill='none' stroke='%231C5B55' stroke-width='16' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpath d='M310 418C300 388 314 366 338 370L352 420ZM610 418C602 390 616 370 640 374L652 420Z' fill='%232E9A82'/%3E%3Cpath d='M318 380L304 360M332 372L326 350' stroke='%23FFE7B8' stroke-width='10' stroke-linecap='round'/%3E%3C/g%3E%3Cuse href='%23w' transform='matrix(1 0 0 -1 0 1000)'/%3E%3Cpath d='M690 466C790 468 868 458 930 442L936 474C870 500 790 528 690 534Z' fill='%233FB59A'/%3E%3Cpath d='M926 432L998 404L978 456L998 510L932 486Z' fill='%23FFD27A'/%3E%3Cpath d='M210 446C160 456 124 468 96 476V524C124 532 160 544 210 554Z' fill='%233FB59A'/%3E%3Cellipse cx='452' cy='500' rx='292' ry='94' fill='%233FB59A'/%3E%3Cellipse cx='452' cy='500' rx='252' ry='56' fill='%23BFEEDB'/%3E%3Cpath d='M290 456Q280 500 290 544M350 448Q340 500 350 552M410 446Q400 500 410 554M470 446Q460 500 470 554M530 448Q520 500 530 552M590 452Q580 500 590 548M650 462Q642 500 650 538' fill='none' stroke='%238FD3B8' stroke-width='8' stroke-linecap='round'/%3E%3Cpath d='M112 456L176 404L140 472ZM112 544L176 596L140 528Z' fill='%23FFE7B8'/%3E%3Cpath d='M140 472C120 440 76 434 44 448C16 460 0 482 4 500C8 520 30 534 62 536C94 538 124 532 140 518Z' fill='%233FB59A'/%3E%3Cpath d='M6 504C30 514 80 518 138 508C128 528 96 540 62 538C32 536 12 524 6 504Z' fill='%23BFEEDB'/%3E%3Ccircle cx='84' cy='474' r='16' fill='%23FFFFFF'/%3E%3Ccircle cx='80' cy='476' r='9' fill='%2316213A'/%3E%3Ccircle cx='84' cy='471' r='3.500' fill='%23FFFFFF'/%3E%3Ccircle cx='22' cy='482' r='5' fill='%2316413B'/%3E%3Ccircle cx='58' cy='500' r='11' fill='%23FF9FB8' opacity='0.75'/%3E%3Cpath d='M66 512Q40 518 20 506' fill='none' stroke='%2316413B' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+.el-front[data-scene='fantasy'][data-on] i:first-child { animation: fy-wings 1.05s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes fy-wings { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(calc(-100vw - 210vmax)); } }
+.el-front[data-scene='fantasy'] i:not(:first-child) {
+  left: calc(100% + (0.74 + var(--r1) * 0.22) * 210vmax); top: calc(var(--r2) * 100%);
+  width: calc(10px + var(--r3) * 14px); height: calc(10px + var(--r3) * 14px); background: #FFE08A;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+}
+.el-front[data-scene='fantasy'] i:not(:first-child):nth-child(3n) { background: #FF9FD0; }
+.el-front[data-scene='fantasy'] i:not(:first-child):nth-child(3n + 1) { background: #9FF4FF; }
+.el-front[data-scene='fantasy'][data-on] i:not(:first-child) { animation: fy-dust 1.05s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes fy-dust {
+  0% { opacity: 1; transform: translateX(0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translateX(calc(-100vw - 210vmax)) rotate(200deg); }
+}

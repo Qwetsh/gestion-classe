@@ -12,15 +12,17 @@
  */
 import type { ComponentType } from 'react';
 
-export type StudentThemeId = 'carnet' | 'cosmos' | 'arcade' | 'jungle' | 'fossiles' | 'volcan' | 'crepuscule' | 'savane' | 'abysses' | 'banquise' | 'stade' | 'ruche' | 'sommets' | 'orage' | 'microscope' | 'ville' | 'parquet' | 'adn' | 'seisme' | 'skate';
+export type StudentThemeId = 'carnet' | 'cosmos' | 'arcade' | 'jungle' | 'fossiles' | 'volcan' | 'crepuscule' | 'savane' | 'abysses' | 'banquise' | 'stade' | 'ruche' | 'sommets' | 'orage' | 'microscope' | 'ville' | 'parquet' | 'adn' | 'seisme' | 'skate'
+  | 'moyenage' | 'voyage' | 'fantasy' | 'conte' | 'theatre' | 'heros';
 
 /** Famille d'un thème : sert à ranger l'écran « Mon thème ». */
-export type StudentThemeGroup = 'univers' | 'nature' | 'sciences' | 'sport';
+export type StudentThemeGroup = 'univers' | 'nature' | 'sciences' | 'francais' | 'sport';
 
 export const STUDENT_THEME_GROUPS: { id: StudentThemeGroup; name: string }[] = [
   { id: 'univers', name: 'Univers' },
   { id: 'nature', name: 'Animaux et nature' },
   { id: 'sciences', name: 'Sciences' },
+  { id: 'francais', name: 'Français' },
   { id: 'sport', name: 'Sport' },
 ];
 
@@ -72,6 +74,13 @@ export const STUDENT_THEMES: StudentTheme[] = [
   { id: 'adn', name: 'ADN', group: 'sciences', unlock: 'class', note: 'La double hélice au labo', bg: '#EDF6F5', surface: '#FFFFFF', text: '#0F2B2E', accent: '#0B7A75', font: 'Manrope:wght@700;800', scene: () => import('../themes-eleve/adn'), animated: true },
   { id: 'skate', name: 'Skatepark', group: 'sport', unlock: 'card', note: 'La rampe, le mur de graffs', bg: '#EEF0F4', surface: '#FFFFFF', text: '#1B1D2A', accent: '#C2185B', font: 'Bangers', scene: () => import('../themes-eleve/skate'), animated: true },
   { id: 'seisme', name: 'Sismographe', group: 'sciences', unlock: 'class', note: 'La faille, le foyer, le tracé', bg: '#F5F1E8', surface: '#FFFFFF', text: '#20242B', accent: '#C2261D', font: 'IBM+Plex+Mono:wght@600;700', scene: () => import('../themes-eleve/seisme'), animated: true },
+  // Français (programme du collège), ouverts par le professeur avec le cours comme ceux de sciences
+  { id: 'moyenage', name: 'Moyen Âge', group: 'francais', unlock: 'class', note: 'Le château et son tournoi', bg: '#EFE6D2', surface: '#FFFBF1', text: '#2A1E12', accent: '#1F4E8C', font: 'Uncial+Antiqua', scene: () => import('../themes-eleve/moyenage'), animated: true },
+  { id: 'voyage', name: 'Voyage', group: 'francais', unlock: 'class', note: 'Cap vers l’inconnu', bg: '#F8EEDB', surface: '#FFFDF7', text: '#1F2B38', accent: '#1B5E8A', font: 'Kalam:wght@700', scene: () => import('../themes-eleve/voyage'), animated: true },
+  { id: 'fantasy', name: 'Fantasy', group: 'francais', unlock: 'class', note: 'Îles volantes et dragon', bg: '#130F26', surface: '#1F1A3A', text: '#F3EFFF', accent: '#C6A6FF', font: 'Cinzel:wght@600;700', scene: () => import('../themes-eleve/fantasy'), animated: true },
+  { id: 'conte', name: 'Conte', group: 'francais', unlock: 'class', note: 'Il était une fois, dans la forêt', bg: '#FBF1E6', surface: '#FFFFFF', text: '#2D2140', accent: '#9C2F6B', font: 'Lobster+Two:wght@700', scene: () => import('../themes-eleve/conte'), animated: true },
+  { id: 'theatre', name: 'Théâtre', group: 'francais', unlock: 'class', note: 'Lever de rideau', bg: '#1A0C10', surface: '#2A161B', text: '#FFF3E9', accent: '#F2B544', font: 'Playfair+Display:wght@700;800', scene: () => import('../themes-eleve/theatre'), animated: true },
+  { id: 'heros', name: 'Héros et monstres', group: 'francais', unlock: 'class', note: 'Les monstres des mythes grecs', bg: '#F6E6D2', surface: '#FFFBF5', text: '#2A1910', accent: '#9A3412', font: 'Marcellus', scene: () => import('../themes-eleve/heros'), animated: true },
 ];
 
 export const DEFAULT_STUDENT_THEME: StudentThemeId = 'carnet';

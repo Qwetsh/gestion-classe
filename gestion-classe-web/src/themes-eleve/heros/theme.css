@@ -1,0 +1,409 @@
+/* Thème « Héros et monstres » (espace élève) : terre cuite et noir de vase grec, mer Égée. */
+.el[data-theme='heros'] {
+  --el-bg: #F6E6D2; --el-surface: #FFFBF5; --el-line: #E8D2B8; --el-line-soft: #F1E2CF; --el-line-strong: #D3B392;
+  --el-text: #2A1910; --el-muted: #5E3F2B; --el-dim: #74513A;
+  --el-indigo: #9A3412; --el-indigo-ink: #7A270C; --el-indigo-soft: #F6D9C4;
+  --el-pos: #2E6B3F; --el-pos-ink: #235232; --el-pos-soft: #DDEFD9;
+  --el-warn: #8A5300; --el-warn-ink: #6E4200; --el-warn-soft: #F8E3BF;
+  --el-neg: #B3261E; --el-neg-soft: #F9DAD4;
+  --el-track: #EBD5BC; --el-on-accent: #FFFFFF; --el-radio: #A88B70;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Marcellus', 'Georgia', serif;
+}
+.el[data-theme='heros'] .el-main { padding-top: 244px; }
+/* Marcellus n'a qu'une graisse : pas de faux gras */
+.el[data-theme='heros'] .el-h1 { font-weight: 400; letter-spacing: 0.01em; }
+.el[data-theme='heros'] .el-btn--primary { box-shadow: 0 3px 0 #5E1F08; }
+/* Les chiffres de Marcellus (1 en forme de I) se lisent mal : les nombres gardent la police du texte */
+.el[data-theme='heros'] .el-big,
+.el[data-theme='heros'] .el-mid { font-family: inherit; }
+
+/* ---- La scène ----
+   Les éléments placés à un endroit précis vivent dans `.hm-set`, un cadre de 480 px centré. */
+[data-scene='heros'] .hm-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='heros'] .hm-set > svg, [data-scene='heros'] .hm-set > div { position: absolute; left: 0; top: 0; height: auto; }
+[data-scene='heros'] svg g, [data-scene='heros'] svg path, [data-scene='heros'] svg ellipse { transform-box: view-box; }
+
+/* Ciel ocre, soleil en rosace qui tourne lentement */
+[data-scene='heros'] .hm-sky { height: 240px; background: linear-gradient(180deg, #EDB98A 0%, #F2CDA4 45%, #F7DFC2 100%); }
+[data-scene='heros'] .hm-sunlayer { height: 120px; }
+[data-scene='heros'] .hm-set > .hm-sun { left: 364px; top: -6px; width: 80px; }
+[data-scene='heros'] .hm-sun__rays { animation: hm-spin 80s linear infinite; }
+@keyframes hm-spin { to { transform: rotate(360deg); } }
+
+/* Nuages à volutes : une rangée répétée deux fois, qui dérive sans raccord */
+[data-scene='heros'] .hm-clouds { height: 80px; overflow: hidden; }
+[data-scene='heros'] .hm-drift { position: absolute; top: 0; left: 0; width: 200%; height: 100%; display: flex; animation: hm-drift 150s linear infinite; }
+@keyframes hm-drift { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+[data-scene='heros'] .hm-cloudset { position: relative; flex: 0 0 50%; height: 100%; }
+[data-scene='heros'] .hm-cloud { position: absolute; height: auto; }
+
+/* Îles au loin */
+[data-scene='heros'] .hm-far { height: 28px; }
+
+/* Mer Égée : un aplat qui descend loin, des rangées de vagues à volutes qui glissent */
+[data-scene='heros'] .hm-sea { height: 80px; }
+[data-scene='heros'] .hm-water { position: absolute; left: 0; right: 0; top: 0; height: calc(100vh + 900px); background: linear-gradient(180deg, #4F8DB4 0, #34729D 22px, #245E8A 48px, #1E527D 80px); }
+[data-scene='heros'] .hm-swell {
+  position: absolute; left: 0; width: calc(100% + 56px); height: 14px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='14' viewBox='0 0 28 14'%3E%3Cpath d='M0 11H28M4 11C10 11 12 3 18 3C23 3 24.5 8 21 9.5C18.5 10.5 17 8 19 7' fill='none' stroke='%2399C4DE' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 28px 14px repeat-x;
+  animation: hm-swell 6s linear infinite;
+}
+[data-scene='heros'] .hm-swell--1 { top: 4px; opacity: 0.45; background-size: 20px 10px; height: 10px; width: calc(100% + 40px); animation-duration: 9s; }
+[data-scene='heros'] .hm-swell--2 { top: 26px; opacity: 0.5; animation-duration: 7s; animation-direction: reverse; }
+[data-scene='heros'] .hm-swell--3 { top: 50px; opacity: 0.55; background-size: 36px 18px; height: 18px; width: calc(100% + 72px); animation-duration: 5.5s; }
+@keyframes hm-swell { from { transform: translateX(0); } to { transform: translateX(-28px); } }
+[data-scene='heros'] .hm-swell--1 { animation-name: hm-swell-s; }
+[data-scene='heros'] .hm-swell--3 { animation-name: hm-swell-l; }
+@keyframes hm-swell-s { from { transform: translateX(0); } to { transform: translateX(-20px); } }
+@keyframes hm-swell-l { from { transform: translateX(0); } to { transform: translateX(-36px); } }
+
+/* La trière : elle tangue, ses rameurs rament, le fanion flotte */
+[data-scene='heros'] .hm-set > .hm-boat { left: 160px; top: -18px; width: 124px; }
+[data-scene='heros'] .hm-boat__svg { display: block; width: 124px; height: auto; transform-origin: 50% 86%; animation: hm-bob 3.4s ease-in-out infinite alternate; }
+@keyframes hm-bob { from { transform: translateY(0) rotate(-1.4deg); } to { transform: translateY(2px) rotate(1.2deg); } }
+[data-scene='heros'] .hm-oar { animation: hm-row 1.5s ease-in-out infinite; }
+@keyframes hm-row { 0%, 100% { transform: rotate(-16deg); } 55% { transform: rotate(20deg); } }
+[data-scene='heros'] .hm-rowers { animation: hm-lean 1.5s ease-in-out infinite; }
+@keyframes hm-lean { 0%, 100% { transform: translateX(1.4px); } 55% { transform: translateX(-1.4px); } }
+[data-scene='heros'] .hm-flag { transform-origin: 70px 10px; animation: hm-flag 0.9s ease-in-out infinite alternate; }
+@keyframes hm-flag { from { transform: scaleX(1) skewY(0deg); } to { transform: scaleX(0.82) skewY(6deg); } }
+[data-scene='heros'] .hm-foam { animation: hm-foam 1.7s ease-in-out infinite alternate; }
+@keyframes hm-foam { from { transform: translateX(-2px); } to { transform: translateX(2px); } }
+[data-scene='heros'] .hm-wake { stroke-dasharray: 7 7; opacity: 0.7; animation: hm-wake 1.4s linear infinite; }
+@keyframes hm-wake { to { stroke-dashoffset: 28; } }
+
+/* L'Hydre : ses têtes se balancent chacune à son rythme */
+[data-scene='heros'] .hm-set > .hm-hydra { left: 286px; top: -26px; width: 80px; }
+[data-scene='heros'] .hm-neck--a .hm-sway { animation: hm-sway 4.2s ease-in-out infinite alternate; }
+[data-scene='heros'] .hm-neck--b .hm-sway { animation: hm-sway 5.1s ease-in-out -2s infinite alternate-reverse; }
+[data-scene='heros'] .hm-neck--c .hm-sway { animation: hm-sway 3.7s ease-in-out -1s infinite alternate; }
+[data-scene='heros'] .hm-neck--d .hm-sway { animation: hm-sway 1.6s ease-in-out infinite alternate; }
+@keyframes hm-sway { from { transform: rotate(-5deg); } to { transform: rotate(5deg); } }
+[data-scene='heros'] .hm-ring { transform-box: fill-box; transform-origin: center; animation: hm-ring 3s ease-out infinite; }
+[data-scene='heros'] .hm-ring:nth-child(2) { animation-delay: -1s; }
+[data-scene='heros'] .hm-ring:nth-child(3) { animation-delay: -2s; }
+@keyframes hm-ring { from { opacity: 0.9; transform: scale(0.7); } to { opacity: 0; transform: scale(1.8); } }
+/* La petite tête du coucou et les deux têtes jumelles attendent sous l'eau */
+[data-scene='heros'] .hm-neck--d { transform: translateY(36px); animation: hm-coucou 17s ease-in-out -6s infinite; }
+[data-scene='heros'] .hm-ring--d { opacity: 0; animation: hm-coucou-ring 17s ease-out -6s infinite; }
+@keyframes hm-coucou {
+  0%, 68% { transform: translateY(36px); }
+  72% { transform: translateY(-3px); }
+  74%, 88% { transform: translateY(0); }
+  93%, 100% { transform: translateY(36px); }
+}
+@keyframes hm-coucou-ring { 0%, 69% { opacity: 0; transform: scale(0.6); } 71% { opacity: 1; } 80%, 100% { opacity: 0; transform: scale(2); } }
+[data-scene='heros'] .hm-neck--d .hm-pupil { animation: hm-peek 17s ease-in-out -6s infinite; }
+@keyframes hm-peek { 0%, 75% { transform: translateX(0); } 78%, 81% { transform: translateX(-1.6px); } 84%, 100% { transform: translateX(1.4px); } }
+[data-scene='heros'] .hm-twin { transform: translateY(86px); }
+[data-scene='heros'] .hm-neck--a { transform-origin: 20px 88px; }
+[data-scene='heros'] .hm-neck--c { transform-origin: 56px 88px; }
+[data-scene='heros'] .hm-startle { opacity: 0; }
+
+/* Le dauphin : un saut au large, derrière la trière, toutes les 23 secondes */
+[data-scene='heros'] .hm-set > .hm-dolphin { left: 136px; top: -9px; width: 64px; }
+[data-scene='heros'] .hm-dolphin__x { transform: translateX(10px); animation: hm-dol-x 23s linear -8s infinite; }
+[data-scene='heros'] .hm-dolphin__y { transform: translateY(56px); animation: hm-dol-y 23s -8s infinite; }
+[data-scene='heros'] .hm-dolphin__r { animation: hm-dol-r 23s linear -8s infinite; }
+[data-scene='heros'] .hm-dolphin__splash path { opacity: 0; }
+[data-scene='heros'] .hm-dolphin__splash path:first-child { animation: hm-dol-s1 23s ease-out -8s infinite; }
+[data-scene='heros'] .hm-dolphin__splash path:last-child { animation: hm-dol-s2 23s ease-out -8s infinite; }
+@keyframes hm-dol-x { 0%, 84% { transform: translateX(8px); } 92%, 100% { transform: translateX(80px); } }
+@keyframes hm-dol-y {
+  0%, 84% { transform: translateY(56px); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  88% { transform: translateY(16px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  92%, 100% { transform: translateY(58px); }
+}
+@keyframes hm-dol-r { 0%, 84% { transform: rotate(-55deg); } 92%, 100% { transform: rotate(60deg); } }
+@keyframes hm-dol-s1 { 0%, 84.5% { opacity: 0; } 85.5% { opacity: 1; } 88%, 100% { opacity: 0; } }
+@keyframes hm-dol-s2 { 0%, 91% { opacity: 0; } 92% { opacity: 1; } 95%, 100% { opacity: 0; } }
+
+/* La côte : chaque élément posé à sa place sur les rochers */
+[data-scene='heros'] .hm-coast { height: 214px; }
+[data-scene='heros'] .hm-set > .hm-cyclops { left: 60px; top: 7px; width: 48px; }
+[data-scene='heros'] .hm-set > .hm-sheep--graze { left: 34px; top: 63px; width: 28px; }
+[data-scene='heros'] .hm-set > .hm-sheep--lamb { left: 108px; top: 69px; width: 19px; }
+[data-scene='heros'] .hm-set > .hm-olive { left: 371px; top: 57px; width: 24px; }
+[data-scene='heros'] .hm-set > .hm-temple { left: 395px; top: 43px; width: 44px; }
+
+/* Le Cyclope : il respire, cligne de son œil unique et suit la trière du regard */
+[data-scene='heros'] .hm-cy-body { transform-origin: 30px 80px; animation: hm-breathe 3.2s ease-in-out infinite alternate; }
+@keyframes hm-breathe { from { transform: scale(1, 1); } to { transform: scale(1.015, 1.03); } }
+[data-scene='heros'] .hm-cy-lid { transform-origin: 30px 4.5px; transform: scaleY(0); animation: hm-blink 5.3s infinite; }
+@keyframes hm-blink { 0%, 92% { transform: scaleY(0); } 95% { transform: scaleY(1); } 98%, 100% { transform: scaleY(0); } }
+[data-scene='heros'] .hm-cy-pupil { animation: hm-look 11s ease-in-out infinite; }
+@keyframes hm-look {
+  0%, 18% { transform: translate(2.6px, 1.2px); }
+  24%, 46% { transform: translate(3px, -0.6px); }
+  52%, 70% { transform: translate(-1.6px, 0.8px); }
+  76%, 100% { transform: translate(2.6px, 1.2px); }
+}
+[data-scene='heros'] .hm-cy-arm--l { transform-origin: 15px 32px; }
+[data-scene='heros'] .hm-cy-arm--r { transform-origin: 45px 32px; }
+[data-scene='heros'] .hm-cy-head { transform-origin: 30px 26px; }
+[data-scene='heros'] .hm-cy-mouth { transform-origin: 30px 26px; }
+[data-scene='heros'] .hm-cy-rock { opacity: 0; transform-origin: 30px -3px; }
+
+/* Moutons : l'un broute, l'agneau sautille */
+[data-scene='heros'] .hm-sheep__head { transform-origin: 22px 8px; }
+[data-scene='heros'] .hm-sheep--graze .hm-sheep__head { animation: hm-graze 7s ease-in-out infinite; }
+@keyframes hm-graze { 0%, 30%, 100% { transform: rotate(0deg); } 38%, 62% { transform: rotate(38deg); } 44%, 56% { transform: rotate(32deg); } 70% { transform: rotate(-4deg); } }
+[data-scene='heros'] .hm-sheep--lamb { animation: hm-hop 6s ease-in-out -2s infinite; }
+@keyframes hm-hop { 0%, 70%, 100% { transform: translateY(0); } 75% { transform: translateY(-6px); } 80% { transform: translateY(0); } 85% { transform: translateY(-4px); } 90% { transform: translateY(0); } }
+
+/* Olivier qui frémit */
+[data-scene='heros'] .hm-olive__all { transform-origin: 15px 40px; animation: hm-olive 4.6s ease-in-out infinite alternate; }
+@keyframes hm-olive { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+
+/* Rocher lancé et gerbe d'eau : cachés, ils n'apparaissent qu'au toucher du Cyclope */
+[data-scene='heros'] .hm-throw { translate: 84px 13px; opacity: 0; }
+[data-scene='heros'] .hm-splash { translate: 158px 167px; scale: 0; transform-origin: 0 0; }
+[data-scene='heros'] .hm-splash__ring { opacity: 0; transform-origin: 0 1px; }
+
+/* Pégase : il plane en battant des ailes, monte et descend doucement */
+[data-scene='heros'] .hm-peglayer { height: 120px; }
+[data-scene='heros'] .hm-trail { width: 480px; }
+[data-scene='heros'] .hm-star { opacity: 0; }
+[data-scene='heros'] .hm-set > .hm-peg { left: 166px; top: 14px; width: 72px; }
+[data-scene='heros'] .hm-peg { animation: hm-hover 11s ease-in-out infinite; }
+@keyframes hm-hover {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(6px, -4px); }
+  50% { transform: translate(10px, 2px); }
+  75% { transform: translate(3px, 5px); }
+}
+[data-scene='heros'] .hm-peg__svg { display: block; width: 72px; height: auto; transform-origin: 50% 60%; animation: hm-glide 3s ease-in-out infinite alternate; }
+@keyframes hm-glide { from { transform: translateY(-2px) rotate(-2deg); } to { transform: translateY(3px) rotate(2deg); } }
+[data-scene='heros'] .hm-wing { transform-origin: 33px 19px; animation: hm-flap 0.95s ease-in-out infinite alternate; }
+[data-scene='heros'] .hm-wing--far { animation-name: hm-flap-far; }
+@keyframes hm-flap { from { transform: rotate(-8deg); } to { transform: rotate(52deg) scaleY(0.8); } }
+@keyframes hm-flap-far { from { transform: translate(5px, -1px) rotate(-14deg); } to { transform: translate(4px, 1px) rotate(40deg) scaleY(0.8); } }
+
+/* Rivage : écume, sable, puis une frise de grecques comme au bas d'un vase ; le sol uni ensuite */
+[data-scene='heros'] .hm-shore {
+  height: calc(100vh + 900px);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M0 1H20M0 19H20' stroke='%239A3412' stroke-width='1.6'/%3E%3Cpath d='M0 15.5H15.5V4.5H4.5V12H12V8H8M15.5 15.5H20' fill='none' stroke='%239A3412' stroke-width='1.8'/%3E%3C/svg%3E") 0 13px / 20px 20px repeat-x,
+    linear-gradient(transparent 0 7px, #E9C596 7px 13px, #F6E6D2 13px);
+}
+[data-scene='heros'] .hm-shore::before {
+  content: ''; position: absolute; left: 0; top: 0; width: calc(100% + 40px); height: 9px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='9' viewBox='0 0 40 9'%3E%3Cpath d='M0 9V4.5C5 4.5 5 1 10 1S15 4.5 20 4.5S25 1 30 1S35 4.5 40 4.5V9Z' fill='%23FFF6E8'/%3E%3C/svg%3E") 0 0 / 40px 9px repeat-x;
+  animation: hm-surf 4s ease-in-out infinite alternate;
+}
+@keyframes hm-surf { from { transform: translateX(0); } to { transform: translateX(-20px); } }
+
+/* =====================================================================
+   Au toucher (l'Hydre) : la grande tête plonge ; deux petites têtes sortent à sa place, se
+   découvrent nez à nez, sursautent, se regardent encore, puis replongent ; la grande revient.
+   ===================================================================== */
+[data-scene='heros'][data-fx~='hydre'] .hm-neck--b { animation: hm-dive 4.8s both; }
+@keyframes hm-dive {
+  0% { transform: translateY(0); animation-timing-function: ease-out; }
+  5% { transform: translateY(-5px); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.5); }
+  15% { transform: translateY(76px); }
+  80% { transform: translateY(76px); animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1.2); }
+  94% { transform: translateY(-3px); animation-timing-function: ease-in-out; }
+  100% { transform: translateY(0); }
+}
+[data-scene='heros'][data-fx~='hydre'] .hm-twin { animation: hm-twins 4.8s both; }
+[data-scene='heros'][data-fx~='hydre'] .hm-twin--2 { animation-delay: 0.12s; }
+@keyframes hm-twins {
+  0%, 15% { transform: translateY(86px); animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1.2); }
+  28% { transform: translateY(-3px); animation-timing-function: ease-in-out; }
+  31%, 70% { transform: translateY(0); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  80%, 100% { transform: translateY(86px); }
+}
+/* Les deux têtes voisines s'écartent pour leur faire de la place, puis reviennent */
+[data-scene='heros'][data-fx~='hydre'] .hm-neck--a { animation: hm-lean-a 4.8s ease-in-out both; }
+[data-scene='heros'][data-fx~='hydre'] .hm-neck--c { animation: hm-lean-c 4.8s ease-in-out both; }
+@keyframes hm-lean-a { 0%, 10% { transform: rotate(0deg); } 24%, 76% { transform: rotate(-16deg); } 92%, 100% { transform: rotate(0deg); } }
+@keyframes hm-lean-c { 0%, 10% { transform: rotate(0deg); } 24%, 76% { transform: rotate(16deg); } 92%, 100% { transform: rotate(0deg); } }
+/* Le sursaut : les têtes reculent d'un coup, les traits de surprise apparaissent */
+[data-scene='heros'][data-fx~='hydre'] .hm-twin--1 .hm-sway { animation: hm-jump-l 4.8s both; }
+[data-scene='heros'][data-fx~='hydre'] .hm-twin--2 .hm-sway { animation: hm-jump-r 4.8s 0.12s both; }
+@keyframes hm-jump-l { 0%, 35% { transform: rotate(0deg); } 38%, 50% { transform: rotate(-6deg); } 56% { transform: rotate(2deg); } 60%, 100% { transform: rotate(0deg); } }
+@keyframes hm-jump-r { 0%, 35% { transform: rotate(0deg); } 38%, 50% { transform: rotate(6deg); } 56% { transform: rotate(-2deg); } 60%, 100% { transform: rotate(0deg); } }
+[data-scene='heros'][data-fx~='hydre'] .hm-startle { transform-box: fill-box; transform-origin: 50% 100%; animation: hm-startle 4.8s both; }
+@keyframes hm-startle { 0%, 36% { opacity: 0; transform: scale(0.4); } 39% { opacity: 1; transform: scale(1.15); } 42%, 52% { opacity: 1; transform: scale(1); } 56%, 100% { opacity: 0; transform: scale(1); } }
+[data-scene='heros'][data-fx~='hydre'] .hm-twin .hm-pupil { animation: hm-twin-eyes 4.8s both; }
+@keyframes hm-twin-eyes { 0%, 31% { transform: translateX(-1.5px); } 34%, 58% { transform: translateX(1.6px); } 62% { transform: translate(0, -1.5px); } 66%, 100% { transform: translateX(1.6px); } }
+[data-scene='heros'][data-fx~='hydre'] .hm-ring--b { animation: hm-splash-ring 4.8s ease-out both; }
+@keyframes hm-splash-ring {
+  0%, 12% { opacity: 0; transform: scale(0.6); } 15% { opacity: 1; transform: scale(1); } 24% { opacity: 0; transform: scale(2.6); }
+  26% { opacity: 1; transform: scale(1); } 34% { opacity: 0; transform: scale(2.6); }
+  78% { opacity: 0; transform: scale(0.6); } 80% { opacity: 1; transform: scale(1); } 90% { opacity: 0; transform: scale(2.6); }
+  100% { opacity: 0; }
+}
+
+/* =====================================================================
+   Au toucher (le Cyclope) : il soulève un rocher au-dessus de sa tête, prend son élan et le lance ;
+   le rocher plonge à côté de la trière dans une gerbe d'eau ; les rameurs accélèrent et la trière
+   file un peu en avant avant de revenir ; le Cyclope rit.
+   ===================================================================== */
+[data-scene='heros'][data-fx~='rocher'] .hm-cy-arm--l { animation: hm-arm-l 4.4s both; }
+[data-scene='heros'][data-fx~='rocher'] .hm-cy-arm--r { animation: hm-arm-r 4.4s both; }
+@keyframes hm-arm-l {
+  0% { transform: rotate(0deg); animation-timing-function: ease-in-out; }
+  12%, 22% { transform: rotate(155deg); animation-timing-function: ease-in-out; }
+  27% { transform: rotate(172deg); animation-timing-function: ease-out; }
+  33% { transform: rotate(110deg); }
+  50% { transform: rotate(92deg); }
+  56%, 66%, 76% { transform: rotate(130deg); } 61%, 71% { transform: rotate(105deg); }
+  88%, 100% { transform: rotate(0deg); }
+}
+@keyframes hm-arm-r {
+  0% { transform: rotate(0deg); animation-timing-function: ease-in-out; }
+  12%, 22% { transform: rotate(-155deg); animation-timing-function: ease-in-out; }
+  27% { transform: rotate(-172deg); animation-timing-function: ease-out; }
+  33% { transform: rotate(-110deg); }
+  50% { transform: rotate(-92deg); }
+  56%, 66%, 76% { transform: rotate(-130deg); } 61%, 71% { transform: rotate(-105deg); }
+  88%, 100% { transform: rotate(0deg); }
+}
+[data-scene='heros'][data-fx~='rocher'] .hm-cy-rock { animation: hm-held 4.4s both; }
+@keyframes hm-held {
+  0%, 7% { opacity: 0; transform: translateY(4px) scale(0.3); }
+  9% { opacity: 1; }
+  13% { opacity: 1; transform: translateY(-2px) scale(1.05); }
+  16%, 22% { opacity: 1; transform: translateY(0) scale(1); }
+  27% { opacity: 1; transform: translateY(-3px) scale(1); }
+  28%, 100% { opacity: 0; transform: translateY(-3px) scale(1); }
+}
+[data-scene='heros'][data-fx~='rocher'] .hm-cy-head { animation: hm-cy-nod 4.4s both; }
+@keyframes hm-cy-nod {
+  0%, 18% { transform: rotate(0deg); } 24% { transform: rotate(-6deg); } 32% { transform: rotate(5deg); } 40% { transform: rotate(0deg); }
+  56% { transform: rotate(0deg) translateY(0); } 60% { transform: translateY(-2px); } 64% { transform: translateY(0); }
+  68% { transform: translateY(-2px); } 72% { transform: translateY(0); } 76% { transform: translateY(-2px); } 80%, 100% { transform: translateY(0); }
+}
+[data-scene='heros'][data-fx~='rocher'] .hm-cy-mouth { animation: hm-laugh 4.4s both; }
+@keyframes hm-laugh { 0%, 54% { transform: scale(1); } 58%, 78% { transform: scale(1.3, 2.4); } 84%, 100% { transform: scale(1); } }
+[data-scene='heros'][data-fx~='rocher'] .hm-cy-pupil { animation: hm-cy-aim 4.4s both; }
+@keyframes hm-cy-aim { 0%, 10% { transform: translate(2.6px, 1.2px); } 14%, 26% { transform: translate(0, -2px); } 32%, 54% { transform: translate(3px, 2px); } 60%, 100% { transform: translate(2.6px, 1.2px); } }
+/* Le vol du rocher : trois mouvements emboîtés (de côté, en cloche, en tournant) */
+[data-scene='heros'][data-fx~='rocher'] .hm-throw { animation: hm-throw-show 4.4s both; }
+@keyframes hm-throw-show { 0%, 27% { opacity: 0; } 28%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+[data-scene='heros'][data-fx~='rocher'] .hm-throw__x { animation: hm-throw-x 4.4s both; }
+@keyframes hm-throw-x { 0%, 28% { transform: translateX(0); animation-timing-function: linear; } 50%, 100% { transform: translateX(74px); } }
+[data-scene='heros'][data-fx~='rocher'] .hm-throw__y { animation: hm-throw-y 4.4s both; }
+@keyframes hm-throw-y {
+  0%, 28% { transform: translateY(0); animation-timing-function: cubic-bezier(0.3, 0.6, 0.5, 1); }
+  35% { transform: translateY(-14px); animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.6); }
+  50%, 100% { transform: translateY(154px); }
+}
+[data-scene='heros'][data-fx~='rocher'] .hm-throw__r { animation: hm-throw-r 4.4s linear both; }
+@keyframes hm-throw-r { 0%, 28% { transform: rotate(0deg); } 50%, 100% { transform: rotate(320deg); } }
+[data-scene='heros'][data-fx~='rocher'] .hm-splash { animation: hm-splash 4.4s both; }
+@keyframes hm-splash {
+  0%, 49% { scale: 0 0; opacity: 1; }
+  53% { scale: 1.1 1.15; opacity: 1; animation-timing-function: ease-in; }
+  62% { scale: 1 0.9; opacity: 1; }
+  72% { scale: 0.9 0.2; opacity: 0.6; }
+  76%, 100% { scale: 0.9 0; opacity: 0; }
+}
+[data-scene='heros'][data-fx~='rocher'] .hm-splash__ring { animation: hm-splash-wide 4.4s ease-out both; }
+@keyframes hm-splash-wide { 0%, 50% { opacity: 0; transform: scale(0.5); } 54% { opacity: 1; } 80%, 100% { opacity: 0; transform: scale(2.4, 1.8); } }
+/* Les rameurs accélèrent : la trière file en avant puis revient à sa place */
+[data-scene='heros'][data-fx~='rocher'] .hm-boat { animation: hm-surge 4.4s both; }
+@keyframes hm-surge {
+  0%, 50% { transform: translateX(0); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  72% { transform: translateX(18px); animation-timing-function: ease-in-out; }
+  100% { transform: translateX(0); }
+}
+[data-scene='heros'][data-fx~='rocher'] .hm-oar { animation: hm-row-fast 4.4s both; }
+[data-scene='heros'][data-fx~='rocher'] .hm-rowers { animation: hm-lean-fast 4.4s both; }
+@keyframes hm-row-fast {
+  0%, 50% { transform: rotate(-16deg); }
+  54% { transform: rotate(22deg); } 58% { transform: rotate(-18deg); } 62% { transform: rotate(22deg); } 66% { transform: rotate(-18deg); }
+  70% { transform: rotate(22deg); } 74% { transform: rotate(-18deg); } 78% { transform: rotate(22deg); } 82% { transform: rotate(-18deg); }
+  88% { transform: rotate(20deg); } 100% { transform: rotate(-16deg); }
+}
+@keyframes hm-lean-fast {
+  0%, 50% { transform: translateX(1.4px); }
+  54% { transform: translateX(-1.8px); } 58% { transform: translateX(1.8px); } 62% { transform: translateX(-1.8px); } 66% { transform: translateX(1.8px); }
+  70% { transform: translateX(-1.8px); } 74% { transform: translateX(1.8px); } 78% { transform: translateX(-1.8px); } 82% { transform: translateX(1.8px); }
+  88% { transform: translateX(-1.4px); } 100% { transform: translateX(1.4px); }
+}
+
+/* =====================================================================
+   Au toucher (Pégase) : il se cabre, puis fait un grand tour du ciel (vers la droite, demi-tour,
+   retour par en dessous) en laissant une traînée d'étoiles, et reprend sa place.
+   ===================================================================== */
+[data-scene='heros'][data-fx~='envol'] .hm-peg__fly { animation: hm-loop 3.8s both; }
+@keyframes hm-loop {
+  0% { transform: translate(0, 0); animation-timing-function: ease-out; }
+  10% { transform: translate(-4px, -4px); }
+  16% { transform: translate(6px, -8px); animation-timing-function: ease-in; }
+  30% { transform: translate(56px, -14px); }
+  42% { transform: translate(100px, -2px); }
+  49% { transform: translate(112px, 16px); }
+  56% { transform: translate(92px, 34px); }
+  67% { transform: translate(40px, 42px); }
+  77% { transform: translate(-12px, 38px); }
+  85% { transform: translate(-40px, 22px); }
+  92% { transform: translate(-20px, 6px); animation-timing-function: ease-out; }
+  100% { transform: translate(0, 0); }
+}
+[data-scene='heros'][data-fx~='envol'] .hm-peg__turn { animation: hm-turn 3.8s both; }
+@keyframes hm-turn { 0%, 46% { transform: scaleX(1); } 52%, 81% { transform: scaleX(-1); } 87%, 100% { transform: scaleX(1); } }
+[data-scene='heros'][data-fx~='envol'] .hm-peg__svg { animation: hm-rear 3.8s both; }
+@keyframes hm-rear {
+  0% { transform: rotate(0deg); animation-timing-function: ease-out; }
+  10%, 14% { transform: rotate(-30deg) translateY(-2px); }
+  20% { transform: rotate(-12deg); }
+  34% { transform: rotate(-4deg); }
+  46% { transform: rotate(22deg); }
+  56% { transform: rotate(-14deg); }
+  70% { transform: rotate(-4deg); }
+  80% { transform: rotate(-14deg); }
+  86% { transform: rotate(14deg); }
+  93% { transform: rotate(-8deg); }
+  100% { transform: rotate(0deg); }
+}
+[data-scene='heros'][data-fx~='envol'] .hm-wing { animation-duration: 0.32s; }
+[data-scene='heros'][data-fx~='envol'] .hm-star { animation: hm-star 1s ease-out var(--t) both; }
+@keyframes hm-star {
+  0% { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  20% { opacity: 1; transform: scale(1.3) rotate(30deg); }
+  60% { opacity: 1; transform: scale(1) rotate(60deg); }
+  100% { opacity: 0; transform: scale(0.5) translateY(6px) rotate(90deg); }
+}
+
+/* =====================================================================
+   Changement d'onglet : une vague à la grecque déferle sur la page, de gauche à droite.
+   Sa crête est une colonne de volutes (le motif des vases), son corps bleu porte des rangées de
+   vagues, et une bande de grecques la borde à l'arrière. Un seul mouvement, du bord gauche au bord
+   droit ; la page change derrière elle à mi-course, quand le bleu couvre tout l'écran. Des
+   gouttes d'écume filent devant la crête.
+   ===================================================================== */
+html[data-el-nav='heros']::view-transition-old(root) { animation: hm-page-out 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+html[data-el-nav='heros']::view-transition-new(root) { animation: hm-page-in 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes hm-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes hm-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='heros'] i { top: -2%; height: 104%; }
+/* 1 : la bande de grecques, à l'arrière de la vague */
+.el-front[data-scene='heros'] i:nth-child(1) {
+  left: -170vw; width: 10vw;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M15.5 0V15.5H4.5V4.5H12V12H8V8M15.5 15.5V20' fill='none' stroke='%239A3412' stroke-width='1.8'/%3E%3C/svg%3E") center 0 / 100% auto repeat-y,
+    linear-gradient(90deg, #2A1910 0 6%, #F6E6D2 6% 94%, #2A1910 94%);
+}
+/* 2 : le corps de la vague, bleu Égée, avec ses rangées de volutes */
+.el-front[data-scene='heros'] i:nth-child(2) {
+  left: -160.5vw; width: 149vw;
+  background: #1F4E79 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='40' viewBox='0 0 56 40'%3E%3Cg fill='none' stroke='%235D93BF' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M0 18H56M8 18C18 18 22 4 32 4C41 4 44 13 37.5 16C33 18 30 13.5 34 12'/%3E%3Cpath d='M0 38H56M-20 38C-10 38 -6 24 4 24C13 24 16 33 9.5 36C5 38 2 33.5 6 32M36 38C46 38 50 24 60 24C69 24 72 33 65.5 36C61 38 58 33.5 62 32'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 84px 60px repeat;
+}
+/* 3 : la crête, une colonne de grandes volutes écumantes */
+.el-front[data-scene='heros'] i:nth-child(3) {
+  left: -12vw; width: 12vw;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='80' viewBox='0 0 60 80'%3E%3Cpath d='M0 0H14C38 0 58 14 58 34C58 50 44 58 34 54C26 51 26 41 33 39C38 38 41 43 37 46C30 52 22 64 16 80H0Z' fill='%231F4E79'/%3E%3Cpath d='M14 0C38 0 58 14 58 34C58 50 44 58 34 54C26 51 26 41 33 39C38 38 41 43 37 46' fill='none' stroke='%23FFF3E0' stroke-width='3.4' stroke-linecap='round'/%3E%3Cpath d='M10 8C30 10 46 20 48 34' fill='none' stroke='%235D93BF' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E") 0 0 / 100% auto repeat-y;
+}
+.el-front[data-scene='heros'][data-on] i:nth-child(-n+3) { animation: hm-wave 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes hm-wave { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(272vw); } }
+/* 4 à 28 : gouttes d'écume portées par la crête */
+.el-front[data-scene='heros'] i:nth-child(n+4) {
+  left: calc(-10vw + var(--r1) * 8vw); top: calc(var(--r2) * 100%); height: auto;
+  width: calc(4px + var(--r3) * 8px); aspect-ratio: 1; border-radius: 50%; background: #FFF3E0;
+}
+.el-front[data-scene='heros'][data-on] i:nth-child(n+4) { animation: hm-wave 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
