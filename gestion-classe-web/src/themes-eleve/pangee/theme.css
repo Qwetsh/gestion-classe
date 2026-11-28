@@ -1,0 +1,324 @@
+/* Thème « Pangée » (espace élève) : un vieil atlas, papier jauni, encre et bistre. */
+.el[data-theme='pangee'] {
+  --el-bg: #EFE3C8; --el-surface: #FBF4E2; --el-line: #DCC9A2; --el-line-soft: #E8DABB; --el-line-strong: #C4AA7A;
+  --el-text: #2E2416; --el-muted: #5B4630; --el-dim: #6B5540;
+  --el-indigo: #7A4A1E; --el-indigo-ink: #5E3814; --el-indigo-soft: #EBD9BC;
+  --el-pos: #3F6B2A; --el-pos-ink: #2F5320; --el-pos-soft: #E1EBCF;
+  --el-warn: #8A5A00; --el-warn-ink: #6E4700; --el-warn-soft: #F6E3BC;
+  --el-neg: #A3301E; --el-neg-soft: #F6D9CF;
+  --el-track: #E0D0AE; --el-on-accent: #FFFFFF; --el-radio: #A58D68;
+  --el-radius: 6px; --el-radius-sm: 6px;
+  --el-font-display: 'IM Fell English SC', 'Georgia', serif;
+}
+/* Les grands nombres gardent la police du texte : dans IM Fell English SC, le 1 ressemble à un I. */
+.el[data-theme='pangee'] .el-big,
+.el[data-theme='pangee'] .el-mid { font-family: inherit; }
+.el[data-theme='pangee'] .el-main { padding-top: 242px; }
+.el[data-theme='pangee'] .el-h1 { font-weight: 400; letter-spacing: 0.01em; }
+.el[data-theme='pangee'] .el-btn--primary { box-shadow: 0 3px 0 #4A2A0E; }
+
+/* ---- Horloge de la dérive ----
+   `--pg-t` avance de 0 (Pangée) à 1 (aujourd'hui) et revient ; `--pg-g` (au toucher de la carte)
+   ramène tout dans la Pangée. Chaque continent en tire `--w` : 1 = Pangée, 0 = aujourd'hui. */
+@property --pg-t { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --pg-g { syntax: '<number>'; inherits: true; initial-value: 0; }
+
+/* ---- La scène ---- */
+[data-scene='pangee'] .pg-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='pangee'] .pg-set svg { position: absolute; }
+
+/* Papier jauni, méridiens et parallèles qui s'effacent vers le bas */
+[data-scene='pangee'] .pg-paper { height: 250px; background: linear-gradient(180deg, #E7D7B4 0%, #ECDEBF 60%, #EFE3C8 100%); }
+[data-scene='pangee'] .pg-paper::before {
+  content: ''; position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(122, 74, 30, 0) 0 47px, rgba(122, 74, 30, 0.12) 47px 48px),
+    repeating-linear-gradient(180deg, rgba(122, 74, 30, 0) 0 47px, rgba(122, 74, 30, 0.12) 47px 48px);
+  background-position: center 10px;
+  -webkit-mask-image: linear-gradient(#000 55%, rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(#000 55%, rgba(0, 0, 0, 0));
+}
+
+/* En-tête : Éole et la banderole */
+[data-scene='pangee'] .pg-head { height: 60px; }
+[data-scene='pangee'] .pg-aeolus { left: 48px; top: 0; }
+[data-scene='pangee'] .pg-banner { left: 343px; top: 10px; animation: pg-banner 5s ease-in-out infinite alternate; }
+@keyframes pg-banner { from { transform: translateY(0) rotate(-1.5deg); } to { transform: translateY(2px) rotate(1.5deg); } }
+[data-scene='pangee'] .pg-banner__text { font-family: var(--el-font-display); font-size: 10.5px; fill: #2E2416; text-anchor: middle; }
+[data-scene='pangee'] .pg-aeolus__face, [data-scene='pangee'] .pg-aeolus__cheek { transform-box: fill-box; }
+[data-scene='pangee'] .pg-aeolus__face { transform-origin: 30% 80%; animation: pg-aeolus 18s ease-in-out infinite; animation-delay: -6s; }
+[data-scene='pangee'] .pg-aeolus__cheek { transform-origin: 50% 50%; animation: pg-cheek 18s ease-in-out infinite; animation-delay: -6s; }
+@keyframes pg-aeolus { 0%, 74% { transform: rotate(0deg); } 80% { transform: rotate(-6deg); } 86% { transform: rotate(4deg); } 94%, 100% { transform: rotate(0deg); } }
+@keyframes pg-cheek { 0%, 74% { transform: scale(1); } 80%, 88% { transform: scale(1.35); } 94%, 100% { transform: scale(1); } }
+[data-scene='pangee'] .pg-gust { fill: none; stroke: #2E2416; stroke-width: 1.4; stroke-linecap: round; opacity: 0; animation: pg-gust 18s ease-out infinite; animation-delay: -6s; }
+@keyframes pg-gust {
+  0%, 80% { opacity: 0; transform: translate(-4px, -2px); }
+  83% { opacity: 0.9; transform: translate(6px, 3px); }
+  95%, 100% { opacity: 0; transform: translate(74px, 40px); }
+}
+
+/* Le planisphère et son cartouche */
+[data-scene='pangee'] .pg-plan { height: 215px; }
+[data-scene='pangee'] .pg-map { left: 82.5px; top: 38px; }
+[data-scene='pangee'] .pg-cart { left: 140px; top: 2px; }
+[data-scene='pangee'] .pg-clock { position: absolute; inset: 0; animation: pg-time 36s infinite; }
+[data-scene='pangee'] .pg-gather { position: absolute; inset: 0; }
+@keyframes pg-time {
+  0%, 12% { --pg-t: 0; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  46%, 62% { --pg-t: 1; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  96%, 100% { --pg-t: 0; }
+}
+[data-scene='pangee'] .pg-ocean { fill: #C4D3C2; }
+[data-scene='pangee'] .pg-waves { fill: none; stroke: #8EAA9F; stroke-width: 0.9; stroke-linecap: round; animation: pg-waves 7s ease-in-out infinite alternate; }
+@keyframes pg-waves { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+[data-scene='pangee'] .pg-grid path { fill: none; stroke: #7A4A1E; stroke-width: 0.45; opacity: 0.3; }
+[data-scene='pangee'] .pg-grid .pg-grid__main { stroke-width: 0.7; opacity: 0.45; }
+[data-scene='pangee'] .pg-grid .pg-grid__tropic { stroke-dasharray: 2 2; opacity: 0.4; }
+
+/* Les continents : de leur place dans la Pangée (--w = 1) à celle d'aujourd'hui (--w = 0) */
+[data-scene='pangee'] .pg-land {
+  --w: calc(1 - var(--pg-t) * (1 - var(--pg-g)));
+  transform-box: view-box;
+  transform:
+    translate(calc(var(--dx) * var(--w) * 1px), calc(var(--dy) * var(--w) * 1px))
+    rotate(calc(var(--a) * var(--w) * 1deg))
+    scale(calc(1 + (var(--sx) - 1) * var(--w)), calc(1 + (var(--sy) - 1) * var(--w)));
+}
+[data-scene='pangee'] .pg-coast { fill: none; stroke: #9CB6AC; stroke-width: 7; stroke-linejoin: round; }
+[data-scene='pangee'] .pg-ground { fill: #B27E48; stroke: rgba(90, 58, 26, 0.75); stroke-width: 0.7; stroke-linejoin: round; }
+/* Les fossiles restent droits et à leur taille, même sur un continent qui tourne ou s'étire */
+[data-scene='pangee'] .pg-upright {
+  transform-box: fill-box; transform-origin: center;
+  transform: scale(calc(1 / (1 + (var(--sx) - 1) * var(--w))), calc(1 / (1 + (var(--sy) - 1) * var(--w)))) rotate(calc(var(--a) * var(--w) * -1deg));
+}
+[data-scene='pangee'] .pg-glosso path { fill: #3F5E24; }
+[data-scene='pangee'] .pg-glosso .pg-glosso__rib { fill: none; stroke: #E9E0C0; stroke-width: 0.5; }
+[data-scene='pangee'] .pg-meso path { fill: #FBF2DA; }
+[data-scene='pangee'] .pg-meso path + path { fill: none; stroke: #FBF2DA; stroke-width: 0.7; stroke-linecap: round; }
+
+/* La dorsale : elle n'existe que quand l'Atlantique est ouvert ; sa lave luit */
+[data-scene='pangee'] .pg-ridge { opacity: clamp(0, (0.8 - var(--w)) * 2.5, 1); }
+[data-scene='pangee'] .pg-ridge__glow { fill: none; stroke: #E58A4A; stroke-width: 4.5; stroke-linecap: round; opacity: 0.4; }
+[data-scene='pangee'] .pg-ridge__line { fill: none; stroke: #A3391F; stroke-width: 1.3; stroke-linecap: round; stroke-dasharray: 5 1.6; }
+[data-scene='pangee'] .pg-lava { fill: #E8692F; transform-box: fill-box; transform-origin: center; animation: pg-lava 2.2s ease-in-out infinite alternate; animation-delay: calc(var(--n) * -0.55s); }
+@keyframes pg-lava { from { transform: scale(0.35); opacity: 0.3; } to { transform: scale(1); opacity: 0.95; } }
+
+/* Flèches de dérive, le temps du voyage, dans un sens puis dans l'autre */
+[data-scene='pangee'] .pg-arrow {
+  fill: none; stroke: #7E2416; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+  transform-box: fill-box; transform-origin: center; opacity: 0;
+  animation: pg-arrow 36s linear infinite;
+}
+@keyframes pg-arrow {
+  0%, 13% { opacity: 0; transform: rotate(var(--ang)); }
+  17%, 41% { opacity: 0.9; transform: rotate(var(--ang)); }
+  45%, 63% { opacity: 0; transform: rotate(var(--ang)); }
+  63.1% { opacity: 0; transform: rotate(calc(var(--ang) + 180deg)); }
+  67%, 91% { opacity: 0.9; transform: rotate(calc(var(--ang) + 180deg)); }
+  95%, 100% { opacity: 0; transform: rotate(calc(var(--ang) + 180deg)); }
+}
+
+/* Le voilier croise dans l'océan, fait demi-tour, tangue */
+[data-scene='pangee'] .pg-ship { animation: pg-sail 34s ease-in-out infinite; }
+@keyframes pg-sail {
+  0% { transform: translate(24px, 122px); }
+  46%, 52% { transform: translate(84px, 116px); }
+  96%, 100% { transform: translate(24px, 122px); }
+}
+[data-scene='pangee'] .pg-ship__turn, [data-scene='pangee'] .pg-ship__sway { transform-box: fill-box; transform-origin: 50% 100%; }
+[data-scene='pangee'] .pg-ship__turn { animation: pg-turn 34s ease-in-out infinite; }
+@keyframes pg-turn { 0%, 46% { transform: scaleX(1); } 50%, 96% { transform: scaleX(-1); } 100% { transform: scaleX(1); } }
+[data-scene='pangee'] .pg-ship__sway { animation: pg-sway 3.2s ease-in-out infinite alternate; }
+@keyframes pg-sway { from { transform: rotate(-4deg) translateY(0); } to { transform: rotate(3deg) translateY(1.5px); } }
+
+/* Le cartouche : l'époque en toutes lettres, et la perle sur la frise du temps */
+[data-scene='pangee'] .pg-cart {
+  --w: calc(1 - var(--pg-t) * (1 - var(--pg-g)));
+  --l1: clamp(0, (var(--w) - 0.9) * 20, 1);
+  --l3: clamp(0, (0.1 - var(--w)) * 20, 1);
+  --l2: clamp(0, min(var(--w) - 0.12, 0.88 - var(--w)) * 20, 1);
+}
+[data-scene='pangee'] .pg-age { font-family: var(--el-font-display); font-size: 13.5px; fill: #2E2416; text-anchor: middle; }
+[data-scene='pangee'] .pg-age--past { opacity: var(--l1); }
+[data-scene='pangee'] .pg-age--now { opacity: var(--l3); }
+[data-scene='pangee'] .pg-age--drift { opacity: var(--l2); fill: #7A4A1E; }
+[data-scene='pangee'] .pg-tick { font-family: var(--el-font-display); font-size: 8px; fill: #7A4A1E; text-anchor: end; }
+[data-scene='pangee'] .pg-tick--end { text-anchor: start; }
+[data-scene='pangee'] .pg-bead { fill: #A3391F; stroke: #2E2416; stroke-width: 0.8; transform: translateX(calc((1 - var(--w)) * 120px)); }
+
+/* Le bas de la planche : liseré, puis papier uni qui recouvre la carte quand on fait défiler */
+[data-scene='pangee'] .pg-front { height: 30px; }
+[data-scene='pangee'] .pg-front::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 4px; height: 6px;
+  background:
+    linear-gradient(#7A4A1E, #7A4A1E) 0 0 / 100% 1.4px no-repeat,
+    linear-gradient(#7A4A1E, #7A4A1E) 0 4.5px / 100% 0.7px no-repeat;
+  opacity: 0.55;
+}
+[data-scene='pangee'] .pg-front::after { content: ''; position: absolute; left: 0; right: 0; top: 10px; height: calc(100vh + 900px); background: #EFE3C8; }
+[data-scene='pangee'] .pg-front .pg-set { z-index: 1; }
+[data-scene='pangee'] .pg-loupe { left: 64px; top: -52px; }
+[data-scene='pangee'] .pg-ink { left: 372px; top: -72px; }
+[data-scene='pangee'] .pg-blot { left: 270px; top: -14px; opacity: 0; }
+[data-scene='pangee'] .pg-loupe__glass { fill: rgba(214, 232, 230, 0.32); }
+[data-scene='pangee'] .pg-loupe__shine { fill: none; stroke: #FFFFFF; stroke-width: 1.6; stroke-linecap: round; opacity: 0.8; }
+[data-scene='pangee'] .pg-loupe__view { opacity: 0; }
+[data-scene='pangee'] .pg-quill, [data-scene='pangee'] .pg-quill__sway { transform-box: fill-box; transform-origin: 0% 100%; }
+[data-scene='pangee'] .pg-quill__sway { animation: pg-quill 4.5s ease-in-out infinite alternate; }
+@keyframes pg-quill { from { transform: rotate(-2deg); } to { transform: rotate(3deg); } }
+[data-scene='pangee'] .pg-drop { opacity: 0; }
+[data-scene='pangee'] .pg-blot__land { fill: #2E2416; }
+
+/* ---- Au toucher (le planisphère) : la Pangée d'un coup ----
+   Les continents filent se rassembler, se cognent (la carte tremble), restent un instant
+   soudés, puis repartent à leur place. Le cartouche revient à « Il y a 250 millions d'années ». */
+[data-scene='pangee'][data-fx~='pangee'] .pg-gather { animation: pg-gather 3.8s both; }
+@keyframes pg-gather {
+  0% { --pg-g: 0; animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.6); }
+  22% { --pg-g: 1; }
+  60% { --pg-g: 1; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  100% { --pg-g: 0; }
+}
+[data-scene='pangee'][data-fx~='pangee'] .pg-plate { animation: pg-bump 3.8s linear both; }
+@keyframes pg-bump {
+  0%, 21% { transform: translate(0, 0); }
+  23% { transform: translate(2px, -1px); }
+  25% { transform: translate(-2px, 1px); }
+  27% { transform: translate(1.4px, 0); }
+  29% { transform: translate(-0.8px, 0); }
+  31%, 100% { transform: translate(0, 0); }
+}
+
+/* ---- Au toucher (la loupe) : elle survole la carte ; dedans, un Mesosaurus quitte la côte,
+   arrive au grand large, hésite et fait demi-tour : il ne pouvait pas traverser un océan. ---- */
+[data-scene='pangee'] .pg-loupe { transform-origin: 50% 50%; }
+[data-scene='pangee'][data-fx~='loupe'] .pg-loupe { animation: pg-loupe 5.6s both; }
+@keyframes pg-loupe {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); animation-timing-function: cubic-bezier(0.3, 0, 0.3, 1); }
+  14% { transform: translate(74px, -94px) scale(1.6) rotate(-10deg); animation-timing-function: ease-in-out; }
+  50% { transform: translate(80px, -98px) scale(1.6) rotate(-6deg); animation-timing-function: ease-in-out; }
+  86% { transform: translate(74px, -94px) scale(1.6) rotate(-10deg); animation-timing-function: cubic-bezier(0.5, 0, 0.6, 1); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+[data-scene='pangee'][data-fx~='loupe'] .pg-loupe__view { animation: pg-view 5.6s both; }
+@keyframes pg-view { 0%, 13% { opacity: 0; } 18%, 82% { opacity: 1; } 87%, 100% { opacity: 0; } }
+[data-scene='pangee'] .pg-swim { transform: translateX(-6px); }
+[data-scene='pangee'][data-fx~='loupe'] .pg-swim { animation: pg-swim 5.6s both; }
+@keyframes pg-swim {
+  0%, 18% { transform: translate(-7px, 1px); animation-timing-function: ease-in-out; }
+  40% { transform: translate(3px, -1px); }
+  44% { transform: translate(1.5px, -1px); }
+  48% { transform: translate(3px, -1px); animation-timing-function: ease-in-out; }
+  76% { transform: translate(-7px, 2px); }
+  100% { transform: translate(-7px, 1px); }
+}
+[data-scene='pangee'] .pg-swim__turn { transform-box: fill-box; transform-origin: 50% 50%; }
+[data-scene='pangee'][data-fx~='loupe'] .pg-swim__turn { animation: pg-swim-turn 5.6s both; }
+@keyframes pg-swim-turn { 0%, 50% { transform: scaleX(1); } 55%, 78% { transform: scaleX(-1); } 83%, 100% { transform: scaleX(1); } }
+
+/* ---- Au toucher (l'encrier) : la plume sort, une goutte tombe, la tache prend la forme de la
+   Pangée, puis se fend en continents qui s'écartent et s'effacent. ---- */
+[data-scene='pangee'][data-fx~='encre'] .pg-quill { animation: pg-quill-out 5.2s both; }
+@keyframes pg-quill-out {
+  0% { transform: translate(0, 0) rotate(0deg); animation-timing-function: ease-out; }
+  12% { transform: translate(0, -24px) rotate(0deg); animation-timing-function: ease-in-out; }
+  26% { transform: translate(-86px, -12px) rotate(-14deg); animation-timing-function: ease-in; }
+  30% { transform: translate(-86px, -5px) rotate(-14deg); animation-timing-function: ease-out; }
+  36% { transform: translate(-86px, -14px) rotate(-14deg); animation-timing-function: ease-in-out; }
+  54% { transform: translate(0, -24px) rotate(0deg); animation-timing-function: ease-in; }
+  64%, 100% { transform: translate(0, 0) rotate(0deg); }
+}
+[data-scene='pangee'][data-fx~='encre'] .pg-drop { animation: pg-drop 5.2s both; }
+@keyframes pg-drop {
+  0%, 29% { opacity: 0; transform: translate(-56px, 58px); }
+  30% { opacity: 1; transform: translate(-56px, 60px); animation-timing-function: ease-in; }
+  35% { opacity: 1; transform: translate(-59px, 80px); }
+  36%, 100% { opacity: 0; transform: translate(-59px, 80px); }
+}
+[data-scene='pangee'][data-fx~='encre'] .pg-blot { animation: pg-blot 5.2s both; }
+@keyframes pg-blot {
+  0%, 35% { opacity: 0; transform: scale(0.2); --pg-t: 0; animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1); }
+  36% { opacity: 0.9; }
+  44% { opacity: 0.9; transform: scale(1); --pg-t: 0; animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1); }
+  80% { opacity: 0.9; transform: scale(1); --pg-t: 1; }
+  96%, 100% { opacity: 0; transform: scale(1); --pg-t: 1; }
+}
+
+/* ---- Changement d'onglet : la page se fend ----
+   Une fissure en dents de scie s'ouvre au milieu de l'écran, d'un seul mouvement : les deux
+   moitiés de l'ancienne page, bordées de leur croûte brune, s'écartent comme deux plaques, et la
+   nouvelle page apparaît dans la fente, où une dorsale rougeoie et où la lave remonte. */
+html[data-el-nav='pangee']::view-transition-old(root) { animation: none; }
+html[data-el-nav='pangee']::view-transition-new(root) { animation: pg-rift 1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+@keyframes pg-rift {
+  from {
+    clip-path: polygon(
+      calc(50% + 0px) -2%, calc(50% + 7px) 9%, calc(50% - 5px) 18%, calc(50% + 9px) 27%, calc(50% - 7px) 36%, calc(50% + 4px) 45%,
+      calc(50% - 9px) 54%, calc(50% + 6px) 63%, calc(50% - 4px) 72%, calc(50% + 8px) 81%, calc(50% - 6px) 90%, calc(50% + 0px) 102%,
+      calc(50% + 0px) 102%, calc(50% - 6px) 90%, calc(50% + 8px) 81%, calc(50% - 4px) 72%, calc(50% + 6px) 63%, calc(50% - 9px) 54%,
+      calc(50% + 4px) 45%, calc(50% - 7px) 36%, calc(50% + 9px) 27%, calc(50% - 5px) 18%, calc(50% + 7px) 9%, calc(50% + 0px) -2%
+    );
+  }
+  to {
+    clip-path: polygon(
+      calc(50% - 64vw) -2%, calc(50% - 64vw + 7px) 9%, calc(50% - 64vw - 5px) 18%, calc(50% - 64vw + 9px) 27%, calc(50% - 64vw - 7px) 36%, calc(50% - 64vw + 4px) 45%,
+      calc(50% - 64vw - 9px) 54%, calc(50% - 64vw + 6px) 63%, calc(50% - 64vw - 4px) 72%, calc(50% - 64vw + 8px) 81%, calc(50% - 64vw - 6px) 90%, calc(50% - 64vw) 102%,
+      calc(50% + 64vw) 102%, calc(50% + 64vw - 6px) 90%, calc(50% + 64vw + 8px) 81%, calc(50% + 64vw - 4px) 72%, calc(50% + 64vw + 6px) 63%, calc(50% + 64vw - 9px) 54%,
+      calc(50% + 64vw + 4px) 45%, calc(50% + 64vw - 7px) 36%, calc(50% + 64vw + 9px) 27%, calc(50% + 64vw - 5px) 18%, calc(50% + 64vw + 7px) 9%, calc(50% + 64vw) -2%
+    );
+  }
+}
+/* Les deux bords de plaque : une croûte brune qui suit la fissure et s'écarte avec elle */
+.el-front[data-scene='pangee'] i:nth-child(1),
+.el-front[data-scene='pangee'] i:nth-child(2) { top: -2%; height: 104%; width: 44px; left: calc(50% - 22px); background: #6B4524; }
+.el-front[data-scene='pangee'] i:nth-child(1) {
+  clip-path: polygon(
+    calc(22px - 14px) 0%, calc(29px - 14px) 10.6%, calc(17px - 14px) 19.2%, calc(31px - 14px) 27.9%, calc(15px - 14px) 36.5%, calc(26px - 14px) 45.2%,
+    calc(13px - 14px) 53.8%, calc(28px - 14px) 62.5%, calc(18px - 14px) 71.2%, calc(30px - 14px) 79.8%, calc(16px - 14px) 88.5%, calc(22px - 14px) 100%,
+    22px 100%, 16px 88.5%, 30px 79.8%, 18px 71.2%, 28px 62.5%, 13px 53.8%, 26px 45.2%, 15px 36.5%, 31px 27.9%, 17px 19.2%, 29px 10.6%, 22px 0%
+  );
+}
+.el-front[data-scene='pangee'] i:nth-child(2) {
+  clip-path: polygon(
+    22px 0%, 29px 10.6%, 17px 19.2%, 31px 27.9%, 15px 36.5%, 26px 45.2%, 13px 53.8%, 28px 62.5%, 18px 71.2%, 30px 79.8%, 16px 88.5%, 22px 100%,
+    calc(22px + 14px) 100%, calc(16px + 14px) 88.5%, calc(30px + 14px) 79.8%, calc(18px + 14px) 71.2%, calc(28px + 14px) 62.5%, calc(13px + 14px) 53.8%,
+    calc(26px + 14px) 45.2%, calc(15px + 14px) 36.5%, calc(31px + 14px) 27.9%, calc(17px + 14px) 19.2%, calc(29px + 14px) 10.6%, calc(22px + 14px) 0%
+  );
+}
+.el-front[data-scene='pangee'][data-on] i:nth-child(1) { animation: pg-plate-left 1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+.el-front[data-scene='pangee'][data-on] i:nth-child(2) { animation: pg-plate-right 1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+@keyframes pg-plate-left { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(-64vw); } }
+@keyframes pg-plate-right { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(64vw); } }
+/* La dorsale au milieu de la fente : un trait rouge qui luit, puis s'éteint */
+.el-front[data-scene='pangee'] i:nth-child(3),
+.el-front[data-scene='pangee'] i:nth-child(4) { top: -2%; height: 104%; width: 44px; left: calc(50% - 22px); }
+.el-front[data-scene='pangee'] i:nth-child(3) {
+  background: rgba(232, 120, 60, 0.45);
+  clip-path: polygon(
+    16px 0%, 23px 10.6%, 11px 19.2%, 25px 27.9%, 9px 36.5%, 20px 45.2%, 7px 53.8%, 22px 62.5%, 12px 71.2%, 24px 79.8%, 10px 88.5%, 16px 100%,
+    28px 100%, 22px 88.5%, 36px 79.8%, 24px 71.2%, 34px 62.5%, 19px 53.8%, 32px 45.2%, 21px 36.5%, 37px 27.9%, 23px 19.2%, 35px 10.6%, 28px 0%
+  );
+}
+.el-front[data-scene='pangee'] i:nth-child(4) {
+  background: #B3361C;
+  clip-path: polygon(
+    20.5px 0%, 27.5px 10.6%, 15.5px 19.2%, 29.5px 27.9%, 13.5px 36.5%, 24.5px 45.2%, 11.5px 53.8%, 26.5px 62.5%, 16.5px 71.2%, 28.5px 79.8%, 14.5px 88.5%, 20.5px 100%,
+    23.5px 100%, 17.5px 88.5%, 31.5px 79.8%, 19.5px 71.2%, 29.5px 62.5%, 14.5px 53.8%, 27.5px 45.2%, 16.5px 36.5%, 32.5px 27.9%, 18.5px 19.2%, 30.5px 10.6%, 23.5px 0%
+  );
+}
+.el-front[data-scene='pangee'][data-on] i:nth-child(3),
+.el-front[data-scene='pangee'][data-on] i:nth-child(4) { animation: pg-ridge-glow 1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+@keyframes pg-ridge-glow { 0% { opacity: 0.6; } 12%, 55% { opacity: 1; } 100% { opacity: 0; } }
+/* La lave qui remonte dans la fente */
+.el-front[data-scene='pangee'] i:nth-child(n + 5):nth-child(-n + 18) {
+  left: calc(50% + (var(--r1) - 0.5) * 34px); top: calc(8% + var(--r2) * 88%);
+  width: calc(5px + var(--r3) * 6px); height: calc(5px + var(--r3) * 6px); border-radius: 50%;
+  background: #E8692F;
+}
+.el-front[data-scene='pangee'][data-on] i:nth-child(n + 5):nth-child(-n + 18) { animation: pg-magma 1s cubic-bezier(0.6, 0, 0.3, 1) both; }
+@keyframes pg-magma {
+  0% { opacity: 0; transform: translateY(20px) scale(0.4); }
+  25% { opacity: 1; }
+  60% { opacity: 0.9; transform: translateY(-30px) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(0.6); }
+}

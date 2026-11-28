@@ -1,0 +1,296 @@
+/* Thème « Bonbon » (espace élève) : rose dragée, framboise, menthe et lilas, tout en rondeur. */
+.el[data-theme='bonbon'] {
+  --el-bg: #FFF0F6; --el-surface: #FFFFFF; --el-line: #F6D3E1; --el-line-soft: #FBE3ED; --el-line-strong: #EBB4CB;
+  --el-text: #3B1E3F; --el-muted: #6A3F66; --el-dim: #7D4B74;
+  --el-indigo: #C2255C; --el-indigo-ink: #9C1A49; --el-indigo-soft: #FCDCE8;
+  --el-pos: #22764A; --el-pos-ink: #1A5E3A; --el-pos-soft: #DDF3E6;
+  --el-warn: #97570A; --el-warn-ink: #7A4505; --el-warn-soft: #FCEBC6;
+  --el-neg: #B3261E; --el-neg-soft: #FCDDD9;
+  --el-track: #F8D9E5; --el-on-accent: #FFFFFF; --el-radio: #C493AE;
+  --el-radius: 24px; --el-radius-sm: 18px;
+  --el-font-display: 'Grandstander', 'Nunito', 'Inter', sans-serif;
+  --el-card-shadow: 0 3px 0 #F6D3E1;
+}
+.el[data-theme='bonbon'] .el-main { padding-top: 244px; }
+.el[data-theme='bonbon'] .el-h1 { font-weight: 800; }
+/* Boutons « dragée » : tout ronds */
+.el[data-theme='bonbon'] .el-btn { border-radius: 999px; padding: 0 20px; }
+.el[data-theme='bonbon'] .el-btn--primary { box-shadow: 0 3px 0 #8E1742; }
+.el[data-theme='bonbon'] .el-seg { border-radius: 999px; }
+.el[data-theme='bonbon'] .el-seg button { border-radius: 999px; }
+
+/* ---- La scène ----
+   Les objets dessinés à un endroit précis sont posés dans `.bb-set`, un cadre de 480 px centré. */
+[data-scene='bonbon'] .bb-set { position: absolute; left: 50%; top: 0; z-index: 1; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='bonbon'] .bb-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* Mur tapissé : rayures roses et petites pastilles ; il descend sous tout le reste */
+[data-scene='bonbon'] .bb-wall {
+  height: calc(100vh + 900px); background-color: #FFF0F6;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='44' viewBox='0 0 40 44'%3E%3Ccircle cx='30' cy='12' r='2.2' fill='%23F9C9DB'/%3E%3Ccircle cx='30' cy='34' r='1.6' fill='%23D9C8F2'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, #FFE7F0 0 20px, #FFF2F7 20px 40px);
+}
+
+/* Lambrequin festonné en haut du mur : rayures, puis festons qui ondulent */
+[data-scene='bonbon'] .bb-valance { height: 46px; }
+[data-scene='bonbon'] .bb-valance__cloth {
+  position: absolute; left: 0; right: 0; top: 0; height: 30px;
+  background:
+    linear-gradient(#9C1A49 0 5px, #C2255C 5px 8px, rgba(156, 26, 73, 0.12) 8px 11px, rgba(156, 26, 73, 0) 11px),
+    repeating-linear-gradient(90deg, #F48FB1 0 24px, #FFFFFF 24px 48px);
+}
+[data-scene='bonbon'] .bb-valance__edge {
+  position: absolute; left: 0; right: 0; top: 29px; height: 16px; transform-origin: 50% 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='16' viewBox='0 0 48 16'%3E%3Cpath d='M0 0H48V4A12 12 0 0 1 24 4A12 12 0 0 1 0 4Z' fill='%23E9A3BF' fill-opacity='.45'/%3E%3Cpath d='M0 0H24V2A12 12 0 0 1 0 2Z' fill='%23F48FB1'/%3E%3Cpath d='M24 0H48V2A12 12 0 0 1 24 2Z' fill='%23FFFFFF'/%3E%3C/svg%3E") 0 0 / 48px 16px repeat-x;
+  animation: bb-flutter 3.4s ease-in-out infinite alternate;
+}
+@keyframes bb-flutter { from { transform: scaleY(1); } to { transform: scaleY(1.16); } }
+
+/* L'étagère lilas, sa planche et sa dentelle de papier */
+[data-scene='bonbon'] .bb-shelf { height: 120px; }
+[data-scene='bonbon'] .bb-shelf::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 99px; height: 10px;
+  background: linear-gradient(#E3D2F6 0 3px, #C3A6E8 3px 8px, #A98ADA 8px);
+}
+[data-scene='bonbon'] .bb-shelf::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 109px; height: 8px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='8' viewBox='0 0 14 8'%3E%3Cpath d='M0 0H14V1A7 7 0 0 1 0 1Z' fill='%23FFFFFF'/%3E%3Ccircle cx='7' cy='3' r='1.3' fill='%23F3D2E0'/%3E%3C/svg%3E") 0 0 / 14px 8px repeat-x;
+}
+
+/* Le comptoir : plateau menthe, puis la façade rose qui descend sous les plans de devant */
+[data-scene='bonbon'] .bb-counter { height: 190px; }
+[data-scene='bonbon'] .bb-counter::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 172px; height: 18px;
+  background: linear-gradient(#C6EFE1 0 2px, #A6E0CC 2px 14px, #78C6AC 14px);
+}
+[data-scene='bonbon'] .bb-counter::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 190px; height: calc(100vh + 900px);
+  background-color: #F9C4D6;
+  background-image: linear-gradient(rgba(156, 26, 73, 0.12), rgba(156, 26, 73, 0) 8px), repeating-linear-gradient(90deg, rgba(194, 37, 92, 0.1) 0 3px, rgba(194, 37, 92, 0) 3px 72px);
+}
+
+/* Le rebord de la vitrine, sa dentelle, puis le sol uni sous le contenu */
+[data-scene='bonbon'] .bb-front { height: 36px; }
+[data-scene='bonbon'] .bb-front::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 25px; height: 12px;
+  background: linear-gradient(#FCD3E2 0 3px, #F48FB1 3px 9px, #E06C97 9px);
+}
+[data-scene='bonbon'] .bb-front::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 37px; height: calc(100vh + 900px);
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='9' viewBox='0 0 16 9'%3E%3Cpath d='M0 0H16V1A8 8 0 0 1 0 1Z' fill='%23FFFFFF'/%3E%3Ccircle cx='8' cy='3.4' r='1.5' fill='%23FBD9E6'/%3E%3C/svg%3E") 0 0 / 16px 9px repeat-x,
+    linear-gradient(#FDE0EB, #FFF0F6 56px);
+}
+
+/* ---- Ce qui bouge tout seul ---- */
+/* La spirale de la sucette géante tourne */
+[data-scene='bonbon'] .bb-pop, [data-scene='bonbon'] .bb-pop__spin, [data-scene='bonbon'] .bb-pop__swirl,
+[data-scene='bonbon'] .bb-gum__crank, [data-scene='bonbon'] .bb-gum__balls, [data-scene='bonbon'] .bb-jar__lid,
+[data-scene='bonbon'] .bb-jar__body, [data-scene='bonbon'] .bb-hop, [data-scene='bonbon'] .bb-floss__cloud,
+[data-scene='bonbon'] .bb-floss__swirl, [data-scene='bonbon'] .bb-floss__puff, [data-scene='bonbon'] .bb-floss__wisp,
+[data-scene='bonbon'] .bb-scale__l, [data-scene='bonbon'] .bb-scale__r, [data-scene='bonbon'] .bb-scale__needle,
+[data-scene='bonbon'] .bb-bubble__ball, [data-scene='bonbon'] .bb-bubble__drops { transform-box: view-box; }
+[data-scene='bonbon'] .bb-pop__swirl { transform-origin: 210px 118px; animation: bb-swirl 9s linear infinite; }
+@keyframes bb-swirl { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* La barbe à papa gonfle doucement, ses volutes tournent, des fils de sucre s'envolent du bac */
+[data-scene='bonbon'] .bb-floss__cloud { transform-origin: 372px 150px; animation: bb-floss 3.4s ease-in-out infinite alternate; }
+@keyframes bb-floss { from { transform: scale(1); } to { transform: scale(1.06, 1.04); } }
+[data-scene='bonbon'] .bb-floss__swirl { transform-origin: 372px 128px; animation: bb-swirl 5s linear infinite; }
+[data-scene='bonbon'] .bb-floss__wisp { opacity: 0; animation: bb-wisp 2.6s ease-out infinite; }
+[data-scene='bonbon'] .bb-floss__wisp--b { animation-delay: -1.3s; }
+@keyframes bb-wisp { 0% { opacity: 0; transform: translateY(4px); } 30% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(-20px); } }
+[data-scene='bonbon'] .bb-floss__puff { fill: #F7A9C6; opacity: 0; }
+
+/* La balance : les plateaux montent et descendent, l'aiguille suit */
+[data-scene='bonbon'] .bb-scale__l { animation: bb-pan 5s ease-in-out infinite alternate; }
+[data-scene='bonbon'] .bb-scale__r { animation: bb-pan 5s ease-in-out infinite alternate-reverse; }
+@keyframes bb-pan { from { transform: translateY(-2.6px); } to { transform: translateY(2.6px); } }
+[data-scene='bonbon'] .bb-scale__needle { transform-origin: 278px 169px; animation: bb-needle 5s ease-in-out infinite alternate; }
+@keyframes bb-needle { from { transform: rotate(-26deg); } to { transform: rotate(26deg); } }
+
+/* Les guimauves respirent, la papillote frémit */
+[data-scene='bonbon'] .bb-mallow { transform-box: fill-box; transform-origin: 50% 100%; animation: bb-squish 2.4s ease-in-out infinite alternate; }
+[data-scene='bonbon'] .bb-mallow--b { animation-delay: -1.2s; }
+@keyframes bb-squish { from { transform: scale(1, 1); } to { transform: scale(1.08, 0.92); } }
+[data-scene='bonbon'] .bb-wrap__end { transform-box: fill-box; transform-origin: 100% 50%; animation: bb-twist 1.8s ease-in-out infinite alternate; }
+[data-scene='bonbon'] .bb-wrap__end--r { transform-origin: 0 50%; animation-delay: -0.9s; }
+@keyframes bb-twist { from { transform: scaleY(1); } to { transform: scaleY(0.8); } }
+
+/* De temps en temps : un bonbon sort du bocal couché et roule le long de l'étagère */
+[data-scene='bonbon'] .bb-roller { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; animation: bb-roll 15s linear -4s infinite; }
+@keyframes bb-roll {
+  0%, 56% { opacity: 0; translate: 0 0; rotate: 0deg; }
+  58% { opacity: 1; translate: 3px 0; rotate: 30deg; animation-timing-function: cubic-bezier(0.25, 0.5, 0.45, 1); }
+  76% { translate: 76px 0; rotate: 820deg; animation-timing-function: ease-in-out; }
+  80% { translate: 71px 0; rotate: 770deg; animation-timing-function: ease-in-out; }
+  83%, 92% { opacity: 1; translate: 73px 0; rotate: 790deg; }
+  97%, 100% { opacity: 0; translate: 73px 0; rotate: 790deg; }
+}
+
+/* De temps en temps : une bulle de chewing-gum gonfle sur le rebord, tremble et éclate */
+[data-scene='bonbon'] .bb-bubble__ball { transform-origin: 388px 22px; transform: scale(0); opacity: 0; animation: bb-bubble 19s ease-in-out -7s infinite; }
+@keyframes bb-bubble {
+  0%, 60% { opacity: 0; transform: scale(0); }
+  62% { opacity: 1; transform: scale(0.15); }
+  78% { transform: scale(0.85); }
+  82% { transform: scale(0.8, 0.86); }
+  86% { opacity: 1; transform: scale(1); }
+  87.2% { opacity: 0; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0); }
+}
+[data-scene='bonbon'] .bb-bubble__drops { fill: #F48FB1; transform-origin: 388px 10px; opacity: 0; animation: bb-drops 19s ease-out -7s infinite; }
+@keyframes bb-drops { 0%, 86.6% { opacity: 0; transform: scale(0.5); } 87.4% { opacity: 1; transform: scale(1); } 92% { opacity: 0; transform: scale(1.7) translateY(3px); } 100% { opacity: 0; transform: scale(0.5); } }
+
+/* Vermicelles de sucre qui tombent en tournant */
+[data-scene='bonbon'] .bb-sprinkles { position: absolute; inset: 0; }
+[data-scene='bonbon'] .bb-sprinkle {
+  position: absolute; left: var(--x); top: -14px; width: 3.4px; height: 10px; border-radius: 2px; opacity: 0.85;
+  animation: bb-fall var(--d) linear var(--delay) infinite;
+}
+@keyframes bb-fall {
+  from { transform: translate(0, 0) rotate(var(--rot)); }
+  50% { transform: translate(var(--dx), 56vh) rotate(calc(var(--rot) + 200deg)); }
+  to { transform: translate(calc(var(--dx) * 0.3), 112vh) rotate(calc(var(--rot) + 400deg)); }
+}
+
+/* ---- Au toucher (le distributeur) : la poignée tourne, une boule tombe, rebondit et roule ----
+   La boule sort par le bec, rebondit trois fois sur le comptoir, roule jusqu'à la boîte de la
+   sucette, s'y cogne, puis s'efface ; les boules du globe se tassent. */
+[data-scene='bonbon'] .bb-gum__crank { transform-origin: 98px 166.3px; }
+[data-scene='bonbon'] .bb-gum__balls { transform-origin: 98px 148px; }
+[data-scene='bonbon'] .bb-gum__out { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
+[data-scene='bonbon'][data-fx~='boule'] .bb-gum__crank { animation: bb-crank 3.6s both; }
+@keyframes bb-crank { 0% { transform: rotate(0deg); animation-timing-function: ease-in-out; } 16%, 100% { transform: rotate(360deg); } }
+[data-scene='bonbon'][data-fx~='boule'] .bb-gum__balls { animation: bb-settle 3.6s ease-in-out both; }
+@keyframes bb-settle { 0%, 4% { transform: none; } 9% { transform: translateY(-2.5px) rotate(-3deg); } 13% { transform: translateY(1.5px) rotate(2deg); } 17%, 100% { transform: none; } }
+[data-scene='bonbon'][data-fx~='boule'] .bb-gum__out { animation: bb-ball 3.6s both; }
+@keyframes bb-ball {
+  0%, 15% { opacity: 0; translate: 0 0; rotate: 0deg; }
+  16% { opacity: 1; translate: 2px 0; rotate: 10deg; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  25% { translate: 10px 14px; rotate: 70deg; animation-timing-function: cubic-bezier(0.2, 0.5, 0.5, 1); }
+  32% { translate: 15px 4px; rotate: 120deg; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  38% { translate: 19px 14px; rotate: 160deg; animation-timing-function: cubic-bezier(0.2, 0.5, 0.5, 1); }
+  42% { translate: 21.5px 9.5px; rotate: 185deg; animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  46% { translate: 24px 14px; rotate: 210deg; animation-timing-function: cubic-bezier(0.25, 0.5, 0.45, 1); }
+  70% { translate: 49px 14px; rotate: 500deg; animation-timing-function: ease-out; }
+  76% { translate: 44px 14px; rotate: 450deg; animation-timing-function: ease-in-out; }
+  80%, 88% { opacity: 1; translate: 46px 14px; rotate: 466deg; }
+  100% { opacity: 0; translate: 46px 14px; rotate: 466deg; }
+}
+
+/* ---- Au toucher (la bonbonnière) : le couvercle saute, une gerbe de bonbons jaillit et retombe ----
+   Chaque bonbon monte en s'écartant (`.bb-hop` glisse de côté, `.bb-hop__y` monte et retombe) en
+   tournant sur lui-même, puis replonge dans le bocal ; le couvercle flotte, puis se repose. */
+[data-scene='bonbon'] .bb-jar__lid { transform-origin: 155px 58px; }
+[data-scene='bonbon'] .bb-jar__body { transform-origin: 155px 100px; }
+[data-scene='bonbon'] .bb-hop__y { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; }
+[data-scene='bonbon'][data-fx~='gerbe'] .bb-jar__lid { animation: bb-lid 3.2s ease-in-out both; }
+@keyframes bb-lid {
+  0% { transform: none; }
+  6% { transform: translateY(1.5px); }
+  14% { transform: translate(-4px, -24px) rotate(-22deg); }
+  26% { transform: translate(-6px, -29px) rotate(-30deg); }
+  40% { transform: translate(-5px, -26px) rotate(-16deg); }
+  54% { transform: translate(-4px, -29px) rotate(-26deg); }
+  68% { transform: translate(-2px, -20px) rotate(-10deg); }
+  79% { transform: none; }
+  84% { transform: translateY(-4px) rotate(3deg); }
+  90%, 100% { transform: none; }
+}
+[data-scene='bonbon'][data-fx~='gerbe'] .bb-jar__body { animation: bb-jar 3.2s ease-in-out both; }
+@keyframes bb-jar {
+  0% { transform: none; }
+  6% { transform: scale(1.05, 0.94); }
+  14% { transform: scale(0.97, 1.04); }
+  22%, 76% { transform: none; }
+  81% { transform: scale(1.03, 0.97); }
+  88%, 100% { transform: none; }
+}
+[data-scene='bonbon'][data-fx~='gerbe'] .bb-hop { animation: bb-hop-x 1.7s ease-in-out var(--delay) both; }
+@keyframes bb-hop-x { 0%, 100% { translate: 0 0; } 50% { translate: var(--dx) 0; } }
+[data-scene='bonbon'][data-fx~='gerbe'] .bb-hop__y { animation: bb-hop-y 1.7s var(--delay) both; }
+@keyframes bb-hop-y {
+  0% { opacity: 0; translate: 0 0; rotate: 0deg; animation-timing-function: cubic-bezier(0.15, 0.6, 0.35, 1); }
+  8% { opacity: 1; }
+  50% { translate: 0 var(--h); rotate: calc(var(--spin) * 0.5); animation-timing-function: cubic-bezier(0.6, 0, 0.85, 0.4); }
+  90% { opacity: 1; translate: 0 2px; rotate: var(--spin); }
+  100% { opacity: 0; translate: 0 6px; rotate: var(--spin); }
+}
+
+/* ---- Au toucher (la sucette géante) : elle se tasse, bondit en tournoyant et retombe ---- */
+[data-scene='bonbon'] .bb-pop { transform-origin: 210px 180px; }
+[data-scene='bonbon'] .bb-pop__spin { transform-origin: 210px 118px; }
+[data-scene='bonbon'][data-fx~='sucette'] .bb-pop { animation: bb-hop 2.6s both; }
+@keyframes bb-hop {
+  0% { transform: none; animation-timing-function: ease-out; }
+  10% { transform: scale(1.07, 0.9); animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1); }
+  34% { transform: translateY(-36px) scale(0.97, 1.04); animation-timing-function: ease-in-out; }
+  56% { transform: translateY(-40px); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  74% { transform: scale(1.08, 0.88); animation-timing-function: ease-out; }
+  83% { transform: translateY(-6px) scale(0.98, 1.02); animation-timing-function: ease-in; }
+  91%, 100% { transform: none; }
+}
+[data-scene='bonbon'][data-fx~='sucette'] .bb-pop__spin { animation: bb-spin 2.6s both; }
+@keyframes bb-spin { 0%, 8% { transform: rotate(0deg); animation-timing-function: cubic-bezier(0.45, 0, 0.3, 1); } 80%, 100% { transform: rotate(1080deg); } }
+
+/* ---- Au toucher (la barbe à papa) : elle enfle d'un coup, tourbillonne et lâche trois nuages ---- */
+[data-scene='bonbon'][data-fx~='barbe'] .bb-floss__cloud { animation: bb-floss-big 3.4s ease-in-out both; }
+@keyframes bb-floss-big {
+  0% { transform: none; }
+  22% { transform: scale(1.6); }
+  36% { transform: scale(1.66, 1.52); }
+  56% { transform: scale(1.58); }
+  78% { transform: none; }
+  84% { transform: scale(0.95, 1.04); }
+  90%, 100% { transform: none; }
+}
+[data-scene='bonbon'][data-fx~='barbe'] .bb-floss__swirl { animation: bb-swirl 0.7s linear infinite; }
+[data-scene='bonbon'][data-fx~='barbe'] .bb-floss__puff { animation: bb-puff 2.2s ease-out 0.7s both; }
+[data-scene='bonbon'][data-fx~='barbe'] .bb-floss__puff:nth-child(2) { --dx: 26px; animation-delay: 0.95s; }
+[data-scene='bonbon'][data-fx~='barbe'] .bb-floss__puff:nth-child(3) { --dx: 2px; animation-delay: 1.2s; }
+@keyframes bb-puff {
+  0% { opacity: 0; transform: translate(0, -30px) scale(0.6); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx, -26px), -84px) scale(1.25); }
+}
+
+/* ---- Changement d'onglet : un grand ruban de guimauve torsadée passe ----
+   Un boudin de guimauve rayé rose et blanc, aux bouts arrondis, traverse l'écran de droite à
+   gauche d'un seul mouvement ; ses rayures tournent pendant qu'il passe (la torsade roule). Des
+   dragées le suivent. La page change derrière lui à mi-course, quand il couvre tout l'écran. */
+html[data-el-nav='bonbon']::view-transition-old(root) { animation: bb-page-out 1s linear both; }
+html[data-el-nav='bonbon']::view-transition-new(root) { animation: bb-page-in 1s linear both; }
+@keyframes bb-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes bb-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='bonbon'] i:first-child {
+  left: 100%; top: -6%; width: 260vw; height: 112%; overflow: hidden;
+  border-radius: min(46vw, 56vh) / 50%; rotate: -2deg; background: #FFFFFF;
+  box-shadow: inset 0 0 0 0.7vh rgba(194, 37, 92, 0.3);
+}
+.el-front[data-scene='bonbon'] i:first-child::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -60vh; right: -10vh;
+  background: repeating-linear-gradient(118deg, #F48FB1 0 7vh, #FFFFFF 7vh 12vh, #FBC4D7 12vh 14vh, #FFFFFF 14vh 19vh);
+}
+.el-front[data-scene='bonbon'] i:first-child::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(156, 26, 73, 0.4) 0, rgba(156, 26, 73, 0.22) 7%, rgba(156, 26, 73, 0) 18%, rgba(255, 255, 255, 0.55) 26%, rgba(255, 255, 255, 0) 40%, rgba(156, 26, 73, 0) 70%, rgba(156, 26, 73, 0.2) 88%, rgba(156, 26, 73, 0.42) 100%);
+  border-radius: inherit;
+}
+.el-front[data-scene='bonbon'][data-on] i:first-child { animation: bb-ribbon 1s cubic-bezier(0.42, 0.1, 0.58, 0.9) both; }
+.el-front[data-scene='bonbon'][data-on] i:first-child::before { animation: bb-twirl 1s cubic-bezier(0.42, 0.1, 0.58, 0.9) both; }
+@keyframes bb-ribbon { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(-360vw); } }
+@keyframes bb-twirl { from { transform: translateX(0); } to { transform: translateX(50vh); } }
+/* Les dragées qui accompagnent le ruban */
+.el-front[data-scene='bonbon'] i:not(:first-child) {
+  left: calc(100% + 8vw + var(--r1) * 236vw); top: calc(3% + var(--r2) * 90%);
+  width: calc(16px + var(--r3) * 20px); height: calc(16px + var(--r3) * 20px); border-radius: 50%;
+  background: radial-gradient(circle at 34% 32%, rgba(255, 255, 255, 0.85) 0 15%, rgba(255, 255, 255, 0) 17%), var(--bb-c, #F06292);
+}
+.el-front[data-scene='bonbon'] i:nth-child(4n + 2) { --bb-c: #8FD8C0; }
+.el-front[data-scene='bonbon'] i:nth-child(4n + 3) { --bb-c: #FFD966; }
+.el-front[data-scene='bonbon'] i:nth-child(4n + 4) { --bb-c: #B79CE8; }
+.el-front[data-scene='bonbon'] i:nth-child(5n + 1):not(:first-child) { --bb-c: #8CC8F2; border-radius: 40%/50%; width: calc(26px + var(--r3) * 16px); }
+.el-front[data-scene='bonbon'][data-on] i:not(:first-child) { animation: bb-dragee 1s cubic-bezier(0.42, 0.1, 0.58, 0.9) both; }
+@keyframes bb-dragee { from { opacity: 1; transform: translateX(0) rotate(0deg); } to { opacity: 1; transform: translateX(-400vw) rotate(-720deg); } }

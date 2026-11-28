@@ -1,0 +1,229 @@
+/* Thème « Radiographie » (espace élève) : noir bleuté de la salle de radiologie, bleu lumineux du négatoscope. */
+.el[data-theme='radio'] {
+  --el-bg: #050B14; --el-surface: #0E1826; --el-line: #1E3048; --el-line-soft: #172638; --el-line-strong: #2E4866;
+  --el-text: #DCEBFF; --el-muted: #A9C2DE; --el-dim: #8BA6C6;
+  --el-indigo: #7FD4FF; --el-indigo-ink: #B5E6FF; --el-indigo-soft: #12324A;
+  --el-pos: #6FE3A6; --el-pos-ink: #A8F0C9; --el-pos-soft: #0F3A2E;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #3D2E10;
+  --el-neg: #FF8A8A; --el-neg-soft: #431A20;
+  --el-track: #1A2B40; --el-on-accent: #04111F; --el-radio: #5E7FA6;
+  --el-radius: 12px; --el-radius-sm: 10px;
+  --el-font-display: 'Share Tech Mono', 'Inter', ui-monospace, monospace;
+  color-scheme: dark;
+}
+.el[data-theme='radio'] .el-main { padding-top: 238px; }
+.el[data-theme='radio'] .el-h1 { letter-spacing: -0.01em; }
+.el[data-theme='radio'] .el-btn--primary { box-shadow: 0 4px 18px rgba(127, 212, 255, 0.28); }
+
+/* ---- La scène ---- */
+[data-scene='radio'] .rx-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; z-index: 1; }
+[data-scene='radio'] .rx-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* Mur de la salle : chaque plan opaque porte un aplat assez haut pour couvrir le défilement */
+[data-scene='radio'] .rx-room {
+  height: calc(100vh + 900px);
+  background:
+    repeating-linear-gradient(90deg, rgba(127, 212, 255, 0.035) 0 1px, rgba(127, 212, 255, 0) 1px 64px),
+    linear-gradient(#0C1B2E 0, #08131F 230px, #050B14 420px);
+}
+/* Le halo du négatoscope sur le mur */
+[data-scene='radio'] .rx-halolayer { height: 280px; }
+[data-scene='radio'] .rx-halo {
+  position: absolute; left: 50%; top: -60px; width: 600px; height: 340px; margin-left: -300px;
+  background: radial-gradient(ellipse at 50% 50%, rgba(127, 212, 255, 0.28), rgba(127, 212, 255, 0.09) 45%, rgba(127, 212, 255, 0) 70%);
+  animation: rx-halo 7s ease-in-out infinite alternate;
+}
+@keyframes rx-halo { from { opacity: 0.8; } to { opacity: 1; } }
+
+/* Le négatoscope */
+[data-scene='radio'] .rx-boxlayer { height: 212px; }
+[data-scene='radio'] .rx-mark { font: 11px 'Share Tech Mono', ui-monospace, monospace; fill: #E6F7FF; }
+[data-scene='radio'] .rx-date { font: 6.5px 'Share Tech Mono', ui-monospace, monospace; fill: #0B1828; }
+[data-scene='radio'] .rx-ruler path { stroke: #6F93B8; stroke-width: 0.8; }
+[data-scene='radio'] .rx-ruler text { font: 5.5px 'Share Tech Mono', ui-monospace, monospace; fill: #7FA6CC; }
+[data-scene='radio'] .rx-boost { opacity: 0; }
+[data-scene='radio'] .rx-led { fill: #7FD4FF; animation: rx-led 3s ease-in-out infinite alternate; }
+@keyframes rx-led { from { opacity: 0.5; } to { opacity: 1; } }
+[data-scene='radio'] .rx-knob { translate: -9px 0; }
+
+/* Repères des pièces qui bougent (coordonnées du cliché) */
+[data-scene='radio'] .rx-p1, [data-scene='radio'] .rx-p2, [data-scene='radio'] .rx-p3,
+[data-scene='radio'] .rx-hand, [data-scene='radio'] .rx-jaw, [data-scene='radio'] .rx-leg,
+[data-scene='radio'] .rx-patella, [data-scene='radio'] .rx-cage, [data-scene='radio'] .rx-diaph,
+[data-scene='radio'] .rx-heart, [data-scene='radio'] .rx-note, [data-scene='radio'] .rx-scanline,
+[data-scene='radio'] .rx-knob, [data-scene='radio'] .rx-led { transform-box: view-box; }
+[data-scene='radio'] .rx-p1, [data-scene='radio'] .rx-p2, [data-scene='radio'] .rx-p3, [data-scene='radio'] .rx-note { transform-origin: 0 0; }
+[data-scene='radio'] .rx-hand { transform-origin: 45px 140px; }
+[data-scene='radio'] .rx-jaw { transform-origin: 58px 79px; }
+[data-scene='radio'] .rx-leg { transform-origin: 33px 72px; }
+[data-scene='radio'] .rx-patella { transform-origin: 14px 62px; }
+[data-scene='radio'] .rx-cage { transform-origin: 48px 16px; }
+[data-scene='radio'] .rx-diaph { transform-origin: 48px 110px; }
+[data-scene='radio'] .rx-heart { transform-origin: 54px 84px; }
+[data-scene='radio'] .rx-led { transform-origin: 389px 188.5px; }
+
+/* Muscles et tendons : éteints, ils s'allument en bleu quand ils travaillent */
+[data-scene='radio'] .rx-muscle { fill: #7FD4FF; opacity: 0; }
+[data-scene='radio'] .rx-tendon { fill: none; stroke: #9FE0FF; stroke-width: 1.5; stroke-linecap: round; opacity: 0; }
+
+/* La cage thoracique respire, le cœur bat */
+[data-scene='radio'] .rx-cage { animation: rx-breathe 5s ease-in-out infinite alternate; }
+@keyframes rx-breathe { from { scale: 1 1; } to { scale: 1.035 1.025; } }
+[data-scene='radio'] .rx-diaph { animation: rx-diaph 5s ease-in-out infinite alternate; }
+@keyframes rx-diaph { from { translate: 0 0; } to { translate: 0 3px; } }
+[data-scene='radio'] .rx-heart { animation: rx-beat 1.2s ease-in-out infinite; }
+@keyframes rx-beat { 0%, 50%, 100% { scale: 1; } 14% { scale: 1.05; } 30% { scale: 1.02; } }
+
+/* De temps en temps, les doigts pianotent l'un après l'autre */
+[data-scene='radio'] .rx-p1 { animation: rx-piano 17s ease-in-out infinite; animation-delay: calc(var(--pd) - 12s); }
+@keyframes rx-piano {
+  0%, 84%, 100% { scale: 1 1; }
+  85.5% { scale: 1 0.62; } 87% { scale: 1 1; }
+  89.5% { scale: 1 0.62; } 91% { scale: 1 1; }
+  93.5% { scale: 1 0.62; } 95% { scale: 1 1; }
+}
+
+/* De temps en temps, la ligne de balayage descend le long du panneau */
+[data-scene='radio'] .rx-scanline { opacity: 0; animation: rx-scan 13s linear infinite; animation-delay: -4s; }
+@keyframes rx-scan {
+  0% { opacity: 0; transform: translateY(0); }
+  1.5% { opacity: 1; }
+  24% { opacity: 1; transform: translateY(160px); }
+  26%, 100% { opacity: 0; transform: translateY(160px); }
+}
+
+/* Poussières dans la lumière */
+[data-scene='radio'] .rx-motes { position: absolute; left: 0; right: 0; top: 0; height: 236px; overflow: hidden; }
+[data-scene='radio'] .rx-mote {
+  position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%;
+  background: #CBEBFF; opacity: 0; animation: rx-mote var(--d) ease-in-out infinite; animation-delay: var(--delay);
+}
+@keyframes rx-mote {
+  0% { opacity: 0; transform: translate(0, 0); }
+  30% { opacity: 0.75; }
+  70% { opacity: 0.55; }
+  100% { opacity: 0; transform: translate(var(--dx), -42px); }
+}
+
+/* Bord du bureau, puis sol uni */
+[data-scene='radio'] .rx-desk { height: 40px; }
+[data-scene='radio'] .rx-desk::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 15px;
+  background: linear-gradient(#1D3049, #14243A);
+}
+[data-scene='radio'] .rx-desk::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 15px; height: calc(100vh + 900px);
+  background: linear-gradient(#34507A 0 2px, #0E1A2B 2px, #08111E 26px, #050B14 56px);
+}
+
+/* ---- Au toucher (la main) : coucou ! ----
+   Les quatre doigts se plient trois fois, articulation par articulation (la phalange du bout part
+   un peu après celle du milieu, qui part après celle de la base) : vus de face, ils raccourcissent
+   puis se replient vers la paume. Le poignet se balance, les fléchisseurs et leurs tendons
+   s'allument à chaque pli. */
+[data-scene='radio'][data-fx~='coucou'] .rx-p1 { animation: rx-wave1 3.6s ease-in-out var(--fd) both; }
+[data-scene='radio'][data-fx~='coucou'] .rx-p2 { animation: rx-wave2 3.6s ease-in-out calc(var(--fd) + 0.12s) both; }
+[data-scene='radio'][data-fx~='coucou'] .rx-p3 { animation: rx-wave3 3.6s ease-in-out calc(var(--fd) + 0.22s) both; }
+@keyframes rx-wave1 { 0%, 28%, 56%, 84%, 100% { scale: 1 1; } 14%, 42%, 70% { scale: 1 0.42; } }
+@keyframes rx-wave2 { 0%, 28%, 56%, 84%, 100% { scale: 1 1; } 14%, 42%, 70% { scale: 1 -1.25; } }
+@keyframes rx-wave3 { 0%, 28%, 56%, 84%, 100% { scale: 1 1; } 14%, 42%, 70% { scale: 1 0.8; } }
+[data-scene='radio'][data-fx~='coucou'] .rx-hand { animation: rx-sway 3.8s ease-in-out both; }
+@keyframes rx-sway { 0%, 100% { rotate: 0deg; } 22% { rotate: -5deg; } 50% { rotate: 5deg; } 78% { rotate: -4deg; } }
+[data-scene='radio'][data-fx~='coucou'] .rx-flex,
+[data-scene='radio'][data-fx~='coucou'] .rx-hand .rx-tendon { animation: rx-glow-flex 3.8s ease-in-out both; }
+@keyframes rx-glow-flex { 0%, 100% { opacity: 0; } 14%, 42%, 70% { opacity: 0.72; } 28%, 56% { opacity: 0.2; } 86% { opacity: 0.08; } }
+
+/* ---- Au toucher (le crâne) : il chante. La mâchoire s'ouvre et se ferme, trois notes s'envolent. ---- */
+[data-scene='radio'] .rx-note { opacity: 0; }
+[data-scene='radio'][data-fx~='chante'] .rx-jaw { animation: rx-sing 3.3s ease-in-out both; }
+@keyframes rx-sing {
+  0%, 100% { rotate: 0deg; } 10% { rotate: -13deg; } 20% { rotate: -2deg; } 32% { rotate: -15deg; } 44% { rotate: -1deg; }
+  56% { rotate: -12deg; } 68% { rotate: -3deg; } 80% { rotate: -14deg; } 92% { rotate: 0deg; }
+}
+[data-scene='radio'][data-fx~='chante'] .rx-note { animation: rx-note 2.2s ease-out calc(var(--n) * 0.55s + 0.25s) both; }
+@keyframes rx-note {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.6); }
+  15% { opacity: 1; transform: translate(-6px, -6px) scale(1); }
+  50% { transform: translate(-10px, -22px) rotate(10deg); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-20px, -40px) rotate(-10deg); }
+}
+
+/* ---- Au toucher (la cage thoracique) : grande inspiration, on retient, on souffle ---- */
+[data-scene='radio'][data-fx~='respire'] .rx-cage { animation: rx-deep 4.6s ease-in-out both; }
+@keyframes rx-deep { 0%, 92%, 100% { scale: 1 1; } 38%, 56% { scale: 1.13 1.1; } }
+[data-scene='radio'][data-fx~='respire'] .rx-diaph { animation: rx-deep-diaph 4.6s ease-in-out both; }
+@keyframes rx-deep-diaph { 0%, 92%, 100% { translate: 0 0; } 38%, 56% { translate: 0 14px; } }
+
+/* ---- Au toucher (le genou) : il se plie et se déplie ----
+   Le tibia et le péroné tournent autour des condyles du fémur (le plateau du tibia roule dessous),
+   la rotule glisse vers le bas ; les muscles de l'arrière de la cuisse (ischio-jambiers) plient le
+   genou, ceux de l'avant (quadriceps) le redressent. */
+[data-scene='radio'][data-fx~='flexion'] .rx-leg { animation: rx-bend 4.2s ease-in-out both; }
+@keyframes rx-bend { 0%, 95%, 100% { rotate: 0deg; } 25%, 35% { rotate: -54deg; } 60% { rotate: 0deg; } 78% { rotate: -32deg; } }
+[data-scene='radio'][data-fx~='flexion'] .rx-patella { animation: rx-patella 4.2s ease-in-out both; }
+@keyframes rx-patella {
+  0%, 95%, 100% { translate: 0 0; rotate: 0deg; } 25%, 35% { translate: 4px 8px; rotate: -24deg; }
+  60% { translate: 0 0; rotate: 0deg; } 78% { translate: 2px 4px; rotate: -13deg; }
+}
+[data-scene='radio'][data-fx~='flexion'] .rx-ischio { animation: rx-ischio 4.2s ease-in-out both; }
+@keyframes rx-ischio { 0%, 35%, 60%, 78%, 100% { opacity: 0; } 18%, 72% { opacity: 0.85; } }
+[data-scene='radio'][data-fx~='flexion'] .rx-quad { animation: rx-quad 4.2s ease-in-out both; }
+@keyframes rx-quad { 0%, 30%, 62%, 80%, 100% { opacity: 0; } 48%, 88% { opacity: 0.85; } }
+
+/* ---- Au toucher (l'interrupteur) : le négatoscope s'allume plus fort ---- */
+[data-scene='radio'][data-fx~='allume'] .rx-boost { animation: rx-boost 3.6s ease-in-out both; }
+@keyframes rx-boost { 0%, 100% { opacity: 0; } 18%, 76% { opacity: 0.55; } }
+[data-scene='radio'][data-fx~='allume'] .rx-knob { animation: rx-knob 3.6s ease-in-out both; }
+@keyframes rx-knob { 0%, 100% { translate: -9px 0; } 7%, 84% { translate: 0 0; } }
+[data-scene='radio'][data-fx~='allume'] .rx-led { animation: rx-led-on 3.6s ease-in-out both; }
+@keyframes rx-led-on { 0%, 100% { opacity: 0.7; scale: 1; } 12%, 80% { opacity: 1; scale: 1.5; } }
+[data-scene='radio'][data-fx~='allume'] .rx-halo { animation: rx-halo-on 3.6s ease-in-out both; }
+@keyframes rx-halo-on { 0%, 100% { opacity: 0.85; transform: scale(1); } 18%, 76% { opacity: 1; transform: scale(1.18, 1.3); } }
+
+/* ---- Changement d'onglet : le balayage du scanner ----
+   Une barre de scanner traverse l'écran de haut en bas, d'un seul mouvement ; la nouvelle page
+   apparaît derrière elle, à mesure qu'elle passe, teintée de bleu « radio » dans son sillage.
+   La barre et le dévoilement ont la même durée et la même courbe : la limite entre les deux pages
+   reste sous la barre. */
+html[data-el-nav='radio']::view-transition-old(root) { animation: rx-page-hold 1s linear both; }
+html[data-el-nav='radio']::view-transition-new(root) { animation: rx-page-reveal 1s cubic-bezier(0.42, 0.05, 0.58, 0.95) both; }
+@keyframes rx-page-hold { from, to { opacity: 1; } }
+@keyframes rx-page-reveal { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+
+/* Le sillage bleuté, au-dessus de la barre */
+.el-front[data-scene='radio'] i:nth-child(1) {
+  left: 0; top: -40vh; width: 100%; height: 40vh;
+  background:
+    repeating-linear-gradient(rgba(127, 212, 255, 0) 0 3px, rgba(127, 212, 255, 0.08) 3px 4px),
+    linear-gradient(rgba(127, 212, 255, 0), rgba(127, 212, 255, 0.12) 55%, rgba(170, 228, 255, 0.3));
+}
+/* La barre du scanner, sa fente lumineuse */
+.el-front[data-scene='radio'] i:nth-child(2) {
+  left: 0; top: -9px; width: 100%; height: 18px;
+  background: linear-gradient(#14263D 0 24%, #7FD4FF 40%, #F4FCFF 50%, #7FD4FF 60%, #14263D 76% 100%);
+  box-shadow: 0 0 18px 4px rgba(127, 212, 255, 0.5);
+}
+/* Les deux chariots qui portent la barre, aux bords de l'écran */
+.el-front[data-scene='radio'] i:nth-child(3),
+.el-front[data-scene='radio'] i:nth-child(4) {
+  top: -17px; width: 24px; height: 34px; border-radius: 6px;
+  background: radial-gradient(circle at 50% 30%, #9FE0FF 0 3px, rgba(159, 224, 255, 0) 3.5px), linear-gradient(#2A4260, #16263B);
+}
+.el-front[data-scene='radio'] i:nth-child(3) { left: 0; border-radius: 0 6px 6px 0; }
+.el-front[data-scene='radio'] i:nth-child(4) { right: 0; border-radius: 6px 0 0 6px; }
+/* Étincelles de lumière qui suivent la barre */
+.el-front[data-scene='radio'] i:nth-child(n + 5):nth-child(-n + 18) {
+  left: calc(var(--r1) * 100%); top: calc(-6px - var(--r2) * 70px);
+  width: calc(2px + var(--r3) * 3px); height: calc(2px + var(--r3) * 3px); border-radius: 50%;
+  background: #E6F7FF;
+}
+.el-front[data-scene='radio'][data-on] i:nth-child(-n + 18) {
+  animation: rx-sweep 1s cubic-bezier(0.42, 0.05, 0.58, 0.95) both, rx-sweep-vis 1s linear both;
+}
+.el-front[data-scene='radio'][data-on] i:nth-child(n + 5):nth-child(-n + 18) {
+  animation: rx-sweep 1s cubic-bezier(0.42, 0.05, 0.58, 0.95) both, rx-spark-vis 1s linear both;
+}
+@keyframes rx-sweep { from { transform: translateY(0); } to { transform: translateY(100vh); } }
+@keyframes rx-sweep-vis { 0% { opacity: 0; } 6%, 86% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes rx-spark-vis { 0% { opacity: 0; } 10%, 70% { opacity: 0.8; } 100% { opacity: 0; } }

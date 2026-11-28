@@ -1,0 +1,249 @@
+/* Thème « Boîte de Pétri » (espace élève) : vert tendre de gélose, vert sombre de paillasse. */
+.el[data-theme='petri'] {
+  --el-bg: #F3F7E4; --el-surface: #FFFFFF; --el-line: #DCE5C6; --el-line-soft: #E8EED8; --el-line-strong: #BCCAA0;
+  --el-text: #1E2A14; --el-muted: #44543A; --el-dim: #536348;
+  --el-indigo: #3F6B0E; --el-indigo-ink: #30530A; --el-indigo-soft: #E2EDCB;
+  --el-pos: #2F7A3E; --el-pos-ink: #245F30; --el-pos-soft: #DFF0D8;
+  --el-warn: #9A5A00; --el-warn-ink: #7C4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #E0E8CC; --el-on-accent: #FFFFFF; --el-radio: #93A47E;
+  --el-radius: 16px; --el-radius-sm: 13px;
+  --el-font-display: 'Baloo 2', 'Nunito', 'Inter', sans-serif;
+}
+.el[data-theme='petri'] .el-main { padding-top: 242px; }
+.el[data-theme='petri'] .el-h1 { font-weight: 700; }
+.el[data-theme='petri'] .el-btn--primary { box-shadow: 0 3px 0 #2A4A07; }
+
+/* =====================================================================
+   La scène. Tout ce qui est dessiné à un endroit précis vit dans `.pe-set`, un cadre de 480 px
+   centré (repère commun 480 x 240 pour tous les plans) ; le mur, le plan de travail et le sol sont
+   des fonds CSS qui couvrent toute la largeur.
+   ===================================================================== */
+[data-scene='petri'] .pe-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='petri'] .pe-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+[data-scene='petri'] .pe-shelf, [data-scene='petri'] .pe-dishes { height: 240px; }
+
+/* Mur carrelé (et son aplat jusqu'en bas) */
+[data-scene='petri'] .pe-wall {
+  height: calc(100vh + 900px); background-color: #E6EED2;
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0) 112px),
+    linear-gradient(#D5E0BC 1.5px, transparent 1.5px),
+    linear-gradient(90deg, #D5E0BC 1.5px, transparent 1.5px);
+  background-size: 100% 100%, 26px 26px, 26px 26px;
+  background-position: 0 0, calc(50% + 13px) 6px, calc(50% + 13px) 6px;
+}
+
+/* Plan de travail : bord du fond, puis surface qui s'éclaircit vers l'avant */
+[data-scene='petri'] .pe-bench { height: 240px; }
+[data-scene='petri'] .pe-bench::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 112px; height: calc(100vh + 900px);
+  background: linear-gradient(180deg, #BFCCA2 0 3px, #CFDAB5 3px 7px, #DCE5C6 7px, #E5ECD3 50px, #ECF1DE 116px);
+}
+/* Devant de la paillasse : la tranche, puis le sol uni (couleur de la page) */
+[data-scene='petri'] .pe-front { height: 240px; }
+[data-scene='petri'] .pe-front::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 229px; height: calc(100vh + 900px);
+  background: linear-gradient(180deg, #F6F9EC 0 2px, #A9B98A 2px 9px, #C6D2AE 9px 11px, #F3F7E4 11px);
+}
+
+/* Textes dessinés : étiquettes au feutre, numéros des disques, afficheur de l'étuve */
+[data-scene='petri'] .pe-ink { font: 700 7px 'Baloo 2', 'Comic Sans MS', cursive; fill: #2C4F9E; }
+[data-scene='petri'] .pe-num { font: 800 4.4px 'Inter', sans-serif; fill: #4A4A40; }
+[data-scene='petri'] .pe-digits { font: 700 10px ui-monospace, 'Consolas', 'Courier New', monospace; fill: #B9F56A; letter-spacing: 0.4px; }
+
+/* ---- Mouvement autonome ---- */
+
+/* Horloge : la trotteuse fait le tour en une minute */
+[data-scene='petri'] .pe-second { transform-box: view-box; transform-origin: 0 0; animation: pe-tick 60s steps(60) infinite; }
+@keyframes pe-tick { to { transform: rotate(360deg); } }
+
+/* Erlenmeyer : des bulles montent jusqu'à la surface */
+[data-scene='petri'] .pe-bubble { opacity: 0; animation: pe-bubble var(--d) ease-in var(--delay) infinite; }
+@keyframes pe-bubble { 0% { opacity: 0; transform: translateY(0); } 15% { opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; transform: translateY(-10px); } }
+
+/* Bec Bunsen : la flamme vacille, l'air chaud ondule au-dessus */
+[data-scene='petri'] .pe-flame { transform-box: fill-box; transform-origin: 50% 100%; animation: pe-flicker 0.9s ease-in-out infinite alternate; }
+@keyframes pe-flicker { from { transform: scale(1, 0.93) skewX(-2deg); } to { transform: scale(1.02, 1.05) skewX(2.5deg); } }
+[data-scene='petri'] .pe-heat path { opacity: 0; animation: pe-heat 2.6s ease-out infinite; }
+[data-scene='petri'] .pe-heat path:nth-child(2) { animation-delay: -0.9s; }
+[data-scene='petri'] .pe-heat path:nth-child(3) { animation-delay: -1.7s; }
+@keyframes pe-heat { 0% { opacity: 0; transform: translateY(4px); } 30% { opacity: 0.8; } 100% { opacity: 0; transform: translateY(-14px); } }
+[data-scene='petri'] .pe-whoosh { opacity: 0; }
+[data-scene='petri'] .pe-airhole { transform-box: fill-box; transform-origin: 50% 50%; }
+
+/* Étuve : le voyant et la lumière intérieure respirent */
+[data-scene='petri'] .pe-lamp { animation: pe-lamp 2.8s ease-in-out infinite alternate; }
+@keyframes pe-lamp { from { opacity: 0.5; } to { opacity: 1; } }
+[data-scene='petri'] .pe-glow { animation: pe-glow 6s ease-in-out infinite alternate; }
+@keyframes pe-glow { from { opacity: 0; } to { opacity: 0.7; } }
+
+/* Colonies : elles grossissent lentement, chacune à son rythme */
+[data-scene='petri'] .pe-col { transform-box: fill-box; transform-origin: 50% 60%; animation: pe-grow var(--d) ease-in-out var(--delay) infinite alternate; }
+@keyframes pe-grow { from { transform: scale(0.7); } to { transform: scale(1.06); } }
+/* Halos de l'antibiogramme : ils respirent à peine */
+[data-scene='petri'] .pe-halo { transform-box: fill-box; transform-origin: 50% 50%; animation: pe-halo 5s ease-in-out var(--delay) infinite alternate; }
+@keyframes pe-halo { from { transform: scale(0.94); } to { transform: scale(1.04); } }
+
+/* Reflet de lumière qui glisse sur le couvercle */
+[data-scene='petri'] .pe-sheen { animation: pe-sheen 9s ease-in-out infinite; }
+@keyframes pe-sheen { 0%, 62% { transform: translateX(0); } 92%, 100% { transform: translateX(150px); } }
+
+/* ---- L'événement : une main gantée dépose une goutte sur la gélose neuve (toutes les 19 s) ---- */
+[data-scene='petri'] .pe-hand { transform: translateY(-320px); animation: pe-hand 19s -5s infinite; }
+@keyframes pe-hand {
+  0%, 58% { transform: translateY(-320px); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  66%, 76% { transform: translateY(0); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  86%, 100% { transform: translateY(-320px); }
+}
+[data-scene='petri'] .pe-bulb { transform-box: fill-box; transform-origin: 50% 100%; animation: pe-bulb 19s -5s infinite; }
+@keyframes pe-bulb { 0%, 68% { transform: scale(1, 1); } 70%, 71% { transform: scale(0.72, 0.9); } 74%, 100% { transform: scale(1, 1); } }
+[data-scene='petri'] .pe-drop { opacity: 0; animation: pe-drop 19s -5s infinite; }
+@keyframes pe-drop { 0%, 69.5% { opacity: 0; transform: translateY(0); } 70% { opacity: 1; transform: translateY(0); } 72.5% { opacity: 1; transform: translateY(5px); } 73%, 100% { opacity: 0; transform: translateY(5px); } }
+[data-scene='petri'] .pe-wet { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; animation: pe-wet 19s -5s infinite; }
+@keyframes pe-wet { 0%, 72.5% { opacity: 0; transform: scale(0.2); } 77% { opacity: 1; transform: scale(1); } 90% { opacity: 0.85; transform: scale(1.1); } 100% { opacity: 0; transform: scale(1.15); } }
+
+/* ---- Au toucher (l'antibiogramme) : une pince pose un disque, un halo clair s'ouvre ----
+   La pince descend avec le disque, le pose et repart ; le halo d'inhibition s'élargit autour du
+   disque et les colonies voisines reculent jusqu'à disparaître ; puis tout revient comme avant. */
+[data-scene='petri'] .pe-forceps { opacity: 0; transform: translateY(-170px); }
+[data-scene='petri'] .pe-newdisk { opacity: 0; }
+[data-scene='petri'] .pe-newhalo { transform-box: fill-box; transform-origin: 50% 50%; opacity: 0; transform: scale(0); }
+[data-scene='petri'] .pe-victim { transform-box: fill-box; transform-origin: 50% 60%; }
+[data-scene='petri'][data-fx~='disque'] .pe-forceps { animation: pe-forceps 5.2s both; }
+@keyframes pe-forceps {
+  0% { opacity: 1; transform: translateY(-170px); animation-timing-function: cubic-bezier(0.2, 0.7, 0.35, 1); }
+  24%, 30% { opacity: 1; transform: translateY(0); animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.5); }
+  46% { opacity: 1; transform: translateY(-170px); }
+  47%, 100% { opacity: 0; transform: translateY(-170px); }
+}
+[data-scene='petri'][data-fx~='disque'] .pe-forceps__disk { animation: pe-held 5.2s both; }
+@keyframes pe-held { 0%, 26.9% { opacity: 1; } 27%, 100% { opacity: 0; } }
+[data-scene='petri'][data-fx~='disque'] .pe-newdisk { animation: pe-newdisk 5.2s both; }
+@keyframes pe-newdisk { 0%, 26.9% { opacity: 0; } 27%, 88% { opacity: 1; } 100% { opacity: 0; } }
+[data-scene='petri'][data-fx~='disque'] .pe-newhalo { animation: pe-newhalo 5.2s both; }
+@keyframes pe-newhalo {
+  0%, 31% { opacity: 0; transform: scale(0); }
+  33% { opacity: 1; transform: scale(0.15); animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1); }
+  60%, 86% { opacity: 1; transform: scale(1); animation-timing-function: ease-in; }
+  98% { opacity: 1; transform: scale(0.1); }
+  100% { opacity: 0; transform: scale(0); }
+}
+[data-scene='petri'][data-fx~='disque'] .pe-victim { animation: pe-recede 5.2s both; }
+[data-scene='petri'][data-fx~='disque'] .pe-victim:nth-of-type(2n) { animation-delay: 0.12s; }
+@keyframes pe-recede {
+  0%, 38% { opacity: 1; transform: scale(1); }
+  56% { opacity: 0; transform: scale(0); }
+  88% { opacity: 0; transform: scale(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ---- Au toucher (la gélose neuve ou l'anse) : l'anse ensemence une strie en zigzag ----
+   L'anse se lève, trace cinq traits sur la gélose (le trait apparaît sous la boucle), revient se
+   poser ; des colonies poussent le long de la strie, puis tout s'efface. */
+[data-scene='petri'] .pe-loop { transform-box: view-box; transform-origin: 0 0; transform: translate(262px, 227px) rotate(-5deg); }
+[data-scene='petri'] .pe-streak { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); opacity: 0; }
+[data-scene='petri'] .pe-sc { transform-box: fill-box; transform-origin: 50% 60%; transform: scale(0); }
+[data-scene='petri'][data-fx~='strie'] .pe-loop { animation: pe-loop 7s both; }
+@keyframes pe-loop {
+  0% { transform: translate(262px, 227px) rotate(-5deg); animation-timing-function: ease-in-out; }
+  10% { transform: translate(300px, 186px) rotate(-38deg); animation-timing-function: ease-out; }
+  20% { transform: translate(341px, 201px) rotate(-50deg); animation-timing-function: linear; }
+  27% { transform: translate(354px, 213px) rotate(-50deg); animation-timing-function: linear; }
+  34% { transform: translate(367px, 201px) rotate(-50deg); animation-timing-function: linear; }
+  41% { transform: translate(380px, 213px) rotate(-50deg); animation-timing-function: linear; }
+  48% { transform: translate(393px, 201px) rotate(-50deg); animation-timing-function: linear; }
+  55% { transform: translate(406px, 213px) rotate(-50deg); animation-timing-function: ease-in-out; }
+  66% { transform: translate(318px, 198px) rotate(-30deg); animation-timing-function: ease-in-out; }
+  78%, 100% { transform: translate(262px, 227px) rotate(-5deg); }
+}
+[data-scene='petri'][data-fx~='strie'] .pe-streak { animation: pe-streak 7s both; }
+@keyframes pe-streak {
+  0%, 20% { opacity: 1; stroke-dashoffset: var(--len); animation-timing-function: linear; }
+  55% { opacity: 1; stroke-dashoffset: 0; }
+  86% { opacity: 1; stroke-dashoffset: 0; }
+  96%, 100% { opacity: 0; stroke-dashoffset: 0; }
+}
+[data-scene='petri'][data-fx~='strie'] .pe-sc { animation: pe-pop 6.3s var(--o) both; }
+@keyframes pe-pop {
+  0%, 56% { opacity: 1; transform: scale(0); animation-timing-function: cubic-bezier(0.3, 0.6, 0.4, 1); }
+  66% { opacity: 1; transform: scale(1.15); }
+  70%, 88% { opacity: 1; transform: scale(1); }
+  97%, 100% { opacity: 0; transform: scale(1); }
+}
+
+/* ---- Au toucher (le bec Bunsen) : la virole s'ouvre, la flamme ronfle, puis se calme ---- */
+[data-scene='petri'][data-fx~='flamme'] .pe-flame { animation: pe-roar 3.2s both; }
+@keyframes pe-roar {
+  0% { transform: scale(1, 1); animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1); }
+  14% { transform: scale(1.3, 2); }
+  24% { transform: scale(1.22, 1.86) skewX(-2deg); }
+  34% { transform: scale(1.3, 2.02) skewX(2deg); }
+  44% { transform: scale(1.22, 1.88) skewX(-2deg); }
+  54% { transform: scale(1.3, 2) skewX(2deg); }
+  64% { transform: scale(1.22, 1.88) skewX(-1deg); animation-timing-function: ease-in-out; }
+  100% { transform: scale(1, 1); }
+}
+[data-scene='petri'][data-fx~='flamme'] .pe-flame__in { animation: pe-core 3.2s both; }
+[data-scene='petri'] .pe-flame__in { transform-box: fill-box; transform-origin: 50% 100%; }
+@keyframes pe-core { 0% { transform: scale(1); } 14%, 64% { transform: scale(1.25, 1.5); } 100% { transform: scale(1); } }
+[data-scene='petri'][data-fx~='flamme'] .pe-whoosh { animation: pe-whoosh 3.2s both; }
+@keyframes pe-whoosh {
+  0%, 8% { opacity: 0; transform: translateY(6px); }
+  16% { opacity: 1; transform: translateY(-14px); }
+  30% { opacity: 0.6; transform: translateY(-10px); }
+  42% { opacity: 1; transform: translateY(-16px); }
+  56% { opacity: 0.6; transform: translateY(-11px); }
+  72%, 100% { opacity: 0; transform: translateY(-4px); }
+}
+[data-scene='petri'][data-fx~='flamme'] .pe-airhole { animation: pe-airhole 3.2s both; }
+@keyframes pe-airhole { 0% { transform: scale(1); } 8%, 70% { transform: scale(1.7, 1.3); } 100% { transform: scale(1); } }
+
+/* ---- Changement d'onglet : une boîte de Pétri géante glisse sur l'écran ----
+   Une boîte vue de dessus (bord de verre, gélose, colonies) traverse l'écran de bas en haut en
+   tournant un peu, d'un seul mouvement, plus lente au milieu ; la page change derrière elle au
+   moment où elle couvre tout (la moitié du temps). Le reflet du couvercle la suit sans tourner. */
+html[data-el-nav='petri']::view-transition-old(root) { animation: pe-page-out 1s cubic-bezier(0.15, 0.6, 0.85, 0.4) both; }
+html[data-el-nav='petri']::view-transition-new(root) { animation: pe-page-in 1s cubic-bezier(0.15, 0.6, 0.85, 0.4) both; }
+@keyframes pe-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes pe-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='petri'] i:nth-child(1),
+.el-front[data-scene='petri'] i:nth-child(2) { left: calc(50% - 80vmax); top: calc(50% - 80vmax); width: 160vmax; height: 160vmax; border-radius: 50%; }
+.el-front[data-scene='petri'] i:nth-child(1) {
+  background:
+    radial-gradient(circle 3.6vmax at 34% 30%, #FFF3D2 0 72%, #E3CF98 76% 94%, transparent 97%),
+    radial-gradient(circle 2.4vmax at 60% 25%, #F6D04A 0 70%, #D3A421 74% 94%, transparent 97%),
+    radial-gradient(circle 4.5vmax at 70% 40%, #F29A3A 0 72%, #CF731D 76% 94%, transparent 97%),
+    radial-gradient(circle 3vmax at 27% 52%, #F6D04A 0 70%, #D3A421 74% 94%, transparent 97%),
+    radial-gradient(circle 2.25vmax at 44% 44%, #FFFFFF 0 70%, #D9D5C0 74% 94%, transparent 97%),
+    radial-gradient(circle 5.1vmax at 56% 57%, #FFF3D2 0 72%, #E3CF98 76% 94%, transparent 97%),
+    radial-gradient(circle 2.85vmax at 40% 67%, #F29A3A 0 70%, #CF731D 74% 94%, transparent 97%),
+    radial-gradient(circle 3.75vmax at 64% 70%, #F6D04A 0 70%, #D3A421 74% 94%, transparent 97%),
+    radial-gradient(circle 2.25vmax at 78% 55%, #FFF3D2 0 70%, #E3CF98 74% 94%, transparent 97%),
+    radial-gradient(circle 2.55vmax at 21% 39%, #EED9A6 0 70%, #CDB37A 74% 94%, transparent 97%),
+    radial-gradient(circle 1.95vmax at 49% 33%, #F29A3A 0 70%, #CF731D 74% 94%, transparent 97%),
+    radial-gradient(circle 2.55vmax at 33% 79%, #FFF3D2 0 70%, #E3CF98 74% 94%, transparent 97%),
+    radial-gradient(circle 3vmax at 60% 82%, #EED9A6 0 70%, #CDB37A 74% 94%, transparent 97%),
+    radial-gradient(circle 1.8vmax at 48% 52%, #F6D04A 0 70%, #D3A421 74% 94%, transparent 97%),
+    radial-gradient(circle 2.1vmax at 54% 43%, #FFF3D2 0 70%, #E3CF98 74% 94%, transparent 97%),
+    radial-gradient(circle 2.4vmax at 45% 61%, #FFFFFF 0 70%, #D9D5C0 74% 94%, transparent 97%),
+    radial-gradient(circle 2.1vmax at 19% 62%, #F29A3A 0 70%, #CF731D 74% 94%, transparent 97%),
+    radial-gradient(circle 2.7vmax at 81% 40%, #F6D04A 0 70%, #D3A421 74% 94%, transparent 97%),
+    radial-gradient(circle closest-side, #EEE3AB 0 86%, #E4D596 90.5%, #F6FAF3 91.5% 95.5%, #B9D2CD 96% 99.3%, transparent 99.6%);
+  box-shadow: 0 2vmax 5vmax rgba(30, 42, 20, 0.24);
+}
+/* Le reflet du couvercle : un arc de lumière sur le haut à gauche, et le bord du couvercle */
+.el-front[data-scene='petri'] i:nth-child(2) {
+  box-sizing: border-box; border: 1.3vmax solid transparent; border-top-color: rgba(255, 255, 255, 0.62); border-left-color: rgba(255, 255, 255, 0.4);
+  background: radial-gradient(circle closest-side, rgba(255, 255, 255, 0.08) 0 93%, rgba(255, 255, 255, 0.7) 94% 95.5%, transparent 96.5%);
+}
+.el-front[data-scene='petri'][data-on] i:nth-child(1) { animation: pe-dish 1s cubic-bezier(0.15, 0.6, 0.85, 0.4) both; }
+.el-front[data-scene='petri'][data-on] i:nth-child(2) { animation: pe-lid 1s cubic-bezier(0.15, 0.6, 0.85, 0.4) both; }
+@keyframes pe-dish {
+  from { opacity: 1; transform: translate(16vw, calc(50vh + 83vmax)) rotate(-28deg); }
+  to { opacity: 1; transform: translate(-16vw, calc(-50vh - 83vmax)) rotate(28deg); }
+}
+@keyframes pe-lid {
+  from { opacity: 1; transform: translate(16vw, calc(50vh + 83vmax)) rotate(-12deg); }
+  to { opacity: 1; transform: translate(-16vw, calc(-50vh - 83vmax)) rotate(-12deg); }
+}

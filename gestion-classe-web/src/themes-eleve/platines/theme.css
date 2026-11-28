@@ -1,0 +1,243 @@
+/* Thème « Platines » (espace élève) : salle de concert dans le noir, vert fluo et violet néon. */
+.el[data-theme='platines'] {
+  --el-bg: #0F0F14; --el-surface: #1B1B24; --el-line: #2E2C3D; --el-line-soft: #24232F; --el-line-strong: #46405E;
+  --el-text: #F5F5FA; --el-muted: #C9C6DA; --el-dim: #A4A1BA;
+  --el-indigo: #B6FF3B; --el-indigo-ink: #CFFF7A; --el-indigo-soft: #26341A;
+  --el-pos: #7CE8A0; --el-pos-ink: #9EF0BC; --el-pos-soft: #123524;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD899; --el-warn-soft: #40300F;
+  --el-neg: #FF8FA3; --el-neg-soft: #45192A;
+  --el-track: #2A2836; --el-on-accent: #0F0F14; --el-radio: #77738F;
+  --el-radius: 16px; --el-radius-sm: 12px;
+  --el-font-display: 'Unbounded', 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+}
+.el[data-theme='platines'] .el-main { padding-top: 246px; }
+.el[data-theme='platines'] .el-h1 { font-size: 22px; line-height: 30px; font-weight: 700; letter-spacing: -0.02em; }
+/* Boutons en gélule, vert fluo, posés sur une ombre violette */
+.el[data-theme='platines'] .el-btn { border-radius: 999px; padding: 0 20px; }
+.el[data-theme='platines'] .el-btn--primary { box-shadow: 0 4px 0 #6B3BD1; }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis sont posés dans `.pt-set`, un cadre de 480 px centré. */
+[data-scene='platines'] .pt-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='platines'] .pt-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* Le fond de la salle : une lueur violette tombe du plafond */
+[data-scene='platines'] .pt-back {
+  height: calc(100vh + 900px);
+  background:
+    radial-gradient(52% 150px at 50% 50px, rgba(123, 63, 228, 0.5), rgba(123, 63, 228, 0)),
+    radial-gradient(26% 120px at 12% 150px, rgba(182, 255, 59, 0.08), rgba(182, 255, 59, 0)),
+    radial-gradient(26% 120px at 88% 150px, rgba(182, 255, 59, 0.08), rgba(182, 255, 59, 0)),
+    linear-gradient(#1A1230 0, #120F1E 160px, #0F0F14 260px);
+}
+
+/* Écran géant : l'égaliseur (barres en segments de LED) et la lueur qui bat la mesure (125 battements
+   par minute : un temps = 0,48 s) */
+[data-scene='platines'] .pt-screenlayer, [data-scene='platines'] .pt-beamlayer { height: 200px; }
+[data-scene='platines'] .pt-bar { transform-box: fill-box; transform-origin: 50% 100%; animation: pt-eq var(--d) ease-in-out var(--delay) infinite alternate; }
+@keyframes pt-eq { from { transform: scaleY(var(--lo)); } to { transform: scaleY(var(--hi)); } }
+[data-scene='platines'] .pt-glow { transform-box: fill-box; transform-origin: 50% 100%; animation: pt-glow 0.48s ease-out infinite; }
+@keyframes pt-glow { from { transform: scale(1.12, 1.25); } to { transform: scale(1); } }
+[data-scene='platines'] .pt-eqall { transform-box: view-box; transform-origin: 240px 118px; }
+
+/* Projecteurs motorisés : la tête et son faisceau balaient la salle */
+[data-scene='platines'] .pt-mover { position: absolute; top: 20px; width: 0; height: 0; rotate: var(--a); animation: pt-sweep var(--d) ease-in-out var(--delay) infinite alternate; }
+@keyframes pt-sweep { from { rotate: var(--a); } to { rotate: var(--b); } }
+[data-scene='platines'] .pt-lamp { position: absolute; left: -6px; top: -4px; width: 12px; height: 11px; border-radius: 3px 3px 5px 5px; background: #34304A; }
+[data-scene='platines'] .pt-lamp::after { content: ''; position: absolute; left: 2px; bottom: -1px; width: 8px; height: 3px; border-radius: 2px; background: var(--c); }
+[data-scene='platines'] .pt-beam { position: absolute; left: -42px; top: 5px; width: 84px; height: 250px; clip-path: polygon(45% 0, 55% 0, 100% 100%, 0 100%); }
+
+/* Lasers : de temps en temps, un éventail vert s'ouvre derrière la DJ, balaie, puis s'éteint en fondu */
+[data-scene='platines'] .pt-lasers { position: absolute; left: 240px; top: 122px; width: 0; height: 0; opacity: 0; animation: pt-laser 23s ease-in-out -9s infinite; }
+@keyframes pt-laser {
+  0%, 60% { opacity: 0; rotate: -14deg; }
+  64% { opacity: 0.85; }
+  72% { rotate: 12deg; }
+  80% { rotate: -10deg; }
+  86% { opacity: 0.85; rotate: 8deg; }
+  90%, 100% { opacity: 0; rotate: 0deg; }
+}
+[data-scene='platines'] .pt-laser { position: absolute; left: -0.8px; bottom: 0; width: 1.6px; height: 220px; border-radius: 1px; transform-origin: 50% 100%; rotate: var(--a); background: linear-gradient(to top, rgba(198, 255, 110, 0.95), rgba(182, 255, 59, 0)); }
+[data-scene='platines'] .pt-emitter { position: absolute; left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; background: #E6FFB8; box-shadow: 0 0 6px 2px rgba(182, 255, 59, 0.6); }
+
+/* Poussières qui montent dans la lumière */
+[data-scene='platines'] .pt-mote { position: absolute; top: 196px; border-radius: 50%; background: #E8DDFF; opacity: 0; animation: pt-mote var(--d) linear var(--delay) infinite; }
+@keyframes pt-mote { 0% { opacity: 0; translate: 0 0; } 15% { opacity: 0.7; } 80% { opacity: 0.45; } 100% { opacity: 0; translate: var(--dx) -180px; } }
+
+/* La scène : son aplat porte le plancher, la façade (et sa bande de LED) puis la lueur sur la fosse */
+[data-scene='platines'] .pt-stagelayer { height: 262px; }
+[data-scene='platines'] .pt-stagelayer::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 158px; height: calc(100vh + 900px);
+  background: linear-gradient(#1E1A2B 0, #241F34 30px, #2A2440 30px, #221D33 44px, #3A2766 44px, #1E1730 110px, #0F0F14 160px);
+}
+[data-scene='platines'] .pt-strip { position: absolute; left: 0; right: 0; top: 187px; height: 3px; overflow: hidden; }
+[data-scene='platines'] .pt-strip span {
+  position: absolute; left: 0; top: 0; width: calc(100% + 40px); height: 100%;
+  background: repeating-linear-gradient(90deg, #B6FF3B 0 6px, rgba(0, 0, 0, 0) 6px 10px, #9B5CFF 10px 16px, rgba(0, 0, 0, 0) 16px 20px);
+  animation: pt-strip 1.6s linear infinite;
+}
+@keyframes pt-strip { from { transform: translateX(0); } to { transform: translateX(-40px); } }
+
+/* Enceintes : les membranes des caissons battent à chaque temps */
+[data-scene='platines'] .pt-woof { transform-box: fill-box; transform-origin: center; animation: pt-woof 0.48s ease-out infinite; }
+@keyframes pt-woof { 0% { transform: scale(1.08); } 35%, 100% { transform: scale(1); } }
+[data-scene='platines'] .pt-ring { fill: none; stroke: #B6FF3B; stroke-width: 1.6; vector-effect: non-scaling-stroke; opacity: 0; transform-box: fill-box; transform-origin: center; }
+[data-scene='platines'] .pt-ring--2 { stroke: #B48BFF; }
+
+/* La DJ : le corps se balance, la tête hoche en rythme, une main sur le vinyle, l'autre sur le
+   curseur ; de temps en temps, elle lève le poing */
+[data-scene='platines'] .pt-dj { transform-box: view-box; transform-origin: 240px 152px; animation: pt-sway 3.84s ease-in-out infinite alternate; }
+@keyframes pt-sway { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+[data-scene='platines'] .pt-dj__head { transform-box: view-box; transform-origin: 240px 106px; animation: pt-nod 0.48s ease-out infinite; }
+@keyframes pt-nod { 0% { transform: translateY(0) rotate(0deg); } 35% { transform: translateY(2.4px) rotate(-2.5deg); } 100% { transform: translateY(0) rotate(0deg); } }
+[data-scene='platines'] .pt-arm { transform-box: view-box; }
+[data-scene='platines'] .pt-arm--l { transform-origin: 222px 117px; animation: pt-arm-l 0.96s ease-in-out infinite alternate; }
+@keyframes pt-arm-l { from { transform: rotate(-1.5deg); } to { transform: rotate(2deg); } }
+[data-scene='platines'] .pt-arm--r { transform-origin: 258px 117px; animation: pt-arm-r 11s ease-in-out -3s infinite; }
+@keyframes pt-arm-r {
+  0%, 76% { transform: rotate(0deg); }
+  80% { transform: rotate(-168deg) scale(1.3); } 83% { transform: rotate(-156deg) scale(1.3); } 86% { transform: rotate(-170deg) scale(1.3); }
+  89% { transform: rotate(-156deg) scale(1.3); } 92% { transform: rotate(-168deg) scale(1.3); }
+  97%, 100% { transform: rotate(0deg); }
+}
+[data-scene='platines'] .pt-fader { animation: pt-fader 1.92s ease-in-out infinite alternate; }
+@keyframes pt-fader { from { transform: translateX(-3px); } to { transform: translateX(3px); } }
+[data-scene='platines'] .pt-vu { transform-box: fill-box; transform-origin: 50% 100%; animation: pt-vu 0.48s ease-out infinite; }
+@keyframes pt-vu { from { transform: scaleY(1); } to { transform: scaleY(0.35); } }
+[data-scene='platines'] .pt-spin, [data-scene='platines'] .pt-scr { transform-box: fill-box; transform-origin: center; }
+[data-scene='platines'] .pt-spin { animation: pt-spin 1.8s linear infinite; }
+@keyframes pt-spin { to { transform: rotate(360deg); } }
+[data-scene='platines'] .pt-scratchmarks { opacity: 0; }
+[data-scene='platines'] .pt-neon { animation: pt-neon 1.92s ease-in-out infinite alternate; }
+@keyframes pt-neon { from { opacity: 0.6; } to { opacity: 1; } }
+[data-scene='platines'] .pt-wave { transform-box: fill-box; transform-origin: center; animation: pt-wave 0.48s ease-out infinite; }
+@keyframes pt-wave { 0% { transform: scaleY(1.15); } 100% { transform: scaleY(0.8); } }
+[data-scene='platines'] .pt-puff { fill: #E9E2FF; opacity: 0; transform-box: fill-box; transform-origin: center; }
+
+/* Fumée de scène qui dérive au ras du plancher */
+[data-scene='platines'] .pt-fog { position: absolute; height: 46px; border-radius: 50%; background: radial-gradient(closest-side, rgba(176, 156, 226, 0.32), rgba(176, 156, 226, 0)); }
+[data-scene='platines'] .pt-fog--1 { left: 30px; top: 140px; width: 250px; animation: pt-fog 17s ease-in-out infinite alternate; }
+[data-scene='platines'] .pt-fog--2 { left: 210px; top: 150px; width: 260px; animation: pt-fog 21s ease-in-out -7s infinite alternate-reverse; }
+[data-scene='platines'] .pt-fog--3 { left: 110px; top: 162px; width: 280px; opacity: 0.8; animation: pt-fog 14s ease-in-out -3s infinite alternate; }
+@keyframes pt-fog { from { transform: translateX(-40px) scaleX(0.9); } to { transform: translateX(50px) scaleX(1.1); } }
+
+/* La foule : deux rangs de dos, en ombres chinoises sur la lueur de la scène. Les têtes suivent le
+   tempo, les mains levées se balancent ; toutes les 16 s, une vague de mains passe de gauche à droite. */
+[data-scene='platines'] .pt-crowdlayer { height: 80px; }
+[data-scene='platines'] .pt-crowdlayer::after { content: ''; position: absolute; left: 0; right: 0; top: 78px; height: calc(100vh + 900px); background: linear-gradient(#07070B, #0F0F14 40px); }
+[data-scene='platines'] .pt-crowd { position: absolute; left: 50%; top: 0; margin-left: -1300px; }
+[data-scene='platines'] .pt-frontrow { fill: #07070B; stroke: #07070B; }
+[data-scene='platines'] .pt-backrow, [data-scene='platines'] .pt-backrow--still { fill: #1B1530; stroke: #1B1530; }
+[data-scene='platines'] .pt-backrow { animation: pt-bob 0.48s ease-out -0.2s infinite; }
+[data-scene='platines'] .pt-fan { animation: pt-bob 0.48s ease-out var(--dl) infinite; }
+@keyframes pt-bob { 0% { translate: 0 0; } 30% { translate: 0 2.6px; } 100% { translate: 0 0; } }
+[data-scene='platines'] .pt-armup, [data-scene='platines'] .pt-wavearm { transform-box: view-box; transform-origin: 0 0; }
+[data-scene='platines'] .pt-armup { animation: pt-armup 0.96s ease-in-out infinite alternate; }
+@keyframes pt-armup { from { rotate: calc(var(--k2) * -8deg); } to { rotate: calc(var(--k2) * 8deg); } }
+[data-scene='platines'] .pt-wavearm { rotate: var(--dn); animation: pt-ola 16s ease-in-out infinite; animation-delay: calc(var(--n) * 0.11s - 12s); }
+@keyframes pt-ola { 0%, 2% { rotate: var(--dn); } 5%, 10% { rotate: 0deg; } 14%, 100% { rotate: var(--dn); } }
+
+/* Confettis : cachés tant qu'un canon n'a pas tiré */
+[data-scene='platines'] .pt-fxlayer { height: 0; }
+[data-scene='platines'] .pt-conf { position: absolute; top: 152px; margin-left: -2px; border-radius: 1px; opacity: 0; }
+
+/* ---- Au toucher (la DJ et ses platines) : le scratch ----
+   Le vinyle de gauche s'arrête et part en arrière, revient, repart, sous la main de la DJ ; de
+   l'autre bras, elle salue la foule ; l'égaliseur bondit, et la foule lève les mains. */
+[data-scene='platines'][data-fx~='scratch'] .pt-spin--l { animation-play-state: paused; }
+[data-scene='platines'][data-fx~='scratch'] .pt-scr--l { animation: pt-scratch 2.6s ease-in-out both; }
+@keyframes pt-scratch {
+  0% { transform: rotate(0deg); } 9% { transform: rotate(-80deg); } 18% { transform: rotate(15deg); }
+  27% { transform: rotate(-75deg); } 36% { transform: rotate(20deg); } 45% { transform: rotate(-90deg); }
+  56% { transform: rotate(10deg); } 66%, 100% { transform: rotate(0deg); }
+}
+[data-scene='platines'][data-fx~='scratch'] .pt-arm--l { animation: pt-scratch-arm 2.6s ease-in-out both; }
+@keyframes pt-scratch-arm {
+  0% { transform: rotate(0deg); } 9% { transform: rotate(8deg); } 18% { transform: rotate(-2deg); }
+  27% { transform: rotate(8deg); } 36% { transform: rotate(-2deg); } 45% { transform: rotate(9deg); }
+  56% { transform: rotate(-1deg); } 66%, 100% { transform: rotate(0deg); }
+}
+[data-scene='platines'][data-fx~='scratch'] .pt-arm--r { animation: pt-salute 2.6s ease-in-out both; }
+@keyframes pt-salute {
+  0% { transform: rotate(0deg); } 12% { transform: rotate(-168deg) scale(1.3); } 22% { transform: rotate(-154deg) scale(1.3); }
+  32% { transform: rotate(-170deg) scale(1.3); } 42% { transform: rotate(-154deg) scale(1.3); } 52% { transform: rotate(-170deg) scale(1.3); }
+  62% { transform: rotate(-154deg) scale(1.3); } 74% { transform: rotate(-168deg) scale(1.3); } 90%, 100% { transform: rotate(0deg); }
+}
+[data-scene='platines'][data-fx~='scratch'] .pt-dj__head { animation: pt-nod-big 0.325s ease-out 8; }
+@keyframes pt-nod-big { 0% { transform: translateY(0) rotate(0deg); } 35% { transform: translateY(3.6px) rotate(-4deg); } 100% { transform: translateY(0) rotate(0deg); } }
+[data-scene='platines'][data-fx~='scratch'] .pt-eqall { animation: pt-eqjump 2.6s ease-in-out both; }
+@keyframes pt-eqjump {
+  0% { transform: scaleY(1); } 10% { transform: scaleY(1.6); } 20% { transform: scaleY(0.7); } 30% { transform: scaleY(1.55); }
+  40% { transform: scaleY(0.75); } 50% { transform: scaleY(1.6); } 62% { transform: scaleY(0.9); } 74% { transform: scaleY(1.25); }
+  86%, 100% { transform: scaleY(1); }
+}
+[data-scene='platines'][data-fx~='scratch'] .pt-scratchmarks { animation: pt-marks 2.6s ease-in-out both; }
+@keyframes pt-marks { 0%, 4% { opacity: 0; } 9% { opacity: 1; } 16% { opacity: 0.1; } 27% { opacity: 1; } 34% { opacity: 0.1; } 45% { opacity: 1; } 56%, 100% { opacity: 0; } }
+[data-scene='platines'][data-fx~='scratch'] .pt-wavearm { animation: pt-cheer 2.3s ease-in-out calc(var(--n) * 0.02s) both; }
+@keyframes pt-cheer { 0%, 42% { rotate: var(--dn); } 56%, 84% { rotate: 0deg; } 100% { rotate: var(--dn); } }
+
+/* ---- Au toucher (une enceinte) : elles soufflent ----
+   Les membranes pompent fort, des ondes sortent des caissons, la foule saute trois fois. */
+[data-scene='platines'][data-fx~='souffle'] .pt-woof { animation: pt-pump 0.3s ease-out 8; }
+@keyframes pt-pump { 0% { transform: scale(1.22); } 100% { transform: scale(1); } }
+[data-scene='platines'][data-fx~='souffle'] .pt-ring { animation: pt-ring 1.1s ease-out 2 both; }
+[data-scene='platines'][data-fx~='souffle'] .pt-ring--2 { animation-delay: 0.55s; }
+@keyframes pt-ring { 0% { opacity: 0.95; transform: scale(1); } 100% { opacity: 0; transform: scale(4.2); } }
+[data-scene='platines'][data-fx~='souffle'] .pt-fan { animation: pt-jump 0.6s ease-out calc(var(--n) * 0.02s) 3; }
+[data-scene='platines'][data-fx~='souffle'] .pt-backrow { animation: pt-jump 0.6s ease-out 0.12s 3; }
+@keyframes pt-jump {
+  0% { translate: 0 0; animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1); }
+  38% { translate: 0 -10px; animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  72% { translate: 0 1.5px; }
+  100% { translate: 0 0; }
+}
+
+/* ---- Au toucher (un canon) : les confettis ----
+   Les deux canons reculent d'un coup en lâchant une bouffée ; les confettis montent, s'ouvrent en
+   gerbe puis retombent en virevoltant sur la foule. */
+[data-scene='platines'][data-fx~='confettis'] .pt-cannon { animation: pt-recoil 0.5s ease-out both; }
+@keyframes pt-recoil { 0% { translate: 0 0; } 12% { translate: 0 4px; } 100% { translate: 0 0; } }
+[data-scene='platines'][data-fx~='confettis'] .pt-puff { animation: pt-puff 1s ease-out both; }
+@keyframes pt-puff { 0% { opacity: 0.9; transform: scale(0.4); } 100% { opacity: 0; transform: translateY(-8px) scale(2.6); } }
+[data-scene='platines'][data-fx~='confettis'] .pt-conf { animation: pt-conf var(--d) var(--dl) both, pt-flut var(--fl) ease-in-out infinite alternate; }
+@keyframes pt-conf {
+  0% { opacity: 0; translate: 0 0; rotate: 0deg; animation-timing-function: cubic-bezier(0.15, 0.75, 0.35, 1); }
+  3% { opacity: 1; }
+  26% { translate: calc(var(--tx) * 0.55) var(--py); rotate: calc(var(--ro) * 0.3); animation-timing-function: cubic-bezier(0.45, 0, 0.75, 1); }
+  86% { opacity: 1; }
+  100% { opacity: 0; translate: var(--tx) var(--fy); rotate: var(--ro); }
+}
+@keyframes pt-flut { from { scale: 1 1; } to { scale: 0.18 1; } }
+
+/* ---- Changement d'onglet : un vinyle géant roule devant l'écran ----
+   Un disque, plus grand que l'écran, traverse de droite à gauche en tournant sur lui-même (son
+   étiquette verte et violette le montre), d'un seul mouvement ; un reflet immobile glisse avec
+   lui. La page change derrière lui à mi-course, quand il couvre tout l'écran. */
+html[data-el-nav='platines']::view-transition-old(root) { animation: pt-page-out 1s linear both; }
+html[data-el-nav='platines']::view-transition-new(root) { animation: pt-page-in 1s linear both; }
+@keyframes pt-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes pt-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='platines'] i:nth-child(-n + 2) { left: 100%; top: calc(50% - 65vmax); width: 130vmax; height: 130vmax; border-radius: 50%; }
+.el-front[data-scene='platines'] i:first-child {
+  background:
+    radial-gradient(circle closest-side, rgba(0, 0, 0, 0) 0 52%, #0A0A0F 52% 53.4%, rgba(0, 0, 0, 0) 53.4% 74%, #0A0A0F 74% 75.4%, rgba(0, 0, 0, 0) 75.4% 95.4%, #9B5CFF 95.4% 96.6%, #0A0A0F 96.6% 100%),
+    repeating-radial-gradient(circle closest-side, #15151C 0 1.1%, #23232E 1.1% 1.5%),
+    #15151C;
+}
+.el-front[data-scene='platines'] i:first-child::before {
+  content: ''; position: absolute; left: 34%; top: 34%; width: 32%; height: 32%; border-radius: 50%;
+  background:
+    radial-gradient(circle closest-side, #0F0F14 0 8%, rgba(0, 0, 0, 0) 8% 90%, #0F0F14 90% 93%, rgba(0, 0, 0, 0) 93%),
+    linear-gradient(#0F0F14, #0F0F14) 66% 28% / 22% 5% no-repeat,
+    linear-gradient(#0F0F14, #0F0F14) 68% 38% / 14% 4% no-repeat,
+    linear-gradient(#FFFFFF, #FFFFFF) 32% 66% / 20% 5% no-repeat,
+    conic-gradient(#B6FF3B 0 50%, #9B5CFF 50% 100%);
+}
+.el-front[data-scene='platines'] i:nth-child(2) {
+  background: conic-gradient(from -40deg, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, 0.13) 20deg, rgba(255, 255, 255, 0) 42deg 180deg, rgba(255, 255, 255, 0.09) 200deg, rgba(255, 255, 255, 0) 222deg);
+}
+.el-front[data-scene='platines'][data-on] i:first-child { animation: pt-roll 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+.el-front[data-scene='platines'][data-on] i:nth-child(2) { animation: pt-glide 1s cubic-bezier(0.4, 0.15, 0.6, 0.85) both; }
+@keyframes pt-roll { from { opacity: 1; transform: translateX(0) rotate(0deg); } to { opacity: 1; transform: translateX(calc(-100vw - 130vmax)) rotate(-200deg); } }
+@keyframes pt-glide { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(calc(-100vw - 130vmax)); } }
