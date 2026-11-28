@@ -14,7 +14,8 @@ import type { ComponentType } from 'react';
 
 export type StudentThemeId = 'carnet' | 'cosmos' | 'arcade' | 'jungle' | 'fossiles' | 'volcan' | 'crepuscule' | 'savane' | 'abysses' | 'banquise' | 'stade' | 'ruche' | 'sommets' | 'orage' | 'microscope' | 'ville' | 'parquet' | 'adn' | 'seisme' | 'skate'
   | 'moyenage' | 'voyage' | 'fantasy' | 'conte' | 'theatre' | 'heros'
-  | 'pangee' | 'petri' | 'radio' | 'retro' | 'mur' | 'planche' | 'platines' | 'terminal' | 'bonbon';
+  | 'pangee' | 'petri' | 'radio' | 'retro' | 'mur' | 'planche' | 'platines' | 'terminal' | 'bonbon'
+  | 'lofi';
 
 /** Famille d'un thème : sert à ranger l'écran « Mon thème ». */
 export type StudentThemeGroup = 'univers' | 'nature' | 'sciences' | 'francais' | 'sport';
@@ -85,6 +86,7 @@ export const STUDENT_THEMES: StudentTheme[] = [
   { id: 'platines', name: 'Platines', group: 'univers', unlock: 'card', note: 'Le concert va commencer', bg: '#0F0F14', surface: '#1B1B24', text: '#F5F5FA', accent: '#B6FF3B', font: 'Unbounded:wght@600;700', scene: () => import('../themes-eleve/platines'), animated: true },
   { id: 'terminal', name: 'Terminal', group: 'univers', unlock: 'card', note: 'Vert phosphore sur noir', bg: '#050A05', surface: '#0B140B', text: '#B6FFB0', accent: '#39FF14', font: 'VT323', scene: () => import('../themes-eleve/terminal'), animated: true },
   { id: 'bonbon', name: 'Bonbon', group: 'univers', unlock: 'card', note: 'Une confiserie toute ronde', bg: '#FFF0F6', surface: '#FFFFFF', text: '#3B1E3F', accent: '#C2255C', font: 'Grandstander:wght@700;800', scene: () => import('../themes-eleve/bonbon'), animated: true },
+  { id: 'lofi', name: 'Lofi', group: 'univers', unlock: 'card', note: 'Réviser au café, sous la pluie', bg: '#1C1724', surface: '#2A2233', text: '#FBF1E6', accent: '#F5B489', font: 'Varela+Round', scene: () => import('../themes-eleve/lofi'), animated: true },
   // Français (programme du collège), ouverts par le professeur avec le cours comme ceux de sciences
   { id: 'moyenage', name: 'Moyen Âge', group: 'francais', unlock: 'class', note: 'Le château et son tournoi', bg: '#EFE6D2', surface: '#FFFBF1', text: '#2A1E12', accent: '#1F4E8C', font: 'Uncial+Antiqua', scene: () => import('../themes-eleve/moyenage'), animated: true },
   { id: 'voyage', name: 'Voyage', group: 'francais', unlock: 'class', note: 'Cap vers l’inconnu', bg: '#F8EEDB', surface: '#FFFDF7', text: '#1F2B38', accent: '#1B5E8A', font: 'Kalam:wght@700', scene: () => import('../themes-eleve/voyage'), animated: true },

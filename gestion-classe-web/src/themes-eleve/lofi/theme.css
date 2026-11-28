@@ -1,0 +1,333 @@
+/* Thème « Lofi » (espace élève) : nuit chaude violet brun, lumières pêche, pluie sur la vitrine. */
+.el[data-theme='lofi'] {
+  --el-bg: #1C1724; --el-surface: #2A2233; --el-line: #3F3448; --el-line-soft: #342B3D; --el-line-strong: #574A60;
+  --el-text: #FBF1E6; --el-muted: #DCCBC0; --el-dim: #BCA9A6;
+  --el-indigo: #F5B489; --el-indigo-ink: #FFCDA8; --el-indigo-soft: #4A3434;
+  --el-pos: #8FD6A8; --el-pos-ink: #B2E6C3; --el-pos-soft: #1E3A2C;
+  --el-warn: #F2C46E; --el-warn-ink: #F8D899; --el-warn-soft: #45341A;
+  --el-neg: #FF9C94; --el-neg-soft: #4A2228;
+  --el-track: #3A3043; --el-on-accent: #1C1724; --el-radio: #9C8C9C;
+  --el-radius: 18px; --el-radius-sm: 14px;
+  --el-font-display: 'Varela Round', 'Nunito', 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+}
+.el[data-theme='lofi'] .el-main { padding-top: 244px; }
+/* Varela Round n'a qu'une graisse : pas de faux gras */
+.el[data-theme='lofi'] .el-h1,
+.el[data-theme='lofi'] .el-big,
+.el[data-theme='lofi'] .el-mid { font-weight: 400; letter-spacing: 0; }
+.el[data-theme='lofi'] .el-btn--primary { box-shadow: 0 3px 0 #A86E4C; }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis vivent dans `.lf-set`, un cadre de 480 px centré. */
+[data-scene='lofi'] .lf-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='lofi'] .lf-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* La rue : ciel de nuit, chaussée mouillée (le dessin vient du SVG, le fond prolonge sur les côtés) */
+[data-scene='lofi'] .lf-street { height: 240px; background: linear-gradient(#2A2546 0, #3A3060 92px, #2C2544 119px, #231D34 125px); }
+[data-scene='lofi'] .lf-street::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 600px; background: #2A2546; }
+[data-scene='lofi'] .lf-bokeh { animation: lf-bokeh var(--d) ease-in-out var(--delay) infinite alternate; }
+@keyframes lf-bokeh { from { opacity: 0.55; } to { opacity: 1; } }
+
+/* Pluie dehors, vue dans le cadre de la vitrine */
+[data-scene='lofi'] .lf-rain { position: absolute; left: 196px; top: 12px; width: 240px; height: 160px; overflow: hidden; }
+[data-scene='lofi'] .lf-rain span {
+  position: absolute; left: var(--x); top: -24px; width: 1.2px; height: var(--h); border-radius: 1px;
+  background: linear-gradient(rgba(214, 206, 255, 0), #D6CEFF); opacity: var(--o);
+  animation: lf-rain var(--d) linear var(--delay) infinite;
+}
+@keyframes lf-rain { from { transform: translate(0, 0) rotate(8deg); } to { transform: translate(-26px, 196px) rotate(8deg); } }
+
+/* Feux de voitures au loin : des taches qui glissent d'un bord à l'autre */
+[data-scene='lofi'] .lf-car { opacity: 0; }
+[data-scene='lofi'] .lf-car--a { animation: lf-car-left 13s linear -2s infinite; }
+[data-scene='lofi'] .lf-car--b { animation: lf-car-right 16s linear -9s infinite; }
+[data-scene='lofi'] .lf-car--c { animation: lf-car-left 19s linear -13s infinite; }
+@keyframes lf-car-left {
+  0% { opacity: 0; transform: translateX(470px); } 5% { opacity: 1; }
+  45% { opacity: 1; } 50%, 100% { opacity: 0; transform: translateX(170px); }
+}
+@keyframes lf-car-right {
+  0% { opacity: 0; transform: translateX(170px); } 5% { opacity: 1; }
+  45% { opacity: 1; } 50%, 100% { opacity: 0; transform: translateX(470px); }
+}
+
+/* Le passant au parapluie (toutes les 21 s) */
+[data-scene='lofi'] .lf-walker { opacity: 0; animation: lf-walk 21s linear -6s infinite; }
+@keyframes lf-walk {
+  0% { opacity: 0; transform: translate(178px, 122px); } 2% { opacity: 0.9; }
+  40% { opacity: 0.9; } 42%, 100% { opacity: 0; transform: translate(470px, 122px); }
+}
+[data-scene='lofi'] .lf-walker__bob { animation: lf-walk-bob 0.5s ease-in-out infinite alternate; }
+@keyframes lf-walk-bob { from { transform: translateY(0); } to { transform: translateY(-0.9px); } }
+[data-scene='lofi'] .lf-leg { transform-origin: 0 -11px; animation: lf-stride 0.5s ease-in-out infinite alternate; }
+[data-scene='lofi'] .lf-leg--b { animation-direction: alternate-reverse; }
+@keyframes lf-stride { from { transform: rotate(-16deg); } to { transform: rotate(16deg); } }
+
+/* La voiture qui passe (toutes les 29 s) : ses phares glissent sur la vitrine */
+[data-scene='lofi'] .lf-carpass { opacity: 0; animation: lf-carpass 29s linear -22s infinite; }
+@keyframes lf-carpass {
+  0% { opacity: 0; transform: translateX(150px); } 1% { opacity: 1; }
+  8.5% { opacity: 1; } 9%, 100% { opacity: 0; transform: translateX(500px); }
+}
+
+/* ---- Le café ----
+   La vitrine perce le mur : le mur est l'ombre portée (très large) du cadre vitré lui-même. */
+[data-scene='lofi'] .lf-room { height: 240px; }
+[data-scene='lofi'] .lf-glass {
+  position: absolute; left: 196px; top: 12px; width: 240px; height: 160px; overflow: hidden;
+  box-shadow: 0 0 0 2400px #3A2A37;
+  background:
+    linear-gradient(118deg, rgba(255, 255, 255, 0) 0 30%, rgba(255, 255, 255, 0.05) 30% 38%, rgba(255, 255, 255, 0) 38% 62%, rgba(255, 255, 255, 0.04) 62% 66%, rgba(255, 255, 255, 0) 66%),
+    linear-gradient(rgba(160, 140, 220, 0.08), rgba(160, 140, 220, 0));
+}
+[data-scene='lofi'] .lf-sweep {
+  position: absolute; left: 0; top: -10%; width: 90px; height: 120%; opacity: 0;
+  background: linear-gradient(90deg, rgba(255, 238, 210, 0), rgba(255, 238, 210, 0.22), rgba(255, 238, 210, 0));
+  animation: lf-sweep 29s linear -22s infinite;
+}
+@keyframes lf-sweep {
+  0% { opacity: 0; transform: translateX(-130px) skewX(-16deg); } 1% { opacity: 1; }
+  8.5% { opacity: 1; } 9%, 100% { opacity: 0; transform: translateX(300px) skewX(-16deg); }
+}
+/* Gouttes posées sur la vitre, et gouttes qui glissent en laissant leur traînée */
+[data-scene='lofi'] .lf-bead {
+  position: absolute; left: var(--x); top: var(--y); width: var(--s); height: calc(var(--s) * 1.15); border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(255, 246, 236, 0.9) 0 16%, rgba(255, 246, 236, 0.22) 38%, rgba(255, 246, 236, 0.08) 72%);
+}
+[data-scene='lofi'] .lf-run {
+  position: absolute; left: var(--x); top: 0; width: var(--s); height: calc(var(--s) * 1.25); border-radius: 50% 50% 48% 48% / 58% 58% 42% 42%;
+  background: radial-gradient(circle at 38% 34%, rgba(255, 248, 240, 0.95) 0 18%, rgba(255, 246, 236, 0.3) 42%, rgba(255, 246, 236, 0.12) 74%);
+  animation: lf-run var(--d) ease-in var(--delay) infinite;
+}
+[data-scene='lofi'] .lf-run::before {
+  content: ''; position: absolute; left: 50%; bottom: 60%; width: 1.4px; height: 54px; margin-left: -0.7px; border-radius: 1px;
+  background: linear-gradient(rgba(255, 240, 230, 0), rgba(255, 240, 230, 0.4)); transform-origin: 50% 100%;
+  animation: lf-trail var(--d) ease-in var(--delay) infinite;
+}
+@keyframes lf-run {
+  0% { opacity: 0; transform: translateY(-6px); } 6% { opacity: 1; transform: translateY(0); }
+  30% { transform: translateY(34px); } 38% { transform: translateY(36px); }
+  64% { transform: translateY(96px); } 70% { transform: translateY(98px); }
+  96% { opacity: 1; } 100% { opacity: 0; transform: translateY(170px); }
+}
+@keyframes lf-trail { 0%, 6% { transform: scaleY(0); } 40% { transform: scaleY(0.7); } 100% { transform: scaleY(1); } }
+
+/* Guirlande : les halos respirent lentement, chacun à son rythme (aucun clignotement) */
+[data-scene='lofi'] .lf-halo { animation: lf-halo 5s ease-in-out var(--delay) infinite alternate; }
+@keyframes lf-halo { from { opacity: 0.4; } to { opacity: 0.95; } }
+/* La bougie du rebord */
+[data-scene='lofi'] .lf-flame { transform-origin: 418px 159px; animation: lf-flame 1.7s ease-in-out infinite alternate; }
+@keyframes lf-flame { from { transform: rotate(-4deg) scaleY(0.92); } to { transform: rotate(4deg) scaleY(1.08); } }
+[data-scene='lofi'] .lf-candleglow { animation: lf-bokeh 2.6s ease-in-out infinite alternate; }
+
+/* Le tourne-disque : le vinyle tourne, une note s'envole de temps en temps */
+[data-scene='lofi'] .lf-spin { transform-origin: 0 0; animation: lf-spin 1.8s linear infinite; }
+@keyframes lf-spin { to { transform: rotate(360deg); } }
+[data-scene='lofi'] .lf-disc { transform-origin: 84px 96.5px; }
+[data-scene='lofi'] .lf-arm-tone { transform-origin: 126px 93px; }
+[data-scene='lofi'] .lf-note { opacity: 0; transform-origin: 119px 80px; animation: lf-note 11s ease-out -4s infinite; }
+@keyframes lf-note {
+  0%, 70% { opacity: 0; transform: translate(0, 4px); } 74% { opacity: 0.9; }
+  100% { opacity: 0; transform: translate(-14px, -38px) rotate(-14deg); }
+}
+[data-scene='lofi'] .lf-note-tap { opacity: 0; transform-origin: 97px 78px; }
+
+/* ---- La collégienne ---- */
+[data-scene='lofi'] .lf-table { height: 240px; }
+/* Le plateau de la table prolongé sur les côtés, puis un fond uni qui couvre tout le bas */
+[data-scene='lofi'] .lf-table::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 186px; height: calc(100vh + 900px);
+  background: linear-gradient(#80584A 0 2px, #6A4535 2px 9.4px, #77503F 9.4px 10.6px, #6A4535 10.6px 22.4px, #77503F 22.4px 23.6px, #6A4535 23.6px 36px, #4E3128 36px 45px, #1C1724 45px);
+}
+/* La tête suit la musique (un balancement toutes les deux temps) */
+[data-scene='lofi'] .lf-head { transform-origin: 196px 142px; animation: lf-bob 0.8s ease-in-out infinite alternate; }
+@keyframes lf-bob { from { transform: rotate(-2.4deg); } to { transform: rotate(2.4deg); } }
+/* Toutes les 13 s : elle relève la tête vers la vitre, regarde la pluie, puis se remet à écrire */
+[data-scene='lofi'] .lf-head-look { transform-origin: 196px 142px; animation: lf-look 13s ease-in-out infinite; }
+@keyframes lf-look {
+  0%, 62% { transform: none; } 66%, 84% { transform: translate(1.5px, -2.5px) rotate(6deg); } 88%, 100% { transform: none; }
+}
+[data-scene='lofi'] .lf-eyes-up { opacity: 0; animation: lf-eyes-up 13s linear infinite; }
+[data-scene='lofi'] .lf-eyes-down { animation: lf-eyes-down 13s linear infinite; }
+[data-scene='lofi'] .lf-eyes-shut { opacity: 0; }
+@keyframes lf-eyes-up { 0%, 64% { opacity: 0; } 65.5%, 84.5% { opacity: 1; } 86%, 100% { opacity: 0; } }
+@keyframes lf-eyes-down { 0%, 64% { opacity: 1; } 65.5%, 84.5% { opacity: 0; } 86%, 100% { opacity: 1; } }
+/* Le stylo écrit : de petits allers-retours, une ligne après l'autre ; la main se lève quand elle regarde dehors */
+[data-scene='lofi'] .lf-write { transform-origin: 158px 186px; animation: lf-write 13s linear infinite; }
+@keyframes lf-write {
+  0% { transform: rotate(-3.9deg); } 2% { transform: rotate(-1.5deg); } 4% { transform: rotate(-2.7deg); } 6% { transform: rotate(-0.3deg); } 8% { transform: rotate(-1.5deg); } 10% { transform: rotate(0.9deg); } 12% { transform: rotate(-0.3deg); } 14% { transform: rotate(2.1deg); } 16% { transform: rotate(0.9deg); } 18% { transform: rotate(3.3deg); }
+  20% { transform: rotate(-3.9deg); } 22% { transform: rotate(-1.5deg); } 24% { transform: rotate(-2.7deg); } 26% { transform: rotate(-0.3deg); } 28% { transform: rotate(-1.5deg); } 30% { transform: rotate(0.9deg); } 32% { transform: rotate(-0.3deg); } 34% { transform: rotate(2.1deg); } 36% { transform: rotate(0.9deg); } 38% { transform: rotate(3.3deg); }
+  40% { transform: rotate(-3.9deg); } 42% { transform: rotate(-1.5deg); } 44% { transform: rotate(-2.7deg); } 46% { transform: rotate(-0.3deg); } 48% { transform: rotate(-1.5deg); } 50% { transform: rotate(0.9deg); } 52% { transform: rotate(-0.3deg); } 54% { transform: rotate(2.1deg); } 56% { transform: rotate(0.9deg); } 58% { transform: rotate(3.3deg); }
+  60% { transform: rotate(-3.9deg); } 62% { transform: rotate(-1.5deg); } 65%, 85% { transform: rotate(-7deg); }
+  88% { transform: rotate(-3.9deg); } 90% { transform: rotate(-1.5deg); } 92% { transform: rotate(-2.7deg); } 94% { transform: rotate(-0.3deg); } 96% { transform: rotate(-1.5deg); } 98% { transform: rotate(0.9deg); } 100% { transform: rotate(-3.9deg); }
+}
+/* La vapeur du chocolat */
+[data-scene='lofi'] .lf-steam path { opacity: 0; animation: lf-steam 3.6s ease-out infinite; }
+[data-scene='lofi'] .lf-steam path:nth-child(2) { animation-delay: -1.2s; }
+[data-scene='lofi'] .lf-steam path:nth-child(3) { animation-delay: -2.4s; }
+@keyframes lf-steam {
+  0% { opacity: 0; transform: translateY(4px) scaleY(0.7); } 30% { opacity: 0.55; }
+  100% { opacity: 0; transform: translateY(-12px) scaleY(1.1); }
+}
+[data-scene='lofi'] .lf-steam path { transform-box: fill-box; transform-origin: 50% 100%; }
+[data-scene='lofi'] .lf-arm { transform-origin: 222px 152px; }
+[data-scene='lofi'] .lf-fore { transform-origin: 228px 184px; }
+[data-scene='lofi'] .lf-mug { transform-origin: 254px 191px; }
+[data-scene='lofi'] .lf-puff { opacity: 0; transform-origin: 217px 124px; }
+/* Les plantes suspendues se balancent doucement */
+[data-scene='lofi'] .lf-plants { height: 140px; }
+[data-scene='lofi'] .lf-hang--l { transform-origin: 64px -20px; animation: lf-sway 7s ease-in-out infinite alternate; }
+[data-scene='lofi'] .lf-hang--r { transform-origin: 408px -20px; animation: lf-sway 9s ease-in-out -3s infinite alternate; }
+@keyframes lf-sway { from { transform: rotate(-1.6deg); } to { transform: rotate(1.6deg); } }
+
+/* ---- Au toucher (le carnet) : elle lève la main, tourne la page, puis réécrit ses lignes ---- */
+[data-scene='lofi'] .lf-leaf { transform-origin: 196px 204px; }
+[data-scene='lofi'] .lf-leaf__shade { opacity: 0; }
+[data-scene='lofi'] .lf-relines path { transform-box: fill-box; transform-origin: 0 50%; }
+[data-scene='lofi'][data-fx~='page'] .lf-write { animation: lf-page-hand 4.6s linear both; }
+@keyframes lf-page-hand {
+  0% { transform: rotate(-3deg); } 7%, 26% { transform: rotate(-11deg); } 33%, 36% { transform: rotate(-3.9deg); }
+  38% { transform: rotate(-1.5deg); } 40% { transform: rotate(-2.6deg); } 42% { transform: rotate(-0.2deg); } 44% { transform: rotate(-1.4deg); } 46% { transform: rotate(1deg); } 48% { transform: rotate(-0.2deg); } 50% { transform: rotate(2.3deg); }
+  52% { transform: rotate(-3.9deg); } 54% { transform: rotate(-1.5deg); } 56% { transform: rotate(-2.6deg); } 58% { transform: rotate(-0.2deg); } 60% { transform: rotate(-1.4deg); } 62% { transform: rotate(1deg); } 64% { transform: rotate(-0.2deg); } 66% { transform: rotate(2.3deg); }
+  68% { transform: rotate(-3.9deg); } 70% { transform: rotate(-1.5deg); } 72% { transform: rotate(-2.6deg); } 74% { transform: rotate(-0.2deg); } 76% { transform: rotate(-1.4deg); } 78% { transform: rotate(1deg); } 80% { transform: rotate(-0.2deg); } 82% { transform: rotate(2.3deg); }
+  84% { transform: rotate(-3.9deg); } 86% { transform: rotate(-1.5deg); } 88% { transform: rotate(-2.6deg); } 90% { transform: rotate(-0.2deg); } 92% { transform: rotate(-1.4deg); } 94% { transform: rotate(1deg); } 96% { transform: rotate(-0.2deg); } 98% { transform: rotate(2.3deg); } 100% { transform: rotate(-3.9deg); }
+}
+[data-scene='lofi'][data-fx~='page'] .lf-leaf { animation: lf-leaf 4.6s ease-in-out both; }
+@keyframes lf-leaf {
+  0%, 6% { transform: none; }
+  13% { transform: translateY(-6px) skewY(-9deg) scaleX(0.55); }
+  19% { transform: translateY(-10px) scaleX(0.02); }
+  25% { transform: translateY(-6px) skewY(9deg) scaleX(-0.6); }
+  31%, 100% { transform: scaleX(-1); }
+}
+[data-scene='lofi'][data-fx~='page'] .lf-leaf__shade { animation: lf-leaf-shade 4.6s ease-in-out both; }
+@keyframes lf-leaf-shade { 0%, 7% { opacity: 0; } 18% { opacity: 0.35; } 30%, 100% { opacity: 0; } }
+[data-scene='lofi'][data-fx~='page'] .lf-relines path { animation: lf-reline 0.7s ease-out 1.6s both; }
+[data-scene='lofi'][data-fx~='page'] .lf-relines path:nth-child(2) { animation-delay: 2.32s; }
+[data-scene='lofi'][data-fx~='page'] .lf-relines path:nth-child(3) { animation-delay: 3.04s; }
+[data-scene='lofi'][data-fx~='page'] .lf-relines path:nth-child(4) { animation-delay: 3.76s; }
+@keyframes lf-reline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* ---- Au toucher (la tasse) : une gorgée de chocolat ----
+   Le bras se plie (épaule, coude, poignet) et porte la tasse aux lèvres en la gardant droite ; elle
+   ferme les yeux, incline la tasse, puis la repose ; un petit nuage de vapeur s'envole. */
+[data-scene='lofi'][data-fx~='gorgee'] .lf-arm { animation: lf-sip-arm 4.2s ease-in-out both; }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-fore { animation: lf-sip-fore 4.2s ease-in-out both; }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-mug { animation: lf-sip-mug 4.2s ease-in-out both; }
+@keyframes lf-sip-arm { 0% { transform: none; } 28%, 64% { transform: rotate(63deg); } 92%, 100% { transform: none; } }
+@keyframes lf-sip-fore { 0% { transform: none; } 28%, 64% { transform: rotate(-164.2deg); } 92%, 100% { transform: none; } }
+@keyframes lf-sip-mug {
+  0% { transform: none; } 28% { transform: rotate(98deg); } 36%, 56% { transform: rotate(81deg); }
+  64% { transform: rotate(98deg); } 92%, 100% { transform: none; }
+}
+[data-scene='lofi'][data-fx~='gorgee'] .lf-head-look { animation: none; }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-head { animation: lf-sip-head 4.2s ease-in-out both; }
+@keyframes lf-sip-head { 0% { transform: none; } 30%, 60% { transform: translateY(-1px) rotate(4deg); } 88%, 100% { transform: none; } }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-eyes-up { animation: none; opacity: 0; }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-eyes-down { animation: lf-sip-open 4.2s linear both; }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-eyes-shut { animation: lf-sip-shut 4.2s linear both; }
+@keyframes lf-sip-open { 0%, 26% { opacity: 1; } 29%, 70% { opacity: 0; } 73%, 100% { opacity: 1; } }
+@keyframes lf-sip-shut { 0%, 26% { opacity: 0; } 29%, 70% { opacity: 1; } 73%, 100% { opacity: 0; } }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-steam { animation: lf-sip-steam 4.2s linear both; }
+@keyframes lf-sip-steam { 0% { opacity: 1; } 8%, 90% { opacity: 0; } 100% { opacity: 1; } }
+[data-scene='lofi'][data-fx~='gorgee'] .lf-puff { animation: lf-puff 4.2s ease-out both; }
+@keyframes lf-puff {
+  0%, 52% { opacity: 0; transform: scale(0.4); } 58% { opacity: 0.9; transform: scale(0.75); }
+  100% { opacity: 0; transform: translate(30px, -48px) scale(1.5); }
+}
+
+/* ---- Au toucher (le tourne-disque) : le disque change de face ----
+   Le bras se lève et s'écarte, le disque monte, se retourne, redescend ; le bras revient, une note
+   s'envole. */
+[data-scene='lofi'][data-fx~='face'] .lf-arm-tone { animation: lf-tone 3.6s ease-in-out both; }
+@keyframes lf-tone { 0% { transform: none; } 12%, 70% { transform: translateY(-3px) rotate(24deg); } 84%, 100% { transform: none; } }
+[data-scene='lofi'][data-fx~='face'] .lf-disc { animation: lf-flip 3.6s ease-in-out both; }
+@keyframes lf-flip {
+  0%, 12% { transform: none; }
+  26% { transform: translateY(-14px); }
+  40% { transform: translateY(-17px) scaleX(0.02); }
+  54% { transform: translateY(-14px) scaleX(-1); }
+  66%, 100% { transform: scaleX(-1); }
+}
+[data-scene='lofi'][data-fx~='face'] .lf-note-tap { animation: lf-note-tap 3.6s ease-out both; }
+@keyframes lf-note-tap {
+  0%, 68% { opacity: 0; transform: translate(0, 4px); } 74% { opacity: 1; }
+  100% { opacity: 0; transform: translate(12px, -36px) rotate(14deg); }
+}
+
+/* ---- Changement d'onglet : une grosse goutte descend la vitre ----
+   La vitre se couvre de buée et de gouttes devant l'ancienne page ; une grosse goutte glisse du haut
+   en bas de l'écran, d'un seul mouvement, et la nouvelle page apparaît, nette, dans sa traînée qui
+   s'élargit derrière elle. La goutte, la traînée et la nouvelle page partagent la même durée et la
+   même courbe : la page se découvre exactement derrière la goutte. */
+html[data-el-nav='lofi']::view-transition-old(root) { animation: lf-page-keep 1s linear both; }
+html[data-el-nav='lofi']::view-transition-new(root) { animation: lf-page-wake 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes lf-page-keep { from, to { opacity: 1; } }
+@keyframes lf-page-wake {
+  from {
+    opacity: 1;
+    clip-path: polygon(-5% -340vh, 105% -340vh, 105% -56vh, calc(50% + 86px) -32vh, calc(50% + 46px) -24vh, calc(50% + 26px) -20vh, calc(50% - 26px) -20vh, calc(50% - 46px) -24vh, calc(50% - 86px) -32vh, -5% -56vh);
+  }
+  to {
+    opacity: 1;
+    clip-path: polygon(-5% -180vh, 105% -180vh, 105% 104vh, calc(50% + 86px) 128vh, calc(50% + 46px) 136vh, calc(50% + 26px) 140vh, calc(50% - 26px) 140vh, calc(50% - 46px) 136vh, calc(50% - 86px) 128vh, -5% 104vh);
+  }
+}
+/* La grosse goutte : son bas suit la pointe de la traînée */
+.el-front[data-scene='lofi'] i:nth-child(1) {
+  z-index: 3; left: calc(50% - 42px); top: 0; width: 84px; height: 118px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 84'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23FFF4EA' stop-opacity='.35'/%3E%3Cstop offset='1' stop-color='%23F5B489' stop-opacity='.7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M30 2C36 22 58 42 58 58A28 26 0 0 1 2 58C2 42 24 22 30 2Z' fill='url(%23g)' stroke='%23FFF4EA' stroke-opacity='.9' stroke-width='2'/%3E%3Cellipse cx='19' cy='54' rx='5' ry='9' transform='rotate(18 19 54)' fill='%23FFFFFF' fill-opacity='.8'/%3E%3Cpath d='M14 72Q30 81 46 72' fill='none' stroke='%23FFFFFF' stroke-opacity='.45' stroke-width='2.5' stroke-linecap='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+.el-front[data-scene='lofi'][data-on] i:nth-child(1) { animation: lf-drop 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes lf-drop {
+  from { opacity: 1; transform: translateY(calc(-20vh - 116px)); }
+  to { opacity: 1; transform: translateY(calc(140vh - 116px)); }
+}
+/* La buée sur la vitre, devant l'ancienne page : la goutte l'essuie en passant */
+.el-front[data-scene='lofi'] i:nth-child(2) {
+  z-index: 1; left: 0; top: 0; width: 100%; height: 100%;
+  background:
+    radial-gradient(ellipse 3px 4px at 40% 35%, rgba(255, 246, 236, 0.75) 0 25%, rgba(255, 244, 234, 0.22) 60%, rgba(255, 244, 234, 0) 100%) 0 0 / 41px 47px,
+    radial-gradient(ellipse 4.4px 5.8px at 40% 35%, rgba(255, 246, 236, 0.6) 0 22%, rgba(255, 244, 234, 0.2) 60%, rgba(255, 244, 234, 0) 100%) 19px 23px / 67px 73px,
+    radial-gradient(ellipse 1.8px 2.4px at 40% 35%, rgba(255, 246, 236, 0.55) 0 30%, rgba(255, 244, 234, 0) 100%) 9px 31px / 29px 31px,
+    rgba(42, 34, 58, 0.5);
+}
+.el-front[data-scene='lofi'][data-on] i:nth-child(2) { animation: lf-mist 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes lf-mist {
+  from {
+    opacity: 0;
+    clip-path: polygon(-5% -56vh, calc(50% - 86px) -32vh, calc(50% - 46px) -24vh, calc(50% - 26px) -20vh, calc(50% + 26px) -20vh, calc(50% + 46px) -24vh, calc(50% + 86px) -32vh, 105% -56vh, 105% 320vh, -5% 320vh);
+  }
+  16% { opacity: 1; }
+  to {
+    opacity: 1;
+    clip-path: polygon(-5% 104vh, calc(50% - 86px) 128vh, calc(50% - 46px) 136vh, calc(50% - 26px) 140vh, calc(50% + 26px) 140vh, calc(50% + 46px) 136vh, calc(50% + 86px) 128vh, 105% 104vh, 105% 480vh, -5% 480vh);
+  }
+}
+/* Le bord mouillé de la traînée, qui accroche la lumière */
+.el-front[data-scene='lofi'] i:nth-child(3) { z-index: 2; left: 0; top: 0; width: 100%; height: 100%; background: rgba(255, 240, 228, 0.7); }
+.el-front[data-scene='lofi'][data-on] i:nth-child(3) { animation: lf-edge 1s cubic-bezier(0.45, 0.05, 0.55, 0.95) both; }
+@keyframes lf-edge {
+  from {
+    opacity: 1;
+    clip-path: polygon(-5% -56vh, calc(50% - 86px) -32vh, calc(50% - 46px) -24vh, calc(50% - 26px) -20vh, calc(50% + 26px) -20vh, calc(50% + 46px) -24vh, calc(50% + 86px) -32vh, 105% -56vh,
+      105% calc(-56vh + 4px), calc(50% + 86px) calc(-32vh + 4px), calc(50% + 46px) calc(-24vh + 4px), calc(50% + 26px) calc(-20vh + 4px), calc(50% - 26px) calc(-20vh + 4px), calc(50% - 46px) calc(-24vh + 4px), calc(50% - 86px) calc(-32vh + 4px), -5% calc(-56vh + 4px));
+  }
+  to {
+    opacity: 1;
+    clip-path: polygon(-5% 104vh, calc(50% - 86px) 128vh, calc(50% - 46px) 136vh, calc(50% - 26px) 140vh, calc(50% + 26px) 140vh, calc(50% + 46px) 136vh, calc(50% + 86px) 128vh, 105% 104vh,
+      105% calc(104vh + 4px), calc(50% + 86px) calc(128vh + 4px), calc(50% + 46px) calc(136vh + 4px), calc(50% + 26px) calc(140vh + 4px), calc(50% - 26px) calc(140vh + 4px), calc(50% - 46px) calc(136vh + 4px), calc(50% - 86px) calc(128vh + 4px), -5% calc(104vh + 4px));
+  }
+}
+/* Quelques gouttelettes que la grosse goutte laisse derrière elle */
+.el-front[data-scene='lofi'] i:nth-child(n + 4):nth-child(-n + 13) {
+  z-index: 2; left: calc(50% - 56px + var(--r1) * 112px); top: calc(6% + var(--r2) * 84%);
+  width: calc(4px + var(--r3) * 5px); height: calc(5px + var(--r3) * 6px); border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, rgba(255, 248, 240, 0.95) 0 18%, rgba(255, 246, 236, 0.35) 44%, rgba(255, 246, 236, 0.1) 76%);
+}
+.el-front[data-scene='lofi'][data-on] i:nth-child(n + 4):nth-child(-n + 13) { animation: lf-shed 0.42s ease-out calc(0.2s + var(--r2) * 0.46s) both; }
+@keyframes lf-shed {
+  from { opacity: 0; transform: scale(0.4); } 30% { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: translateY(10px) scale(0.9); }
+}
