@@ -1,0 +1,433 @@
+/* Thème « Planche » (espace élève) : une page de bande dessinée. Encre noire sur papier blanc,
+   cases cernées de noir avec leur ombre décalée, et une seule touche de rouge. */
+.el[data-theme='planche'] {
+  --el-bg: #FFFFFF; --el-surface: #FFFFFF; --el-line: #CFCFCF; --el-line-soft: #E4E4E4; --el-line-strong: #111111;
+  --el-text: #111111; --el-muted: #3A3A3A; --el-dim: #595959;
+  --el-indigo: #D10500; --el-indigo-ink: #A30400; --el-indigo-soft: #F1F1F1;
+  --el-pos: #1F7A4D; --el-pos-ink: #17603C; --el-pos-soft: #DDF3E6;
+  --el-warn: #9A5A00; --el-warn-ink: #7C4700; --el-warn-soft: #FBE9C8;
+  --el-neg: #B3261E; --el-neg-soft: #FBDDD9;
+  --el-track: #E6E6E6; --el-on-accent: #FFFFFF; --el-radio: #8A8A8A;
+  --el-radius: 3px; --el-radius-sm: 3px;
+  --el-font-display: 'Bangers', 'Inter', system-ui, sans-serif;
+  --el-card-shadow: 5px 5px 0 #111111;
+}
+.el[data-theme='planche'] .el-main { padding-top: 238px; }
+.el[data-theme='planche'] .el-head__titles { gap: 6px; }
+.el[data-theme='planche'] .el-h1 { font-weight: 400; font-size: 34px; line-height: 38px; letter-spacing: 0.04em; }
+.el[data-theme='planche'] .el-big,
+.el[data-theme='planche'] .el-mid { font-weight: 400; letter-spacing: 0.03em; }
+.el[data-theme='planche'] .el-unit { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; letter-spacing: 0; }
+/* Les cartes sont des cases : cernées de noir, avec l'ombre décalée */
+.el[data-theme='planche'] .el-card,
+.el[data-theme='planche'] .el-tile,
+.el[data-theme='planche'] .el-tilebox { border: 2.5px solid #111111; box-shadow: var(--el-card-shadow); }
+.el[data-theme='planche'] .el-choice { border: 2.5px solid #111111; padding: 7px 13px; box-shadow: 3px 3px 0 #111111; }
+.el[data-theme='planche'] .el-choice[aria-checked='true'] { border-color: var(--el-indigo); }
+.el[data-theme='planche'] .el-btn { border: 2.5px solid #111111; box-shadow: 3px 3px 0 #111111; }
+.el[data-theme='planche'] .el-btn--primary { background: var(--el-indigo); color: var(--el-on-accent); }
+.el[data-theme='planche'] .el-btn:disabled { box-shadow: none; border-color: var(--el-line); }
+.el[data-theme='planche'] .el-chip { border: 1.5px solid #111111; }
+.el[data-theme='planche'] .el-nav { border-top: 2.5px solid #111111; }
+
+/* =====================================================================
+   La scène. La bande de cases suit la largeur de l'écran : positions et largeurs des cases sont
+   des parts de la largeur de la scène (`--l`, `--w`), le reste se mesure en pixels depuis le haut.
+   Repères : cases de y = 40 à 224 ; le trottoir de chaque case (sol des personnages) à y = 198.
+   ===================================================================== */
+[data-scene='planche'] .pl-defs { position: absolute; }
+[data-scene='planche'] .pl-paper { height: calc(100vh + 900px); background: #FFFFFF; }
+[data-scene='planche'] .pl-strip { height: 240px; }
+
+/* Titre de la série, au-dessus de la bande */
+[data-scene='planche'] .pl-title {
+  position: absolute; left: 2.5%; right: 2.5%; top: 12px; display: flex; align-items: baseline; gap: 9px;
+  font-family: 'Bangers', 'Inter', sans-serif; font-size: 20px; line-height: 22px; letter-spacing: 0.05em; color: #111111; white-space: nowrap;
+}
+[data-scene='planche'] .pl-title b { font-weight: 400; color: #D10500; }
+[data-scene='planche'] .pl-title__ep { align-self: center; padding: 2px 5px 1px; border: 2px solid #111111; background: #D10500; color: #FFFFFF; font-size: 12px; line-height: 13px; letter-spacing: 0.06em; box-shadow: 2px 2px 0 #111111; }
+
+/* Une case : cadre noir, fond blanc, rien ne déborde (sauf la case qui se retourne) */
+[data-scene='planche'] .pl-panel {
+  position: absolute; top: 40px; height: 184px; left: calc(var(--l) * 100%); width: calc(var(--w) * 100%);
+  border: 2.5px solid #111111; background: #FFFFFF; overflow: hidden;
+}
+[data-scene='planche'] .pl-panel--b { border: 0; background: none; overflow: visible; perspective: 520px; }
+[data-scene='planche'] .pl-art { position: absolute; left: 0; bottom: 24px; width: 100%; height: 160px; }
+[data-scene='planche'] .pl-ground {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 24px; border-top: 2px solid #111111;
+  background: radial-gradient(circle, #111111 0 0.9px, rgba(17, 17, 17, 0) 1.2px) 0 4px / 6px 6px #FFFFFF;
+}
+[data-scene='planche'] .pl-cap {
+  position: absolute; left: 0; top: 0; z-index: 2; padding: 2px 6px 1px; background: #FFFFFF;
+  border-right: 2px solid #111111; border-bottom: 2px solid #111111;
+  font-family: 'Bangers', 'Inter', sans-serif; font-size: 11px; line-height: 13px; letter-spacing: 0.06em; color: #111111; white-space: nowrap;
+}
+/* Le fond de la case glisse un peu dans son cadre, sous le mouvement de caméra */
+[data-scene='planche'] .pl-far,
+[data-scene='planche'] .pl-sky { transform: translateX(calc(var(--px) * 4px)); }
+
+/* Case 1 : ciel en trame de points, nuages, maison, réverbère */
+[data-scene='planche'] .pl-sky {
+  position: absolute; left: -12px; right: -12px; top: 0; height: 64%;
+  background: radial-gradient(circle, #111111 0 1px, rgba(17, 17, 17, 0) 1.35px) 0 0 / 5px 5px;
+  -webkit-mask-image: linear-gradient(#000000 10%, rgba(0, 0, 0, 0) 100%); mask-image: linear-gradient(#000000 10%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.55;
+}
+[data-scene='planche'] .pl-clouds { position: absolute; left: 0; top: 0; width: 200%; height: 100px; animation: pl-clouds 46s linear infinite; }
+@keyframes pl-clouds { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+[data-scene='planche'] .pl-cloud { position: absolute; width: 44px; height: auto; fill: #FFFFFF; stroke: #111111; stroke-width: 1.4; stroke-linejoin: round; }
+[data-scene='planche'] .pl-cloud--small { width: 30px; }
+
+/* Case 2 : traits de vitesse qui respirent, palissade */
+[data-scene='planche'] .pl-burst {
+  position: absolute; inset: -30%;
+  background:
+    radial-gradient(ellipse 20% 16% at 50% 58%, #FFFFFF 0 55%, rgba(255, 255, 255, 0) 100%),
+    repeating-conic-gradient(from 0deg at 50% 58%, #111111 0 1.6deg, rgba(17, 17, 17, 0) 1.6deg 7deg);
+  opacity: 0.85; animation: pl-burst 3.2s ease-in-out infinite alternate;
+}
+@keyframes pl-burst { from { transform: scale(1); } to { transform: scale(1.1); } }
+
+/* La case qui se retourne : deux faces, dos à dos */
+[data-scene='planche'] .pl-flip { position: absolute; inset: 0; transform-style: preserve-3d; }
+[data-scene='planche'] .pl-face {
+  position: absolute; inset: 0; overflow: hidden; border: 2.5px solid #111111; background: #FFFFFF;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+}
+[data-scene='planche'] .pl-face--back { background: #111111; transform: rotateY(180deg); }
+[data-scene='planche'] .pl-zzz { position: absolute; left: 62%; top: 52%; font-family: 'Bangers', 'Inter', sans-serif; color: #FFFFFF; }
+[data-scene='planche'] .pl-zzz span { position: absolute; left: calc(var(--z, 0) * 9px); font-size: 14px; opacity: 0; animation: pl-zzz 2.4s ease-out infinite; }
+[data-scene='planche'] .pl-zzz span:nth-child(2) { --z: 1; font-size: 11px; animation-delay: 0.8s; }
+[data-scene='planche'] .pl-zzz span:nth-child(3) { --z: 2; font-size: 9px; animation-delay: 1.6s; }
+@keyframes pl-zzz { 0% { opacity: 0; transform: translate(0, 0); } 25% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -26px); } }
+
+/* Case 3 : le collège, son horloge et son drapeau */
+[data-scene='planche'] .pl-sign { font-family: 'Bangers', 'Inter', sans-serif; font-size: 7.5px; letter-spacing: 0.12em; fill: #FFFFFF; }
+[data-scene='planche'] .pl-flag { transform-box: view-box; transform-origin: 66.8px 16px; animation: pl-flag 1.3s ease-in-out infinite alternate; }
+@keyframes pl-flag { from { transform: scaleX(1) skewY(0deg); } to { transform: scaleX(0.84) skewY(5deg); } }
+/* L'aiguille des minutes passe de 29 à 30 quand Milo atterrit */
+[data-scene='planche'] .pl-minute { transform-box: view-box; transform-origin: 66px 47px; animation: pl-minute 11s steps(1, end) infinite; }
+@keyframes pl-minute { 0% { transform: rotate(174deg); } 57% { transform: rotate(180deg); } 99% { transform: rotate(174deg); } 100% { transform: rotate(174deg); } }
+
+/* Lou : elle tape du pied et regarde sa montre */
+[data-scene='planche'] .pl-lou { position: absolute; left: 69%; bottom: 23px; width: 31px; height: auto; }
+[data-scene='planche'] .pl-lou__foot { transform-box: view-box; transform-origin: 18px 56px; animation: pl-foot 4s ease-in-out infinite; }
+@keyframes pl-foot { 0%, 50%, 100% { transform: rotate(0deg); } 8%, 24%, 40% { transform: rotate(-14deg); } 16%, 32% { transform: rotate(0deg); } }
+[data-scene='planche'] .pl-lou__arm { transform-box: view-box; transform-origin: 10px 21px; animation: pl-watch 6s ease-in-out infinite; }
+@keyframes pl-watch { 0%, 52%, 100% { transform: rotate(0deg); } 60%, 84% { transform: rotate(52deg); } }
+
+/* L'oiseau : le même trajet dans toutes les cases, chaque case n'en montre que sa part */
+[data-scene='planche'] .pl-birdtrack { position: absolute; top: 0; height: 100%; left: calc(var(--l) / var(--w) * -100%); width: calc(100% / var(--w)); pointer-events: none; }
+[data-scene='planche'] .pl-birdfly { position: absolute; left: 0; top: 24px; width: 100%; height: 0; animation: pl-bird 19s linear infinite; animation-delay: -12s; }
+@keyframes pl-bird {
+  0% { transform: translate(-6%, 18px); } 8% { transform: translate(28%, 4px); } 16% { transform: translate(64%, 14px); }
+  24% { transform: translate(106%, 0); } 100% { transform: translate(106%, 0); }
+}
+[data-scene='planche'] .pl-bird { position: absolute; left: -32px; top: 0; width: 30px; height: auto; fill: #111111; }
+[data-scene='planche'] .pl-bird__up { animation: pl-wing 0.32s steps(1, end) infinite; }
+[data-scene='planche'] .pl-bird__down { animation: pl-wing 0.32s steps(1, end) infinite reverse; }
+@keyframes pl-wing { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+
+/* Bulles de dialogue */
+[data-scene='planche'] .pl-bub {
+  position: absolute; z-index: 3; padding: 5px 9px 4px; background: #FFFFFF; border: 1.6px solid #111111; border-radius: 50%;
+  font-family: 'Bangers', 'Inter', sans-serif; font-size: 11px; line-height: 12px; letter-spacing: 0.05em; color: #111111; white-space: nowrap;
+  opacity: 0; transform: scale(0.4);
+}
+[data-scene='planche'] .pl-bub::before,
+[data-scene='planche'] .pl-bub::after { content: ''; position: absolute; left: var(--tail, 14px); width: 0; height: 0; border-style: solid; border-color: transparent; }
+[data-scene='planche'] .pl-bub::before { bottom: -8px; border-width: 8px 3px 0 6px; border-top-color: #111111; }
+[data-scene='planche'] .pl-bub::after { bottom: -5px; margin-left: 1.6px; border-width: 6px 2px 0 4px; border-top-color: #FFFFFF; }
+[data-scene='planche'] .pl-bub--late { left: 8px; top: 26px; --tail: 18px; transform-origin: 18px 100%; animation: pl-bub-late 11s linear infinite; }
+@keyframes pl-bub-late {
+  0%, 11% { opacity: 0; transform: scale(0.4); } 12.2% { opacity: 1; transform: scale(1.12); } 13.2% { transform: scale(1); }
+  24% { opacity: 1; transform: scale(1); } 25.5%, 100% { opacity: 0; transform: scale(0.6); }
+}
+[data-scene='planche'] .pl-bub--bark { left: 4px; top: 94px; --tail: 12px; transform-origin: 12px 100%; animation: pl-bub-bark 11s linear infinite; }
+@keyframes pl-bub-bark {
+  0%, 1.4% { opacity: 0; transform: scale(0.4) rotate(-6deg); } 2.4% { opacity: 1; transform: scale(1.15) rotate(-6deg); } 3.4% { transform: scale(1) rotate(-6deg); }
+  5.4% { opacity: 1; transform: scale(1) rotate(-6deg); } 6.6%, 100% { opacity: 0; transform: scale(0.6) rotate(-6deg); }
+}
+[data-scene='planche'] .pl-bub--time {
+  left: 4px; top: 22px; width: 64px; padding: 6px 4px 5px; white-space: normal; text-align: center; --tail: 30px;
+  transform-origin: 30px 100%; animation: pl-bub-time 11s linear infinite;
+}
+@keyframes pl-bub-time {
+  0%, 63% { opacity: 0; transform: scale(0.4); } 64.2% { opacity: 1; transform: scale(1.12); } 65.2% { transform: scale(1); }
+  79% { opacity: 1; transform: scale(1); } 80.5%, 100% { opacity: 0; transform: scale(0.6); }
+}
+
+/* =====================================================================
+   Milo. Il traverse la bande en 11 s : le trajet de côté (`.pl-run`, en part de la largeur de la
+   scène), les sauts (`.pl-hop`), la pose (course, saut, arrivée) et l'écrasement à l'atterrissage
+   sont quatre animations de même durée, calées l'une sur l'autre.
+   ===================================================================== */
+[data-scene='planche'] .pl-run { position: absolute; left: 0; top: 0; width: 100%; height: 0; animation: pl-run-x 11s linear infinite; }
+@keyframes pl-run-x {
+  0% { transform: translateX(-12%); } 5% { transform: translateX(-4%); } 12% { transform: translateX(19%); }
+  20% { transform: translateX(29%); } 27% { transform: translateX(39%); } 33% { transform: translateX(46%); }
+  41% { transform: translateX(57%); } 45% { transform: translateX(63%); } 57% { transform: translateX(80%); }
+  80% { transform: translateX(80%); } 94% { transform: translateX(114%); } 100% { transform: translateX(114%); }
+}
+[data-scene='planche'] .pl-hop { position: absolute; left: -28px; top: 131px; width: 56px; height: 70px; animation: pl-run-y 11s linear infinite; }
+@keyframes pl-run-y {
+  0%, 5% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  8.5% { transform: translateY(-52px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  12%, 20% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  23.5% { transform: translateY(-28px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  27%, 33% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  37% { transform: translateY(-46px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  41%, 45% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  51% { transform: translateY(-130px); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  57%, 100% { transform: translateY(0); }
+}
+[data-scene='planche'] .pl-milo { display: block; width: 56px; height: 70px; }
+[data-scene='planche'] .pl-milo__body,
+[data-scene='planche'] .pl-scarf-tail,
+[data-scene='planche'] .pl-wave { transform-box: view-box; }
+[data-scene='planche'] .pl-milo__body { transform-origin: 26px 58px; animation: pl-squash 11s linear infinite; }
+@keyframes pl-squash {
+  0%, 11.8% { transform: scale(1, 1); } 12.6% { transform: scale(1.1, 0.88); } 13.6% { transform: scale(1, 1); }
+  26.8% { transform: scale(1, 1); } 27.6% { transform: scale(1.1, 0.88); } 28.6% { transform: scale(1, 1); }
+  40.8% { transform: scale(1, 1); } 41.6% { transform: scale(1.1, 0.88); } 42.6% { transform: scale(1, 1); }
+  56.8% { transform: scale(1, 1); } 57.8% { transform: scale(1.2, 0.76); } 59.4% { transform: scale(0.94, 1.06); } 61% { transform: scale(1, 1); }
+  100% { transform: scale(1, 1); }
+}
+[data-scene='planche'] .pl-pose--run { animation: pl-pose-run 11s steps(1, end) infinite; }
+[data-scene='planche'] .pl-pose--jump { animation: pl-pose-jump 11s steps(1, end) infinite; }
+[data-scene='planche'] .pl-pose--stand { animation: pl-pose-stand 11s steps(1, end) infinite; }
+@keyframes pl-pose-run { 0% { opacity: 1; } 5% { opacity: 0; } 12% { opacity: 1; } 20% { opacity: 0; } 27% { opacity: 1; } 33% { opacity: 0; } 41% { opacity: 1; } 45% { opacity: 0; } 80% { opacity: 1; } 100% { opacity: 1; } }
+@keyframes pl-pose-jump { 0% { opacity: 0; } 5% { opacity: 1; } 12% { opacity: 0; } 20% { opacity: 1; } 27% { opacity: 0; } 33% { opacity: 1; } 41% { opacity: 0; } 45% { opacity: 1; } 57% { opacity: 0; } 100% { opacity: 0; } }
+@keyframes pl-pose-stand { 0% { opacity: 0; } 57% { opacity: 1; } 80% { opacity: 0; } 100% { opacity: 0; } }
+[data-scene='planche'] .pl-frame--a { animation: pl-frame 0.26s steps(1, end) infinite; }
+[data-scene='planche'] .pl-frame--b { animation: pl-frame 0.26s steps(1, end) infinite reverse; }
+@keyframes pl-frame { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
+[data-scene='planche'] .pl-speed { fill: none; stroke: #111111; stroke-width: 1.3; stroke-linecap: round; }
+[data-scene='planche'] .pl-scarf-tail { transform-origin: 24px 24px; animation: pl-scarf 0.26s ease-in-out infinite alternate; }
+@keyframes pl-scarf { from { transform: rotate(-7deg); } to { transform: rotate(6deg); } }
+[data-scene='planche'] .pl-wave { transform-origin: 27px 27px; animation: pl-wave 0.42s ease-in-out infinite alternate; }
+@keyframes pl-wave { from { transform: rotate(-10deg); } to { transform: rotate(14deg); } }
+
+/* Pataud : il remue la queue, et aboie quand Milo passe */
+[data-scene='planche'] .pl-dogspot { position: absolute; left: calc(2.5% + 2px); top: 159px; width: 50px; height: 41px; transform-origin: 50% 100%; }
+[data-scene='planche'] .pl-dog { display: block; width: 50px; height: 41px; }
+[data-scene='planche'] .pl-dog__tail,
+[data-scene='planche'] .pl-dog__head { transform-box: view-box; }
+[data-scene='planche'] .pl-dog__tail { transform-origin: 12px 26px; animation: pl-tail 0.45s ease-in-out infinite alternate; }
+@keyframes pl-tail { from { transform: rotate(-14deg); } to { transform: rotate(16deg); } }
+[data-scene='planche'] .pl-dog__head { transform-origin: 24px 15px; animation: pl-dog-head 11s linear infinite; }
+@keyframes pl-dog-head {
+  0%, 1.4% { transform: rotate(0deg); } 2% { transform: rotate(-8deg); } 3.8% { transform: rotate(-3deg); } 5% { transform: rotate(-9deg); }
+  8% { transform: rotate(-22deg); } 11% { transform: rotate(-6deg); } 13% { transform: rotate(0deg); } 100% { transform: rotate(0deg); }
+}
+[data-scene='planche'] .pl-dog__bark { animation: pl-bark 11s steps(1, end) infinite; }
+[data-scene='planche'] .pl-dog__mouth { animation: pl-bark 11s steps(1, end) infinite reverse; }
+@keyframes pl-bark { 0% { opacity: 0; } 2% { opacity: 1; } 3.8% { opacity: 0; } 5% { opacity: 1; } 6.8% { opacity: 0; } 100% { opacity: 0; } }
+[data-scene='planche'] .pl-dog__lines { fill: none; stroke: #111111; stroke-width: 1.4; stroke-linecap: round; opacity: 0; }
+
+/* Onomatopées : lettres rouges cernées de noir, avec leur ombre décalée */
+[data-scene='planche'] .pl-sfx { height: 240px; }
+[data-scene='planche'] .pl-word {
+  position: absolute; font-family: 'Bangers', 'Inter', sans-serif; font-size: 28px; line-height: 1; letter-spacing: 0.04em; white-space: nowrap;
+  color: #D10500; -webkit-text-stroke: 1.6px #111111; paint-order: stroke fill; text-shadow: 2px 2px 0 #111111;
+  opacity: 0; transform: scale(0.4);
+}
+[data-scene='planche'] .pl-word--zoom { left: 13%; top: 102px; rotate: -9deg; animation: pl-zoom 11s linear infinite; }
+@keyframes pl-zoom {
+  0%, 12% { opacity: 0; transform: scale(0.4) translateX(0); } 13.5% { opacity: 1; transform: scale(1.18) translateX(0); } 14.9% { transform: scale(1) translateX(2px); }
+  21.5% { opacity: 1; transform: scale(1) translateX(10px); } 24%, 100% { opacity: 0; transform: scale(0.8) translateX(20px); }
+}
+[data-scene='planche'] .pl-word--hop { left: calc(50% - 26px); top: 64px; rotate: 7deg; font-size: 26px; animation: pl-hop 11s linear infinite; }
+@keyframes pl-hop {
+  0%, 33.6% { opacity: 0; transform: scale(0.4); } 35% { opacity: 1; transform: scale(1.22); } 36.4% { transform: scale(1); }
+  43.5% { opacity: 1; transform: scale(1); } 45.5%, 100% { opacity: 0; transform: scale(0.7); }
+}
+[data-scene='planche'] .pl-paf { position: absolute; left: calc(80% - 50px); top: 72px; width: 64px; height: 48px; opacity: 0; transform: scale(0.3); rotate: -8deg; animation: pl-paf 11s linear infinite; }
+[data-scene='planche'] .pl-paf svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+[data-scene='planche'] .pl-paf span {
+  position: absolute; inset: 0; display: grid; place-items: center; padding-top: 2px;
+  font-family: 'Bangers', 'Inter', sans-serif; font-size: 20px; letter-spacing: 0.04em; color: #FFFFFF; -webkit-text-stroke: 1.4px #111111; paint-order: stroke fill;
+}
+@keyframes pl-paf {
+  0%, 56.8% { opacity: 0; transform: scale(0.3); } 57.8% { opacity: 1; transform: scale(1.25); } 59.2% { transform: scale(1); }
+  64.5% { opacity: 1; transform: scale(1); } 66.5%, 100% { opacity: 0; transform: scale(0.6); }
+}
+[data-scene='planche'] .pl-word--boing { left: calc(2.5% + 8px); top: 74px; font-size: 27px; opacity: 0; transform: none; }
+[data-scene='planche'] .pl-word--boing span { display: inline-block; }
+
+/* Grand écran : d'autres cases de la planche bordent la bande */
+[data-scene='planche'] .pl-side { display: none; }
+@media (min-width: 560px) {
+  [data-scene='planche'] .pl-side { position: absolute; top: 40px; height: 184px; display: flex; gap: 11px; }
+  [data-scene='planche'] .pl-side--l { right: calc(97.5% + 11px); }
+  [data-scene='planche'] .pl-side--r { left: calc(97.5% + 11px); }
+}
+[data-scene='planche'] .pl-sidecase { position: relative; width: 150px; height: 100%; border: 2.5px solid #111111; background: #FFFFFF; overflow: hidden; }
+[data-scene='planche'] .pl-sidecase--dots {
+  width: 120px;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0) 20%, #FFFFFF 92%),
+    radial-gradient(circle, #111111 0 1.6px, rgba(17, 17, 17, 0) 2px) 0 0 / 7px 7px #FFFFFF;
+}
+[data-scene='planche'] .pl-sidecase--burst {
+  width: 130px;
+  background:
+    radial-gradient(circle at 50% 55%, #D10500 0 18px, #111111 18px 20.5px, rgba(255, 255, 255, 0) 21px),
+    repeating-conic-gradient(from 0deg at 50% 55%, #111111 0 1.6deg, #FFFFFF 1.6deg 8deg);
+}
+[data-scene='planche'] .pl-sidecase--cap { display: grid; place-items: center; }
+[data-scene='planche'] .pl-sidecase--cap span { font-family: 'Bangers', 'Inter', sans-serif; font-size: 20px; letter-spacing: 0.05em; color: #111111; }
+
+/* ---- Au toucher (le chien) : « BOING ! ». Il s'accroupit, bondit hors de sa case par le haut,
+   disparaît un instant, retombe et rebondit deux fois avant de se rasseoir. ---- */
+[data-scene='planche'][data-fx~='saut'] .pl-dogspot { animation: pl-dog-jump 2.8s both; }
+@keyframes pl-dog-jump {
+  0% { transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  8% { transform: translateY(0) scale(1.14, 0.8); animation-timing-function: ease-in; }
+  13% { transform: translateY(-24px) scale(0.88, 1.14); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  34% { transform: translateY(-236px) scale(0.92, 1.1); }
+  46% { transform: translateY(-236px) scale(0.92, 1.1); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  63% { transform: translateY(0) scale(1, 1); animation-timing-function: ease-out; }
+  66% { transform: translateY(0) scale(1.2, 0.76); animation-timing-function: ease-out; }
+  73% { transform: translateY(-30px) scale(0.95, 1.06); animation-timing-function: ease-in; }
+  80% { transform: translateY(0) scale(1.1, 0.88); animation-timing-function: ease-out; }
+  86% { transform: translateY(-9px) scale(1, 1); animation-timing-function: ease-in; }
+  92%, 100% { transform: translateY(0) scale(1, 1); }
+}
+[data-scene='planche'][data-fx~='saut'] .pl-dog__lines { animation: pl-dog-lines 2.8s both; }
+@keyframes pl-dog-lines { 0%, 11% { opacity: 0; } 14%, 30% { opacity: 1; } 34%, 100% { opacity: 0; } }
+[data-scene='planche'][data-fx~='saut'] .pl-dog__tail { animation-duration: 0.18s; }
+[data-scene='planche'][data-fx~='saut'] .pl-word--boing { animation: pl-boing 2.8s both; }
+@keyframes pl-boing {
+  0%, 9% { opacity: 0; transform: scale(0.3); } 13% { opacity: 1; transform: scale(1.2); } 17% { transform: scale(1); }
+  58% { opacity: 1; transform: scale(1); } 64%, 100% { opacity: 0; transform: scale(0.8); }
+}
+[data-scene='planche'][data-fx~='saut'] .pl-word--boing span { animation: pl-boing-l 0.34s ease-in-out infinite alternate; animation-delay: calc(var(--j) * -0.07s); }
+@keyframes pl-boing-l { from { transform: translateY(-4px) rotate(-6deg); } to { transform: translateY(4px) rotate(6deg); } }
+
+/* ---- Au toucher (Lou) : une bulle de pensée monte, une ampoule s'y allume. ---- */
+[data-scene='planche'] .pl-think { position: absolute; right: 2px; top: 46px; width: 62px; height: 52px; z-index: 3; }
+[data-scene='planche'] .pl-think svg { display: block; width: 100%; height: 100%; }
+[data-scene='planche'] .pl-think__puff { fill: #FFFFFF; stroke: #111111; stroke-width: 1.3; opacity: 0; }
+[data-scene='planche'] .pl-think__cloud,
+[data-scene='planche'] .pl-bulb,
+[data-scene='planche'] .pl-bulb__rays { transform-box: view-box; opacity: 0; }
+[data-scene='planche'] .pl-think__cloud { transform-origin: 46px 40px; }
+[data-scene='planche'] .pl-bulb { transform-origin: 32px 22px; opacity: 1; }
+[data-scene='planche'] .pl-bulb__rays { transform-origin: 32px 20px; }
+[data-scene='planche'] .pl-bulb__glass { fill: url(#pl-dots); }
+[data-scene='planche'][data-fx~='idee'] .pl-think__puff--1 { animation: pl-puff 3.8s both; }
+[data-scene='planche'][data-fx~='idee'] .pl-think__puff--2 { animation: pl-puff 3.8s 0.22s both; }
+@keyframes pl-puff { 0%, 4% { opacity: 0; } 8%, 84% { opacity: 1; } 90%, 100% { opacity: 0; } }
+[data-scene='planche'][data-fx~='idee'] .pl-think__cloud { animation: pl-cloud-pop 3.8s both; }
+@keyframes pl-cloud-pop {
+  0%, 14% { opacity: 0; transform: scale(0.2); } 20% { opacity: 1; transform: scale(1.1); } 24% { transform: scale(1); }
+  46% { transform: scale(1); } 49% { transform: scale(1.08); } 53% { transform: scale(1); }
+  86% { opacity: 1; transform: scale(1); } 94%, 100% { opacity: 0; transform: scale(0.5); }
+}
+[data-scene='planche'][data-fx~='idee'] .pl-bulb__glass { animation: pl-glass 3.8s both; }
+@keyframes pl-glass { 0%, 46% { fill: url(#pl-dots); } 47%, 100% { fill: #FFFFFF; } }
+[data-scene='planche'][data-fx~='idee'] .pl-bulb__rays { animation: pl-rays 3.8s both; }
+@keyframes pl-rays {
+  0%, 46% { opacity: 0; transform: scale(0.5); } 50% { opacity: 1; transform: scale(1.2); } 55% { transform: scale(1); }
+  62% { transform: scale(1.12); } 69% { transform: scale(1); } 76% { transform: scale(1.12); } 86% { opacity: 1; transform: scale(1); } 92%, 100% { opacity: 0; }
+}
+[data-scene='planche'][data-fx~='idee'] .pl-lou__arm { animation: pl-lou-idea 3.8s both; }
+@keyframes pl-lou-idea { 0%, 44% { transform: rotate(0deg); } 50%, 80% { transform: rotate(150deg); } 88%, 100% { transform: rotate(0deg); } }
+
+/* ---- Au toucher (la case du milieu) : elle se retourne comme une carte, montre la nuit sur les
+   toits (« PENDANT CE TEMPS… »), puis revient. ---- */
+[data-scene='planche'][data-fx~='retourne'] .pl-flip { animation: pl-turn 3.6s both; }
+@keyframes pl-turn {
+  0% { transform: rotateY(0deg) scale(1); animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1); }
+  20% { transform: rotateY(180deg) scale(1); }
+  76% { transform: rotateY(180deg) scale(1); animation-timing-function: cubic-bezier(0.5, 0, 0.3, 1); }
+  100% { transform: rotateY(360deg) scale(1); }
+}
+
+/* =====================================================================
+   Changement d'onglet : une autre planche passe. Une page de bande dessinée, avec ses cases
+   cernées de noir, ses trames, ses aplats rouges et ses onomatopées, traverse l'écran de droite à
+   gauche d'un seul mouvement ; la page change derrière elle au moment où elle couvre tout (la
+   moitié du temps, la courbe étant symétrique).
+   ===================================================================== */
+html[data-el-nav='planche']::view-transition-old(root) { animation: pl-page-out 1s cubic-bezier(0.45, 0.1, 0.55, 0.9) both; }
+html[data-el-nav='planche']::view-transition-new(root) { animation: pl-page-in 1s cubic-bezier(0.45, 0.1, 0.55, 0.9) both; }
+@keyframes pl-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes pl-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='planche'][data-on] i:nth-child(-n + 16) { animation: pl-sheet 1s cubic-bezier(0.45, 0.1, 0.55, 0.9) both; }
+@keyframes pl-sheet { from { opacity: 1; transform: translateX(0); } to { opacity: 1; transform: translateX(-345vw); } }
+/* La page : blanche, son bord encré, son ombre */
+.el-front[data-scene='planche'] i:nth-child(1) {
+  left: 100%; top: 0; width: 240vw; height: 100%; background: #FFFFFF;
+  border-left: 3px solid #111111; border-right: 3px solid #111111; box-shadow: -10px 0 0 rgba(17, 17, 17, 0.16), 10px 0 0 rgba(17, 17, 17, 0.16);
+}
+/* Les cases : trois rangées de cinq, gouttières blanches */
+.el-front[data-scene='planche'] i:nth-child(n + 2) { height: 30%; border: 3px solid #111111; background: #FFFFFF; overflow: hidden; }
+.el-front[data-scene='planche'] i:nth-child(2) { left: calc(100% + 4vw); top: 3%; width: 52vw; }
+.el-front[data-scene='planche'] i:nth-child(3) { left: calc(100% + 59vw); top: 3%; width: 38vw; }
+.el-front[data-scene='planche'] i:nth-child(4) { left: calc(100% + 100vw); top: 3%; width: 46vw; }
+.el-front[data-scene='planche'] i:nth-child(5) { left: calc(100% + 149vw); top: 3%; width: 34vw; }
+.el-front[data-scene='planche'] i:nth-child(6) { left: calc(100% + 186vw); top: 3%; width: 50vw; }
+.el-front[data-scene='planche'] i:nth-child(7) { left: calc(100% + 4vw); top: 35%; width: 36vw; }
+.el-front[data-scene='planche'] i:nth-child(8) { left: calc(100% + 43vw); top: 35%; width: 54vw; }
+.el-front[data-scene='planche'] i:nth-child(9) { left: calc(100% + 100vw); top: 35%; width: 40vw; }
+.el-front[data-scene='planche'] i:nth-child(10) { left: calc(100% + 143vw); top: 35%; width: 48vw; }
+.el-front[data-scene='planche'] i:nth-child(11) { left: calc(100% + 194vw); top: 35%; width: 42vw; }
+.el-front[data-scene='planche'] i:nth-child(12) { left: calc(100% + 4vw); top: 67%; width: 46vw; }
+.el-front[data-scene='planche'] i:nth-child(13) { left: calc(100% + 53vw); top: 67%; width: 40vw; }
+.el-front[data-scene='planche'] i:nth-child(14) { left: calc(100% + 96vw); top: 67%; width: 50vw; }
+.el-front[data-scene='planche'] i:nth-child(15) { left: calc(100% + 149vw); top: 67%; width: 36vw; }
+.el-front[data-scene='planche'] i:nth-child(16) { left: calc(100% + 188vw); top: 67%; width: 48vw; }
+/* Trames de points (qui s'effacent vers le bas) */
+.el-front[data-scene='planche'] i:is(:nth-child(2), :nth-child(8), :nth-child(11), :nth-child(13), :nth-child(16)) {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0) 15%, #FFFFFF 95%),
+    radial-gradient(circle, #111111 0 1.8px, rgba(17, 17, 17, 0) 2.3px) 0 0 / 8px 8px #FFFFFF;
+}
+/* Aplats rouges, trame plus sombre */
+.el-front[data-scene='planche'] i:is(:nth-child(5), :nth-child(9), :nth-child(12)) {
+  background: radial-gradient(circle, rgba(17, 17, 17, 0.35) 0 1.6px, rgba(17, 17, 17, 0) 2px) 0 0 / 7px 7px #D10500;
+}
+/* Traits de vitesse */
+.el-front[data-scene='planche'] i:is(:nth-child(3), :nth-child(7), :nth-child(14)) {
+  background:
+    radial-gradient(ellipse 34% 30% at 50% 50%, #FFFFFF 0 70%, rgba(255, 255, 255, 0) 100%),
+    repeating-conic-gradient(from 0deg at 50% 50%, #111111 0 2deg, #FFFFFF 2deg 9deg);
+}
+/* La nuit, sa lune */
+.el-front[data-scene='planche'] i:is(:nth-child(6), :nth-child(15)) {
+  background:
+    radial-gradient(circle at 64% 30%, #111111 0 9%, rgba(17, 17, 17, 0) 9.5%),
+    radial-gradient(circle at 70% 32%, #FFFFFF 0 12%, rgba(255, 255, 255, 0) 12.5%),
+    #111111;
+}
+/* Onomatopées et bulles dans les cases */
+.el-front[data-scene='planche'] i:nth-child(n + 2)::before {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-8deg); white-space: nowrap;
+  font-family: 'Bangers', 'Inter', sans-serif; font-size: 13vw; line-height: 1; letter-spacing: 0.04em;
+  color: #D10500; -webkit-text-stroke: 3px #111111; paint-order: stroke fill; text-shadow: 4px 4px 0 #111111;
+}
+.el-front[data-scene='planche'] i:nth-child(2)::before { content: 'ZOOM'; }
+.el-front[data-scene='planche'] i:nth-child(7)::before { content: 'PAF\00A0!'; }
+.el-front[data-scene='planche'] i:nth-child(9)::before { content: 'BOING'; color: #FFFFFF; transform: translate(-50%, -50%) rotate(6deg); }
+.el-front[data-scene='planche'] i:nth-child(13)::before { content: 'HOP\00A0!'; }
+.el-front[data-scene='planche'] i:nth-child(16)::before { content: 'WAOUH'; transform: translate(-50%, -50%) rotate(5deg); }
+.el-front[data-scene='planche'] i:is(:nth-child(4), :nth-child(10))::before {
+  content: '?!'; left: 50%; top: 46%; padding: 3vw 7vw; border: 3px solid #111111; border-radius: 50%; background: #FFFFFF;
+  color: #111111; -webkit-text-stroke: 0; text-shadow: none; font-size: 9vw; transform: translate(-50%, -50%);
+}
+.el-front[data-scene='planche'] i:nth-child(10)::before { content: 'OUAF\00A0!'; font-size: 7vw; }
+.el-front[data-scene='planche'] i:is(:nth-child(4), :nth-child(10))::after {
+  content: ''; position: absolute; left: calc(50% - 5vw); top: calc(46% + 7.5vw); width: 0; height: 0;
+  border-style: solid; border-width: 7vw 2vw 0 4vw; border-color: #111111 transparent transparent transparent;
+}
+.el-front[data-scene='planche'] i:nth-child(10)::after { top: calc(46% + 6.5vw); }
+[data-scene='planche'] .pl-sidecase--night {
+  background:
+    radial-gradient(circle at 58% 36%, #111111 0 15px, rgba(17, 17, 17, 0) 15.5px),
+    radial-gradient(circle at 64% 38%, #FFFFFF 0 19px, rgba(255, 255, 255, 0) 19.5px),
+    radial-gradient(circle, #FFFFFF 0 1px, rgba(255, 255, 255, 0) 1.4px) 6px 10px / 37px 29px,
+    #111111;
+}

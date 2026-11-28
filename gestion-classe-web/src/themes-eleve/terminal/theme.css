@@ -1,0 +1,325 @@
+/* Thème « Terminal » (espace élève) : vert phosphore sur noir, angles droits, police d'écran. */
+.el[data-theme='terminal'] {
+  --el-bg: #050A05; --el-surface: #0B140B; --el-line: #1E3A1E; --el-line-soft: #142614; --el-line-strong: #2F5C2F;
+  --el-text: #B6FFB0; --el-muted: #7FC27A; --el-dim: #5E9E5A;
+  --el-indigo: #39FF14; --el-indigo-ink: #7DFF5E; --el-indigo-soft: #123A0E;
+  --el-pos: #5CEFC4; --el-pos-ink: #9AF7DE; --el-pos-soft: #0E3329;
+  --el-warn: #FFC247; --el-warn-ink: #FFD98A; --el-warn-soft: #3A2A06;
+  --el-neg: #FF7A6B; --el-neg-soft: #3D1212;
+  --el-track: #173017; --el-on-accent: #041204; --el-radio: #4F8F4A;
+  --el-radius: 0px; --el-radius-sm: 0px;
+  --el-font-display: 'VT323', 'Courier New', monospace;
+  color-scheme: dark;
+}
+.el[data-theme='terminal'] .el-main { padding-top: 244px; }
+/* La police d'écran n'a qu'une graisse : pas de faux gras, des tailles un peu plus grandes */
+.el[data-theme='terminal'] .el-h1 { font-weight: 400; font-size: 36px; line-height: 34px; letter-spacing: 0.01em; }
+.el[data-theme='terminal'] .el-big { font-weight: 400; font-size: 46px; line-height: 40px; letter-spacing: 0; }
+.el[data-theme='terminal'] .el-mid { font-weight: 400; font-size: 32px; line-height: 30px; }
+.el[data-theme='terminal'] .el-sheet__name { font-weight: 400; font-size: 26px; }
+.el[data-theme='terminal'] .el-bar, .el[data-theme='terminal'] .el-bar > span { border-radius: 0; }
+/* Bouton principal : contour vert et crochets, comme une commande à l'écran */
+.el[data-theme='terminal'] .el-btn--primary:not(:disabled) { border-color: #39FF14; background: #0F2A0C; color: #39FF14; }
+.el[data-theme='terminal'] .el-btn--primary:not(:disabled)::before { content: '['; font-family: 'VT323', monospace; font-size: 22px; }
+.el[data-theme='terminal'] .el-btn--primary:not(:disabled)::after { content: ']'; font-family: 'VT323', monospace; font-size: 22px; }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis sont posés dans `.tm-set`, un cadre de 480 px centré. */
+[data-scene='terminal'] .tm-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='terminal'] .tm-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+[data-scene='terminal'] svg * { transform-box: view-box; }
+
+/* Mur : papier peint à fines rayures, qui descend sous tout le reste */
+[data-scene='terminal'] .tm-wall {
+  height: calc(100vh + 900px);
+  background:
+    repeating-linear-gradient(90deg, rgba(57, 255, 20, 0.025) 0 2px, rgba(57, 255, 20, 0) 2px 24px) 0 0 / 100% 200px no-repeat,
+    linear-gradient(#0C180D 0, #0A150B 140px, #071008 200px, #050A05 260px);
+}
+[data-scene='terminal'] .tm-room { height: 200px; }
+[data-scene='terminal'] .tm-star { fill: #F4F0D8; animation: tm-twinkle var(--d) ease-in-out var(--delay) infinite alternate; }
+@keyframes tm-twinkle { from { opacity: 0.25; } to { opacity: 1; } }
+[data-scene='terminal'] .tm-halo { transform-origin: 240px 104px; animation: tm-halo 6s ease-in-out infinite alternate; }
+@keyframes tm-halo { from { opacity: 0.8; transform: scale(0.97); } to { opacity: 1; transform: scale(1.03); } }
+[data-scene='terminal'] .tm-warm { opacity: 0; }
+
+/* Bureau : le plateau puis le devant, qui descend en aplat jusqu'au fond de la page */
+[data-scene='terminal'] .tm-desk { height: 240px; }
+[data-scene='terminal'] .tm-desk::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 192px; height: calc(100vh + 900px);
+  background: linear-gradient(#21180F 0, #2E2216 34px, #4A3624 34px, #3A2A1B 40px, #1A120B 40px, #0C0D07 68px, #050A05 96px);
+}
+[data-scene='terminal'] .tm-front { height: 240px; }
+
+/* Voyant d'alimentation, pense-bête, boîte de disquettes */
+[data-scene='terminal'] .tm-power { filter: drop-shadow(0 0 2px #39FF14); }
+[data-scene='terminal'] .tm-badge { font: 9px 'VT323', monospace; fill: #6E6450; letter-spacing: 0.08em; }
+[data-scene='terminal'] .tm-note { transform-origin: 300px 30px; animation: tm-note 5.5s ease-in-out infinite alternate; }
+@keyframes tm-note { from { transform: rotate(0deg); } to { transform: rotate(-4deg); } }
+
+/* Le lecteur : voyant éteint tant que la disquette n'est pas dedans */
+[data-scene='terminal'] .tm-led { opacity: 0; }
+[data-scene='terminal'] .tm-led--halo { fill-opacity: 0.3; }
+[data-scene='terminal'] .tm-disk__spin { transform-origin: 380px 147px; }
+
+/* ---- L'écran ---- */
+[data-scene='terminal'] .tm-screen {
+  position: absolute; left: 166px; top: 51px; width: 148px; height: 94px; padding: 7px 8px;
+  border-radius: 14px / 12px; overflow: hidden;
+  font: 13px/12px 'VT323', 'Courier New', monospace; color: #6BFF4D;
+  text-shadow: 0 0 3px rgba(57, 255, 20, 0.8);
+}
+[data-scene='terminal'] .tm-screen pre { margin: 0; font: inherit; white-space: pre; }
+[data-scene='terminal'] .tm-progs, [data-scene='terminal'] .tm-prog, [data-scene='terminal'] .tm-rk { position: absolute; inset: 7px 8px; }
+[data-scene='terminal'] .tm-prog-1, [data-scene='terminal'] .tm-prog-2 { opacity: 0; }
+[data-scene='terminal'] .tm-r { height: 12px; white-space: pre; }
+[data-scene='terminal'] .tm-tx { display: inline-block; overflow: hidden; vertical-align: top; white-space: pre; }
+[data-scene='terminal'] .tm-cur { display: inline-block; width: 1ch; height: 10px; vertical-align: top; opacity: 0; }
+[data-scene='terminal'] .tm-cur::before { content: ''; display: block; height: 100%; background: #6BFF4D; box-shadow: 0 0 4px rgba(57, 255, 20, 0.8); animation: tm-blink 1.2s steps(1, end) infinite; }
+@keyframes tm-blink { 0% { opacity: 1; } 50% { opacity: 0; } }
+[data-scene='terminal'] .tm-barbox { display: inline-block; width: 10ch; vertical-align: top; }
+[data-scene='terminal'] .tm-fill { display: inline-block; overflow: hidden; vertical-align: top; width: 10ch; }
+[data-scene='terminal'] .tm-catwalk { position: absolute; left: 0; top: 12px; transform: translateX(140px); }
+[data-scene='terminal'] .tm-cat { position: absolute; left: 0; top: 0; }
+[data-scene='terminal'] .tm-cat--a { animation: tm-cat-a 0.5s steps(1, end) infinite; }
+[data-scene='terminal'] .tm-cat--b { animation: tm-cat-b 0.5s steps(1, end) infinite; }
+@keyframes tm-cat-a { 0% { opacity: 1; } 50% { opacity: 0; } }
+@keyframes tm-cat-b { 0% { opacity: 0; } 50% { opacity: 1; } }
+/* Verre bombé : lignes de balayage fines, coins plus sombres, reflet */
+[data-scene='terminal'] .tm-glass {
+  position: absolute; inset: 0; border-radius: inherit;
+  background:
+    radial-gradient(ellipse 60% 34% at 28% 16%, rgba(235, 255, 230, 0.13), rgba(235, 255, 230, 0) 70%),
+    repeating-linear-gradient(rgba(0, 0, 0, 0) 0 2px, rgba(0, 0, 0, 0.3) 2px 3px),
+    radial-gradient(ellipse at 50% 50%, rgba(0, 0, 0, 0) 58%, rgba(0, 0, 0, 0.55) 100%);
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.75);
+}
+[data-scene='terminal'] .tm-scan {
+  position: absolute; left: 0; right: 0; top: -24px; height: 22px;
+  background: linear-gradient(rgba(150, 255, 130, 0), rgba(150, 255, 130, 0.07), rgba(150, 255, 130, 0));
+  animation: tm-scan 7s linear infinite;
+}
+@keyframes tm-scan { from { transform: translateY(0); } to { transform: translateY(140px); } }
+
+/* La fusée (au toucher du clavier) : cachée tant qu'on n'a pas tapé */
+[data-scene='terminal'] .tm-rk { opacity: 0; }
+[data-scene='terminal'] .tm-rk-l { height: 12px; }
+[data-scene='terminal'] .tm-rk-l .tm-tx { width: 0; }
+[data-scene='terminal'] .tm-rk-ship { position: absolute; left: 96px; top: 18px; }
+[data-scene='terminal'] .tm-rk-fire { opacity: 0; }
+[data-scene='terminal'] .tm-rk-smoke { position: absolute; left: 40px; top: 68px; opacity: 0; }
+
+/* ---- Le chat qui dort ---- */
+[data-scene='terminal'] .tm-body { transform-origin: 286px 38px; animation: tm-breathe 3.6s ease-in-out infinite alternate; }
+@keyframes tm-breathe { from { transform: scale(1, 1); } to { transform: scale(1.015, 1.07); } }
+[data-scene='terminal'] .tm-head { transform-origin: 252px 36px; animation: tm-head 3.6s ease-in-out infinite alternate; }
+@keyframes tm-head { from { transform: rotate(0deg); } to { transform: rotate(-2deg); } }
+[data-scene='terminal'] .tm-tail { transform-origin: 330px 40px; animation: tm-tail 4.4s ease-in-out infinite alternate; }
+@keyframes tm-tail { from { transform: rotate(-7deg); } to { transform: rotate(9deg); } }
+[data-scene='terminal'] .tm-ear { transform-origin: 252px 21px; animation: tm-ear 9s ease-in-out -3s infinite; }
+@keyframes tm-ear { 0%, 90%, 96%, 100% { transform: rotate(0deg); } 93% { transform: rotate(-16deg); } }
+[data-scene='terminal'] .tm-eye-open, [data-scene='terminal'] .tm-yawn { opacity: 0; }
+[data-scene='terminal'] .tm-yawn { transform-origin: 244px 32px; }
+[data-scene='terminal'] .tm-zs { position: absolute; left: 228px; top: 6px; width: 30px; height: 20px; font-family: 'VT323', monospace; color: #9CFF8A; text-shadow: 0 0 3px rgba(57, 255, 20, 0.6); }
+[data-scene='terminal'] .tm-zs b { position: absolute; left: 0; top: 0; font-weight: 400; opacity: 0; animation: tm-z 5.4s ease-out infinite; }
+[data-scene='terminal'] .tm-zs b:nth-child(1) { font-size: 10px; }
+[data-scene='terminal'] .tm-zs b:nth-child(2) { font-size: 12px; animation-delay: 1.8s; }
+[data-scene='terminal'] .tm-zs b:nth-child(3) { font-size: 15px; animation-delay: 3.6s; }
+@keyframes tm-z {
+  0% { opacity: 0; transform: translate(0, 4px); }
+  20% { opacity: 0.95; }
+  100% { opacity: 0; transform: translate(-16px, -20px); }
+}
+
+/* Poussières dans la lumière de l'écran : de petits carrés, comme des pixels */
+[data-scene='terminal'] .tm-mote {
+  position: absolute; left: var(--x); top: var(--y); width: 2px; height: 2px; background: #9CFF8A; opacity: 0;
+  animation: tm-mote var(--d) linear var(--delay) infinite;
+}
+@keyframes tm-mote {
+  0% { opacity: 0; transform: translate(0, 0); }
+  20%, 70% { opacity: 0.45; }
+  100% { opacity: 0; transform: translate(var(--dx), -56px); }
+}
+
+/* ---- Au toucher (le clavier) : FUSEE. Les touches s'enfoncent une à une, l'écran tape la
+   commande, compte à rebours, la fusée en caractères tremble, décolle et sort par le haut de
+   l'écran dans un nuage de fumée, puis BON VOYAGE ! ---- */
+[data-scene='terminal'] .tm-cap { transform-origin: 0 0; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-key--1 .tm-cap { animation: tm-press 0.24s ease-out 0.2s both; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-key--2 .tm-cap { animation: tm-press 0.24s ease-out 0.36s both; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-key--3 .tm-cap { animation: tm-press 0.24s ease-out 0.52s both; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-key--4 .tm-cap { animation: tm-press 0.24s ease-out 0.68s both; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-key--5 .tm-cap { animation: tm-press 0.24s ease-out 0.84s both; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-key--6 .tm-cap { animation: tm-press 0.3s ease-out 1.04s both; }
+@keyframes tm-press { 0%, 100% { transform: translateY(0); fill: #E6DCC4; } 40% { transform: translateY(1.4px); fill: #9CFF8A; } }
+[data-scene='terminal'][data-fx~='fusee'] .tm-progs { animation: tm-hide 5.4s step-end both; }
+@keyframes tm-hide { 0% { opacity: 0; } 99% { opacity: 1; } }
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk { animation: tm-show 5.4s step-end both; }
+@keyframes tm-show { 0% { opacity: 1; } 99% { opacity: 0; } }
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-l1 .tm-tx { animation: tm-rk-l1 5.4s linear both; }
+@keyframes tm-rk-l1 { 0%, 3.7% { width: 0; animation-timing-function: steps(7, end); } 20%, 100% { width: 7ch; } }
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-l2 .tm-tx { animation: tm-rk-l2 5.4s linear both; }
+@keyframes tm-rk-l2 {
+  0%, 22% { width: 0; animation-timing-function: steps(4, end); }
+  27% { width: 4ch; }
+  32% { width: 4ch; animation-timing-function: steps(5, end); }
+  37% { width: 9ch; }
+  42% { width: 9ch; animation-timing-function: steps(5, end); }
+  47%, 100% { width: 14ch; }
+}
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-l3 .tm-tx { animation: tm-rk-l3 5.4s linear both; }
+@keyframes tm-rk-l3 { 0%, 80% { width: 0; animation-timing-function: steps(12, end); } 92%, 100% { width: 12ch; } }
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-ship { animation: tm-rk-ship 5.4s both; }
+@keyframes tm-rk-ship {
+  0%, 36% { transform: translate(0, 0); }
+  38% { transform: translate(-1px, 0); } 40% { transform: translate(1px, 0); } 42% { transform: translate(-1px, 0); }
+  44% { transform: translate(1px, 0); } 46% { transform: translate(0, 0); animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.6); }
+  78% { transform: translate(0, -100px); }
+  79%, 100% { transform: translate(0, -100px); }
+}
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-fire--a { animation: tm-rk-fire 5.4s step-end both, tm-cat-a 0.3s steps(1, end) infinite; }
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-fire--b { animation: tm-rk-fire 5.4s step-end both, tm-cat-b 0.3s steps(1, end) infinite; }
+/* La flamme : la première animation ouvre la fenêtre de temps (visibilité), la seconde alterne
+   doucement les deux dessins (opacité). */
+[data-scene='terminal'] .tm-rk-fire--a, [data-scene='terminal'] .tm-rk-fire--b { position: absolute; left: 0; top: 48px; }
+@keyframes tm-rk-fire { 0% { visibility: hidden; } 42% { visibility: visible; } 80%, 100% { visibility: hidden; } }
+[data-scene='terminal'][data-fx~='fusee'] .tm-rk-smoke { animation: tm-rk-smoke 5.4s ease-out both; }
+@keyframes tm-rk-smoke {
+  0%, 44% { opacity: 0; transform: scale(0.6, 1); }
+  50% { opacity: 1; transform: scale(1, 1); }
+  72% { opacity: 0.6; transform: scale(1.3, 1) translateY(-3px); }
+  86%, 100% { opacity: 0; transform: scale(1.5, 1) translateY(-5px); }
+}
+
+/* ---- Au toucher (le lecteur) : la disquette est éjectée, fait un tour en l'air, retombe dans la
+   fente, s'enfonce (le voyant s'allume) et ressort à moitié, comme au départ ---- */
+[data-scene='terminal'][data-fx~='ejecte'] .tm-eject { animation: tm-eject-btn 3.4s both; }
+@keyframes tm-eject-btn { 0%, 12%, 100% { transform: translateY(0); } 5% { transform: translateY(1.5px); } }
+[data-scene='terminal'][data-fx~='ejecte'] .tm-disk { animation: tm-eject-disk 3.4s both; }
+@keyframes tm-eject-disk {
+  0% { transform: translateY(0); }
+  6% { transform: translateY(3px); animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1); }
+  22% { transform: translateY(-50px); }
+  50% { transform: translateY(-50px); animation-timing-function: cubic-bezier(0.6, 0, 0.9, 0.5); }
+  64% { transform: translateY(37px); }
+  80% { transform: translateY(37px); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  90% { transform: translateY(-4px); animation-timing-function: ease-in-out; }
+  100% { transform: translateY(0); }
+}
+[data-scene='terminal'][data-fx~='ejecte'] .tm-disk__spin { animation: tm-eject-spin 3.4s both; }
+@keyframes tm-eject-spin {
+  0%, 18% { transform: rotate(0deg); animation-timing-function: ease-in-out; }
+  50%, 100% { transform: rotate(360deg); }
+}
+[data-scene='terminal'][data-fx~='ejecte'] .tm-led { animation: tm-eject-led 3.4s both; }
+@keyframes tm-eject-led { 0%, 64% { opacity: 0; } 67%, 78% { opacity: 1; } 82%, 100% { opacity: 0; } }
+
+/* ---- Au toucher (la lampe) : un clic, la lampe s'allume (deux petites hésitations douces),
+   éclaire le bureau et le pot à crayons ; un papillon de nuit arrive et tourne autour de
+   l'ampoule ; puis la lampe s'éteint et le papillon repart ---- */
+[data-scene='terminal'] .tm-light, [data-scene='terminal'] .tm-bulb, [data-scene='terminal'] .tm-moth { opacity: 0; }
+[data-scene='terminal'] .tm-lamp-head { transform-origin: 67px 124px; }
+[data-scene='terminal'][data-fx~='lampe'] .tm-lamp-head { animation: tm-lamp-nod 5s both; }
+@keyframes tm-lamp-nod { 0%, 10%, 100% { transform: rotate(0deg); } 4% { transform: rotate(3deg); } }
+[data-scene='terminal'][data-fx~='lampe'] .tm-light,
+[data-scene='terminal'][data-fx~='lampe'] .tm-bulb,
+[data-scene='terminal'][data-fx~='lampe'] .tm-warm { animation: tm-lamp-on 5s both; }
+@keyframes tm-lamp-on {
+  0%, 4% { opacity: 0; }
+  8% { opacity: 0.8; } 12% { opacity: 0.4; } 17% { opacity: 1; }
+  86% { opacity: 1; }
+  92%, 100% { opacity: 0; }
+}
+[data-scene='terminal'] .tm-moth { transform: translate(128px, 113px); }
+[data-scene='terminal'][data-fx~='lampe'] .tm-moth { animation: tm-moth-on 5s both; }
+@keyframes tm-moth-on { 0%, 18% { opacity: 0; } 24%, 86% { opacity: 1; } 94%, 100% { opacity: 0; } }
+[data-scene='terminal'][data-fx~='lampe'] .tm-moth__fly { animation: tm-moth 5s ease-in-out both; }
+@keyframes tm-moth {
+  0%, 18% { transform: translate(-90px, -60px); }
+  30% { transform: translate(-14px, -8px); }
+  40% { transform: translate(12px, -14px); }
+  50% { transform: translate(18px, 4px); }
+  60% { transform: translate(-4px, 12px); }
+  70% { transform: translate(-16px, -2px); }
+  80% { transform: translate(6px, -16px); }
+  100% { transform: translate(70px, -90px); }
+}
+[data-scene='terminal'] .tm-wing { transform-origin: 0 0; }
+[data-scene='terminal'][data-fx~='lampe'] .tm-wing { animation: tm-wing 0.16s ease-in-out infinite alternate; }
+@keyframes tm-wing { from { transform: scale(1, 1); } to { transform: scale(0.35, 1); } }
+
+/* ---- Au toucher (le chat) : il lève la tête, ouvre les yeux, bâille, regarde encore un peu,
+   puis se rendort ---- */
+[data-scene='terminal'][data-fx~='reveil'] .tm-head { animation: tm-wake 3.4s both; }
+@keyframes tm-wake {
+  0% { transform: rotate(0deg) translateY(0); animation-timing-function: ease-out; }
+  12% { transform: rotate(10deg) translateY(-5px); }
+  34% { transform: rotate(10deg) translateY(-5px); animation-timing-function: ease-in-out; }
+  44% { transform: rotate(16deg) translateY(-7px); }
+  56% { transform: rotate(10deg) translateY(-5px); }
+  80% { transform: rotate(8deg) translateY(-4px); animation-timing-function: ease-in-out; }
+  96%, 100% { transform: rotate(0deg) translateY(0); }
+}
+[data-scene='terminal'][data-fx~='reveil'] .tm-eye-open { animation: tm-eyes-open 3.4s step-end both; }
+@keyframes tm-eyes-open { 0% { opacity: 0; } 12% { opacity: 1; } 36% { opacity: 0; } 58% { opacity: 1; } 84%, 100% { opacity: 0; } }
+[data-scene='terminal'][data-fx~='reveil'] .tm-eye-shut { animation: tm-eyes-shut 3.4s step-end both; }
+@keyframes tm-eyes-shut { 0% { opacity: 1; } 12% { opacity: 0; } 36% { opacity: 1; } 58% { opacity: 0; } 84%, 100% { opacity: 1; } }
+[data-scene='terminal'][data-fx~='reveil'] .tm-yawn { animation: tm-yawn 3.4s both; }
+@keyframes tm-yawn {
+  0%, 36% { opacity: 0; transform: scale(0.3); }
+  42% { opacity: 1; transform: scale(1.2, 1.5); }
+  52% { opacity: 1; transform: scale(1.1, 1.4); }
+  57%, 100% { opacity: 0; transform: scale(0.3); }
+}
+[data-scene='terminal'][data-fx~='reveil'] .tm-ear { animation: tm-ear-up 3.4s both; }
+@keyframes tm-ear-up { 0%, 100% { transform: rotate(0deg); } 14%, 80% { transform: rotate(8deg); } }
+[data-scene='terminal'][data-fx~='reveil'] .tm-tail { animation: tm-tail-flick 3.4s ease-in-out both; }
+@keyframes tm-tail-flick {
+  0%, 100% { transform: rotate(0deg); }
+  15% { transform: rotate(-16deg); } 30% { transform: rotate(12deg); } 45% { transform: rotate(-12deg); }
+  60% { transform: rotate(10deg); } 80% { transform: rotate(-4deg); }
+}
+[data-scene='terminal'][data-fx~='reveil'] .tm-zs { visibility: hidden; }
+
+/* ---- Changement d'onglet : le terminal défile ----
+   Une grande page de terminal, noire et pleine de lignes vertes, monte du bas de l'écran comme
+   un texte qui défile, passe devant le contenu et sort par le haut, d'un seul mouvement. La page
+   change derrière elle au moment où elle couvre tout l'écran (la moitié du temps). Son bord du
+   haut porte la ligne d'invite et un grand curseur. */
+html[data-el-nav='terminal']::view-transition-old(root) { animation: tm-page-out 1s linear both; }
+html[data-el-nav='terminal']::view-transition-new(root) { animation: tm-page-in 1s linear both; }
+@keyframes tm-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes tm-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='terminal'] i { left: 0; top: 100%; }
+.el-front[data-scene='terminal'] i:first-child {
+  width: 100%; height: 200vh;
+  background:
+    repeating-linear-gradient(rgba(57, 255, 20, 0) 0 3px, rgba(57, 255, 20, 0.05) 3px 4px),
+    linear-gradient(#0B160B, #050A05 30vh, #050A05 170vh, #0B160B);
+  border-top: 3px solid #39FF14; border-bottom: 3px solid #39FF14;
+}
+.el-front[data-scene='terminal'] i:first-child::before {
+  content: '> _'; position: absolute; left: 6vw; top: 12px;
+  font: 34px/1 'VT323', 'Courier New', monospace; color: #39FF14; text-shadow: 0 0 6px rgba(57, 255, 20, 0.7);
+}
+.el-front[data-scene='terminal'] i:first-child::after {
+  content: ''; position: absolute; left: calc(6vw + 30px); top: 14px; width: 18px; height: 28px;
+  background: #39FF14; box-shadow: 0 0 8px rgba(57, 255, 20, 0.7);
+}
+.el-front[data-scene='terminal'] i:not(:first-child) {
+  left: calc(6vw + var(--r1) * 10vw); top: calc(100% + 70px + (var(--i) - 1) * 7vh);
+  font: 26px/1 'VT323', 'Courier New', monospace; font-style: normal; white-space: pre;
+  color: #6BFF4D; text-shadow: 0 0 4px rgba(57, 255, 20, 0.6);
+}
+.el-front[data-scene='terminal'] i:nth-child(9n + 2)::before { content: '> CHANGER DE PAGE'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 3)::before { content: 'RECHERCHE...'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 4)::before { content: '[##########] 100 %'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 5)::before { content: 'OK.'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 6)::before { content: '> AFFICHER'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 7)::before { content: '0101 1100 0110 1001'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 8)::before { content: 'TOUT VA BIEN.'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 9)::before { content: '> MIAOU ?'; }
+.el-front[data-scene='terminal'] i:nth-child(9n + 10)::before { content: 'CHARGEMENT...'; }
+.el-front[data-scene='terminal'][data-on] i { animation: tm-roll 1s cubic-bezier(0.45, 0.08, 0.55, 0.92) both; }
+@keyframes tm-roll { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(-300vh); } }

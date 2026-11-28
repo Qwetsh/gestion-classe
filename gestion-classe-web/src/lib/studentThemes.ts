@@ -13,7 +13,8 @@
 import type { ComponentType } from 'react';
 
 export type StudentThemeId = 'carnet' | 'cosmos' | 'arcade' | 'jungle' | 'fossiles' | 'volcan' | 'crepuscule' | 'savane' | 'abysses' | 'banquise' | 'stade' | 'ruche' | 'sommets' | 'orage' | 'microscope' | 'ville' | 'parquet' | 'adn' | 'seisme' | 'skate'
-  | 'moyenage' | 'voyage' | 'fantasy' | 'conte' | 'theatre' | 'heros';
+  | 'moyenage' | 'voyage' | 'fantasy' | 'conte' | 'theatre' | 'heros'
+  | 'pangee' | 'petri' | 'radio' | 'retro' | 'mur' | 'planche' | 'platines' | 'terminal' | 'bonbon';
 
 /** Famille d'un thème : sert à ranger l'écran « Mon thème ». */
 export type StudentThemeGroup = 'univers' | 'nature' | 'sciences' | 'francais' | 'sport';
@@ -74,6 +75,16 @@ export const STUDENT_THEMES: StudentTheme[] = [
   { id: 'adn', name: 'ADN', group: 'sciences', unlock: 'class', note: 'La double hélice au labo', bg: '#EDF6F5', surface: '#FFFFFF', text: '#0F2B2E', accent: '#0B7A75', font: 'Manrope:wght@700;800', scene: () => import('../themes-eleve/adn'), animated: true },
   { id: 'skate', name: 'Skatepark', group: 'sport', unlock: 'card', note: 'La rampe, le mur de graffs', bg: '#EEF0F4', surface: '#FFFFFF', text: '#1B1D2A', accent: '#C2185B', font: 'Bangers', scene: () => import('../themes-eleve/skate'), animated: true },
   { id: 'seisme', name: 'Sismographe', group: 'sciences', unlock: 'class', note: 'La faille, le foyer, le tracé', bg: '#F5F1E8', surface: '#FFFFFF', text: '#20242B', accent: '#C2261D', font: 'IBM+Plex+Mono:wght@600;700', scene: () => import('../themes-eleve/seisme'), animated: true },
+  { id: 'pangee', name: 'Pangée', group: 'sciences', unlock: 'class', note: 'La Terre d’il y a 250 millions d’années', bg: '#EFE3C8', surface: '#FBF4E2', text: '#2E2416', accent: '#7A4A1E', font: 'IM+Fell+English+SC', scene: () => import('../themes-eleve/pangee'), animated: true },
+  { id: 'petri', name: 'Boîte de Pétri', group: 'sciences', unlock: 'class', note: 'Colonies et antibiogramme', bg: '#F3F7E4', surface: '#FFFFFF', text: '#1E2A14', accent: '#3F6B0E', font: 'Baloo+2:wght@600;700', scene: () => import('../themes-eleve/petri'), animated: true },
+  { id: 'radio', name: 'Radiographie', group: 'sciences', unlock: 'class', note: 'Le squelette au négatoscope', bg: '#050B14', surface: '#0E1826', text: '#DCEBFF', accent: '#7FD4FF', font: 'Share+Tech+Mono', scene: () => import('../themes-eleve/radio'), animated: true },
+  // Hors cours, à gagner avec les tampons (catalogue du 26/11/2026)
+  { id: 'retro', name: 'Rétro 84', group: 'univers', unlock: 'card', note: 'Grille rose et soleil rayé', bg: '#1A0B2E', surface: '#2A1248', text: '#FDF0FF', accent: '#FF4FD8', font: 'Audiowide', scene: () => import('../themes-eleve/retro'), animated: true },
+  { id: 'mur', name: 'Mur', group: 'univers', unlock: 'card', note: 'Bombes de couleur sur béton', bg: '#E4E2DE', surface: '#FFFFFF', text: '#151515', accent: '#C2185B', font: 'Permanent+Marker', scene: () => import('../themes-eleve/mur'), animated: true },
+  { id: 'planche', name: 'Planche', group: 'univers', unlock: 'card', note: 'Une page de bande dessinée', bg: '#FFFFFF', surface: '#FFFFFF', text: '#111111', accent: '#D10500', font: 'Bangers', scene: () => import('../themes-eleve/planche'), animated: true },
+  { id: 'platines', name: 'Platines', group: 'univers', unlock: 'card', note: 'Le concert va commencer', bg: '#0F0F14', surface: '#1B1B24', text: '#F5F5FA', accent: '#B6FF3B', font: 'Unbounded:wght@600;700', scene: () => import('../themes-eleve/platines'), animated: true },
+  { id: 'terminal', name: 'Terminal', group: 'univers', unlock: 'card', note: 'Vert phosphore sur noir', bg: '#050A05', surface: '#0B140B', text: '#B6FFB0', accent: '#39FF14', font: 'VT323', scene: () => import('../themes-eleve/terminal'), animated: true },
+  { id: 'bonbon', name: 'Bonbon', group: 'univers', unlock: 'card', note: 'Une confiserie toute ronde', bg: '#FFF0F6', surface: '#FFFFFF', text: '#3B1E3F', accent: '#C2255C', font: 'Grandstander:wght@700;800', scene: () => import('../themes-eleve/bonbon'), animated: true },
   // Français (programme du collège), ouverts par le professeur avec le cours comme ceux de sciences
   { id: 'moyenage', name: 'Moyen Âge', group: 'francais', unlock: 'class', note: 'Le château et son tournoi', bg: '#EFE6D2', surface: '#FFFBF1', text: '#2A1E12', accent: '#1F4E8C', font: 'Uncial+Antiqua', scene: () => import('../themes-eleve/moyenage'), animated: true },
   { id: 'voyage', name: 'Voyage', group: 'francais', unlock: 'class', note: 'Cap vers l’inconnu', bg: '#F8EEDB', surface: '#FFFDF7', text: '#1F2B38', accent: '#1B5E8A', font: 'Kalam:wght@700', scene: () => import('../themes-eleve/voyage'), animated: true },

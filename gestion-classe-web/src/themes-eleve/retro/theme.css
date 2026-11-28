@@ -1,0 +1,240 @@
+/* Thème « Rétro 84 » (espace élève) : violet profond, rose néon, soleil jaune-rose et cyan. */
+.el[data-theme='retro'] {
+  --el-bg: #1A0B2E; --el-surface: #2A1248; --el-line: #43206B; --el-line-soft: #36195A; --el-line-strong: #5E2F8F;
+  --el-text: #FDF0FF; --el-muted: #E0C8F0; --el-dim: #C3A6DA;
+  --el-indigo: #FF4FD8; --el-indigo-ink: #FF8BE6; --el-indigo-soft: #4A1A5E;
+  --el-pos: #5FE0B0; --el-pos-ink: #8FF0CB; --el-pos-soft: #123D33;
+  --el-warn: #FFC56B; --el-warn-ink: #FFD99A; --el-warn-soft: #45300F;
+  --el-neg: #FF8A9E; --el-neg-soft: #4A1530;
+  --el-track: #3A1A5C; --el-on-accent: #1A0B2E; --el-radio: #9C7DB8;
+  --el-radius: 14px; --el-radius-sm: 10px;
+  --el-font-display: 'Audiowide', 'Inter', system-ui, sans-serif;
+  color-scheme: dark;
+}
+.el[data-theme='retro'] .el-main { padding-top: 240px; }
+.el[data-theme='retro'] .el-h1 { font-weight: 400; letter-spacing: 0.01em; }
+.el[data-theme='retro'] .el-btn--primary { box-shadow: 0 0 0 1px rgba(255, 139, 230, 0.5), 0 6px 20px rgba(255, 79, 216, 0.35); }
+
+/* ---- La scène ----
+   Les éléments dessinés à un endroit précis sont posés dans `.rt-set`, un cadre de 480 px centré. */
+[data-scene='retro'] .rt-set { position: absolute; left: 50%; top: 0; width: 480px; height: 100%; margin-left: -240px; }
+[data-scene='retro'] .rt-set > svg { position: absolute; left: 0; top: 0; height: auto; }
+
+/* Ciel : nuit violette en haut, brume rose contre l'horizon */
+[data-scene='retro'] .rt-sky {
+  height: 150px;
+  background: linear-gradient(180deg, #110428 0, #23093F 50px, #461260 94px, #8A2378 122px, #E0479A 140px, #E0479A 150px);
+}
+[data-scene='retro'] .rt-star {
+  position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #FDF0FF;
+  animation: rt-twinkle var(--d) ease-in-out var(--delay) infinite alternate;
+}
+@keyframes rt-twinkle { from { opacity: 0.35; transform: scale(0.7); } to { opacity: 1; transform: scale(1.1); } }
+[data-scene='retro'] .rt-spark {
+  position: absolute; width: 11px; height: 11px; margin: -5px 0 0 -5px; background: #FFE9FA;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  animation: rt-sparkle var(--d) ease-in-out infinite alternate;
+}
+@keyframes rt-sparkle { from { opacity: 0.5; transform: scale(0.55) rotate(0deg); } to { opacity: 1; transform: scale(1) rotate(45deg); } }
+/* L'étoile filante, toutes les 17 s */
+[data-scene='retro'] .rt-meteor {
+  position: absolute; right: 6%; top: 8px; width: 84px; height: 2px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(90deg, #FFFFFF, rgba(255, 200, 240, 0));
+  transform-origin: 0 50%; animation: rt-meteor 17s linear -6s infinite;
+}
+@keyframes rt-meteor {
+  0%, 86% { opacity: 0; transform: translate(0, 0) rotate(-8.7deg); }
+  87% { opacity: 1; }
+  92% { opacity: 1; }
+  94%, 100% { opacity: 0; transform: translate(-260px, 40px) rotate(-8.7deg); }
+}
+
+/* Le soleil : un halo qui respire, des bandes qui tombent au toucher */
+[data-scene='retro'] .rt-sunlayer { height: 140px; }
+[data-scene='retro'] .rt-halo {
+  position: absolute; left: 130px; top: -18px; width: 220px; height: 220px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 150, 200, 0.42) 0 30%, rgba(255, 90, 200, 0.18) 48%, rgba(255, 79, 216, 0) 70%);
+  animation: rt-halo 7s ease-in-out infinite alternate;
+}
+@keyframes rt-halo { from { transform: scale(0.94); opacity: 0.8; } to { transform: scale(1.06); opacity: 1; } }
+[data-scene='retro'] .rt-band { transform-box: fill-box; transform-origin: 50% 50%; --w: 1; }
+[data-scene='retro'] .rt-band:nth-child(even) { --w: -1; }
+
+/* Montagnes en fil de fer */
+[data-scene='retro'] .rt-hills { height: 88px; }
+[data-scene='retro'] .rt-peak { transform-box: fill-box; transform-origin: 50% 100%; }
+[data-scene='retro'] .rt-peak__body { fill: #1E0838; }
+[data-scene='retro'] .rt-peak:nth-child(2) .rt-peak__body { fill: #2A0B4A; }
+[data-scene='retro'] .rt-peak__wire { fill: none; stroke: #A646DA; stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: 0.7; }
+[data-scene='retro'] .rt-peak__ridge { fill: none; stroke: #FF4FD8; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* La cassette, cachée jusqu'au toucher */
+[data-scene='retro'] .rt-cassette { position: absolute; left: 318px; top: -34px; width: 60px; height: 40px; opacity: 0; transform: scale(0); }
+[data-scene='retro'] .rt-tape { display: block; width: 60px; height: 40px; }
+[data-scene='retro'] .rt-reel { transform-box: fill-box; transform-origin: 50% 50%; }
+[data-scene='retro'] .rt-note { position: absolute; top: -4px; width: 11px; height: 15px; fill: #FFE45C; opacity: 0; }
+[data-scene='retro'] .rt-note:nth-of-type(3) { fill: #5FF2FF; }
+
+/* Le sol : la grille (Grid.tsx), puis un aplat uni qui recouvre les plans de derrière */
+[data-scene='retro'] .rt-floor { height: 104px; }
+[data-scene='retro'] .rt-floor::after { content: ''; position: absolute; left: 0; right: 0; top: 103px; height: calc(100vh + 900px); background: #1A0B2E; }
+[data-scene='retro'] .rt-grid { position: absolute; left: 0; top: 0; width: 100%; height: 104px; display: block; }
+[data-scene='retro'] .rt-streaks { position: absolute; left: 50%; top: 0; width: 0; height: 0; }
+[data-scene='retro'] .rt-streak {
+  position: absolute; left: -1px; top: 0; width: 2px; height: 26px; border-radius: 2px; opacity: 0;
+  background: linear-gradient(rgba(200, 250, 255, 0), #E8FDFF);
+  transform-origin: 1px 0; transform: rotate(var(--a)) translateY(14px);
+}
+
+/* Le dauphin en fil de fer, toutes les 23 s : il tourne autour d'un point sous la grille ; la boîte
+   coupe tout ce qui passe sous la surface, si bien qu'il sort, décrit son arc et replonge. */
+[data-scene='retro'] .rt-dolbox { position: absolute; left: 250px; top: -50px; width: 170px; height: 72px; overflow: hidden; }
+[data-scene='retro'] .rt-dolphin {
+  position: absolute; left: 56px; top: 18.5px; width: 58px; height: 27px;
+  transform-origin: 29px 71.5px; transform: rotate(-105deg);
+  animation: rt-dolphin 23s linear -4s infinite;
+}
+@keyframes rt-dolphin {
+  0%, 78% { transform: rotate(-105deg); animation-timing-function: cubic-bezier(0.3, 0.1, 0.7, 0.9); }
+  90%, 100% { transform: rotate(105deg); }
+}
+[data-scene='retro'] .rt-dolphin__body { fill: #2A0F52; stroke: #5FF2FF; stroke-width: 1.2; stroke-linejoin: round; }
+[data-scene='retro'] .rt-dolphin__wire { fill: none; stroke: #5FF2FF; stroke-width: 0.8; stroke-linecap: round; opacity: 0.7; }
+[data-scene='retro'] .rt-ripple {
+  position: absolute; top: 18px; width: 26px; height: 8px; margin-left: -13px; border: 1.5px solid #5FF2FF; border-radius: 50%;
+  opacity: 0; animation: rt-ripple-in 23s ease-out -4s infinite;
+}
+[data-scene='retro'] .rt-ripple--out { animation-name: rt-ripple-out; }
+@keyframes rt-ripple-in { 0%, 79.5% { opacity: 0; transform: scale(0.3); } 80.5% { opacity: 1; } 86%, 100% { opacity: 0; transform: scale(2.2); } }
+@keyframes rt-ripple-out { 0%, 87.6% { opacity: 0; transform: scale(0.3); } 88.6% { opacity: 1; } 94%, 100% { opacity: 0; transform: scale(2.2); } }
+
+/* Palmiers en silhouette, bordés d'un reflet rose ; les palmes se balancent */
+[data-scene='retro'] .rt-palms { height: 252px; }
+[data-scene='retro'] .rt-frond, [data-scene='retro'] .rt-nut { fill: #12041F; }
+[data-scene='retro'] .rt-frond { stroke: #7C2C9C; stroke-width: 0.8; stroke-linejoin: round; }
+[data-scene='retro'] .rt-palm__rings { fill: none; stroke: #33114F; stroke-width: 1; }
+[data-scene='retro'] .rt-palm__rim { fill: none; stroke: #FF4FD8; stroke-width: 1.2; stroke-linecap: round; opacity: 0.5; }
+[data-scene='retro'] .rt-crown { transform-box: view-box; animation: rt-sway 5.5s ease-in-out infinite alternate; }
+@keyframes rt-sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+
+/* La voiture : elle tressaute, change un peu de place sur la route ; ses feux rougeoient */
+[data-scene='retro'] .rt-carlayer { height: 60px; }
+[data-scene='retro'] .rt-carbox { position: absolute; left: 188px; top: 0; width: 104px; height: 52px; animation: rt-drift 9s ease-in-out infinite alternate; }
+@keyframes rt-drift { from { translate: -9px 0; } to { translate: 9px 0; } }
+[data-scene='retro'] .rt-car { display: block; width: 104px; height: 52px; transform-origin: 50% 100%; }
+[data-scene='retro'] .rt-body { animation: rt-bob 0.36s ease-in-out infinite alternate; }
+@keyframes rt-bob { from { transform: translateY(0); } to { transform: translateY(-0.8px); } }
+[data-scene='retro'] .rt-light { fill: #FF2A50; }
+[data-scene='retro'] .rt-glow { animation: rt-glow 2.6s ease-in-out infinite alternate; }
+@keyframes rt-glow { from { opacity: 0.5; } to { opacity: 1; } }
+[data-scene='retro'] .rt-trails { transform-box: view-box; transform-origin: 50px 31px; transform: scaleY(0); opacity: 0; }
+
+/* ---- Au toucher (la voiture) : turbo. Elle s'écrase un instant sur ses roues, file vers
+   l'horizon en laissant deux traînées rouges, la grille accélère (Grid.tsx) et des traits de
+   vitesse filent sur les côtés ; puis elle ralentit et revient à sa place. ---- */
+[data-scene='retro'][data-fx~='turbo'] .rt-car { animation: rt-turbo 3.6s both; }
+@keyframes rt-turbo {
+  0% { transform: translateY(0) scale(1); animation-timing-function: ease-in-out; }
+  5% { transform: translateY(2px) scale(1.04, 0.96); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  20% { transform: translateY(-30px) scale(0.56); animation-timing-function: ease-in-out; }
+  40% { transform: translateY(-27px) scale(0.58); animation-timing-function: ease-in-out; }
+  60% { transform: translateY(-31px) scale(0.55); animation-timing-function: cubic-bezier(0.4, 0, 0.3, 1); }
+  92%, 100% { transform: translateY(0) scale(1); }
+}
+[data-scene='retro'][data-fx~='turbo'] .rt-trails { animation: rt-trails 3.6s both; }
+@keyframes rt-trails {
+  0%, 5% { opacity: 0; transform: scaleY(0); }
+  20% { opacity: 0.9; transform: scaleY(1); }
+  62% { opacity: 0.9; transform: scaleY(1); }
+  88%, 100% { opacity: 0; transform: scaleY(0); }
+}
+[data-scene='retro'][data-fx~='turbo'] .rt-streak { animation: rt-streak 0.42s linear calc(0.35s + var(--n) * 0.07s) 5; }
+@keyframes rt-streak {
+  from { opacity: 0; transform: rotate(var(--a)) translateY(14px) scaleY(0.4); }
+  25% { opacity: 1; }
+  to { opacity: 0; transform: rotate(var(--a)) translateY(150px) scaleY(1.6); }
+}
+
+/* ---- Au toucher (le soleil) : les stores. Les bandes basculent et tombent une à une derrière
+   l'horizon, de la plus basse à la plus haute ; le ciel reste vide un instant ; puis elles
+   remontent dans le même ordre et le soleil se recompose. ---- */
+[data-scene='retro'][data-fx~='stores'] .rt-band { animation: rt-blind 3.4s both; animation-delay: calc(var(--n) * 0.1s); }
+@keyframes rt-blind {
+  0% { transform: translateY(0) rotate(0deg) scaleY(1); animation-timing-function: ease-in-out; }
+  7% { transform: translateY(-3px) rotate(0deg) scaleY(0.5); animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6); }
+  34% { transform: translateY(124px) rotate(calc(var(--w) * 8deg)) scaleY(0.5); }
+  56% { transform: translateY(124px) rotate(calc(var(--w) * -4deg)) scaleY(1); animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1); }
+  92% { transform: translateY(-3px) rotate(0deg) scaleY(1); animation-timing-function: ease-in-out; }
+  100% { transform: translateY(0) rotate(0deg) scaleY(1); }
+}
+[data-scene='retro'][data-fx~='stores'] .rt-halo { animation: rt-halo-off 4.3s ease-in-out both; }
+@keyframes rt-halo-off { 0% { opacity: 0.9; transform: scale(1); } 32%, 58% { opacity: 0.15; transform: scale(0.8); } 100% { opacity: 0.9; transform: scale(1); } }
+
+/* ---- Au toucher (les montagnes) : la cassette. Elle surgit dans le ciel en tournoyant, ses
+   bobines tournent, des notes s'envolent, et les montagnes dansent comme les barres d'un
+   égaliseur ; puis la cassette repart et les montagnes se reposent. ---- */
+[data-scene='retro'][data-fx~='cassette'] .rt-cassette { animation: rt-tape-pop 4.4s both; }
+@keyframes rt-tape-pop {
+  0% { opacity: 0; transform: translateY(34px) scale(0.2) rotate(-25deg); animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1.2); }
+  9% { opacity: 1; transform: translateY(-4px) scale(1.12) rotate(6deg); }
+  15% { transform: translateY(0) scale(1) rotate(-3deg); }
+  30% { transform: translateY(-3px) scale(1) rotate(3deg); }
+  45% { transform: translateY(1px) scale(1) rotate(-3deg); }
+  60% { transform: translateY(-3px) scale(1) rotate(3deg); }
+  75% { transform: translateY(1px) scale(1) rotate(-2deg); }
+  86% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: translateY(30px) scale(0.2) rotate(18deg); }
+}
+[data-scene='retro'][data-fx~='cassette'] .rt-reel { animation: rt-spin 0.8s linear infinite; }
+@keyframes rt-spin { to { transform: rotate(360deg); } }
+[data-scene='retro'][data-fx~='cassette'] .rt-note { animation: rt-note 1.3s ease-out var(--d) 2 both; }
+@keyframes rt-note {
+  0% { opacity: 0; transform: translate(0, 6px) rotate(-10deg); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-24px, -22px) rotate(-14deg); }
+}
+[data-scene='retro'][data-fx~='cassette'] .rt-peak { animation: rt-eq-a 3.4s ease-in-out both; animation-delay: calc(0.5s + var(--n) * 0.09s); }
+[data-scene='retro'][data-fx~='cassette'] .rt-peak:nth-child(2) { animation-name: rt-eq-b; }
+@keyframes rt-eq-a {
+  0% { transform: scaleY(1); } 7% { transform: scaleY(1.38); } 14% { transform: scaleY(0.78); } 21% { transform: scaleY(1.26); }
+  28% { transform: scaleY(0.84); } 35% { transform: scaleY(1.42); } 42% { transform: scaleY(0.74); } 50% { transform: scaleY(1.3); }
+  57% { transform: scaleY(0.84); } 64% { transform: scaleY(1.22); } 72% { transform: scaleY(0.9); } 80% { transform: scaleY(1.12); }
+  90% { transform: scaleY(0.97); } 100% { transform: scaleY(1); }
+}
+@keyframes rt-eq-b {
+  0% { transform: scaleY(1); } 7% { transform: scaleY(0.76); } 14% { transform: scaleY(1.45); } 21% { transform: scaleY(0.82); }
+  28% { transform: scaleY(1.34); } 35% { transform: scaleY(0.8); } 42% { transform: scaleY(1.5); } 50% { transform: scaleY(0.78); }
+  57% { transform: scaleY(1.3); } 64% { transform: scaleY(0.86); } 72% { transform: scaleY(1.16); } 80% { transform: scaleY(0.92); }
+  90% { transform: scaleY(1.04); } 100% { transform: scaleY(1); }
+}
+
+/* ---- Changement d'onglet : l'horizon passe ----
+   Tout le paysage traverse l'écran de bas en haut, d'un seul mouvement : le ciel et le soleil rayé
+   d'abord, puis la ligne d'horizon et la grille en perspective qui couvre tout l'écran (la page
+   change derrière elle, à la moitié du temps), enfin une traîne de bandes de balayage cyan et
+   roses. Des étoiles et des traits de bande vidéo filent avec lui. */
+html[data-el-nav='retro']::view-transition-old(root) { animation: rt-page-out 1s linear both; }
+html[data-el-nav='retro']::view-transition-new(root) { animation: rt-page-in 1s linear both; }
+@keyframes rt-page-out { 0%, 50% { opacity: 1; } 50.1%, 100% { opacity: 0; } }
+@keyframes rt-page-in { 0%, 50% { opacity: 0; } 50.1%, 100% { opacity: 1; } }
+.el-front[data-scene='retro'] i:first-child {
+  left: 0; top: 100%; width: 100%; height: 220vh;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 400' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%234E1475'/%3E%3Cstop offset='.3' stop-color='%232D0B4D'/%3E%3Cstop offset='1' stop-color='%231A0B2E'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='400' height='400' fill='url(%23g)'/%3E%3Cpath d='M200 0L400 400M200 0L520 400M200 0L640 400M200 0L760 400M200 0L880 400M200 0L1000 400M200 0L1120 400M200 0L1240 400M200 0L0 400M200 0L-120 400M200 0L-240 400M200 0L-360 400M200 0L-480 400M200 0L-600 400M200 0L-720 400M200 0L-840 400M0 4H400M0 9H400M0 16H400M0 25H400M0 37H400M0 53H400M0 74H400M0 102H400M0 140H400M0 192H400M0 262H400M0 356H400' fill='none' stroke='%23FF5FDC' stroke-width='2' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M198 0H202L280 400H120Z' fill='%2313051F'/%3E%3Cpath d='M200 0L120 400M200 0L280 400' fill='none' stroke='%2348E5FF' stroke-width='3' vector-effect='non-scaling-stroke'/%3E%3Cpath d='M199 30H201L202 50H198ZM197.5 90H202.5L205 130H195ZM194 210H206L212 300H188Z' fill='%23FFE27A'/%3E%3Crect width='400' height='3' fill='%23FFC4F2'/%3E%3C/svg%3E") 0 40vh / 100% 155vh no-repeat,
+    linear-gradient(180deg, #1A0B2E 0 18%, #48E5FF 18% 21%, #1A0B2E 21% 34%, #FF4FD8 34% 39%, rgba(26, 11, 46, 0) 39% 50%, #48E5FF 50% 52.5%, rgba(26, 11, 46, 0) 52.5% 68%, #FF4FD8 68% 70.5%, rgba(26, 11, 46, 0) 70.5% 86%, #48E5FF 86% 87.5%, rgba(26, 11, 46, 0) 87.5%) 0 195vh / 100% 25vh no-repeat,
+    linear-gradient(180deg, #1A0B2E 0, #2C0B4E 12vh, #6A1A74 28vh, #D8449C 40vh) 0 0 / 100% 40vh no-repeat;
+}
+.el-front[data-scene='retro'] i:nth-child(2) {
+  left: 50%; top: auto; bottom: -40vh; width: min(84vw, 400px); margin-left: calc(min(84vw, 400px) / -2); aspect-ratio: 2 / 1;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 100'%3E%3Cdefs%3E%3ClinearGradient id='s' gradientUnits='userSpaceOnUse' x1='0' y1='4' x2='0' y2='100'%3E%3Cstop offset='0' stop-color='%23FFF27A'/%3E%3Cstop offset='.45' stop-color='%23FFB347'/%3E%3Cstop offset='.75' stop-color='%23FF6E9C'/%3E%3Cstop offset='1' stop-color='%23FF4FD8'/%3E%3C/linearGradient%3E%3Cmask id='m'%3E%3Crect width='200' height='100' fill='white'/%3E%3Cpath d='M0 50h200v2.5H0zM0 62h200v3.5H0zM0 73h200v4.5H0zM0 83h200v5.5H0zM0 93h200v7H0z' fill='black'/%3E%3C/mask%3E%3C/defs%3E%3Ccircle cx='100' cy='100' r='96' fill='url(%23s)' mask='url(%23m)'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+.el-front[data-scene='retro'] i:nth-child(n + 3) {
+  left: calc(var(--r1) * 92%); top: calc(100% + 48vh + var(--r2) * 140vh); width: calc(16px + var(--r3) * 70px); height: 2px; border-radius: 2px;
+  background: linear-gradient(90deg, rgba(95, 242, 255, 0), #BFFAFF 40%, rgba(95, 242, 255, 0));
+}
+.el-front[data-scene='retro'] i:nth-child(n + 17) {
+  left: calc(var(--r1) * 98%); top: calc(100% + 3vh + var(--r2) * 28vh); width: calc(2px + var(--r3) * 2px); height: calc(2px + var(--r3) * 2px); border-radius: 50%;
+  background: #FDF0FF;
+}
+.el-front[data-scene='retro'][data-on] i { animation: rt-sweep 1s cubic-bezier(0.45, 0.1, 0.55, 0.9) both; }
+@keyframes rt-sweep { from { opacity: 1; transform: translateY(0); } to { opacity: 1; transform: translateY(-320vh); } }
